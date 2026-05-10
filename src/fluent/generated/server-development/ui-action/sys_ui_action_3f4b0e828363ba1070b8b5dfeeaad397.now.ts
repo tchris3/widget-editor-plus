@@ -27,17 +27,14 @@ UiAction({
     script: `function openWidgetEditorPlus() {
     var widgetEditorURL = 'ui_page.do?sys_id=8b2e70458373fe1070b8b5dfeeaad35e&widget_id=';
     if (typeof g_form !== 'undefined' && typeof g_form.getUniqueValue === 'function') {
-        // Form button context — check for unsaved changes before navigating
         if (g_form.modified) {
-            if (confirm("You have unsaved changes.\\n\\nClick OK to save, or Cancel to discard changes.")) {
-                g_form.save();
+            if (!confirm("You have unsaved changes.\\n\\nWidget Editor+ will open without them. Continue?")) {
                 return;
             }
-            g_form.modified = false;
         }
         var sysId = g_form.getUniqueValue();
         if (!sysId) return;
-        g_navigation.open(widgetEditorURL + sysId, '_self');
+        g_navigation.open(widgetEditorURL + sysId, '_blank');
         return;
     }
 
