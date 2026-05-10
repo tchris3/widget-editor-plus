@@ -1,0 +1,6 @@
+{
+  "scope": "global",
+  "scopeId": "d65bb60783e7321070b8b5dfeeaad3b2",
+  "name": "Widget Editor+",
+  "tsconfigPath": "./src/server/tsconfig.json"
+}

@@ -1,0 +1,29 @@
+{
+    "sys_properties_ad059fa1832fb61070b8b5dfeeaad32d": [
+        "19cf1d3b8150000001;d65bb60783e7321070b8b5dfeeaad3b2;d65bb60783e7321070b8b5dfeeaad3b2;1.0.0"
+    ],
+    "sys_security_acl_90b5cf0d83ebb21070b8b5dfeeaad3bb": [
+        "19cf1d5c8bc0000001;d65bb60783e7321070b8b5dfeeaad3b2;d65bb60783e7321070b8b5dfeeaad3b2;1.0.0"
+    ],
+    "sys_security_acl_b0e23f858363f21070b8b5dfeeaad379": [
+        "19cf1d4eaab0000001;d65bb60783e7321070b8b5dfeeaad3b2;d65bb60783e7321070b8b5dfeeaad3b2;1.0.0"
+    ],
+    "sys_security_acl_b52df1658363b61070b8b5dfeeaad39b": [
+        "19cf1d4c6c90000001;d65bb60783e7321070b8b5dfeeaad3b2;d65bb60783e7321070b8b5dfeeaad3b2;1.0.0"
+    ],
+    "sys_security_acl_role_10b5cf0d83ebb21070b8b5dfeeaad3ea": [
+        "19cf1d5a8170000001;d65bb60783e7321070b8b5dfeeaad3b2;d65bb60783e7321070b8b5dfeeaad3b2;1.0.0"
+    ],
+    "sys_security_acl_role_792d35658363b61070b8b5dfeeaad32e": [
+        "19cf1d4a24f0000001;d65bb60783e7321070b8b5dfeeaad3b2;d65bb60783e7321070b8b5dfeeaad3b2;1.0.0"
+    ],
+    "sys_security_acl_role_7ce23f858363f21070b8b5dfeeaad3f2": [
+        "19cf1d4ea770000001;d65bb60783e7321070b8b5dfeeaad3b2;d65bb60783e7321070b8b5dfeeaad3b2;1.0.0"
+    ],
+    "sys_ui_action_3f4b0e828363ba1070b8b5dfeeaad397": [
+        "19cf1d39e3a0000001;d65bb60783e7321070b8b5dfeeaad3b2;d65bb60783e7321070b8b5dfeeaad3b2;1.0.0"
+    ],
+    "sys_ui_action_role_2c5b0e828363ba1070b8b5dfeeaad3e8": [
+        "19cf1d383e40000001;d65bb60783e7321070b8b5dfeeaad3b2;d65bb60783e7321070b8b5dfeeaad3b2;1.0.0"
+    ]
+}

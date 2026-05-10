@@ -1,0 +1,79 @@
+<div ng-if="::data.hasAccess !== false">
+  <div class="widget-editor-debug-menu" style="display:none;"></div>
+
+  <!-- Modal backdrop -->
+  <div ng-if="c.showPreferencesModal" class="modal-backdrop fade in" style="z-index:9998;"></div>
+
+  <!-- Preferences modal -->
+  <div ng-if="c.showPreferencesModal" class="modal fade in we-prefs-modal" style="display:block;z-index:9999;" tabindex="-1"
+    role="dialog" aria-labelledby="wePrefsModalLabel">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <button type="button" class="close" ng-click="c.closePreferences()" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <h4 class="modal-title" id="wePrefsModalLabel">Debug menu preferences</h4>
+        </div>
+
+        <div class="modal-body">
+
+          <!-- Menu item toggles (section headers interleaved) -->
+          <div ng-repeat="item in ::c.menuItemDefs track by $index">
+
+            <!-- Section header row -->
+            <div ng-if="::item.type === 'section'" class="we-prefs-section-header"
+              ng-class="::{' we-prefs-section-header--first': $first}">
+              {{::item.label}}
+            </div>
+
+            <!-- Toggle row -->
+            <div ng-if="::item.type !== 'section' && item.type !== 'select'" class="we-prefs-row">
+              <div class="we-prefs-label-group">
+                <span class="we-prefs-label">{{::item.label}}</span>
+                <span ng-if="::item.alwaysShow" class="we-prefs-badge">always on</span>
+                <span ng-if="::item.description" class="we-prefs-description" ng-bind-html="::item.description"></span>
+              </div>
+              <label class="we-toggle" ng-class="::{' we-toggle--disabled': item.alwaysShow}">
+                <input type="checkbox"
+                      ng-model="c.editPreferences[item.id]"
+                      ng-disabled="::item.alwaysShow">
+                <span class="we-toggle-track"></span>
+              </label>
+            </div>
+
+            <!-- Select row -->
+            <div ng-if="::item.type === 'select'" class="we-prefs-row">
+              <div class="we-prefs-label-group">
+                <span class="we-prefs-label">{{::item.label}}</span>
+              </div>
+              <select class="we-prefs-select"
+                      ng-model="c.editPreferences[item.id]"
+                      ng-options="opt.value as opt.label for opt in ::item.options"></select>
+            </div>
+
+          </div>
+
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button"
+                  class="btn btn-default"
+                  ng-click="c.closePreferences()">Cancel</button>
+          <button type="button"
+                  class="btn btn-primary"
+                  ng-click="c.savePreferences()"
+                  ng-disabled="c.saving">
+            <span ng-if="!c.saving">Save</span>
+            <span ng-if="c.saving">
+              <i class="fa fa-spinner fa-spin"></i> Saving…
+            </span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
