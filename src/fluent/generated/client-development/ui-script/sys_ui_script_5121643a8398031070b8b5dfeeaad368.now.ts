@@ -2,6 +2,7 @@ import { Record } from '@servicenow/sdk/core'
 
 Record({
     $id: Now.ID['5121643a8398031070b8b5dfeeaad368'],
+    $meta: { installMethod: 'first install' },
     table: 'sys_ui_script',
     data: {
         active: 'true',
