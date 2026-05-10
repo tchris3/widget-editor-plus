@@ -270,6 +270,10 @@ UiPage({
             vertical-align: middle;
         }
 
+        /* Textarea rows: top-align the label and value cells so a tall textarea
+           sits next to its label instead of pushing the row's contents off-center. */
+        .sft-row--top td { vertical-align: top; }
+
         .sft-row:last-child td { border-bottom: none; }
 
         .sft-label {
@@ -999,10 +1003,10 @@ UiPage({
             height: 100%;
         }
 
-        /* String-field expand button — sits on the right of long string inputs */
+        /* String-field expand button — sits on the right of long string inputs/textareas */
         .sft-string-wrap {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 0.25rem;
             width: 100%;
         }
@@ -1303,7 +1307,7 @@ UiPage({
 
                             <!-- Simple field rows -->
                             <tr class="sft-row" ng-repeat="f in ctrl.simpleFields"
-                                ng-class="{'sft-changed': ctrl.isChanged(f.key)}">
+                                ng-class="{'sft-changed': ctrl.isChanged(f.key), 'sft-row--top': f.renderAs === 'textarea'}">
                                 <td class="sft-label" we-tooltip="{{f.key}}">
                                     <div class="sft-label-main">
                                         <span ng-bind="f.label"></span>
@@ -1320,9 +1324,16 @@ UiPage({
                                           class="sft-bool-icon"
                                           ng-class="[ctrl.boolValClass(ctrl.leftFields[f.key]), ctrl.isChanged(f.key) ? 'sft-bool-icon--changed' : 'sft-bool-icon--same']"
                                           aria-label="{{ctrl.leftFields[f.key]}}"></span>
-                                    <textarea ng-switch-when="textarea" class="form-control sft-textarea"
-                                              readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
-                                              aria-label="{{f.label}} (left)"></textarea>
+                                    <span ng-switch-when="textarea" class="sft-string-wrap">
+                                        <textarea class="form-control sft-textarea"
+                                                  readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
+                                                  aria-label="{{f.label}} (left)"></textarea>
+                                        <button ng-if="ctrl.shouldShowStringExpand(f, false)"
+                                                class="btn btn-default sft-expand-btn"
+                                                ng-click="ctrl.toggleStringExpand(f, false, $event)"
+                                                title="Expand"
+                                                aria-label="Expand"></button>
+                                    </span>
                                     <span ng-switch-when="reference" class="sft-ref-wrap">
                                         <input type="text" class="form-control"
                                                readonly="readonly" ng-model="ctrl.leftRefDisplay[f.key]"
@@ -1342,9 +1353,16 @@ UiPage({
                                         <img ng-src="/{{ctrl.leftFields[f.key]}}.iix?t=medium"
                                              class="sft-img-preview" ng-attr-alt="{{ctrl.leftFields[f.key]}}" ng-attr-title="{{ctrl.leftFields[f.key]}}" />
                                     </a>
-                                    <input ng-switch-default="ng-switch-default" type="text" class="form-control"
-                                           readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
-                                           aria-label="{{f.label}} (left)" />
+                                    <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
+                                        <input type="text" class="form-control"
+                                               readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
+                                               aria-label="{{f.label}} (left)" />
+                                        <button ng-if="ctrl.shouldShowStringExpand(f, false)"
+                                                class="btn btn-default sft-expand-btn"
+                                                ng-click="ctrl.toggleStringExpand(f, false, $event)"
+                                                title="Expand"
+                                                aria-label="Expand"></button>
+                                    </span>
                                 </td>
 
                                 <!-- Right value -->
@@ -1356,9 +1374,16 @@ UiPage({
                                           class="sft-bool-icon"
                                           ng-class="[ctrl.boolValClass(ctrl.rightFields[f.key]), ctrl.isChanged(f.key) ? 'sft-bool-icon--changed' : 'sft-bool-icon--same']"
                                           aria-label="{{ctrl.rightFields[f.key]}}"></span>
-                                    <textarea ng-switch-when="textarea" class="form-control sft-textarea"
-                                              readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
-                                              aria-label="{{f.label}} (right)"></textarea>
+                                    <span ng-switch-when="textarea" class="sft-string-wrap">
+                                        <textarea class="form-control sft-textarea"
+                                                  readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
+                                                  aria-label="{{f.label}} (right)"></textarea>
+                                        <button ng-if="ctrl.shouldShowStringExpand(f, false)"
+                                                class="btn btn-default sft-expand-btn"
+                                                ng-click="ctrl.toggleStringExpand(f, false, $event)"
+                                                title="Expand"
+                                                aria-label="Expand"></button>
+                                    </span>
                                     <span ng-switch-when="reference" class="sft-ref-wrap">
                                         <input type="text" class="form-control"
                                                readonly="readonly" ng-model="ctrl.rightRefDisplay[f.key]"
@@ -1440,7 +1465,8 @@ UiPage({
                         <table class="sft-table">
                             <colgroup><col class="sft-col-label" /><col /><col /></colgroup>
                             <tbody>
-                                <tr class="sft-row sft-changed" ng-repeat="f in ctrl.extraChangedSimpleFields">
+                                <tr class="sft-row sft-changed" ng-repeat="f in ctrl.extraChangedSimpleFields"
+                                    ng-class="{'sft-row--top': f.renderAs === 'textarea'}">
                                     <td class="sft-label" we-tooltip="{{f.key}}">
                                         <div class="sft-label-main">
                                             <span ng-bind="f.label"></span>
@@ -1456,9 +1482,16 @@ UiPage({
                                               class="sft-bool-icon sft-bool-icon--changed"
                                               ng-class="ctrl.boolValClass(ctrl.extraLeftFields[f.key])"
                                               aria-label="{{ctrl.extraLeftFields[f.key]}}"></span>
-                                        <textarea ng-switch-when="textarea" class="form-control sft-textarea"
-                                                  readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
-                                                  aria-label="{{f.label}} (left)"></textarea>
+                                        <span ng-switch-when="textarea" class="sft-string-wrap">
+                                            <textarea class="form-control sft-textarea"
+                                                      readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
+                                                      aria-label="{{f.label}} (left)"></textarea>
+                                            <button ng-if="ctrl.shouldShowStringExpand(f, true)"
+                                                    class="btn btn-default sft-expand-btn"
+                                                    ng-click="ctrl.toggleStringExpand(f, true, $event)"
+                                                    title="Expand"
+                                                    aria-label="Expand"></button>
+                                        </span>
                                         <span ng-switch-when="reference" class="sft-ref-wrap">
                                             <input type="text" class="form-control"
                                                    readonly="readonly" ng-model="ctrl.extraLeftRefDisplay[f.key]"
@@ -1478,9 +1511,16 @@ UiPage({
                                             <img ng-src="/{{ctrl.extraLeftFields[f.key]}}.iix?t=medium"
                                                  class="sft-img-preview" ng-attr-alt="{{ctrl.extraLeftFields[f.key]}}" ng-attr-title="{{ctrl.extraLeftFields[f.key]}}" />
                                         </a>
-                                        <input ng-switch-default="ng-switch-default" type="text" class="form-control"
-                                               readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
-                                               aria-label="{{f.label}} (left)" />
+                                        <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
+                                            <input type="text" class="form-control"
+                                                   readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
+                                                   aria-label="{{f.label}} (left)" />
+                                            <button ng-if="ctrl.shouldShowStringExpand(f, true)"
+                                                    class="btn btn-default sft-expand-btn"
+                                                    ng-click="ctrl.toggleStringExpand(f, true, $event)"
+                                                    title="Expand"
+                                                    aria-label="Expand"></button>
+                                        </span>
                                     </td>
 
                                     <td class="sft-val"
@@ -1491,9 +1531,16 @@ UiPage({
                                               class="sft-bool-icon sft-bool-icon--changed"
                                               ng-class="ctrl.boolValClass(ctrl.extraRightFields[f.key])"
                                               aria-label="{{ctrl.extraRightFields[f.key]}}"></span>
-                                        <textarea ng-switch-when="textarea" class="form-control sft-textarea"
-                                                  readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
-                                                  aria-label="{{f.label}} (right)"></textarea>
+                                        <span ng-switch-when="textarea" class="sft-string-wrap">
+                                            <textarea class="form-control sft-textarea"
+                                                      readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
+                                                      aria-label="{{f.label}} (right)"></textarea>
+                                            <button ng-if="ctrl.shouldShowStringExpand(f, true)"
+                                                    class="btn btn-default sft-expand-btn"
+                                                    ng-click="ctrl.toggleStringExpand(f, true, $event)"
+                                                    title="Expand"
+                                                    aria-label="Expand"></button>
+                                        </span>
                                         <span ng-switch-when="reference" class="sft-ref-wrap">
                                             <input type="text" class="form-control"
                                                    readonly="readonly" ng-model="ctrl.extraRightRefDisplay[f.key]"
@@ -2406,7 +2453,7 @@ UiPage({
         ctrl.shouldShowStringExpand = function(f, isExtra) {
             if (!f) { return false; }
             var ra = f.renderAs;
-            if (ra === 'boolean' || ra === 'reference' || ra === 'choice' || ra === 'image' || ra === 'textarea') {
+            if (ra === 'boolean' || ra === 'reference' || ra === 'choice' || ra === 'image') {
                 return false;
             }
             var lv, rv;
@@ -2417,8 +2464,11 @@ UiPage({
                 lv = ctrl.leftFields[f.key]  || '';
                 rv = ctrl.rightFields[f.key] || '';
             }
-            if (lv === rv) { return false; }
-            return lv.length > 100 || rv.length > 100;
+            // Normalize line endings so CRLF vs LF differences don't count
+            var lvn = lv.replace(/\\r\\n/g, '\\n');
+            var rvn = rv.replace(/\\r\\n/g, '\\n');
+            if (lvn === rvn) { return false; }
+            return lvn.length > 100 || rvn.length > 100;
         };
 
         ctrl.initStringEditor = function() {
