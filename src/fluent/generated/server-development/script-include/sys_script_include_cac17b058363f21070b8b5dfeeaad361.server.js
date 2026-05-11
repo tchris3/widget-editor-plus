@@ -573,27 +573,50 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             });
         }
 
-        // Get dictionary metadata for all non-collection fields on this table
-        // (covers both layout fields and potential extras in one query).
-        var dictMap = {};
-        var dictGr = new GlideRecordSecure('sys_dictionary');
-        dictGr.addQuery('name', table);
-        dictGr.addNotNullQuery('element');
-        dictGr.addQuery('internal_type', '!=', 'collection');
-        dictGr.orderBy('element');
-        dictGr.query();
-        while (dictGr.next()) {
-            var dElem = dictGr.getValue('element');
-            if (!dElem) {
-                continue;
+        // Get dictionary metadata across the full table hierarchy so inherited
+        // fields (e.g. active from sys_metadata) get the correct type/renderAs.
+        var _fdHierArr = [table];
+        try {
+            var _fdDbGr = new GlideRecord('sys_db_object');
+            _fdDbGr.addQuery('name', table);
+            _fdDbGr.setLimit(1);
+            _fdDbGr.query();
+            if (_fdDbGr.next()) {
+                var _fdSuper = _fdDbGr.getValue('super_class');
+                for (var _fdDepth = 0; _fdSuper && _fdDepth < 15; _fdDepth++) {
+                    var _fdParentGr = new GlideRecord('sys_db_object');
+                    if (!_fdParentGr.get(_fdSuper)) { break; }
+                    var _fdParentName = _fdParentGr.getValue('name');
+                    if (!_fdParentName) { break; }
+                    _fdHierArr.push(_fdParentName);
+                    _fdSuper = _fdParentGr.getValue('super_class');
+                }
             }
-            dictMap[dElem] = {
-                type: dictGr.getValue('internal_type') || 'string',
-                max_length:
-                    parseInt(dictGr.getValue('max_length') || '0', 10) || 0,
-                reference: dictGr.getValue('reference') || '',
-                choice: parseInt(dictGr.getValue('choice') || '0', 10) || 0,
-            };
+        } catch (_fdErr) {
+            _fdHierArr = [table];
+        }
+        // Query each level of the hierarchy separately (leaf first) so leaf-table
+        // definitions always take precedence over parent-table definitions.
+        var dictMap = {};
+        for (var _fdI = 0; _fdI < _fdHierArr.length; _fdI++) {
+            var dictGr = new GlideRecordSecure('sys_dictionary');
+            dictGr.addQuery('name', _fdHierArr[_fdI]);
+            dictGr.addNotNullQuery('element');
+            dictGr.addQuery('internal_type', '!=', 'collection');
+            dictGr.query();
+            while (dictGr.next()) {
+                var dElem = dictGr.getValue('element');
+                if (!dElem || dictMap[dElem]) {
+                    continue; // skip if already set by a more-derived table
+                }
+                dictMap[dElem] = {
+                    type: dictGr.getValue('internal_type') || 'string',
+                    max_length:
+                        parseInt(dictGr.getValue('max_length') || '0', 10) || 0,
+                    reference: dictGr.getValue('reference') || '',
+                    choice: parseInt(dictGr.getValue('choice') || '0', 10) || 0,
+                };
+            }
         }
 
         // Get field labels via GlideElement.getLabel() on a temporary record
@@ -818,11 +841,34 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             });
         }
 
-        // Collect all field values via sys_dictionary
+        // Collect all field values via sys_dictionary — query the full table
+        // hierarchy so inherited fields (e.g. sys_scope from sys_metadata) are included.
         var values = {};
         var displayValues = {};
+        // GlideTableHierarchy.getAllTables() returns a Java ArrayList that lacks .join(),
+        // so traverse sys_db_object.super_class manually to build a plain JS array.
+        var _hierArr = [table];
+        try {
+            var _dbObjGr = new GlideRecord('sys_db_object');
+            _dbObjGr.addQuery('name', table);
+            _dbObjGr.setLimit(1);
+            _dbObjGr.query();
+            if (_dbObjGr.next()) {
+                var _superRef = _dbObjGr.getValue('super_class');
+                for (var _depth = 0; _superRef && _depth < 15; _depth++) {
+                    var _parentGr = new GlideRecord('sys_db_object');
+                    if (!_parentGr.get(_superRef)) { break; }
+                    var _parentName = _parentGr.getValue('name');
+                    if (!_parentName) { break; }
+                    _hierArr.push(_parentName);
+                    _superRef = _parentGr.getValue('super_class');
+                }
+            }
+        } catch (_hierErr) {
+            _hierArr = [table];
+        }
         var fdGr = new GlideRecordSecure('sys_dictionary');
-        fdGr.addQuery('name', table);
+        fdGr.addQuery('name', 'IN', _hierArr.join(','));
         fdGr.addNotNullQuery('element');
         fdGr.addQuery('internal_type', '!=', 'collection');
         fdGr.query();
@@ -1002,6 +1048,37 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         }
 
         var parsed = this._parseVersionPayloadAll(gr.getValue('payload'));
+
+        // Enrich display_values for choice fields — the XML payload stores choice
+        // fields as raw integer values without a display_value attribute.
+        // Use a temp GlideRecord to resolve choice labels via the schema.
+        var versionName = gr.getValue('name') || '';
+        var lastUnder = versionName.lastIndexOf('_');
+        var tableName = lastUnder > 0 ? versionName.substring(0, lastUnder) : '';
+        if (tableName) {
+            try {
+                var tempGr = new GlideRecord(tableName);
+                tempGr.initialize();
+                for (var _fk in parsed.fields) {
+                    if (parsed.fields.hasOwnProperty(_fk)) {
+                        try { tempGr.setValue(_fk, parsed.fields[_fk]); } catch (e) {}
+                    }
+                }
+                for (var _fk2 in parsed.fields) {
+                    if (!parsed.fields.hasOwnProperty(_fk2)) { continue; }
+                    if (parsed.display_values[_fk2]) { continue; } // already resolved by XML attr
+                    var _rawVal = parsed.fields[_fk2];
+                    if (_rawVal === '' || _rawVal === null || _rawVal === undefined) { continue; }
+                    try {
+                        var _dv = tempGr.getDisplayValue(_fk2);
+                        if (_dv && _dv !== String(_rawVal)) {
+                            parsed.display_values[_fk2] = _dv;
+                        }
+                    } catch (e) {}
+                }
+            } catch (e) {}
+        }
+
         return this._answer({
             success: true,
             sys_created_on: gr.getValue('sys_created_on'),
@@ -1029,34 +1106,32 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         try {
             var xmlDoc = new XMLDocument2();
             xmlDoc.parseXML(payload);
-            // Discover the table name from the payload (e.g. "sys_script_include").
-            var tableEl = xmlDoc.getFirstNode('/record_update/*');
-            if (!tableEl) {
-                return { fields: fields, display_values: displayValues };
-            }
-            var tableName = tableEl.getNodeName();
+            // Extract the table element name from the raw payload string using a regex.
+            // XMLDocument2 does not reliably support absolute XPaths or attribute predicates,
+            // but // (descendant-or-self) is proven to work for getFirstNode.
+            // The payload structure is always: <record_update ...><tableName action="...">
+            var tableNameMatch = payload.match(/<([a-z_][a-z0-9_]*)\s[^>]*action=/i);
+            var tableName = tableNameMatch ? tableNameMatch[1] : '';
             if (!tableName) {
                 return { fields: fields, display_values: displayValues };
             }
-            // Use sys_dictionary to enumerate all field element names for the table,
-            // then extract each via getFirstNode('//' + fieldName) — the same proven
-            // pattern used by _parseVersionPayload for sp_widget fields.
-            var dictGr = new GlideRecordSecure('sys_dictionary');
-            dictGr.addQuery('name', tableName);
-            dictGr.addNotNullQuery('element');
-            dictGr.query();
-            while (dictGr.next()) {
-                var fieldName = dictGr.getValue('element');
-                if (!fieldName) {
+            // Locate the table element then walk its direct children via getChildNodeIterator.
+            // getNodeIterator('//tableName/*') does not work in ServiceNow XMLDocument2.
+            var tableEl = xmlDoc.getFirstNode('//' + tableName);
+            if (!tableEl) {
+                return { fields: fields, display_values: displayValues };
+            }
+            var childIter = tableEl.getChildNodeIterator();
+            while (childIter.hasNext()) {
+                var child = childIter.next();
+                var fieldName = child.getNodeName();
+                if (!fieldName || fieldName === '#text') {
                     continue;
                 }
-                var node = xmlDoc.getFirstNode('//' + fieldName);
-                if (node) {
-                    fields[fieldName] = node.getTextContent() || '';
-                    var dv = node.getAttribute('display_value');
-                    if (dv) {
-                        displayValues[fieldName] = dv;
-                    }
+                fields[fieldName] = child.getTextContent() || '';
+                var dv = child.getAttribute('display_value');
+                if (dv) {
+                    displayValues[fieldName] = dv;
                 }
             }
         } catch (e) {
