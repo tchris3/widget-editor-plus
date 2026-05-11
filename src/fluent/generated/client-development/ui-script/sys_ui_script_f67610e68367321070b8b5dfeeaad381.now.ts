@@ -30,9 +30,9 @@ Registers as window.MONACO_LANGUAGE_SERVER_DTS.`,
     // and parameter hints in the server script and script include editors.
 
     window.MONACO_LANGUAGE_SERVER_DTS = \`
-// =============================================================================
+// -----------------------------------------------------------------------------
 // ServiceNow Server-Side API Supplement
-// =============================================================================
+// -----------------------------------------------------------------------------
 
 // ---- GlideRecord / GlideRecordSecure method additions -----------------------
 // Augments GlideRecordGenerated — the concrete base that the SN completions DTS
