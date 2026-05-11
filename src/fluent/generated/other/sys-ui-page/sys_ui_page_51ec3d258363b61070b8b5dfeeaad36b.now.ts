@@ -20,6 +20,7 @@ UiPage({
     </script>
 
     <g:requires name="scripts/snc-code-editor/monaco.bundle.min.jsx" params="sysparm_substitute=false" />
+    <g:requires name="monaco_plus_bootstrap.jsdbx" params="sysparm_substitute=false" />
     <g:requires name="scripts/angular_1.5.11/angular.min.js" position="last" />
 
     <script>
@@ -1655,6 +1656,119 @@ UiPage({
         };
     }
 
+    var _langServicesSetup = false;
+    function _setupLanguageServices() {
+        if (_langServicesSetup || !window.monaco) { return; }
+        _langServicesSetup = true;
+
+        // Disable semantic/suggestion diagnostics — semantic squiggles are misleading without
+        // full type context, but syntax errors are kept so devs can spot real issues in a diff.
+        if (monaco.languages && monaco.languages.typescript) {
+            var _noValidation = {
+                noSemanticValidation: true,
+                noSuggestionDiagnostics: true
+            };
+            var _jsDef = monaco.languages.typescript.javascriptDefaults;
+            if (_jsDef && _jsDef.setDiagnosticsOptions) { _jsDef.setDiagnosticsOptions(_noValidation); }
+            var _tsDef = monaco.languages.typescript.typescriptDefaults;
+            if (_tsDef && _tsDef.setDiagnosticsOptions) { _tsDef.setDiagnosticsOptions(_noValidation); }
+        }
+
+        _initMonacoPlus();
+
+        // Register a lightweight JSON tokenizer (no worker, no validation squiggles)
+        if (
+            monaco.languages &&
+            !monaco.languages.getLanguages().some(function(l) { return l.id === 'we-json'; })
+        ) {
+            monaco.languages.register({ id: 'we-json' });
+            monaco.languages.setMonarchTokensProvider('we-json', {
+                defaultToken: '',
+                tokenizer: {
+                    root: [
+                        [/[{}\[\],:]/, 'delimiter.bracket'],
+                        [/"/, { token: 'string.quote', next: '@string' }],
+                        [/-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?/, 'number'],
+                        [/\\b(?:true|false|null)\\b/, 'keyword'],
+                        [/\\s+/, '']
+                    ],
+                    string: [
+                        [/[^\\\\"]+/, 'string'],
+                        [/\\\\./, 'string.escape'],
+                        [/"/, { token: 'string.quote', next: '@pop' }]
+                    ]
+                }
+            });
+        }
+    }
+
+    function _langForEditor(lang) {
+        return (lang === 'json') ? 'we-json' : (lang || 'plaintext');
+    }
+
+    var _snProvidersRegistered = false;
+    function _registerSnProviders() {
+        if (_snProvidersRegistered || !window.monaco) { return; }
+        _snProvidersRegistered = true;
+
+        var _defTables = [
+            { table: 'sys_script_include', nameField: 'api_name' },
+            { table: 'sys_script_include', nameField: 'name' },
+            { table: 'sys_ui_script',      nameField: 'name'    }
+        ];
+        var _defProvider = {
+            provideDefinition: function(model, position) {
+                var word = model.getWordAtPosition(position);
+                if (!word || !word.word) { return []; }
+                var name = word.word;
+                function tryTable(idx) {
+                    if (idx >= _defTables.length) { return; }
+                    var t = _defTables[idx];
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('GET',
+                        '/api/now/table/' + t.table +
+                        '?sysparm_query=' + t.nameField + '=' + encodeURIComponent(name) +
+                        '&sysparm_fields=sys_id&sysparm_limit=1',
+                        true);
+                    xhr.setRequestHeader('X-UserToken', window.g_ck || '');
+                    xhr.setRequestHeader('Accept', 'application/json');
+                    xhr.onload = function() {
+                        if (xhr.status !== 200) { tryTable(idx + 1); return; }
+                        try {
+                            var records = JSON.parse(xhr.responseText).result || [];
+                            if (records.length > 0) {
+                                window.open('/' + t.table + '.do?sys_id=' + records[0].sys_id);
+                            } else {
+                                tryTable(idx + 1);
+                            }
+                        } catch(e) { tryTable(idx + 1); }
+                    };
+                    xhr.onerror = function() { tryTable(idx + 1); };
+                    xhr.send();
+                }
+                tryTable(0);
+                return [];
+            }
+        };
+        monaco.languages.registerDefinitionProvider('javascript', _defProvider);
+        monaco.languages.registerDefinitionProvider('typescript', _defProvider);
+    }
+
+    var _mplusInitialized = false;
+    function _initMonacoPlus() {
+        if (_mplusInitialized) { return; }
+        var _bs = window.SNMonacoPlusBootstrap;
+        if (!_bs || typeof _bs.init !== 'function') { return; }
+        _mplusInitialized = true;
+        _bs.init({ language: 'typescript' }).then(function(api) {
+            if (!api) { return; }
+            if (typeof api.loadSnTypeDefinitions === 'function') {
+                api.loadSnTypeDefinitions();
+            }
+            _registerSnProviders();
+        });
+    }
+
     var urlParams    = new URLSearchParams(window.location.search);
     var recordId     = urlParams.get('record_id')  || '';
     var tableParam   = urlParams.get('table')       || 'sp_widget';
@@ -1745,19 +1859,23 @@ UiPage({
             var f = versionDataOrNull.fields || {};
             for (var i = 0; i < fieldDefs.length; i++) {
                 var key = fieldDefs[i].key;
+                var isCode = fieldDefs[i].renderAs === 'code';
                 /* absent from payload = null; present but empty = '' */
-                result[key] = f[key] !== undefined ? (f[key] !== null ? String(f[key]) : null) : null;
+                var raw = f[key] !== undefined ? (f[key] !== null ? String(f[key]) : null) : null;
+                result[key] = (raw !== null && !isCode) ? raw.trim() : raw;
             }
         } else {
             var vals = (recordData && recordData.values) || {};
             for (var j = 0; j < fieldDefs.length; j++) {
                 var k = fieldDefs[j].key;
                 var v = vals[k];
+                var isCodeField = fieldDefs[j].renderAs === 'code';
                 if (fieldDefs[j].renderAs === 'boolean') {
                     result[k] = (v === null || v === undefined) ? null
                               : (v === true || v === '1' || v === 'true') ? 'true' : 'false';
                 } else {
-                    result[k] = (v !== null && v !== undefined) ? String(v) : null;
+                    var rawStr = (v !== null && v !== undefined) ? String(v) : null;
+                    result[k] = (rawStr !== null && !isCodeField) ? rawStr.trim() : rawStr;
                 }
             }
         }
@@ -1797,6 +1915,21 @@ UiPage({
             }
         }
         return result;
+    }
+
+    function _countsFromLineChanges(lineChanges) {
+        var added = 0, removed = 0;
+        if (!lineChanges) { return { added: 0, removed: 0 }; }
+        for (var i = 0; i < lineChanges.length; i++) {
+            var c = lineChanges[i];
+            if (c.modifiedEndLineNumber >= c.modifiedStartLineNumber) {
+                added   += c.modifiedEndLineNumber  - c.modifiedStartLineNumber  + 1;
+            }
+            if (c.originalEndLineNumber >= c.originalStartLineNumber) {
+                removed += c.originalEndLineNumber - c.originalStartLineNumber + 1;
+            }
+        }
+        return { added: added, removed: removed };
     }
 
     function _diffLineCounts(leftText, rightText) {
@@ -1900,6 +2033,7 @@ UiPage({
         var _currentRightId      = version2Id || 'current';
         var _pending             = 0;
         var _errors              = [];
+        var _tableHasNoTracking  = false;
         var _changedBelowRaf     = null;
 
         function _updateChangedBelowIndicator() {
@@ -2241,6 +2375,24 @@ UiPage({
                     return;
                 }
                 if (ctrl.tableNoVersions || ctrl.noRecordSelected) { return; }
+                if (_tableHasNoTracking) {
+                    if (_allVersionsData.length === 0) {
+                        ctrl.tableNoVersions = true;
+                        return;
+                    }
+                    if (!_fieldDefs && _leftVersionData && _leftVersionData.fields) {
+                        var derivedSimple = [];
+                        for (var _dk in _leftVersionData.fields) {
+                            if (_leftVersionData.fields.hasOwnProperty(_dk)) {
+                                derivedSimple.push({ key: _dk, label: _dk, renderAs: 'text', reference: '', changed: false, counts: null });
+                            }
+                        }
+                        _fieldDefs = derivedSimple;
+                        _extraFieldDefs = [];
+                        ctrl.simpleFields = derivedSimple;
+                        ctrl.scriptFields = [];
+                    }
+                }
                 if (!_recordData) {
                     ctrl.recordNotFound = true;
                     var _notFoundSuffix = ctrl.tableLabel ? ' (' + ctrl.tableLabel + ')' : '';
@@ -2481,12 +2633,16 @@ UiPage({
                 return;
             }
             _ensureMonacoWorker();
+            _setupLanguageServices();
             var key = ctrl.expandedString.key;
+            var lang = _langForEditor(ctrl.expandedString.language);
             var lf  = ctrl.expandedString.isExtra ? ctrl.extraLeftFields  : ctrl.leftFields;
             var rf  = ctrl.expandedString.isExtra ? ctrl.extraRightFields : ctrl.rightFields;
             if (ctrl.stringEditor) {
                 var model = ctrl.stringEditor.getModel();
                 if (model) {
+                    monaco.editor.setModelLanguage(model.original, lang);
+                    monaco.editor.setModelLanguage(model.modified, lang);
                     model.original.setValue(lf[key] || '');
                     model.modified.setValue(rf[key] || '');
                 }
@@ -2501,8 +2657,8 @@ UiPage({
                 wordWrap: ctrl.wordWrap ? 'on' : 'off'
             });
             diffEditor.setModel({
-                original: monaco.editor.createModel(lf[key] || '', 'plaintext'),
-                modified: monaco.editor.createModel(rf[key] || '', 'plaintext')
+                original: monaco.editor.createModel(lf[key] || '', lang),
+                modified: monaco.editor.createModel(rf[key] || '', lang)
             });
             ctrl.stringEditor = diffEditor;
         };
@@ -2518,7 +2674,7 @@ UiPage({
             }
             // Collapse any open code-field expansion first
             if (ctrl.expandedIndex !== null) { ctrl.collapseExpanded(); }
-            ctrl.expandedString = { key: f.key, label: f.label, isExtra: !!isExtra };
+            ctrl.expandedString = { key: f.key, label: f.label, isExtra: !!isExtra, language: f.language || 'plaintext' };
             _notifyParentExpand(f.label || '');
             $timeout(function() {
                 _setStringOverlayTop();
@@ -2641,7 +2797,8 @@ UiPage({
                         ctrl.tableLabel   = data.table_label || '';
                     });
                 } else if (data.error === 'Table does not track versions') {
-                    _apply(function() { ctrl.tableNoVersions = true; ctrl.tableLabel = data.table_label || ''; });
+                    _tableHasNoTracking = true;
+                    _apply(function() { ctrl.tableLabel = data.table_label || ''; });
                 } else {
                     _errors.push(data.error || 'Field definitions load failed');
                 }
@@ -2928,6 +3085,7 @@ UiPage({
                 return;
             }
             _ensureMonacoWorker();
+            _setupLanguageServices();
             var diffEditor = monaco.editor.createDiffEditor(container, {
                 automaticLayout: true,
                 enableSplitViewResizing: true,
@@ -2936,8 +3094,15 @@ UiPage({
                 wordWrap: ctrl.wordWrap ? 'on' : 'off'
             });
             diffEditor.setModel({
-                original: monaco.editor.createModel(ctrl.leftFields[fDef.key]  || '', fDef.language || 'plaintext'),
-                modified: monaco.editor.createModel(ctrl.rightFields[fDef.key] || '', fDef.language || 'plaintext')
+                original: monaco.editor.createModel(ctrl.leftFields[fDef.key]  || '', _langForEditor(fDef.language)),
+                modified: monaco.editor.createModel(ctrl.rightFields[fDef.key] || '', _langForEditor(fDef.language))
+            });
+            diffEditor.onDidUpdateDiff(function() {
+                var counts = _countsFromLineChanges(diffEditor.getLineChanges());
+                _apply(function() {
+                    var f = ctrl.scriptFields[index];
+                    if (f) { f.counts = counts; }
+                });
             });
             ctrl.editors[index] = diffEditor;
         };
@@ -2956,6 +3121,7 @@ UiPage({
                 return;
             }
             _ensureMonacoWorker();
+            _setupLanguageServices();
             var diffEditor = monaco.editor.createDiffEditor(container, {
                 automaticLayout: true,
                 enableSplitViewResizing: true,
@@ -2964,8 +3130,15 @@ UiPage({
                 wordWrap: ctrl.wordWrap ? 'on' : 'off'
             });
             diffEditor.setModel({
-                original: monaco.editor.createModel(ctrl.extraLeftFields[fDef.key]  || '', fDef.language || 'plaintext'),
-                modified: monaco.editor.createModel(ctrl.extraRightFields[fDef.key] || '', fDef.language || 'plaintext')
+                original: monaco.editor.createModel(ctrl.extraLeftFields[fDef.key]  || '', _langForEditor(fDef.language)),
+                modified: monaco.editor.createModel(ctrl.extraRightFields[fDef.key] || '', _langForEditor(fDef.language))
+            });
+            diffEditor.onDidUpdateDiff(function() {
+                var counts = _countsFromLineChanges(diffEditor.getLineChanges());
+                _apply(function() {
+                    var f = ctrl.extraChangedScriptFields[index];
+                    if (f) { f.counts = counts; }
+                });
             });
             ctrl.extraEditors[index] = diffEditor;
         };
