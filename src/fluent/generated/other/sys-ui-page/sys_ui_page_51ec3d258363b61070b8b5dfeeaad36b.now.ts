@@ -1618,9 +1618,9 @@ UiPage({
     clientScript: `(function() {
     'use strict';
 
-    // =========================================================================
+    // -----------------------------------------------------------------------------
     // Config
-    // =========================================================================
+    // -----------------------------------------------------------------------------
     var SITE_TITLE = (window.WE_DIFF_CONFIG && window.WE_DIFF_CONFIG.siteTitle) || 'ServiceNow';
 
     // Suppress "Unexpected usage" rejections from language service workers

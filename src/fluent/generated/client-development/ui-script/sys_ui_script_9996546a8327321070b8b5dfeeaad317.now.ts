@@ -13,7 +13,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         script: `(function () {
     'use strict';
 
-    // =============================================================================
+    // -----------------------------------------------------------------------------
     // AngularJS ng-directive completions + HTML Monarch tokenizer for Monaco.
     //
     // Covers every directive in https://docs.angularjs.org/api/ng/directive
@@ -31,7 +31,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
     //   attribute.name.sp   — sp-* ServiceNow SP attribute names
     //   ng.delimiter        — {{ and }} interpolation delimiters
     //   ng.expression       — expression content inside {{ }}
-    // =============================================================================
+    // -----------------------------------------------------------------------------
 
     // -------------------------------------------------------------------------
     // Directive definitions

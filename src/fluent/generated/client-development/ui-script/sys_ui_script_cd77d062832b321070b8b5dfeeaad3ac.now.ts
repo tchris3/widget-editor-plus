@@ -13,7 +13,7 @@ Registers as window.MONACO_CODE_ACTIONS.`,
         script: `(function () {
     'use strict';
 
-    // =============================================================================
+    // -----------------------------------------------------------------------------
     // Monaco code actions (JavaScript + SCSS).
     //
     // JavaScript — "Add JSDoc comment"
@@ -31,7 +31,7 @@ Registers as window.MONACO_CODE_ACTIONS.`,
     //   window.MONACO_CODE_ACTIONS.register(monaco, config)   — call once after Monaco is ready
     //     config.getRemBase()  — optional function returning the current rem base value
     //   window.MONACO_CODE_ACTIONS.markAngular(modelId)       — call per Angular-aware JS editor
-    // =============================================================================
+    // -----------------------------------------------------------------------------
 
     // AngularJS DI token → TypeScript interface name.
     // Only applied in editors marked as Angular-aware (client_script / provider panes).
