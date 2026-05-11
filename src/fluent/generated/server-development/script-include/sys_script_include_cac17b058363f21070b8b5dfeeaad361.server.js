@@ -561,7 +561,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         ueGr.query();
         while (ueGr.next()) {
             var elem = ueGr.getValue('element');
-            if (elem && fieldNames.indexOf(elem) === -1) {
+            if (elem && elem.indexOf('.') === -1 && fieldNames.indexOf(elem) === -1) {
                 fieldNames.push(elem);
             }
         }
