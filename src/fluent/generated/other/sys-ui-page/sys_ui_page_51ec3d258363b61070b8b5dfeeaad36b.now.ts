@@ -1860,9 +1860,14 @@ UiPage({
             for (var i = 0; i < fieldDefs.length; i++) {
                 var key = fieldDefs[i].key;
                 var isCode = fieldDefs[i].renderAs === 'code';
+                var isBool = fieldDefs[i].renderAs === 'boolean';
                 /* absent from payload = null; present but empty = '' */
                 var raw = f[key] !== undefined ? (f[key] !== null ? String(f[key]) : null) : null;
-                result[key] = (raw !== null && !isCode) ? raw.trim() : raw;
+                if (isBool && raw !== null) {
+                    result[key] = (raw === 'true' || raw === '1') ? 'true' : 'false';
+                } else {
+                    result[key] = (raw !== null && !isCode) ? raw.trim() : raw;
+                }
             }
         } else {
             var vals = (recordData && recordData.values) || {};
