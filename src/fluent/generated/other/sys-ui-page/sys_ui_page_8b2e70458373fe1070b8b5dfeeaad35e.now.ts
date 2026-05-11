@@ -1951,7 +1951,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <span class="we-pane-unsaved-dot" ng-if="!isVersionView &amp;&amp; canWriteWidget &amp;&amp; headerDirty.description" title="Unsaved changes"></span>
                                     </label>
                                 </div>
-                                <textarea class="form-control we-desc-textarea" id="widget-description" we-auto-resize="we-auto-resize" ng-model="widget.description" ng-readonly="isVersionView || !canWriteWidget" rows="3" placeholder="Description&#8230;"></textarea>
+                                <textarea class="form-control we-desc-textarea" id="widget-description" we-auto-resize="we-auto-resize" ng-model="widget.description" ng-readonly="isVersionView || !canWriteWidget" rows="3" placeholder="Description"></textarea>
                             </div>
                             <div class="we-field">
                                 <label for="widget-application-pop">Application</label>
@@ -2282,7 +2282,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <div class="we-pane-subheader" ng-if="item.type === 'pane' &amp;&amp; item.hasIdInput" ng-class="{'we-pane-subheader--type-overflow': item.subheaderTypeOverflow}" we-pane-subheader-fit="we-pane-subheader-fit">
                         <div class="we-pane-subheader-name-row">
                             <label class="we-pane-meta-label" ng-attr-for="'pane-name-' + item.key">Name</label>
-                            <input class="form-control we-pane-id-input" type="text" ng-attr-id="'pane-name-' + item.key" ng-model="item.recordId" placeholder="Enter name&#8230;" ng-change="onPaneIdChange(item)" ng-disabled="isVersionView || !canWriteWidget" title="Record name (required to save)" ng-class="{'we-input-invalid': item.idError}" />
+                            <input class="form-control we-pane-id-input" type="text" ng-attr-id="'pane-name-' + item.key" ng-model="item.recordId" placeholder="Enter name" ng-change="onPaneIdChange(item)" ng-disabled="isVersionView || !canWriteWidget" title="Record name (required to save)" ng-class="{'we-input-invalid': item.idError}" />
                             <span ng-if="item.idChecking" class="we-pane-id-status">Checking&#8230;</span>
                             <span ng-if="item.idError &amp;&amp; !item.idChecking" class="we-pane-id-error" ng-bind="item.idError"></span>
                         </div>
@@ -2584,7 +2584,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 </div>
                 <div class="we-modal-body" style="padding-bottom:0.5rem">
                     <div class="we-search-wrap" style="margin-bottom:1rem; margin-top: -0.5rem;">
-                        <input class="form-control we-picker-search" type="text" ng-model="linkDependency.search" ng-change="onLinkDependencySearch()" placeholder="Search by name&#8230;" />
+                        <input class="form-control we-picker-search" type="text" ng-model="linkDependency.search" ng-change="onLinkDependencySearch()" placeholder="Search by name" />
                         <span class="we-search-loader" ng-if="linkDependencySearching"><we-loader></we-loader></span>
                     </div>
                     <div class="we-link-list">
@@ -2628,7 +2628,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 </div>
                 <div class="we-modal-body" style="padding-bottom:0.5rem">
                     <div class="we-search-wrap" style="margin-bottom:1rem; margin-top: -0.5rem;">
-                        <input class="form-control we-picker-search" type="text" ng-model="linkProvider.search" ng-change="onLinkProviderSearch()" placeholder="Search by name&#8230;" />
+                        <input class="form-control we-picker-search" type="text" ng-model="linkProvider.search" ng-change="onLinkProviderSearch()" placeholder="Search by name" />
                         <span class="we-search-loader" ng-if="linkProviderSearching"><we-loader></we-loader></span>
                     </div>
                     <div class="we-link-list">
@@ -2793,7 +2793,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 <div class="we-picker-body">
                     <div class="we-search-wrap">
                         <input class="form-control we-picker-search" type="text" ng-model="picker.search"
-                            ng-change="onPickerSearch()" placeholder="Search by name or ID&#8230;" />
+                            ng-change="onPickerSearch()" placeholder="Search by name or ID" />
                         <span class="we-search-loader" ng-if="pickerLoading"><we-loader></we-loader></span>
                     </div>
                     <div class="we-link-list">
