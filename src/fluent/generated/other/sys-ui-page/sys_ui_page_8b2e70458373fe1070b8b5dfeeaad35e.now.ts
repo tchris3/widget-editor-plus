@@ -1867,8 +1867,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         </g>
                     </g>
                     </svg>
-                <span ng-if="loadingWidgetName">Loading {{loadingWidgetName}}&#8230;</span>
-                <span ng-if="!loadingWidgetName">Loading widget&#8230;</span>
+                <span ng-if="loadingWidgetName">Loading {{loadingWidgetName}}…</span>
+                <span ng-if="!loadingWidgetName">Loading widget…</span>
             </div>
 
             <!-- Error state -->
@@ -1888,14 +1888,14 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-alert-bar we-alert-bar--critical" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; !canWriteWidget &amp;&amp; !widgetSysPolicy">
                 <span ng-if="!widget.scope_mismatch">No write access to this widget.</span>
                 <span ng-if="widget.scope_mismatch">
-                    Different application scope &#8212;&#160;<strong ng-bind="widget.application"></strong>.
+                    Different application scope — <strong ng-bind="widget.application"></strong>.
                     <a class="we-alert-bar-link" ng-click="switchToWidgetScope()" style="margin-left: 0.3125rem;">Switch scope and reload</a>
                 </span>
             </div>
 
             <!-- Version read-only banner -->
             <div class="we-version-banner we-alert-bar we-alert-bar--warning" ng-if="isVersionView">
-                <span ng-bind-template="Viewing version from {{versionInfo.sys_created_on}} by {{versionInfo.sys_created_by}}"></span><span ng-if="versionInfo.update_set_name" ng-bind-template=" &#8212; {{versionInfo.update_set_name}}"></span> &#8212; Read Only
+                <span ng-bind-template="Viewing version from {{versionInfo.sys_created_on}} by {{versionInfo.sys_created_by}}"></span><span ng-if="versionInfo.update_set_name" ng-bind-template=" — {{versionInfo.update_set_name}}"></span> — Read Only
             </div>
 
             <!-- Widget reverted notification -->
@@ -1911,27 +1911,27 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
             <!-- ServiceNow widget bar -->
             <div class="we-alert-bar we-alert-bar--warning" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; widgetIsServiceNow &amp;&amp; !snAlertDismissed">
-                <span><strong>Warning:</strong>&#160;<i>{{widget.name}}</i>&#160;is a ServiceNow widget &#8212; <a class="we-alert-bar-link" ng-click="cloneWidget()">Clone widget</a></span>
-                <span class="close" ng-click="dismissSnAlert()" aria-label="Dismiss">&#215;</span>
+                <span><strong>Warning:</strong> <i>{{widget.name}}</i> is a ServiceNow widget — <a class="we-alert-bar-link" ng-click="cloneWidget()">Clone widget</a></span>
+                <span class="close" ng-click="dismissSnAlert()" aria-label="Dismiss">×</span>
             </div>
 
             <!-- Update set mismatch bar -->
             <div class="we-alert-bar" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; updateSetMismatch &amp;&amp; !updateSetAlertDismissed">
-                <span><strong>Notice:</strong>&#160;<i>{{widget.name}}</i>&#160;is currently being edited in the update set:&#160;<a class="we-alert-bar-link" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{widgetUpdateSetId}}" target="_blank"><strong>{{widgetUpdateSetName}}</strong><span class="icon-open-document-new-tab" style="display: inline-block; margin-left: 4px;"></span></a></span>
-                <span class="close" ng-click="dismissUpdateSetAlert()" aria-label="Dismiss">&#215;</span>
+                <span><strong>Notice:</strong> <i>{{widget.name}}</i> is currently being edited in the update set: <a class="we-alert-bar-link" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{widgetUpdateSetId}}" target="_blank"><strong>{{widgetUpdateSetName}}</strong><span class="icon-open-document-new-tab" style="display: inline-block; margin-left: 4px;"></span></a></span>
+                <span class="close" ng-click="dismissUpdateSetAlert()" aria-label="Dismiss">×</span>
             </div>
 
             <!-- Widget volatility risk bar -->
             <div class="we-alert-bar" ng-class="widgetVolatilityLevel === 'High' ? 'we-alert-bar--critical' : 'we-alert-bar--warning'" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; widgetVolatilityLevel &amp;&amp; !volatilityAlertDismissed">
-                <span><strong>Warning:</strong>&#160;<i>{{widget.name}}</i>&#160;is a&#160;<strong>{{widgetVolatilityDisplay}} Risk</strong>&#160;file that might get updated again in later releases. Do not alter this file unless necessary.</span>
-                <span class="close" ng-click="dismissVolatilityAlert()" aria-label="Dismiss">&#215;</span>
+                <span><strong>Warning:</strong> <i>{{widget.name}}</i> is a <strong>{{widgetVolatilityDisplay}} Risk</strong> file that might get updated again in later releases. Do not alter this file unless necessary.</span>
+                <span class="close" ng-click="dismissVolatilityAlert()" aria-label="Dismiss">×</span>
             </div>
 
             <!--  Header -->
             <div class="we-header" ng-class="{'we-header--deprecated': widget.deprecated}" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker">
 
                 <!-- Open widget -->
-                <button class="btn btn-default" ng-click="openWidgetPickerModal()" title="Open another widget">Open&#8230;</button>
+                <button class="btn btn-default" ng-click="openWidgetPickerModal()" title="Open another widget">Open…</button>
                 <div class="we-header-sep"></div>
 
                 <!-- Metadata fields -->
@@ -2080,7 +2080,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <div class="we-dropdown-item" ng-repeat="v in versions" ng-click="openVersionDiff(v)">
                             <span class="we-version-row">
                                 <span class="we-version-col-date" title="{{formatVersionDate(v.sys_created_on, true)}}"><span ng-bind="formatVersionDate(v.sys_created_on)"></span></span>
-                                <span class="we-version-col-uset" ng-class="{'we-version-col-uset--in-progress': v.update_set_state === 'in progress', 'we-version-col-uset--ignore': v.update_set_state === 'ignore'}" title="{{v.update_set_name}}&#13;&#10;[{{v.update_set_state_label}}]" ng-bind="v.update_set_name || ''"></span>
+                                <span class="we-version-col-uset" ng-class="{'we-version-col-uset--in-progress': v.update_set_state === 'in progress', 'we-version-col-uset--ignore': v.update_set_state === 'ignore'}" title="{{v.update_set_name}}
+[{{v.update_set_state_label}}]" ng-bind="v.update_set_name || ''"></span>
                                 <span class="we-version-col-user"><span ng-bind="v.sys_created_by" title="{{v.sys_created_by}}"></span> <span ng-if="v.state === 'current'" class="we-version-current-dot" title="Current" style="margin-left: 0.5rem;"></span></span>
                             </span>
                             <a class="we-dropdown-ext-link we-dropdown-ext-link--reserved" href="/nav_to.do?uri=sys_update_version.do%3Fsys_id%3D{{v.sys_id}}" target="_blank" ng-click="$event.stopPropagation(); openDropdown = null" title="Open in platform" aria-label="Open version in platform"></a>
@@ -2198,7 +2199,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </span>
 
                     <!-- Save error -->
-                    <span class="we-save-error" ng-if="!isVersionView &amp;&amp; saveError" title="{{saveError}}"><i class="icon-alert-triangle"></i>&#160;<span ng-bind="saveError"></span></span>
+                    <span class="we-save-error" ng-if="!isVersionView &amp;&amp; saveError" title="{{saveError}}"><i class="icon-alert-triangle"></i> <span ng-bind="saveError"></span></span>
 
                     <!-- Presence -->
                     <div class="we-presence" ng-if="presenceUsers.length">
@@ -2283,7 +2284,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <div class="we-pane-subheader-name-row">
                             <label class="we-pane-meta-label" ng-attr-for="'pane-name-' + item.key">Name</label>
                             <input class="form-control we-pane-id-input" type="text" ng-attr-id="'pane-name-' + item.key" ng-model="item.recordId" placeholder="Enter name" ng-change="onPaneIdChange(item)" ng-disabled="isVersionView || !canWriteWidget" title="Record name (required to save)" ng-class="{'we-input-invalid': item.idError}" />
-                            <span ng-if="item.idChecking" class="we-pane-id-status">Checking&#8230;</span>
+                            <span ng-if="item.idChecking" class="we-pane-id-status">Checking…</span>
                             <span ng-if="item.idError &amp;&amp; !item.idChecking" class="we-pane-id-error" ng-bind="item.idError"></span>
                         </div>
                         <div ng-if="item.recordType === 'provider'" class="we-pane-subheader-type-row">
@@ -2321,7 +2322,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                     <!-- External change infobar (below subheader, above editor) -->
                     <div class="we-pane-infobar" ng-if="item.type === 'pane' &amp;&amp; item.externalChange">
-                        <span><strong ng-bind="item.externalChange.user"></strong>&#160;has updated this field.</span>
+                        <span><strong ng-bind="item.externalChange.user"></strong> has updated this field.</span>
                         <div class="we-pane-infobar-actions">
                             <button class="btn btn-default we-pane-save-btn" ng-if="!isNewWidget" ng-click="openExternalChangeDiff(item)" title="Compare your unsaved changes with the version saved by {{item.externalChange.user}}">Compare</button>
                             <button class="btn btn-default we-pane-save-btn" ng-click="applyExternalChange(item)" title="Replace editor contents with the version saved by {{item.externalChange.user}}">Update</button>
@@ -2342,7 +2343,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal we-modal-pref" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>User Preferences</span>
-                    <span class="close" ng-click="cancelUserPrefsModal()" aria-label="Close" role="button" tabindex="0">&#215;</span>
+                    <span class="close" ng-click="cancelUserPrefsModal()" aria-label="Close" role="button" tabindex="0">×</span>
                 </div>
                 <div class="we-modal-body">
                     <div class="we-pref-columns">
@@ -2580,7 +2581,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:37.5rem">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Link dependency</span>
-                    <span class="close" ng-click="cancelLinkDependencyModal()" aria-label="Close" role="button" tabindex="0">&#215;</span>
+                    <span class="close" ng-click="cancelLinkDependencyModal()" aria-label="Close" role="button" tabindex="0">×</span>
                 </div>
                 <div class="we-modal-body" style="padding-bottom:0.5rem">
                     <div class="we-search-wrap" style="margin-bottom:1rem; margin-top: -0.5rem;">
@@ -2609,7 +2610,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <span class="we-modal-title">Unlink dependency</span>
                 </div>
                 <div class="we-modal-body">
-                    <p>Unlink&#160;<strong ng-bind="pendingUnlinkDependency &amp;&amp; pendingUnlinkDependency.name"></strong>&#160;from this widget?</p>
+                    <p>Unlink <strong ng-bind="pendingUnlinkDependency &amp;&amp; pendingUnlinkDependency.name"></strong> from this widget?</p>
                     <p>The dependency record itself will not be deleted.</p>
                 </div>
                 <div class="we-modal-footer">
@@ -2624,7 +2625,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:37.5rem">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Link existing provider</span>
-                    <span class="close" ng-click="cancelLinkProviderModal()" aria-label="Close" role="button" tabindex="0">&#215;</span>
+                    <span class="close" ng-click="cancelLinkProviderModal()" aria-label="Close" role="button" tabindex="0">×</span>
                 </div>
                 <div class="we-modal-body" style="padding-bottom:0.5rem">
                     <div class="we-search-wrap" style="margin-bottom:1rem; margin-top: -0.5rem;">
@@ -2651,12 +2652,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:45rem;max-width:95vw">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Option schema</span>
-                    <span class="close" ng-click="closeOptionSchemaModal()" aria-label="Close" role="button" tabindex="0">&#215;</span>
+                    <span class="close" ng-click="closeOptionSchemaModal()" aria-label="Close" role="button" tabindex="0">×</span>
                 </div>
                 <div class="we-modal-body" style="padding:0;gap:0">
                     <div ng-if="optionSchemaLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
                         <we-spinner></we-spinner>
-                        Loading&#8230;
+                        Loading…
                     </div>
                     <div ng-if="optionSchemaLoadError" style="padding:1rem;color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)))" ng-bind="optionSchemaLoadError"></div>
                     <div ng-if="!optionSchemaLoading &amp;&amp; !optionSchemaLoadError" id="option-schema-editor" class="we-option-schema-editor"></div>
@@ -2666,7 +2667,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <div>
                         <span style="color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3))); font-size:var(--now-font-size--sm);align-self:center">
                             <span ng-if="optionSchemaSaveError" ng-bind="optionSchemaSaveError"></span>
-                            <span ng-if="!optionSchemaSaveError &amp;&amp; optionSchemaJsonInvalid"><i class="icon-alert-triangle"></i>&#160;Invalid JSON</span>
+                            <span ng-if="!optionSchemaSaveError &amp;&amp; optionSchemaJsonInvalid"><i class="icon-alert-triangle"></i> Invalid JSON</span>
                         </span>
                         <button class="btn btn-primary" ng-if="canWriteWidget" ng-click="saveOptionSchemaModal()" ng-disabled="optionSchemaSaving || optionSchemaJsonInvalid" ng-bind="optionSchemaSaving ? 'Saving\\u2026' : 'Save'"></button>
                     </div>
@@ -2679,12 +2680,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:56.25rem;max-width:95vw">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Widget XML</span>
-                    <span class="close" ng-click="closeXmlModal()" aria-label="Close" role="button" tabindex="0">&#215;</span>
+                    <span class="close" ng-click="closeXmlModal()" aria-label="Close" role="button" tabindex="0">×</span>
                 </div>
                 <div class="we-modal-body" style="padding:0;gap:0">
                     <div ng-if="xmlLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
                         <we-spinner></we-spinner>
-                        Loading&#8230;
+                        Loading…
                     </div>
                     <div ng-if="xmlLoadError" style="padding:1rem;color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)))" ng-bind="xmlLoadError"></div>
                     <div ng-if="!xmlLoading &amp;&amp; !xmlLoadError" id="xml-modal-editor" class="we-xml-editor"></div>
@@ -2701,9 +2702,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:98vw;max-width:112.5rem;height:95vh;display:flex;flex-direction:column">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span ng-if="!versionDiffModal.expandedField">Compare versions</span>
-                    <span ng-if="versionDiffModal.expandedField" ng-bind-template="Compare versions &#8212; {{versionDiffModal.expandedField}}"></span>
+                    <span ng-if="versionDiffModal.expandedField" ng-bind-template="Compare versions — {{versionDiffModal.expandedField}}"></span>
                     <button class="btn btn-default" ng-if="!versionDiffModal.isUnsaved" ng-click="openVersionDiffInNewTab()" style="margin-left:auto;margin-right:0.875rem">Open in new tab <span class="we-ext-icon" style="margin-left: 0.5rem" aria-hidden="true"></span></button>
-                    <span class="close" ng-click="closeVersionDiffModal()" aria-label="Close" role="button" tabindex="0">&#215;</span>
+                    <span class="close" ng-click="closeVersionDiffModal()" aria-label="Close" role="button" tabindex="0">×</span>
                 </div>
                 <iframe class="we-diff-iframe" ng-src="{{versionDiffModal.url}}" style="flex:1;border:none;width:100%"></iframe>
             </div>
@@ -2713,13 +2714,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
         <div class="we-modal-overlay" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="relatedModal.open" ng-click="closeRelatedModal()">
             <div class="we-modal we-related-modal" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
-                    <span ng-bind-template="Related Lists &#8212; {{widget.name}}"></span>
-                    <span class="close" ng-click="closeRelatedModal()" aria-label="Close" role="button" tabindex="0">&#215;</span>
+                    <span ng-bind-template="Related Lists — {{widget.name}}"></span>
+                    <span class="close" ng-click="closeRelatedModal()" aria-label="Close" role="button" tabindex="0">×</span>
                 </div>
                 <div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0">
                 <div class="we-related-loading-overlay" ng-if="relatedModal.loading">
                     <we-spinner></we-spinner>
-                    Loading&#8230;
+                    Loading…
                 </div>
                 <div ng-if="!relatedModal.loading &amp;&amp; relatedModal.tabs.length === 0" class="we-related-empty">No related lists configured.</div>
                 <div ng-if="!relatedModal.loading &amp;&amp; relatedModal.tabs.length > 0" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
@@ -2733,7 +2734,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <div class="we-related-body tabs2_list" ng-if="relatedModal.activeTab" style="position:relative">
                         <div class="we-related-loading-overlay" ng-if="relatedModal.activeTab.loading">
                             <we-spinner></we-spinner>
-                            Loading&#8230;
+                            Loading…
                         </div>
                         <div ng-if="relatedModal.activeTab.error" class="we-related-empty" style="color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)))" ng-bind="relatedModal.activeTab.error"></div>
                         <div ng-if="!relatedModal.activeTab.loading &amp;&amp; !relatedModal.activeTab.error" class="we-related-table-container">
@@ -2788,7 +2789,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 <div class="we-picker-title-row">
                     <span class="we-picker-title">Open a Widget</span>
                     <button class="btn btn-default" ng-click="newWidget()" style="margin-left: auto;">+ New Widget</button>
-                    <span class="close" ng-if="!showPicker" ng-click="closeWidgetPickerModal()" aria-label="Close" role="button" tabindex="0">&#215;</span>
+                    <span class="close" ng-if="!showPicker" ng-click="closeWidgetPickerModal()" aria-label="Close" role="button" tabindex="0">×</span>
                 </div>
                 <div class="we-picker-body">
                     <div class="we-search-wrap">
@@ -2813,7 +2814,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal-box" style="width:25rem">
                 <div class="we-modal-title" ng-bind="(pendingDeletePane &amp;&amp; pendingDeletePane.recordType === 'template') ? 'Delete Template' : 'Delete Provider'"></div>
                 <div class="we-modal-body">
-                    <p>Are you sure you want to delete&#160;<strong ng-bind="pendingDeletePane &amp;&amp; pendingDeletePane.recordId"></strong>? This cannot be undone.</p>
+                    <p>Are you sure you want to delete <strong ng-bind="pendingDeletePane &amp;&amp; pendingDeletePane.recordId"></strong>? This cannot be undone.</p>
                 </div>
                 <div class="we-modal-actions">
                     <button class="btn btn-danger" ng-click="confirmDeletePane()" ng-disabled="pendingDeletePane &amp;&amp; pendingDeletePane.deleting" ng-bind="(pendingDeletePane &amp;&amp; pendingDeletePane.deleting) ? 'Deleting\\u2026' : 'Delete'"></button>
@@ -2827,7 +2828,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal-box" style="width:25rem">
                 <div class="we-modal-title">Unlink Provider</div>
                 <div class="we-modal-body">
-                    <p>Unlink&#160;<strong ng-bind="pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.name"></strong>&#160;from this widget? The provider record will not be deleted.</p>
+                    <p>Unlink <strong ng-bind="pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.name"></strong> from this widget? The provider record will not be deleted.</p>
                 </div>
                 <div class="we-modal-actions">
                     <button class="btn btn-danger" ng-click="confirmUnlinkProvider()" ng-disabled="pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.unlinking" ng-bind="(pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.unlinking) ? 'Unlinking\\u2026' : 'Unlink'"></button>
@@ -2841,7 +2842,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal-box" style="width:25rem">
                 <div class="we-modal-title">Unsaved Changes</div>
                 <div class="we-modal-body">
-                    <p><strong ng-bind="pendingClosePane.recordId || pendingClosePane.label"></strong>&#160;has unsaved changes.</p>
+                    <p><strong ng-bind="pendingClosePane.recordId || pendingClosePane.label"></strong> has unsaved changes.</p>
                 </div>
                 <div class="we-modal-actions">
                     <button class="btn btn-primary" ng-click="saveAndClosePane()">Save &amp; Close</button>
@@ -2856,7 +2857,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal-box" style="width:25rem">
                 <div class="we-modal-title">Unsaved Changes</div>
                 <div class="we-modal-body">
-                    <p>You have unsaved changes. What would you like to do before opening&#160;<strong ng-bind="pendingWidgetNav.name"></strong>?</p>
+                    <p>You have unsaved changes. What would you like to do before opening <strong ng-bind="pendingWidgetNav.name"></strong>?</p>
                 </div>
                 <div class="we-modal-actions">
                     <button class="btn btn-primary" ng-click="saveAndOpenWidget()">Save &amp; Open</button>
@@ -2886,7 +2887,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal we-modal-kbd" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Keyboard shortcuts</span>
-                    <span class="close" ng-click="closeKeyboardShortcutsModal()" aria-label="Close" role="button" tabindex="0">&#215;</span>
+                    <span class="close" ng-click="closeKeyboardShortcutsModal()" aria-label="Close" role="button" tabindex="0">×</span>
                 </div>
                 <div class="we-modal-body we-kbd-sections">
 
@@ -2932,47 +2933,47 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 <tr>
                                     <td class="we-kbd-action">Save</td>
                                     <td><kbd class="we-kbd-key">Ctrl</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">S</kbd></td>
-                                    <td><kbd class="we-kbd-key">&#8984;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">S</kbd></td>
+                                    <td><kbd class="we-kbd-key">⌘</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">S</kbd></td>
                                 </tr>
                                 <tr>
                                     <td class="we-kbd-action">Command palette</td>
                                     <td><kbd class="we-kbd-key">F1</kbd><span class="we-kbd-sep"> or </span><kbd class="we-kbd-key">Ctrl</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">P</kbd></td>
-                                    <td><kbd class="we-kbd-key">F1</kbd><span class="we-kbd-sep"> or </span><kbd class="we-kbd-key">&#8984;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">P</kbd></td>
+                                    <td><kbd class="we-kbd-key">F1</kbd><span class="we-kbd-sep"> or </span><kbd class="we-kbd-key">⌘</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">P</kbd></td>
                                 </tr>
                                 <tr>
                                     <td class="we-kbd-action">Undo / Redo</td>
                                     <td><kbd class="we-kbd-key">Ctrl</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Z</kbd><span class="we-kbd-sep"> / </span><kbd class="we-kbd-key">Ctrl</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Y</kbd></td>
-                                    <td><kbd class="we-kbd-key">&#8984;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Z</kbd><span class="we-kbd-sep"> / </span><kbd class="we-kbd-key">&#8984;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Z</kbd></td>
+                                    <td><kbd class="we-kbd-key">⌘</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Z</kbd><span class="we-kbd-sep"> / </span><kbd class="we-kbd-key">⌘</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Z</kbd></td>
                                 </tr>
                                 <tr>
                                     <td class="we-kbd-action">Toggle line comment</td>
                                     <td><kbd class="we-kbd-key">Ctrl</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">/</kbd></td>
-                                    <td><kbd class="we-kbd-key">&#8984;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">/</kbd></td>
+                                    <td><kbd class="we-kbd-key">⌘</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">/</kbd></td>
                                 </tr>
                                 <tr>
                                     <td class="we-kbd-action">Find / Replace</td>
                                     <td><kbd class="we-kbd-key">Ctrl</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">F</kbd><span class="we-kbd-sep"> / </span><kbd class="we-kbd-key">Ctrl</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">H</kbd></td>
-                                    <td><kbd class="we-kbd-key">&#8984;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">F</kbd><span class="we-kbd-sep"> / </span><kbd class="we-kbd-key">&#8984;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">&#8997;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">F</kbd></td>
+                                    <td><kbd class="we-kbd-key">⌘</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">F</kbd><span class="we-kbd-sep"> / </span><kbd class="we-kbd-key">⌘</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">⌥</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">F</kbd></td>
                                 </tr>
                                 <tr>
                                     <td class="we-kbd-action">Move line up / down</td>
-                                    <td><kbd class="we-kbd-key">Alt</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">&#8593;</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">&#8595;</kbd></td>
-                                    <td><kbd class="we-kbd-key">&#8997;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">&#8593;</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">&#8595;</kbd></td>
+                                    <td><kbd class="we-kbd-key">Alt</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">↑</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">↓</kbd></td>
+                                    <td><kbd class="we-kbd-key">⌥</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">↑</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">↓</kbd></td>
                                 </tr>
                                 <tr>
                                     <td class="we-kbd-action">Copy line up / down</td>
-                                    <td><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Alt</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">&#8593;</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">&#8595;</kbd></td>
-                                    <td><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">&#8997;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">&#8593;</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">&#8595;</kbd></td>
+                                    <td><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Alt</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">↑</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">↓</kbd></td>
+                                    <td><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">⌥</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">↑</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">↓</kbd></td>
                                 </tr>
                                 <tr>
                                     <td class="we-kbd-action">Multi-cursor above / below</td>
-                                    <td><kbd class="we-kbd-key">Ctrl</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Alt</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">&#8593;</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">&#8595;</kbd></td>
-                                    <td><kbd class="we-kbd-key">&#8984;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">&#8997;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">&#8593;</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">&#8595;</kbd></td>
+                                    <td><kbd class="we-kbd-key">Ctrl</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Alt</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">↑</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">↓</kbd></td>
+                                    <td><kbd class="we-kbd-key">⌘</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">⌥</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">↑</kbd><span class="we-kbd-sep">/</span><kbd class="we-kbd-key">↓</kbd></td>
                                 </tr>
                                 <tr>
                                     <td class="we-kbd-action">Format document</td>
                                     <td><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">Alt</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">F</kbd></td>
-                                    <td><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">&#8997;</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">F</kbd></td>
+                                    <td><kbd class="we-kbd-key">Shift</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">⌥</kbd><span class="we-kbd-sep">+</span><kbd class="we-kbd-key">F</kbd></td>
                                 </tr>
                                 <tr>
                                     <td class="we-kbd-action">Toggle tab trapping</td>
@@ -6641,7 +6642,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             '<div class="we-modal we-ref-modal">' +
                             '<div class="we-modal-header">' +
                             '<span id="we-ref-title"></span>' +
-                            '<span class="we-modal-close" id="we-ref-close">&#215;</span>' +
+                            '<span class="we-modal-close" id="we-ref-close">×</span>' +
                             '</div>' +
                             '<div id="we-ref-body" class="we-modal-body we-ref-body"></div>' +
                             '</div>';

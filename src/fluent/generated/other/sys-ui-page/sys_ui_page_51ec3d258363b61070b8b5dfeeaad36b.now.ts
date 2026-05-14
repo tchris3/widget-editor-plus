@@ -1138,7 +1138,7 @@ UiPage({
         <div id="diff-loading" ng-show="ctrl.loading"><div class="dc-spinner"></div></div>
 
         <!-- Error -->
-        <div id="diff-error" ng-show="ctrl.errorMsg"><i class="icon-alert-triangle"></i>&#160;<span ng-bind="ctrl.errorMsg"></span></div>
+        <div id="diff-error" ng-show="ctrl.errorMsg"><i class="icon-alert-triangle"></i> <span ng-bind="ctrl.errorMsg"></span></div>
 
         <!-- Content -->
         <div id="diff-content" ng-show="!ctrl.errorMsg">
@@ -1146,7 +1146,7 @@ UiPage({
             <div class="dc-header">
                 <div class="dc-header-row" ng-hide="ctrl.isEmbedded">
                     <div class="dc-title">
-                        <span class="dc-title-label" ng-if="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString">Compare&#160;</span>
+                        <span class="dc-title-label" ng-if="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString">Compare </span>
                         <span class="dc-table-picker-wrap" ng-show="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString" we-diff-table-picker="we-diff-table-picker"></span>
                         <span class="dc-title-colon" ng-if="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString &amp;&amp; !ctrl.tableNoVersions">:</span>
                         <span class="dc-picker-wrap" ng-show="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString &amp;&amp; !ctrl.tableNoVersions" we-diff-record-picker="we-diff-record-picker"></span>
@@ -1192,7 +1192,8 @@ UiPage({
                                  ng-click="ctrl.selectLeftVersion(v.sys_id)">
                                 <span class="dc-vrow">
                                     <span class="dc-vrow-date" title="{{ctrl.formatDateFull(v.sys_created_on)}}"><span ng-if="v.state === 'current'" class="dc-current-dot" title="Current"></span><span ng-bind="ctrl.formatDate(v.sys_created_on)"></span></span>
-                                    <span class="dc-vrow-uset" ng-bind="v.update_set_name" title="{{v.update_set_name}}&#13;&#10;[{{v.update_set_state_label}}]"></span>
+                                    <span class="dc-vrow-uset" ng-bind="v.update_set_name" title="{{v.update_set_name}}
+[{{v.update_set_state_label}}]"></span>
                                     <span class="dc-vrow-user" ng-bind="v.sys_created_by" title="{{v.sys_created_by}}"></span>
                                 </span>
                             </div>
@@ -1229,7 +1230,8 @@ UiPage({
                                  ng-click="ctrl.selectRightVersion(v.sys_id)">
                                 <span class="dc-vrow">
                                     <span class="dc-vrow-date" title="{{ctrl.formatDateFull(v.sys_created_on)}}"><span ng-if="v.state === 'current'" class="dc-current-dot" title="Current"></span><span ng-bind="ctrl.formatDate(v.sys_created_on)"></span></span>
-                                    <span class="dc-vrow-uset" ng-bind="v.update_set_name" title="{{v.update_set_name}}&#13;&#10;[{{v.update_set_state_label}}]"></span>
+                                    <span class="dc-vrow-uset" ng-bind="v.update_set_name" title="{{v.update_set_name}}
+[{{v.update_set_state_label}}]"></span>
                                     <span class="dc-vrow-user" ng-bind="v.sys_created_by" title="{{v.sys_created_by}}"></span>
                                 </span>
                             </div>
