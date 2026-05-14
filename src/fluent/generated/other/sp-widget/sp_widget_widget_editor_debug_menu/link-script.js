@@ -16,6 +16,14 @@ function link(scope, element, attrs, controller) {
     }
     window._weDebugMenuPatch = true;
 
+    (function preloadIcons() {
+        const el = document.createElement('div');
+        el.setAttribute('aria-hidden', 'true');
+        el.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none';
+        el.innerHTML = '<i class="icon-cog"></i><i class="icon-cog-selected"></i><i class="icon-open-document-new-tab"></i>';
+        document.body.appendChild(el);
+    }());
+
     (function injectContextMenuStyles() {
         const style = document.createElement('style');
         style.setAttribute('data-we-context-menu', '1');
