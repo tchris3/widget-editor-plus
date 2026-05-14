@@ -667,6 +667,13 @@ function link(scope, element, attrs, controller) {
             addedOverlays[i].parentNode && addedOverlays[i].parentNode.removeChild(addedOverlays[i]);
         }
         const targetOverlay = addedOverlays[addedOverlays.length - 1];
+        if (targetOverlay.showPopover) {
+            targetOverlay.setAttribute('popover', 'manual');
+            targetOverlay.style.background = 'none';
+            targetOverlay.style.border = 'none';
+            targetOverlay.style.padding = '0';
+            targetOverlay.showPopover();
+        }
         injectEditorItems(targetOverlay);
         attachOverlayObserver(targetOverlay);
     });
@@ -775,7 +782,14 @@ function link(scope, element, attrs, controller) {
         headerLi.textContent = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || '';
         ul.appendChild(headerLi);
         container.appendChild(ul);
+        if (container.showPopover) {
+            container.setAttribute('popover', 'manual');
+            container.style.background = 'none';
+            container.style.border = 'none';
+            container.style.padding = '0';
+        }
         document.body.appendChild(container);
+        if (container.showPopover) container.showPopover();
         injectEditorItems(container);
         injectWidgetDebugItems(ul, container);
         attachOverlayObserver(container);
@@ -1471,7 +1485,7 @@ function link(scope, element, attrs, controller) {
 
         function closeActiveMenu() {
             if (activeMenu) {
-                activeMenu.style.display = 'none';
+                if (activeMenu.hidePopover) activeMenu.hidePopover();
                 activeMenu = null;
             }
         }
@@ -1595,7 +1609,7 @@ function link(scope, element, attrs, controller) {
             el.appendChild(btn);
 
             function positionMenu() {
-                if (!activeMenu || activeMenu.style.display === 'none') {
+                if (!activeMenu || !activeMenu.matches(':popover-open')) {
                     return;
                 }
                 const btnRect = btn.getBoundingClientRect();
@@ -1633,11 +1647,10 @@ function link(scope, element, attrs, controller) {
                 const menu = document.createElement('div');
                 menu.id = menuId;
                 menu.classList.add('scope-context-menu');
+                menu.setAttribute('popover', 'manual');
 
                 Object.assign(menu.style, {
                     position: 'fixed',
-                    display: 'none',
-                    zIndex: '9999',
                     background: '#fff',
                     border: '1px solid #ccc',
                     borderRadius: '4px',
@@ -1674,7 +1687,7 @@ function link(scope, element, attrs, controller) {
                     addLogButton(menu, widgetScope, widgetName + ' - ' + (widgetScope?.$id ?? ''), 'Log widget scope to console');
                     addOpenInEditor(menu, widgetScope);
                     menu.appendChild(basicInfo);
-                    menu.style.display = 'block';
+                    menu.showPopover();
                     positionMenu();
                     return;
                 }
@@ -1683,7 +1696,7 @@ function link(scope, element, attrs, controller) {
                 try {
                     if (!widgetScope) {
                         menu.textContent = 'No AngularJS scope found.';
-                        menu.style.display = 'block';
+                        menu.showPopover();
                         positionMenu();
                         return;
                     }
@@ -1695,7 +1708,7 @@ function link(scope, element, attrs, controller) {
                             problematicWidgets.add(widgetId);
                         }
                         menu.innerHTML = '<div style="color:orange;padding:10px;">\u26A0\uFE0F Processing took too long and was aborted. Try again for limited information.</div>';
-                        menu.style.display = 'block';
+                        if (!menu.matches(':popover-open')) menu.showPopover();
                         positionMenu();
                     }, PROCESSING_TIMEOUT_MS);
 
@@ -1925,14 +1938,14 @@ function link(scope, element, attrs, controller) {
                             }, 300);
                         });
 
-                        menu.style.display = 'block';
+                        menu.showPopover();
                         positionMenu();
                         setTimeout(function () { searchInput.focus(); }, 50);
                     }
                 } catch (error) {
                     console.error('Error opening widget menu:', error);
                     menu.innerHTML = '<div style="color:red;padding:10px;">Error opening widget inspector: ' + escapeHtml(error.message) + '</div>';
-                    menu.style.display = 'block';
+                    if (!menu.matches(':popover-open')) menu.showPopover();
                     positionMenu();
                     if (widgetId) {
                         problematicWidgets.add(widgetId);
