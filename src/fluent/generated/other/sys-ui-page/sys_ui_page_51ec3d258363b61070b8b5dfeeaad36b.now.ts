@@ -1310,7 +1310,7 @@ UiPage({
 
                             <!-- Simple field rows -->
                             <tr class="sft-row" ng-repeat="f in ctrl.simpleFields"
-                                ng-class="{'sft-changed': ctrl.isChanged(f.key), 'sft-row--top': f.renderAs === 'textarea'}">
+                                ng-class="{'sft-changed': ctrl.isChanged(f.key), 'sft-row--top': f.renderAs === 'textarea' || f.renderAs === 'text' || !f.renderAs}">
                                 <td class="sft-label" we-tooltip="{{f.key}}">
                                     <div class="sft-label-main">
                                         <span ng-bind="f.label"></span>
@@ -1357,9 +1357,9 @@ UiPage({
                                              class="sft-img-preview" ng-attr-alt="{{ctrl.leftFields[f.key]}}" ng-attr-title="{{ctrl.leftFields[f.key]}}" />
                                     </a>
                                     <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
-                                        <input type="text" class="form-control"
-                                               readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
-                                               aria-label="{{f.label}} (left)" />
+                                        <textarea class="form-control sft-textarea"
+                                                  readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
+                                                  aria-label="{{f.label}} (left)"></textarea>
                                         <button ng-if="ctrl.shouldShowStringExpand(f, false)"
                                                 class="btn btn-default sft-expand-btn"
                                                 ng-click="ctrl.toggleStringExpand(f, false, $event)"
@@ -1407,9 +1407,9 @@ UiPage({
                                              class="sft-img-preview" ng-attr-alt="{{ctrl.rightFields[f.key]}}" ng-attr-title="{{ctrl.rightFields[f.key]}}" />
                                     </a>
                                     <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
-                                        <input type="text" class="form-control"
-                                               readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
-                                               aria-label="{{f.label}} (right)" />
+                                        <textarea class="form-control sft-textarea"
+                                                  readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
+                                                  aria-label="{{f.label}} (right)"></textarea>
                                         <button ng-if="ctrl.shouldShowStringExpand(f, false)"
                                                 class="btn btn-default sft-expand-btn"
                                                 ng-click="ctrl.toggleStringExpand(f, false, $event)"
@@ -1469,7 +1469,7 @@ UiPage({
                             <colgroup><col class="sft-col-label" /><col /><col /></colgroup>
                             <tbody>
                                 <tr class="sft-row sft-changed" ng-repeat="f in ctrl.extraChangedSimpleFields"
-                                    ng-class="{'sft-row--top': f.renderAs === 'textarea'}">
+                                    ng-class="{'sft-row--top': f.renderAs === 'textarea' || f.renderAs === 'text' || !f.renderAs}">
                                     <td class="sft-label" we-tooltip="{{f.key}}">
                                         <div class="sft-label-main">
                                             <span ng-bind="f.label"></span>
@@ -1515,9 +1515,9 @@ UiPage({
                                                  class="sft-img-preview" ng-attr-alt="{{ctrl.extraLeftFields[f.key]}}" ng-attr-title="{{ctrl.extraLeftFields[f.key]}}" />
                                         </a>
                                         <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
-                                            <input type="text" class="form-control"
-                                                   readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
-                                                   aria-label="{{f.label}} (left)" />
+                                            <textarea class="form-control sft-textarea"
+                                                      readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
+                                                      aria-label="{{f.label}} (left)"></textarea>
                                             <button ng-if="ctrl.shouldShowStringExpand(f, true)"
                                                     class="btn btn-default sft-expand-btn"
                                                     ng-click="ctrl.toggleStringExpand(f, true, $event)"
@@ -1564,9 +1564,9 @@ UiPage({
                                                  class="sft-img-preview" ng-attr-alt="{{ctrl.extraRightFields[f.key]}}" ng-attr-title="{{ctrl.extraRightFields[f.key]}}" />
                                         </a>
                                         <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
-                                            <input type="text" class="form-control"
-                                                   readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
-                                                   aria-label="{{f.label}} (right)" />
+                                            <textarea class="form-control sft-textarea"
+                                                      readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
+                                                      aria-label="{{f.label}} (right)"></textarea>
                                             <button ng-if="ctrl.shouldShowStringExpand(f, true)"
                                                     class="btn btn-default sft-expand-btn"
                                                     ng-click="ctrl.toggleStringExpand(f, true, $event)"
@@ -1769,6 +1769,7 @@ UiPage({
             }
             _registerSnProviders();
         });
+        _bs.init({ language: 'html' });
     }
 
     var urlParams    = new URLSearchParams(window.location.search);
@@ -2310,8 +2311,8 @@ UiPage({
                     var lv = (lfe[eDef.key] || '').replace(/\\r\\n/g, '\\n');
                     var rv = (rfe[eDef.key] || '').replace(/\\r\\n/g, '\\n');
                     if (lv === rv) { continue; }
-                    if (eDef.renderAs === 'code') {
-                        extraCode.push({ key: eDef.key, label: eDef.label, language: eDef.language, reference: eDef.reference, counts: _diffLineCounts(lv, rv) });
+                    if (eDef.renderAs === 'code' || eDef.type === 'html' || eDef.type === 'html_script') {
+                        extraCode.push({ key: eDef.key, label: eDef.label, language: eDef.language || (eDef.type === 'html' || eDef.type === 'html_script' ? 'html' : 'plaintext'), reference: eDef.reference, counts: _diffLineCounts(lv, rv) });
                     } else {
                         extraSimple.push(eDef);
                     }
@@ -2792,8 +2793,8 @@ UiPage({
                     var code   = [];
                     for (var i = 0; i < data.fields.length; i++) {
                         var fd = data.fields[i];
-                        if (fd.renderAs === 'code') {
-                            code.push({ key: fd.key, label: fd.label, language: fd.language, reference: fd.reference, changed: false, counts: null });
+                        if (fd.renderAs === 'code' || fd.type === 'html' || fd.type === 'html_script') {
+                            code.push({ key: fd.key, label: fd.label, language: fd.language || (fd.type === 'html' || fd.type === 'html_script' ? 'html' : 'plaintext'), reference: fd.reference, changed: false, counts: null });
                         } else {
                             simple.push(fd);
                         }
