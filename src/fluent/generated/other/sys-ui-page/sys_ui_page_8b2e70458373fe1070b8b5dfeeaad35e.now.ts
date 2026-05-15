@@ -1888,7 +1888,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-alert-bar we-alert-bar--critical" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; !canWriteWidget &amp;&amp; !widgetSysPolicy">
                 <span ng-if="!widget.scope_mismatch">No write access to this widget.</span>
                 <span ng-if="widget.scope_mismatch">
-                    Different application scope — <strong ng-bind="widget.application"></strong>.
+                    Different application scope —&nbsp;<strong ng-bind="widget.application"></strong>.
                     <a class="we-alert-bar-link" ng-click="switchToWidgetScope()" style="margin-left: 0.3125rem;">Switch scope and reload</a>
                 </span>
             </div>
@@ -1911,19 +1911,19 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
             <!-- ServiceNow widget bar -->
             <div class="we-alert-bar we-alert-bar--warning" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; widgetIsServiceNow &amp;&amp; !snAlertDismissed">
-                <span><strong>Warning:</strong> <i>{{widget.name}}</i> is a ServiceNow widget — <a class="we-alert-bar-link" ng-click="cloneWidget()">Clone widget</a></span>
+                <span><strong>Warning:</strong>&nbsp;<i>{{widget.name}}</i>&nbsp;is a ServiceNow widget — <a class="we-alert-bar-link" ng-click="cloneWidget()">Clone widget</a></span>
                 <span class="close" ng-click="dismissSnAlert()" aria-label="Dismiss">×</span>
             </div>
 
             <!-- Update set mismatch bar -->
             <div class="we-alert-bar" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; updateSetMismatch &amp;&amp; !updateSetAlertDismissed">
-                <span><strong>Notice:</strong> <i>{{widget.name}}</i> is currently being edited in the update set: <a class="we-alert-bar-link" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{widgetUpdateSetId}}" target="_blank"><strong>{{widgetUpdateSetName}}</strong><span class="icon-open-document-new-tab" style="display: inline-block; margin-left: 4px;"></span></a></span>
+                <span><strong>Notice:</strong>&nbsp;<i>{{widget.name}}</i>&nbsp;is currently being edited in the update set:&nbsp;<a class="we-alert-bar-link" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{widgetUpdateSetId}}" target="_blank"><strong>{{widgetUpdateSetName}}</strong><span class="icon-open-document-new-tab" style="display: inline-block; margin-left: 4px;"></span></a></span>
                 <span class="close" ng-click="dismissUpdateSetAlert()" aria-label="Dismiss">×</span>
             </div>
 
             <!-- Widget volatility risk bar -->
             <div class="we-alert-bar" ng-class="widgetVolatilityLevel === 'High' ? 'we-alert-bar--critical' : 'we-alert-bar--warning'" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; widgetVolatilityLevel &amp;&amp; !volatilityAlertDismissed">
-                <span><strong>Warning:</strong> <i>{{widget.name}}</i> is a <strong>{{widgetVolatilityDisplay}} Risk</strong> file that might get updated again in later releases. Do not alter this file unless necessary.</span>
+                <span><strong>Warning:</strong>&nbsp;<i>{{widget.name}}</i>&nbsp;is a&nbsp;<strong>{{widgetVolatilityDisplay}} Risk</strong>&nbsp;file that might get updated again in later releases. Do not alter this file unless necessary.</span>
                 <span class="close" ng-click="dismissVolatilityAlert()" aria-label="Dismiss">×</span>
             </div>
 
@@ -2199,7 +2199,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </span>
 
                     <!-- Save error -->
-                    <span class="we-save-error" ng-if="!isVersionView &amp;&amp; saveError" title="{{saveError}}"><i class="icon-alert-triangle"></i> <span ng-bind="saveError"></span></span>
+                    <span class="we-save-error" ng-if="!isVersionView &amp;&amp; saveError" title="{{saveError}}"><i class="icon-alert-triangle"></i>&nbsp;<span ng-bind="saveError"></span></span>
 
                     <!-- Presence -->
                     <div class="we-presence" ng-if="presenceUsers.length">
@@ -2322,7 +2322,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                     <!-- External change infobar (below subheader, above editor) -->
                     <div class="we-pane-infobar" ng-if="item.type === 'pane' &amp;&amp; item.externalChange">
-                        <span><strong ng-bind="item.externalChange.user"></strong> has updated this field.</span>
+                        <span><strong ng-bind="item.externalChange.user"></strong>&nbsp;has updated this field.</span>
                         <div class="we-pane-infobar-actions">
                             <button class="btn btn-default we-pane-save-btn" ng-if="!isNewWidget" ng-click="openExternalChangeDiff(item)" title="Compare your unsaved changes with the version saved by {{item.externalChange.user}}">Compare</button>
                             <button class="btn btn-default we-pane-save-btn" ng-click="applyExternalChange(item)" title="Replace editor contents with the version saved by {{item.externalChange.user}}">Update</button>
@@ -2610,7 +2610,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <span class="we-modal-title">Unlink dependency</span>
                 </div>
                 <div class="we-modal-body">
-                    <p>Unlink <strong ng-bind="pendingUnlinkDependency &amp;&amp; pendingUnlinkDependency.name"></strong> from this widget?</p>
+                    <p>Unlink&nbsp;<strong ng-bind="pendingUnlinkDependency &amp;&amp; pendingUnlinkDependency.name"></strong>&nbsp;from this widget?</p>
                     <p>The dependency record itself will not be deleted.</p>
                 </div>
                 <div class="we-modal-footer">
@@ -2667,7 +2667,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <div>
                         <span style="color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3))); font-size:var(--now-font-size--sm);align-self:center">
                             <span ng-if="optionSchemaSaveError" ng-bind="optionSchemaSaveError"></span>
-                            <span ng-if="!optionSchemaSaveError &amp;&amp; optionSchemaJsonInvalid"><i class="icon-alert-triangle"></i> Invalid JSON</span>
+                            <span ng-if="!optionSchemaSaveError &amp;&amp; optionSchemaJsonInvalid"><i class="icon-alert-triangle"></i>&nbsp;Invalid JSON</span>
                         </span>
                         <button class="btn btn-primary" ng-if="canWriteWidget" ng-click="saveOptionSchemaModal()" ng-disabled="optionSchemaSaving || optionSchemaJsonInvalid" ng-bind="optionSchemaSaving ? 'Saving\\u2026' : 'Save'"></button>
                     </div>
@@ -2814,7 +2814,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal-box" style="width:25rem">
                 <div class="we-modal-title" ng-bind="(pendingDeletePane &amp;&amp; pendingDeletePane.recordType === 'template') ? 'Delete Template' : 'Delete Provider'"></div>
                 <div class="we-modal-body">
-                    <p>Are you sure you want to delete <strong ng-bind="pendingDeletePane &amp;&amp; pendingDeletePane.recordId"></strong>? This cannot be undone.</p>
+                    <p>Are you sure you want to delete&nbsp;<strong ng-bind="pendingDeletePane &amp;&amp; pendingDeletePane.recordId"></strong>? This cannot be undone.</p>
                 </div>
                 <div class="we-modal-actions">
                     <button class="btn btn-danger" ng-click="confirmDeletePane()" ng-disabled="pendingDeletePane &amp;&amp; pendingDeletePane.deleting" ng-bind="(pendingDeletePane &amp;&amp; pendingDeletePane.deleting) ? 'Deleting\\u2026' : 'Delete'"></button>
@@ -2828,7 +2828,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal-box" style="width:25rem">
                 <div class="we-modal-title">Unlink Provider</div>
                 <div class="we-modal-body">
-                    <p>Unlink <strong ng-bind="pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.name"></strong> from this widget? The provider record will not be deleted.</p>
+                    <p>Unlink&nbsp;<strong ng-bind="pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.name"></strong>&nbsp;from this widget? The provider record will not be deleted.</p>
                 </div>
                 <div class="we-modal-actions">
                     <button class="btn btn-danger" ng-click="confirmUnlinkProvider()" ng-disabled="pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.unlinking" ng-bind="(pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.unlinking) ? 'Unlinking\\u2026' : 'Unlink'"></button>
@@ -2842,7 +2842,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal-box" style="width:25rem">
                 <div class="we-modal-title">Unsaved Changes</div>
                 <div class="we-modal-body">
-                    <p><strong ng-bind="pendingClosePane.recordId || pendingClosePane.label"></strong> has unsaved changes.</p>
+                    <p><strong ng-bind="pendingClosePane.recordId || pendingClosePane.label"></strong>&nbsp;has unsaved changes.</p>
                 </div>
                 <div class="we-modal-actions">
                     <button class="btn btn-primary" ng-click="saveAndClosePane()">Save &amp; Close</button>
@@ -2857,7 +2857,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-modal-box" style="width:25rem">
                 <div class="we-modal-title">Unsaved Changes</div>
                 <div class="we-modal-body">
-                    <p>You have unsaved changes. What would you like to do before opening <strong ng-bind="pendingWidgetNav.name"></strong>?</p>
+                    <p>You have unsaved changes. What would you like to do before opening&nbsp;<strong ng-bind="pendingWidgetNav.name"></strong>?</p>
                 </div>
                 <div class="we-modal-actions">
                     <button class="btn btn-primary" ng-click="saveAndOpenWidget()">Save &amp; Open</button>

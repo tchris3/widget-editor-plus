@@ -1138,7 +1138,7 @@ UiPage({
         <div id="diff-loading" ng-show="ctrl.loading"><div class="dc-spinner"></div></div>
 
         <!-- Error -->
-        <div id="diff-error" ng-show="ctrl.errorMsg"><i class="icon-alert-triangle"></i> <span ng-bind="ctrl.errorMsg"></span></div>
+        <div id="diff-error" ng-show="ctrl.errorMsg"><i class="icon-alert-triangle"></i>&nbsp;<span ng-bind="ctrl.errorMsg"></span></div>
 
         <!-- Content -->
         <div id="diff-content" ng-show="!ctrl.errorMsg">
@@ -1146,7 +1146,7 @@ UiPage({
             <div class="dc-header">
                 <div class="dc-header-row" ng-hide="ctrl.isEmbedded">
                     <div class="dc-title">
-                        <span class="dc-title-label" ng-if="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString">Compare </span>
+                        <span class="dc-title-label" ng-if="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString">Compare&nbsp;</span>
                         <span class="dc-table-picker-wrap" ng-show="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString" we-diff-table-picker="we-diff-table-picker"></span>
                         <span class="dc-title-colon" ng-if="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString &amp;&amp; !ctrl.tableNoVersions">:</span>
                         <span class="dc-picker-wrap" ng-show="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString &amp;&amp; !ctrl.tableNoVersions" we-diff-record-picker="we-diff-record-picker"></span>
