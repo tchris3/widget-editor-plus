@@ -1310,7 +1310,7 @@ UiPage({
 
                             <!-- Simple field rows -->
                             <tr class="sft-row" ng-repeat="f in ctrl.simpleFields"
-                                ng-class="{'sft-changed': ctrl.isChanged(f.key), 'sft-row--top': f.renderAs === 'textarea' || f.renderAs === 'text' || !f.renderAs}">
+                                ng-class="{'sft-changed': ctrl.isChanged(f.key), 'sft-row--top': f.renderAs === 'textarea' || f.renderAs === 'text' || f.renderAs === 'list' || !f.renderAs}">
                                 <td class="sft-label" we-tooltip="{{f.key}}">
                                     <div class="sft-label-main">
                                         <span ng-bind="f.label"></span>
@@ -1356,6 +1356,12 @@ UiPage({
                                         <img ng-src="/{{ctrl.leftFields[f.key]}}.iix?t=medium"
                                              class="sft-img-preview" ng-attr-alt="{{ctrl.leftFields[f.key]}}" ng-attr-title="{{ctrl.leftFields[f.key]}}" />
                                     </a>
+                                    <span ng-switch-when="list" class="sft-string-wrap">
+                                        <textarea class="form-control sft-textarea"
+                                                  readonly="readonly" ng-model="ctrl.leftListDisplay[f.key]"
+                                                  aria-label="{{f.label}} (left)"
+                                                  we-sync-row-height="we-sync-row-height"></textarea>
+                                    </span>
                                     <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
                                                   readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
@@ -1407,6 +1413,12 @@ UiPage({
                                         <img ng-src="/{{ctrl.rightFields[f.key]}}.iix?t=medium"
                                              class="sft-img-preview" ng-attr-alt="{{ctrl.rightFields[f.key]}}" ng-attr-title="{{ctrl.rightFields[f.key]}}" />
                                     </a>
+                                    <span ng-switch-when="list" class="sft-string-wrap">
+                                        <textarea class="form-control sft-textarea"
+                                                  readonly="readonly" ng-model="ctrl.rightListDisplay[f.key]"
+                                                  aria-label="{{f.label}} (right)"
+                                                  we-sync-row-height="we-sync-row-height"></textarea>
+                                    </span>
                                     <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
                                                   readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
@@ -1471,7 +1483,7 @@ UiPage({
                             <colgroup><col class="sft-col-label" /><col /><col /></colgroup>
                             <tbody>
                                 <tr class="sft-row sft-changed" ng-repeat="f in ctrl.extraChangedSimpleFields"
-                                    ng-class="{'sft-row--top': f.renderAs === 'textarea' || f.renderAs === 'text' || !f.renderAs}">
+                                    ng-class="{'sft-row--top': f.renderAs === 'textarea' || f.renderAs === 'text' || f.renderAs === 'list' || !f.renderAs}">
                                     <td class="sft-label" we-tooltip="{{f.key}}">
                                         <div class="sft-label-main">
                                             <span ng-bind="f.label"></span>
@@ -1516,6 +1528,12 @@ UiPage({
                                             <img ng-src="/{{ctrl.extraLeftFields[f.key]}}.iix?t=medium"
                                                  class="sft-img-preview" ng-attr-alt="{{ctrl.extraLeftFields[f.key]}}" ng-attr-title="{{ctrl.extraLeftFields[f.key]}}" />
                                         </a>
+                                        <span ng-switch-when="list" class="sft-string-wrap">
+                                            <textarea class="form-control sft-textarea"
+                                                      readonly="readonly" ng-model="ctrl.extraLeftListDisplay[f.key]"
+                                                      aria-label="{{f.label}} (left)"
+                                                      we-sync-row-height="we-sync-row-height"></textarea>
+                                        </span>
                                         <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
                                             <textarea class="form-control sft-textarea"
                                                       readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
@@ -1566,6 +1584,12 @@ UiPage({
                                             <img ng-src="/{{ctrl.extraRightFields[f.key]}}.iix?t=medium"
                                                  class="sft-img-preview" ng-attr-alt="{{ctrl.extraRightFields[f.key]}}" ng-attr-title="{{ctrl.extraRightFields[f.key]}}" />
                                         </a>
+                                        <span ng-switch-when="list" class="sft-string-wrap">
+                                            <textarea class="form-control sft-textarea"
+                                                      readonly="readonly" ng-model="ctrl.extraRightListDisplay[f.key]"
+                                                      aria-label="{{f.label}} (right)"
+                                                      we-sync-row-height="we-sync-row-height"></textarea>
+                                        </span>
                                         <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
                                             <textarea class="form-control sft-textarea"
                                                       readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
@@ -1929,6 +1953,32 @@ UiPage({
         return result;
     }
 
+    function _buildListDisplay(versionDataOrNull, recordData, fieldDefs) {
+        var result = {};
+        if (!fieldDefs) { return result; }
+        var dvMap = versionDataOrNull
+            ? (versionDataOrNull.display_values || {})
+            : ((recordData && recordData.display_values) || {});
+        var rawMap = versionDataOrNull
+            ? (versionDataOrNull.fields || {})
+            : ((recordData && recordData.values) || {});
+        for (var i = 0; i < fieldDefs.length; i++) {
+            if (fieldDefs[i].renderAs !== 'list') { continue; }
+            var key = fieldDefs[i].key;
+            var rawVal = (rawMap[key] !== null && rawMap[key] !== undefined) ? String(rawMap[key]) : '';
+            var dv = dvMap[key] || '';
+            if (!rawVal) { result[key] = ''; continue; }
+            var ids   = rawVal.split(',');
+            var names = dv ? dv.split(',') : [];
+            result[key] = ids.map(function(id, idx) {
+                id = id.trim();
+                var name = (names[idx] || '').trim();
+                return (name && name !== id) ? name + ' [' + id + ']' : id;
+            }).join('\n');
+        }
+        return result;
+    }
+
     function _countsFromLineChanges(lineChanges) {
         var added = 0, removed = 0;
         if (!lineChanges) { return { added: 0, removed: 0 }; }
@@ -2018,6 +2068,10 @@ UiPage({
         ctrl.rightRefDisplay      = {};
         ctrl.extraLeftRefDisplay  = {};
         ctrl.extraRightRefDisplay = {};
+        ctrl.leftListDisplay       = {};
+        ctrl.rightListDisplay      = {};
+        ctrl.extraLeftListDisplay  = {};
+        ctrl.extraRightListDisplay = {};
         ctrl.loadingLeft      = false;
         ctrl.loadingRight     = false;
         ctrl.currentIsUnsaved = false;
@@ -2186,6 +2240,10 @@ UiPage({
                 ? _buildRefDisplay(null, _savedRef, _fieldDefs)
                 : _buildRefDisplay(_leftVersionData, _recordData, _fieldDefs);
             ctrl.rightRefDisplay = _buildRefDisplay(_rightVersionData, _unsavedRef, _fieldDefs);
+            ctrl.leftListDisplay = _leftIsCurrentSaved
+                ? _buildListDisplay(null, _savedRef, _fieldDefs)
+                : _buildListDisplay(_leftVersionData, _recordData, _fieldDefs);
+            ctrl.rightListDisplay = _buildListDisplay(_rightVersionData, _unsavedRef, _fieldDefs);
 
             var lMeta;
             if (_leftIsCurrentSaved) {
@@ -2307,6 +2365,10 @@ UiPage({
                     ? _buildRefDisplay(null, _savedRef, _extraFieldDefs)
                     : _buildRefDisplay(_leftVersionData, _recordData, _extraFieldDefs);
                 ctrl.extraRightRefDisplay = _buildRefDisplay(_rightVersionData, _unsavedRef, _extraFieldDefs);
+                ctrl.extraLeftListDisplay = _leftIsCurrentSaved
+                    ? _buildListDisplay(null, _savedRef, _extraFieldDefs)
+                    : _buildListDisplay(_leftVersionData, _recordData, _extraFieldDefs);
+                ctrl.extraRightListDisplay = _buildListDisplay(_rightVersionData, _unsavedRef, _extraFieldDefs);
 
                 var extraSimple = [];
                 var extraCode   = [];
@@ -2617,7 +2679,7 @@ UiPage({
         ctrl.shouldShowStringExpand = function(f, isExtra) {
             if (!f) { return false; }
             var ra = f.renderAs;
-            if (ra === 'boolean' || ra === 'reference' || ra === 'choice' || ra === 'image') {
+            if (ra === 'boolean' || ra === 'reference' || ra === 'choice' || ra === 'image' || ra === 'list') {
                 return false;
             }
             var lv, rv;

@@ -648,6 +648,8 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 renderAs = 'boolean';
             } else if (CODE_TYPES.indexOf(fieldType) !== -1) {
                 renderAs = 'code';
+            } else if (fieldType === 'glide_list') {
+                renderAs = 'list';
             } else if (fieldType === 'reference') {
                 renderAs = 'reference';
             } else if (fieldType === 'user_image') {
@@ -883,7 +885,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 values[fName] = (v !== null && v !== undefined) ? v : null;
                 var fType = fdGr.getValue('internal_type');
                 var fChoice = parseInt(fdGr.getValue('choice') || '0', 10) || 0;
-                if (fType === 'reference' || fChoice > 0) {
+                if (fType === 'reference' || fType === 'glide_list' || fChoice > 0) {
                     displayValues[fName] = gr.getDisplayValue(fName) || '';
                 }
             } catch (e) {}
