@@ -1359,7 +1359,8 @@ UiPage({
                                     <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
                                                   readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
-                                                  aria-label="{{f.label}} (left)"></textarea>
+                                                  aria-label="{{f.label}} (left)"
+                                                  we-sync-row-height="we-sync-row-height"></textarea>
                                         <button ng-if="ctrl.shouldShowStringExpand(f, false)"
                                                 class="btn btn-default sft-expand-btn"
                                                 ng-click="ctrl.toggleStringExpand(f, false, $event)"
@@ -1409,7 +1410,8 @@ UiPage({
                                     <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
                                                   readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
-                                                  aria-label="{{f.label}} (right)"></textarea>
+                                                  aria-label="{{f.label}} (right)"
+                                                  we-sync-row-height="we-sync-row-height"></textarea>
                                         <button ng-if="ctrl.shouldShowStringExpand(f, false)"
                                                 class="btn btn-default sft-expand-btn"
                                                 ng-click="ctrl.toggleStringExpand(f, false, $event)"
@@ -1517,7 +1519,8 @@ UiPage({
                                         <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
                                             <textarea class="form-control sft-textarea"
                                                       readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
-                                                      aria-label="{{f.label}} (left)"></textarea>
+                                                      aria-label="{{f.label}} (left)"
+                                                      we-sync-row-height="we-sync-row-height"></textarea>
                                             <button ng-if="ctrl.shouldShowStringExpand(f, true)"
                                                     class="btn btn-default sft-expand-btn"
                                                     ng-click="ctrl.toggleStringExpand(f, true, $event)"
@@ -1566,7 +1569,8 @@ UiPage({
                                         <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
                                             <textarea class="form-control sft-textarea"
                                                       readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
-                                                      aria-label="{{f.label}} (right)"></textarea>
+                                                      aria-label="{{f.label}} (right)"
+                                                      we-sync-row-height="we-sync-row-height"></textarea>
                                             <button ng-if="ctrl.shouldShowStringExpand(f, true)"
                                                     class="btn btn-default sft-expand-btn"
                                                     ng-click="ctrl.toggleStringExpand(f, true, $event)"
@@ -3304,6 +3308,27 @@ UiPage({
         };
     }])
 
+    .directive('weSyncRowHeight', ['$timeout', function($timeout) {
+        return {
+            restrict: 'A',
+            require: 'ngModel',
+            link: function(scope, el, attrs, ngModel) {
+                var _orig = ngModel.$render.bind(ngModel);
+                ngModel.$render = function() {
+                    _orig();
+                    $timeout(function() {
+                        var row = el[0].closest('tr');
+                        if (!row) { return; }
+                        var tas = row.querySelectorAll('textarea.sft-textarea');
+                        tas.forEach(function(ta) { ta.style.height = ''; });
+                        var max = 0;
+                        tas.forEach(function(ta) { max = Math.max(max, ta.scrollHeight); });
+                        tas.forEach(function(ta) { ta.style.height = max + 'px'; });
+                    }, 0, false);
+                };
+            }
+        };
+    }])
     .directive('weTooltip', [function() {
         return {
             restrict: 'A',
