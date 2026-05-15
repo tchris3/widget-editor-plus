@@ -628,6 +628,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             'script_plain',
             'css',
             'html',
+            'html_script',
             'html_template',
             'xml',
             'json',
@@ -659,7 +660,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             var language = 'plaintext';
             if (fieldType === 'css') {
                 language = 'css';
-            } else if (fieldType === 'html' || fieldType === 'html_template') {
+            } else if (fieldType === 'html' || fieldType === 'html_script' || fieldType === 'html_template') {
                 language = 'html';
             } else if (fieldType === 'json') {
                 language = 'json';
