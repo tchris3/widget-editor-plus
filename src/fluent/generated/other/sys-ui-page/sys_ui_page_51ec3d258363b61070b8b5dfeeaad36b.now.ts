@@ -1974,7 +1974,7 @@ UiPage({
                 id = id.trim();
                 var name = (names[idx] || '').trim();
                 return (name && name !== id) ? name + ' [' + id + ']' : id;
-            }).join('\n');
+            }).join('\\n');
         }
         return result;
     }
