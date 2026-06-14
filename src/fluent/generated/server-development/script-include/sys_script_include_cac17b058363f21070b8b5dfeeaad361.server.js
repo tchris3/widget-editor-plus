@@ -605,6 +605,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                         parseInt(dictGr.getValue('max_length') || '0', 10) || 0,
                     reference: dictGr.getValue('reference') || '',
                     choice: parseInt(dictGr.getValue('choice') || '0', 10) || 0,
+                    dependent: dictGr.getValue('dependent') || '',
                 };
             }
         }
@@ -634,7 +635,9 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 label = demoGr[fname].getLabel() || fname;
             } catch (e) {}
             var renderAs = 'text';
-            if (fieldType === 'boolean') {
+            if (fieldType === 'conditions' || fieldType === 'rebuilt_conditions') {
+                renderAs = 'conditions';
+            } else if (fieldType === 'boolean') {
                 renderAs = 'boolean';
             } else if (CODE_TYPES.indexOf(fieldType) !== -1) {
                 renderAs = 'code';
@@ -671,6 +674,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 reference: refTable,
                 renderAs: renderAs,
                 language: language,
+                dependent: dict.dependent || '',
             };
         };
 
@@ -919,6 +923,171 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 update_set_name: ussName,
             },
         });
+    },
+
+    /**
+     * Returns a map of field names to display labels for a given table.
+     * Accepts `table` (ServiceNow table name).
+     * @returns {{success: boolean, labels: Object}} Return value.
+     */
+    getFieldLabels: function () {
+        var table = String(this.getParameter('table') || '');
+        if (!table) {
+            return this._answer({
+                success: false,
+                error: 'No table provided',
+            });
+        }
+        var gr = new GlideRecordSecure(table);
+        gr.initialize();
+
+        var labels = {};
+        var fields = {};
+        var _hierArr = [];
+        try {
+            if (typeof TableUtils !== 'undefined') {
+                var _hierList = new TableUtils(table).getHierarchy();
+                for (var _h = 0; _h < _hierList.size(); _h++) {
+                    _hierArr.push(String(_hierList.get(_h)));
+                }
+            } else {
+                var _hierList = new GlideTableHierarchy(table).getHierarchy();
+                for (var _h = 0; _h < _hierList.length; _h++) {
+                    _hierArr.push(String(_hierList[_h]));
+                }
+            }
+        } catch (e) {
+            _hierArr = [table];
+        }
+
+        var dictGr = new GlideRecord('sys_dictionary');
+        dictGr.addQuery('name', 'IN', _hierArr.join(','));
+        dictGr.addNotNullQuery('element');
+        dictGr.query();
+        while (dictGr.next()) {
+            var fName = dictGr.getValue('element');
+            if (fName) {
+                var label = fName;
+                try {
+                    label = gr[fName].getLabel() || fName;
+                } catch (e) {}
+                labels[fName] = label;
+                fields[fName] = {
+                    label: label,
+                    type: dictGr.getValue('internal_type') || 'string',
+                    reference: dictGr.getValue('reference') || '',
+                    choice: parseInt(dictGr.getValue('choice') || '0', 10) || 0
+                };
+            }
+        }
+        return this._answer({
+            success: true,
+            labels: labels,
+            fields: fields
+        });
+    },
+
+    /**
+     * Resolves raw condition values (Sys IDs or choices) to human-readable display values.
+     * Accepts `table` (ServiceNow table name) and `conditions` (JSON string array of field/value pairs).
+     * @returns {{success: boolean, results: Object}} Return value.
+     */
+    resolveConditionDisplayValues: function() {
+        var table = String(this.getParameter('table') || '');
+        var conditionsJson = String(this.getParameter('conditions') || '[]');
+        if (!table || !conditionsJson) {
+            return this._answer({ success: false, results: {} });
+        }
+        var conditions = [];
+        try {
+            conditions = JSON.parse(conditionsJson);
+        } catch(e) {
+            return this._answer({ success: false, error: 'Invalid conditions JSON' });
+        }
+
+        var gr = new GlideRecordSecure(table);
+        gr.initialize();
+
+        var results = {};
+
+        var hierarchy = [];
+        try {
+            if (typeof TableUtils !== 'undefined') {
+                var list = new TableUtils(table).getHierarchy();
+                for (var h = 0; h < list.size(); h++) {
+                    hierarchy.push(String(list.get(h)));
+                }
+            } else {
+                var list = new GlideTableHierarchy(table).getHierarchy();
+                for (var h = 0; h < list.length; h++) {
+                    hierarchy.push(String(list[h]));
+                }
+            }
+        } catch (e) {
+            hierarchy = [table];
+        }
+
+        for (var i = 0; i < conditions.length; i++) {
+            var item = conditions[i];
+            var f = item.field;
+            var val = item.value;
+            if (!f || val === undefined || val === null || val === '') {
+                continue;
+            }
+            var key = f + '|||' + val;
+            if (results[key]) {
+                continue;
+            }
+
+            try {
+                if (!gr.isValidField(f)) {
+                    results[key] = val;
+                    continue;
+                }
+
+                // Get field dictionary info
+                var refTable = '';
+                var isChoice = false;
+                var dict = new GlideRecord('sys_dictionary');
+                dict.addQuery('name', 'IN', hierarchy.join(','));
+                dict.addQuery('element', f);
+                dict.query();
+                if (dict.next()) {
+                    refTable = dict.getValue('reference') || '';
+                    isChoice = parseInt(dict.getValue('choice') || '0', 10) > 0;
+                }
+
+                if (refTable) {
+                    var valParts = val.split(',');
+                    var displayParts = [];
+                    for (var p = 0; p < valParts.length; p++) {
+                        var part = valParts[p].trim();
+                        if (/^[0-9a-f]{32}$/i.test(part)) {
+                            var refGr = new GlideRecordSecure(refTable);
+                            if (refGr.get(part)) {
+                                displayParts.push(refGr.getDisplayValue() || part);
+                            } else {
+                                displayParts.push(part);
+                            }
+                        } else {
+                            displayParts.push(part);
+                        }
+                    }
+                    results[key] = displayParts.join(', ');
+                } else if (isChoice) {
+                    gr.setValue(f, val);
+                    results[key] = gr.getDisplayValue(f) || val;
+                } else {
+                    gr.setValue(f, val);
+                    var dVal = gr.getDisplayValue(f);
+                    results[key] = dVal || val;
+                }
+            } catch (ex) {
+                results[key] = val;
+            }
+        }
+
+        return this._answer({ success: true, results: results });
     },
 
     /**
