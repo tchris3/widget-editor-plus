@@ -777,7 +777,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             padding: 0.4375rem 0.75rem;
             cursor: pointer;
             user-select: none;
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
             color: rgb(var(--now-color_text--primary));
         }
         .we-compact-submenu-trigger:hover { background: rgb(var(--now-dropdown-list_search--background-color--hover)); }
@@ -1713,7 +1713,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             font-weight: 600;
             color: rgb(var(--now-color_text--secondary, 82 82 82));
             border-bottom: 1px solid rgba(var(--now-color--neutral-0, 0 0 0), 0.1);
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
             text-transform: uppercase;
             letter-spacing: 0.4px;
             white-space: nowrap;
