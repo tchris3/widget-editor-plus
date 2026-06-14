@@ -257,6 +257,8 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         return this._answer({ success: true, includes: result });
     },
 
+
+
     /**
      * Returns all active syntax_editor_macro records for use as Monaco snippet completions.
      * @returns {{success: boolean, macros: Array.<{name: string, comments: string, script: string}>}} Return value.
@@ -535,19 +537,11 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             });
         }
 
-        var synchGr = new GlideRecord('sys_dictionary');
-        synchGr.addQuery('name', table);
-        synchGr.addQuery('internal_type', 'collection');
-        synchGr.addQuery('attributes', 'CONTAINS', 'update_synch=true');
-        synchGr.setLimit(1);
-        synchGr.query();
-        if (!synchGr.next()) {
-            var labelGr = new GlideRecord('sys_db_object');
-            var noSynchLabel = labelGr.get('name', table) ? (labelGr.getDisplayValue('label') || table) : table;
+        var labelGr = new GlideRecord('sys_db_object');
+        if (!labelGr.get('name', table)) {
             return this._answer({
                 success: false,
-                error: 'Table does not track versions',
-                table_label: noSynchLabel,
+                error: 'Table not found: ' + table,
             });
         }
 
@@ -575,21 +569,17 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
 
         // Get dictionary metadata across the full table hierarchy so inherited
         // fields (e.g. active from sys_metadata) get the correct type/renderAs.
-        var _fdHierArr = [table];
+        var _fdHierArr = [];
         try {
-            var _fdDbGr = new GlideRecord('sys_db_object');
-            _fdDbGr.addQuery('name', table);
-            _fdDbGr.setLimit(1);
-            _fdDbGr.query();
-            if (_fdDbGr.next()) {
-                var _fdSuper = _fdDbGr.getValue('super_class');
-                for (var _fdDepth = 0; _fdSuper && _fdDepth < 15; _fdDepth++) {
-                    var _fdParentGr = new GlideRecord('sys_db_object');
-                    if (!_fdParentGr.get(_fdSuper)) { break; }
-                    var _fdParentName = _fdParentGr.getValue('name');
-                    if (!_fdParentName) { break; }
-                    _fdHierArr.push(_fdParentName);
-                    _fdSuper = _fdParentGr.getValue('super_class');
+            if (typeof TableUtils !== 'undefined') {
+                var _fdHierList = new TableUtils(table).getHierarchy();
+                for (var _fdH = 0; _fdH < _fdHierList.size(); _fdH++) {
+                    _fdHierArr.push(String(_fdHierList.get(_fdH)));
+                }
+            } else {
+                var _fdHierList = new GlideTableHierarchy(table).getHierarchy();
+                for (var _fdH = 0; _fdH < _fdHierList.length; _fdH++) {
+                    _fdHierArr.push(String(_fdHierList[_fdH]));
                 }
             }
         } catch (_fdErr) {
@@ -599,7 +589,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         // definitions always take precedence over parent-table definitions.
         var dictMap = {};
         for (var _fdI = 0; _fdI < _fdHierArr.length; _fdI++) {
-            var dictGr = new GlideRecordSecure('sys_dictionary');
+            var dictGr = new GlideRecord('sys_dictionary');
             dictGr.addQuery('name', _fdHierArr[_fdI]);
             dictGr.addNotNullQuery('element');
             dictGr.addQuery('internal_type', '!=', 'collection');
@@ -848,29 +838,24 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         // hierarchy so inherited fields (e.g. sys_scope from sys_metadata) are included.
         var values = {};
         var displayValues = {};
-        // GlideTableHierarchy.getAllTables() returns a Java ArrayList that lacks .join(),
-        // so traverse sys_db_object.super_class manually to build a plain JS array.
-        var _hierArr = [table];
+        // Convert the GlideTableHierarchy/TableUtils list to a plain JS array of strings
+        var _hierArr = [];
         try {
-            var _dbObjGr = new GlideRecord('sys_db_object');
-            _dbObjGr.addQuery('name', table);
-            _dbObjGr.setLimit(1);
-            _dbObjGr.query();
-            if (_dbObjGr.next()) {
-                var _superRef = _dbObjGr.getValue('super_class');
-                for (var _depth = 0; _superRef && _depth < 15; _depth++) {
-                    var _parentGr = new GlideRecord('sys_db_object');
-                    if (!_parentGr.get(_superRef)) { break; }
-                    var _parentName = _parentGr.getValue('name');
-                    if (!_parentName) { break; }
-                    _hierArr.push(_parentName);
-                    _superRef = _parentGr.getValue('super_class');
+            if (typeof TableUtils !== 'undefined') {
+                var _hierList = new TableUtils(table).getHierarchy();
+                for (var _h = 0; _h < _hierList.size(); _h++) {
+                    _hierArr.push(String(_hierList.get(_h)));
+                }
+            } else {
+                var _hierList = new GlideTableHierarchy(table).getHierarchy();
+                for (var _h = 0; _h < _hierList.length; _h++) {
+                    _hierArr.push(String(_hierList[_h]));
                 }
             }
         } catch (_hierErr) {
             _hierArr = [table];
         }
-        var fdGr = new GlideRecordSecure('sys_dictionary');
+        var fdGr = new GlideRecord('sys_dictionary');
         fdGr.addQuery('name', 'IN', _hierArr.join(','));
         fdGr.addNotNullQuery('element');
         fdGr.addQuery('internal_type', '!=', 'collection');
@@ -1728,7 +1713,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         if (!table || !field) {
             return this._answer({ success: false, error: 'Missing params' });
         }
-        var gr = new GlideRecordSecure('sys_dictionary');
+        var gr = new GlideRecord('sys_dictionary');
         gr.addQuery('name', table);
         gr.addQuery('element', field);
         gr.setLimit(1);
@@ -1784,7 +1769,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
 
         var fields = [];
         var seen = {};
-        var gr = new GlideRecordSecure('sys_dictionary');
+        var gr = new GlideRecord('sys_dictionary');
         gr.addQuery('name', 'IN', tables.join(','));
         gr.addNotNullQuery('element');
         gr.addQuery('internal_type', '!=', 'collection');
@@ -2675,7 +2660,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     getWidgetDefaults: function () {
         var fields = ['template', 'css', 'client_script', 'script', 'link'];
         var defaults = {};
-        var gr = new GlideRecordSecure('sys_dictionary');
+        var gr = new GlideRecord('sys_dictionary');
         gr.addQuery('name', 'sp_widget');
         gr.addQuery('element', fields);
         gr.query();
@@ -2968,7 +2953,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         }
 
         var dict = {};
-        var gr = new GlideRecordSecure('sys_dictionary');
+        var gr = new GlideRecord('sys_dictionary');
         gr.addQuery('name', 'sp_widget');
         gr.addQuery('element', 'IN', names.join(','));
         gr.query();
