@@ -7,6 +7,18 @@ function link(scope, element, attrs, controller) {
 
     const spUtil = $injector.get('spUtil');
 
+    scope.$watch('c.showPreferencesModal', function (show) {
+        if (show) {
+            setTimeout(function () {
+                const elNode = element[0] || element;
+                const dialog = elNode.querySelector('.we-prefs-dialog');
+                if (dialog && typeof dialog.showModal === 'function') {
+                    dialog.showModal();
+                }
+            }, 50);
+        }
+    });
+
     ///////////////////////////////////////////
     // 1. Guard / singleton setup
     ///////////////////////////////////////////
