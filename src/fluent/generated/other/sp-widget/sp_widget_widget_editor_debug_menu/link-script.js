@@ -519,6 +519,7 @@ function link(scope, element, attrs, controller) {
     let _pendingEmbeddedWidgets = []; // [{ el, sysId, name }, ...] innermost-first
     let _pendingCursorX = 0;
     let _pendingCursorY = 0;
+    let _pendingContextmenuEvent = null;
 
     /**
      * Walks up from el collecting every [widget] element that has a valid
@@ -627,6 +628,7 @@ function link(scope, element, attrs, controller) {
         _pendingEmbeddedWidgets = [];
         _pendingCursorX = e.clientX;
         _pendingCursorY = e.clientY;
+        _pendingContextmenuEvent = e;
         if (!e.ctrlKey) {
             return;
         }
@@ -878,7 +880,7 @@ function link(scope, element, attrs, controller) {
                         a.addEventListener('click', function (e) {
                             e.preventDefault();
                             closeSpOverlay(container);
-                            try { fn(s, e); } catch (_ex) { }
+                            try { fn(s, _pendingContextmenuEvent || e); } catch (_ex) { }
                         });
                     }(item[1], callbackScope));
                     li.appendChild(a);
