@@ -1,12 +1,12 @@
 <div ng-if="::data.hasAccess !== false">
   <div class="widget-editor-debug-menu" style="display:none;"></div>
 
-  <!-- Modal backdrop -->
-  <div ng-if="c.showPreferencesModal" class="modal-backdrop fade in" style="z-index:9998;"></div>
+  <!-- Preferences Dialog Container -->
+  <dialog class="we-prefs-dialog" ng-if="c.showPreferencesModal">
 
-  <!-- Preferences modal -->
-  <div ng-if="c.showPreferencesModal" class="modal fade in we-prefs-modal" style="display:block;z-index:9999;" tabindex="-1"
-    role="dialog" aria-labelledby="wePrefsModalLabel">
+    <!-- Preferences modal -->
+    <div class="modal fade in we-prefs-modal" style="display:block;z-index:9999;" tabindex="-1"
+      role="dialog" aria-labelledby="wePrefsModalLabel">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
 
@@ -74,6 +74,6 @@
         </div>
 
       </div>
-    </div>
   </div>
+  </dialog>
 </div>
