@@ -118,7 +118,8 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
 
         var widgetScopeId = gr.getValue('sys_scope');
         var currentAppId = gs.getCurrentApplicationId();
-        var canWrite = gr.canWrite();
+        var isServiceNow = gr.getValue('servicenow') == '1';
+        var canWrite = gr.canWrite() && !isServiceNow;
         var scopeMismatch = widgetScopeId !== currentAppId;
         var isDeprecated = this._isDeprecatedWidget(gr);
 
@@ -318,6 +319,12 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                     error: 'Widget not found',
                 });
             }
+            if (gr.getValue('servicenow') == '1') {
+                return this._answer({
+                    success: false,
+                    error: 'Write permission denied',
+                });
+            }
         }
 
         var allowed = this._getAllowedWidgetFields();
@@ -402,6 +409,13 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             return this._answer({
                 success: false,
                 error: 'Widget not found',
+            });
+        }
+
+        if (gr.getValue('servicenow') == '1') {
+            return this._answer({
+                success: false,
+                error: 'Write permission denied',
             });
         }
 
