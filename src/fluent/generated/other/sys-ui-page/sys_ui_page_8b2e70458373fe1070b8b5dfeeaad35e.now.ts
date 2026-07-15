@@ -1884,6 +1884,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
             </div>
 
 
+            <!-- Write permission error banner -->
+            <div class="we-alert-bar we-alert-bar--critical" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; hasWritePermissionError() &amp;&amp; !permissionAlertDismissed">
+                <span><strong>Error:</strong>&nbsp;Unable to save widget (write permission denied).</span>
+                <span class="close" ng-click="dismissPermissionAlert()" aria-label="Dismiss">×</span>
+            </div>
+
             <!-- No write access info bar -->
             <div class="we-alert-bar we-alert-bar--critical" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; !canWriteWidget &amp;&amp; !widgetSysPolicy">
                 <span ng-if="!widget.scope_mismatch">No write access to this widget.</span>
@@ -4650,6 +4656,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.snAlertDismissed = false;
                             $scope.volatilityAlertDismissed = false;
                             $scope.updateSetAlertDismissed = false;
+                            $scope.permissionAlertDismissed = false;
                             $scope.dismissSnAlert = function () {
                                 $scope.snAlertDismissed = true;
                             };
@@ -4658,6 +4665,18 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             };
                             $scope.dismissUpdateSetAlert = function () {
                                 $scope.updateSetAlertDismissed = true;
+                            };
+                            $scope.dismissPermissionAlert = function () {
+                                $scope.permissionAlertDismissed = true;
+                            };
+                            $scope.hasWritePermissionError = function () {
+                                if ($scope.saveError && ($scope.saveError.indexOf('permission') !== -1 || $scope.saveError.indexOf('write access') !== -1)) {
+                                    return true;
+                                }
+                                var hasPaneError = ($scope.visibleItems || []).some(function (item) {
+                                    return item.type === 'pane' && item.saveError && (item.saveError.indexOf('permission') !== -1 || item.saveError.indexOf('write access') !== -1);
+                                });
+                                return hasPaneError;
                             };
                             $scope.updateSetMismatch =
                                 !!data.widget.update_set_mismatch;
@@ -7139,6 +7158,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     if ($scope.isVersionView) {
                         return;
                     }
+                    $scope.permissionAlertDismissed = false;
                     if (pane.recordType === 'script_include') {
                         saveExtraPane(pane);
                         return;
@@ -7196,8 +7216,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 delete _selfSavingFields[pane.field];
                             }, 5000);
                         })
-                        .catch(function () {
+                        .catch(function (err) {
                             delete _selfSavingFields[pane.field];
+                            pane.saveError = 'Save failed';
+                            if (err && err.message) {
+                                pane.saveError += ' (' + err.message + ')';
+                            }
                         });
                 };
 
@@ -7276,6 +7300,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         return;
                     }
                     $scope.saveError = null;
+                    $scope.permissionAlertDismissed = false;
                     if (!$scope.widget.name || !$scope.widget.name.trim()) {
                         $scope.nameInvalid = true;
                         $scope.saveError = 'Widget name is required';
@@ -7459,10 +7484,14 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                             }, 5000);
                         })
-                        .catch(function () {
+                        .catch(function (err) {
                             _saveAllScriptFields.forEach(function (f) {
                                 delete _selfSavingFields[f];
                             });
+                            $scope.saveError = 'Save failed';
+                            if (err && err.message) {
+                                $scope.saveError += ' (' + err.message + ')';
+                            }
                         });
                 };
 

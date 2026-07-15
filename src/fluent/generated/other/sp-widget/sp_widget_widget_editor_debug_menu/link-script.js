@@ -28,15 +28,15 @@ function link(scope, element, attrs, controller) {
         const style = document.createElement('style');
         style.setAttribute('data-we-context-menu', '1');
         style.textContent = [
-            'body > [role="contentinfo"].dropdown .dropdown-menu { padding: 0; background: rgba(255,255,255,0.85); border-radius: 16px; box-shadow: 0 4px 30px rgba(0,0,0,0.1); backdrop-filter: blur(8px) brightness(150%); -webkit-backdrop-filter: blur(8px) brightness(150%); border: 1px solid rgba(255,255,255,0.5); }',
-            'body > [role="contentinfo"].dropdown .dropdown-menu .divider { margin: 0; }',
-            'body > [role="contentinfo"].dropdown .dropdown-menu > li { margin: 0 !important; }',
-            'body > [role="contentinfo"].dropdown .dropdown-menu > li > a { padding: .75em 1.25em; line-height: 1; }',
-            'body > [role="contentinfo"].dropdown .dropdown-menu > li > a:hover, body > [role="contentinfo"].dropdown .dropdown-menu > li > a:focus { background-color: rgba(0,0,0,0.05); }',
-            'body > [role="contentinfo"].dropdown .dropdown-menu { overscroll-behavior: none; scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent; }',
-            'body > [role="contentinfo"].dropdown .dropdown-menu::-webkit-scrollbar { width: 4px; }',
-            'body > [role="contentinfo"].dropdown .dropdown-menu::-webkit-scrollbar-track { background: transparent; }',
-            'body > [role="contentinfo"].dropdown .dropdown-menu::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 4px; }'
+            '[role="contentinfo"].dropdown .dropdown-menu { padding: 0; background: rgba(255,255,255,0.85); border-radius: 16px; box-shadow: 0 4px 30px rgba(0,0,0,0.1); backdrop-filter: blur(8px) brightness(150%); -webkit-backdrop-filter: blur(8px) brightness(150%); border: 1px solid rgba(255,255,255,0.5); }',
+            '[role="contentinfo"].dropdown .dropdown-menu .divider { margin: 0; }',
+            '[role="contentinfo"].dropdown .dropdown-menu > li { margin: 0 !important; }',
+            '[role="contentinfo"].dropdown .dropdown-menu > li > a { padding: .75em 1.25em; line-height: 1; }',
+            '[role="contentinfo"].dropdown .dropdown-menu > li > a:hover, [role="contentinfo"].dropdown .dropdown-menu > li > a:focus { background-color: rgba(0,0,0,0.05); }',
+            '[role="contentinfo"].dropdown .dropdown-menu { overscroll-behavior: none; scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent; }',
+            '[role="contentinfo"].dropdown .dropdown-menu::-webkit-scrollbar { width: 4px; }',
+            '[role="contentinfo"].dropdown .dropdown-menu::-webkit-scrollbar-track { background: transparent; }',
+            '[role="contentinfo"].dropdown .dropdown-menu::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 4px; }'
         ].join(' ');
         document.head.appendChild(style);
     }());
@@ -604,7 +604,7 @@ function link(scope, element, attrs, controller) {
      * stack up when the user opens the context menu multiple times.
      */
     function removeDebugOverlays() {
-        document.querySelectorAll('body > [role="contentinfo"].dropdown.clearfix').forEach((el) => {
+        document.querySelectorAll('body > [role="contentinfo"].dropdown.clearfix, dialog[open] [role="contentinfo"].dropdown.clearfix').forEach((el) => {
             el.parentNode && el.parentNode.removeChild(el);
         });
     }
@@ -638,7 +638,7 @@ function link(scope, element, attrs, controller) {
         if (_pendingWidgetSysId && _pendingWidgetEl && !_pendingWidgetEl.querySelector('span.context')) {
             e.preventDefault(); // suppress browser context menu; SP does this for normal widgets
             setTimeout(function () {
-                if (!document.querySelector('body > [role="contentinfo"].dropdown.clearfix')) {
+                if (!document.querySelector('body > [role="contentinfo"].dropdown.clearfix, dialog[open] [role="contentinfo"].dropdown.clearfix')) {
                     createStandaloneOverlay();
                 }
             }, 50);
@@ -665,7 +665,7 @@ function link(scope, element, attrs, controller) {
          * $evalAsync reveal=false has run.  Clearing it here ensures only the
          * freshly-opened overlay survives.
          */
-        document.querySelectorAll('body > [role="contentinfo"].dropdown').forEach((existing) => {
+        document.querySelectorAll('body > [role="contentinfo"].dropdown, dialog[open] [role="contentinfo"].dropdown').forEach((existing) => {
             if (!addedOverlays.includes(existing)) {
                 existing.remove();
             }
@@ -675,6 +675,10 @@ function link(scope, element, attrs, controller) {
             addedOverlays[i].parentNode && addedOverlays[i].parentNode.removeChild(addedOverlays[i]);
         }
         const targetOverlay = addedOverlays[addedOverlays.length - 1];
+        const activeDialog = document.querySelector('dialog[open]');
+        if (activeDialog) {
+            activeDialog.appendChild(targetOverlay);
+        }
         if (targetOverlay.showPopover) {
             targetOverlay.setAttribute('popover', 'manual');
             targetOverlay.style.background = 'none';
@@ -796,7 +800,12 @@ function link(scope, element, attrs, controller) {
             container.style.border = 'none';
             container.style.padding = '0';
         }
-        document.body.appendChild(container);
+        const activeDialog = document.querySelector('dialog[open]');
+        if (activeDialog) {
+            activeDialog.appendChild(container);
+        } else {
+            document.body.appendChild(container);
+        }
         if (container.showPopover) container.showPopover();
         injectEditorItems(container);
         injectWidgetDebugItems(ul, container);
