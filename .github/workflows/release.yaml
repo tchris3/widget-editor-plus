@@ -1,0 +1,152 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build and Pack
+        run: |
+          npm run build
+          npm run pack
+
+      - name: Create or Update Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -e
+          
+          # Detect platform without using non-standard YAML context objects
+          if [ "$SERVER_URL" != "https://github.com" ] || [ -n "$GITEA_SERVER_URL" ]; then
+            IS_GITEA=true
+            API_URL="${GITEA_SERVER_URL:-${SERVER_URL}}/api/v1"
+          else
+            IS_GITEA=false
+            API_URL="${GITHUB_API_URL:-https://api.github.com}"
+          fi
+
+          echo "Publishing release for ${TAG_NAME} on ${REPO} (Is Gitea: ${IS_GITEA}, API: ${API_URL})..."
+
+          if [ "$IS_GITEA" = true ]; then
+            export API_URL TOKEN REPO TAG_NAME
+            node -e '
+            const fs = require("fs");
+            const path = require("path");
+
+            const token = process.env.TOKEN;
+            const apiUrl = process.env.API_URL;
+            const repo = process.env.REPO;
+            const tag = process.env.TAG_NAME;
+
+            async function run() {
+              let releaseId;
+              const tagRes = await fetch(`${apiUrl}/repos/${repo}/releases/tags/${tag}`, {
+                headers: { "Authorization": `token ${token}` }
+              });
+
+              if (tagRes.ok) {
+                const existing = await tagRes.json();
+                releaseId = existing.id;
+                console.log(`Found existing release with ID: ${releaseId}`);
+              } else {
+                console.log("Creating new release...");
+                const createRes = await fetch(`${apiUrl}/repos/${repo}/releases`, {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `token ${token}`,
+                    "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify({
+                    tag_name: tag,
+                    name: `Release ${tag}`,
+                    body: `Automated release for ${tag}`,
+                    draft: false,
+                    prerelease: false
+                  })
+                });
+                if (!createRes.ok) {
+                  const errText = await createRes.text();
+                  throw new Error(`Failed to create release: ${createRes.status} ${errText}`);
+                }
+                const created = await createRes.json();
+                releaseId = created.id;
+                console.log(`Created release with ID: ${releaseId}`);
+              }
+
+              const assetsRes = await fetch(`${apiUrl}/repos/${repo}/releases/${releaseId}/assets`, {
+                headers: { "Authorization": `token ${token}` }
+              });
+              const existingAssets = assetsRes.ok ? await assetsRes.json() : [];
+
+              const targetDir = path.join(process.cwd(), "target");
+              const files = fs.readdirSync(targetDir);
+
+              for (const fileName of files) {
+                const filePath = path.join(targetDir, fileName);
+                if (!fs.statSync(filePath).isFile()) continue;
+
+                const existingAsset = Array.isArray(existingAssets) ? existingAssets.find(a => a.name === fileName) : null;
+                if (existingAsset) {
+                  console.log(`Deleting existing asset ${fileName} (ID: ${existingAsset.id}) before overwrite...`);
+                  await fetch(`${apiUrl}/repos/${repo}/releases/${releaseId}/assets/${existingAsset.id}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `token ${token}` }
+                  });
+                }
+
+                console.log(`Uploading asset ${fileName}...`);
+                const fileBuffer = fs.readFileSync(filePath);
+                const formData = new FormData();
+                const blob = new Blob([fileBuffer], { type: "application/octet-stream" });
+                formData.append("attachment", blob, fileName);
+
+                const uploadRes = await fetch(`${apiUrl}/repos/${repo}/releases/${releaseId}/assets?name=${encodeURIComponent(fileName)}`, {
+                  method: "POST",
+                  headers: { "Authorization": `token ${token}` },
+                  body: formData
+                });
+
+                if (!uploadRes.ok) {
+                  const uploadErr = await uploadRes.text();
+                  throw new Error(`Failed to upload ${fileName}: ${uploadRes.status} ${uploadErr}`);
+                }
+                console.log(`Successfully uploaded ${fileName}`);
+              }
+
+              console.log(`Release ${tag} assets processed successfully!`);
+            }
+
+            run().catch(err => {
+              console.error(err);
+              process.exit(1);
+            });
+            '
+          else
+            echo "Publishing release via GitHub CLI..."
+            if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+              echo "Updating existing GitHub release assets..."
+              gh release upload "${TAG_NAME}" target/* --clobber
+            else
+              echo "Creating new GitHub release..."
+              gh release create "${TAG_NAME}" target/* --title "Release ${TAG_NAME}" --notes "Automated release for ${TAG_NAME}"
+            fi
+          fi
+
+          echo "Release ${TAG_NAME} published successfully!"

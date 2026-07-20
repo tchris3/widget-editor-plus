@@ -9,6 +9,7 @@
   "scripts": {
     "build": "now-sdk build",
     "deploy": "now-sdk install",
+    "pack": "now-sdk pack && node scripts/generate-update-set-xml.js",
     "transform": "now-sdk transform",
     "types": "now-sdk dependencies"
   },
