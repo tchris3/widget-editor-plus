@@ -6,6 +6,23 @@ Widget Editor+ is an enhanced Service Portal widget editor for ServiceNow. It in
 
 ---
 
+## Table of Contents
+- [Features](#features)
+  - [Monaco Editor Engine](#monaco-editor-engine)
+  - [Editor & Collaboration Capabilities](#editor--collaboration-capabilities)
+  - [Right-Click Debug Menu](#right-click-debug-menu)
+- [Building and Installation](#building-and-installation)
+  - [Prerequisites](#prerequisites)
+  - [Build Process](#build-process)
+  - [Deployment / Installation](#deployment--installation)
+- [Configuration](#configuration)
+  - [System Properties](#system-properties)
+  - [UI Scripts](#ui-scripts)
+  - [User Preferences](#user-preferences)
+- [AI Disclosure](#ai-disclosure)
+
+---
+
 ## Features
 
 ### Monaco Editor Engine
