@@ -161,7 +161,7 @@ Record({
     /*
      * Set of class names for which we have registered a fully-typed d.ts.
      * Used to filter out SN's untyped overloads that would otherwise cause
-     * TypeScript to merge \`getCount(): any\` with our \`getCount(): number\`,
+     * TypeScript to merge \\\`getCount(): any\\\` with our \\\`getCount(): number\\\`,
      * producing spurious GlideElement suggestions for primitive-typed variables.
      */
     var _siProtectedClasses = {};
@@ -383,7 +383,7 @@ Record({
      * and returns them as TypeScript interface declaration strings.
      *
      * @param {string} script - Full content of a Script Include script field.
-     * @returns {string[]} Array of \`interface Name { ... }\` declaration strings.
+     * @returns {string[]} Array of \\\`interface Name { ... }\\\` declaration strings.
      */
     function parseSiTypedefs(script) {
         var interfaces = [];
@@ -436,7 +436,7 @@ Record({
     }
 
     /**
-     * Parses static property assignments of the form \`ClassName.PROP = value;\`
+     * Parses static property assignments of the form \\\`ClassName.PROP = value;\\\`
      * from a Script Include script, returning descriptors for use in DTS generation.
      * An optional JSDoc comment immediately above an assignment is captured as
      * documentation. Only assignments whose values resolve to a TypeScript literal
@@ -1112,11 +1112,11 @@ Record({
 
     /**
      * Returns true if the constructor in an assignRe match is chained
-     * (e.g. \`new Foo().method()\`), meaning the variable holds a return value,
+     * (e.g. \\\`new Foo().method()\\\`), meaning the variable holds a return value,
      * not the SI instance.
      *
      * @param {string} modelText   - Full model text.
-     * @param {Object} assignMatch - Result of \`assignRe.exec(modelText)\`.
+     * @param {Object} assignMatch - Result of \\\`assignRe.exec(modelText)\\\`.
      * @returns {boolean}
      */
     function _isChainedConstructor(modelText, assignMatch) {
@@ -1142,17 +1142,17 @@ Record({
     }
 
     /**
-     * Generates a \`declare class\` TypeScript declaration from parsed SI methods
+     * Generates a \\\`declare class\\\` TypeScript declaration from parsed SI methods
      * and registers it with Monaco's language service. Uses the same URI key as
-     * \`_fetchSIIntellisense\` so our JSDoc-derived types take precedence when the
+     * \\\`_fetchSIIntellisense\\\` so our JSDoc-derived types take precedence when the
      * user triggers completions (which runs after the initial scan-based fetch).
      * Any interface declarations from @typedef blocks are prepended so that
-     * custom return types are fully resolved rather than falling back to \`any\`.
+     * custom return types are fully resolved rather than falling back to \\\`any\\\`.
      *
      * @param {string}        className   - Script Include class name.
-     * @param {Array<Object>} methods     - Parsed method descriptors from \`parseSiMethods\`.
-     * @param {string[]}      [interfaces] - Interface declarations from \`parseSiTypedefs\`.
-     * @param {Array<Object>} [constants] - Static property descriptors from \`parseSiConstants\`.
+     * @param {Array<Object>} methods     - Parsed method descriptors from \\\`parseSiMethods\\\`.
+     * @param {string[]}      [interfaces] - Interface declarations from \\\`parseSiTypedefs\\\`.
+     * @param {Array<Object>} [constants] - Static property descriptors from \\\`parseSiConstants\\\`.
      */
     function _registerSiDts(className, methods, interfaces, constants) {
         if (
@@ -1170,7 +1170,7 @@ Record({
         var classMarker = 'declare class ' + className;
 
         /* One-time: strip SN's primitive-type augmentations from all registered libs.
-         * SN's global DTS declares \`interface Number extends GlideElement, number {}\`
+         * SN's global DTS declares \\\`interface Number extends GlideElement, number {}\\\`
          * (and the same for String/Boolean/Any), which makes GlideElement methods
          * appear on every number/string/boolean variable. These are registered by
          * SN's page code before our patch is installed, so we scan and re-register
@@ -1198,7 +1198,7 @@ Record({
         /* Reactive: clear any existing random-URI libs that contain an untyped
          * declaration for this class. SN's native addDeclarations() calls
          * addExtraLib() without a URI, landing the class at a random key.
-         * TypeScript would otherwise merge the two overloads (one returning \`any\`,
+         * TypeScript would otherwise merge the two overloads (one returning \\\`any\\\`,
          * one returning our typed value), surfacing spurious GlideElement suggestions
          * for variables whose return type we have correctly annotated. */
         ['javascriptDefaults', 'typescriptDefaults'].forEach(function (target) {
@@ -1276,7 +1276,7 @@ Record({
     /**
      * Detects when the cursor is inside a string argument of a Script Include
      * method call and returns context needed to drive table/field suggestions.
-     * Handles both \`varName.method('\` and \`new ClassName().method('\` shapes.
+     * Handles both \\\`varName.method('\\\` and \\\`new ClassName().method('\\\` shapes.
      *
      * @param {Object} model    - Monaco editor model.
      * @param {Object} position - Monaco position {lineNumber, column}.
@@ -2236,7 +2236,7 @@ Record({
         }
         var seen = {};
         var names = [];
-        // Only match identifiers that immediately follow the \`new\` keyword so
+        // Only match identifiers that immediately follow the \\\`new\\\` keyword so
         // that plain JS built-ins referenced elsewhere (String, Date, Set …)
         // are not mistakenly queued as Script Include candidates.
         var re = /\\bnew\\s+([A-Z][a-zA-Z0-9_]*)\\s*\\(/g;
@@ -2389,7 +2389,7 @@ Record({
                 endColumn: position.column,
             });
 
-            // Match inside var(-- while typing: \`var(--token\` or \`var(-- token\`
+            // Match inside var(-- while typing: \\\`var(--token\\\` or \\\`var(-- token\\\`
             var varCallMatch = textBefore.match(/var\\(\\s*--\\s*([\\w-]*)$/);
             if (!varCallMatch) {
                 return { suggestions: [] };
@@ -3600,8 +3600,8 @@ Record({
      * Registers a completion provider that suggests table or field names when
      * the cursor is inside a string argument of a Script Include method call,
      * based on the parameter name declared in the SI's JSDoc:
-     *   \`table\` / \`table_name\` / \`tableName\`  →  table name suggestions
-     *   \`field\` / \`field_name\` / \`fieldName\`  →  field suggestions for the
+     *   \\\`table\\\` / \\\`table_name\\\` / \\\`tableName\\\`  →  table name suggestions
+     *   \\\`field\\\` / \\\`field_name\\\` / \\\`fieldName\\\`  →  field suggestions for the
      *       table value passed to the sibling table parameter
      */
     function registerSiParamStringCompletions() {
