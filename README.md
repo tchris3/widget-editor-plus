@@ -2,6 +2,8 @@
 
 Widget Editor+ is an enhanced Service Portal widget editor for ServiceNow. It integrates Microsoft Monaco Editor and adds developer productivity tools including server-side and client-side IntelliSense, version comparison, per-field saving, and an improved right-click debug menu for Service Portal pages.
 
+> **Native Platform Dependencies Only**: Widget Editor+ uses no external third-party libraries. All capabilities rely exclusively on libraries and frameworks already natively available within the ServiceNow platform (such as Microsoft Monaco Editor, AngularJS, jQuery, Bootstrap, and standard ServiceNow platform APIs).
+
 ---
 
 ## Features
@@ -32,9 +34,9 @@ Widget Editor+ includes a Service Portal debug menu widget (`sp_widget_widget_ed
   - Open widgets directly in Widget Editor+, Service Portal Widget Editor, Form Modal, or Platform record view.
   - Quick links to Instance Options, Page in Designer, and Page in Page Editor.
   - Open backend database record for pages or widgets with `table` and `sys_id` parameters.
-- **Widget Diagnostics & Customization**:
+- **Widget Diagnostics & Customisation**:
   - Display widget load timing metrics.
-  - Highlight customized vs. out-of-box widget status.
+  - Highlight customised vs. out-of-box widget status.
   - Inline editing for container background properties.
   - Inspect and edit Widget Options Schema.
   - Scope toggles for embedded/nested widgets.
@@ -44,7 +46,7 @@ Widget Editor+ includes a Service Portal debug menu widget (`sp_widget_widget_ed
   - Expose `$scope` and `$rootScope` globally on the `window` object for debugging in the browser console.
 - **User Preferences**:
   - Preferences modal built using HTML5 `<dialog>` elements.
-  - Preferences persist locally in `localStorage` and synchronize across devices via user preference records (`monaco_plus.user_prefs`).
+  - Preferences persist locally in `localStorage` and synchronise across devices via user preference records (`monaco_plus.user_prefs`).
 
 ---
 
@@ -88,7 +90,7 @@ Widget Editor+ is configured through system properties (`sys_properties`) define
 | `monaco.plus.widget.related_list_exclusions` | *(empty)* | Comma-separated list of `sys_ui_related_list_entry.related_list` values to exclude from widget editor related lists. |
 
 ### UI Scripts
-Editor features and language services are modularized across several ServiceNow UI Scripts (`sys_ui_script`):
+Editor features and language services are modularised across several ServiceNow UI Scripts (`sys_ui_script`):
 
 | UI Script Name | Description |
 |---|---|
@@ -102,7 +104,7 @@ Editor features and language services are modularized across several ServiceNow 
 | `monaco_custom_code_actions` | Extension point for users to provide custom per-language code actions. |
 
 ### User Preferences
-Preferences configured via the Debug Menu modal are stored in `localStorage` under `we_debug_menu_prefs` and synchronized to the ServiceNow server as a `sys_user_preference` record named `monaco_plus.user_prefs`.
+Preferences configured via the Debug Menu modal are stored in `localStorage` under `we_debug_menu_prefs` and synchronised to the ServiceNow server as a `sys_user_preference` record named `monaco_plus.user_prefs`.
 
 ---
 
