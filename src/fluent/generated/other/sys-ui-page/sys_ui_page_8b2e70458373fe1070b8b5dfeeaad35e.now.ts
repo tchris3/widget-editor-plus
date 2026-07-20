@@ -2222,6 +2222,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-primary" ng-click="saveAll()" ng-if="!isVersionView" ng-disabled="!canWriteWidget"
                             ng-class="{'we-btn-save--error': hasLintErrors, 'we-btn-save--warn': !hasLintErrors &amp;&amp; hasLintWarnings}" style="padding-left: 1.25rem; padding-right: 1.25rem;margin-left: 0.3125rem; margin-right: 0.3125rem;">Save</button>
 
+                    <!-- Open in VS Code (SN Utils) -->
+                    <button id="vscode-btn" class="btn btn-default" ng-if="!isVersionView &amp;&amp; hasSnUtils &amp;&amp; userPrefs.showOpenInVsCode !== false" ng-click="editInVsCode()" title="Open in VS Code (SN ScriptSync)" aria-label="Open in VS Code" style="padding:0.125rem 0.625rem;line-height:1.2;margin-right:0.3125rem;">
+                        <svg viewBox="0 0 100 100" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: text-bottom;">
+                            <mask id="we-vsc-mask0" mask-type="alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M70.9119 99.3171C72.4869 99.9307 74.2828 99.8914 75.8725 99.1264L96.4608 89.2197C98.6242 88.1787 100 85.9892 100 83.5872V16.4133C100 14.0113 98.6243 11.8218 96.4609 10.7808L75.8725 0.873756C73.7862 -0.130129 71.3446 0.11576 69.5135 1.44695C69.252 1.63711 69.0028 1.84943 68.769 2.08341L29.3551 38.0415L12.1872 25.0096C10.589 23.7965 8.35363 23.8959 6.86933 25.2461L1.36303 30.2549C-0.452552 31.9064 -0.454633 34.7627 1.35853 36.417L16.2471 50.0001L1.35853 63.5832C-0.454633 65.2374 -0.452552 68.0938 1.36303 69.7453L6.86933 74.7541C8.35363 76.1043 10.589 76.2037 12.1872 74.9905L29.3551 61.9587L68.769 97.9167C69.3925 98.5406 70.1246 99.0104 70.9119 99.3171ZM75.0152 27.2989L45.1091 50.0001L75.0152 72.7012V27.2989Z" fill="white"/>
+                            </mask>
+                            <g mask="url(#we-vsc-mask0)">
+                                <path d="M96.4614 10.7962L75.8569 0.875542C73.4719 -0.272773 70.6217 0.211611 68.75 2.08333L1.29858 63.5832C-0.515693 65.2373 -0.513607 68.0937 1.30308 69.7452L6.81272 74.754C8.29793 76.1042 10.5347 76.2036 12.1338 74.9905L93.3609 13.3699C96.086 11.3026 100 13.2462 100 16.6667V16.4275C100 14.0265 98.6246 11.8378 96.4614 10.7962Z" fill="#0065A9"/>
+                                <path d="M96.4614 89.2038L75.8569 99.1245C73.4719 100.273 70.6217 99.7884 68.75 97.9167L1.29858 36.4169C-0.515693 34.7627 -0.513607 31.9063 1.30308 30.2548L6.81272 25.246C8.29793 23.8958 10.5347 23.7964 12.1338 25.0095L93.3609 86.6301C96.086 88.6974 100 86.7538 100 83.3334V83.5726C100 85.9735 98.6246 88.1622 96.4614 89.2038Z" fill="#007ACC"/>
+                                <path d="M75.8578 99.1263C73.4721 100.274 70.6219 99.7885 68.75 97.9166C71.0564 100.223 75 95.3278 75 95.3278V4.67213C75 1.41039 71.0564 -0.223106 68.75 2.08329C70.6219 0.211402 73.4721 -0.273666 75.8578 0.873633L96.4587 10.7807C98.6234 11.8217 100 14.0112 100 16.4132V83.5871C100 85.9891 98.6234 88.1786 96.4586 89.2196L75.8578 99.1263Z" fill="#1F9CF0"/>
+                            </g>
+                        </svg>
+                    </button>
+
                     <!-- Burger menu -->
                     <div class="we-dropdown" we-close-on-outside-click="openDropdown" close-key="'burger'">
                         <button class="btn btn-default" ng-click="toggleDropdown('burger')" title="Menu" aria-label="Menu" style="padding:0.125rem 0.625rem;line-height:1.2"><span class="icon-menu"></span></button>
@@ -2436,6 +2450,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     <span class="input-group-checkbox">
                                         <input type="checkbox" class="checkbox" id="chk-flash-on-open" ng-model="userPrefsEdit.flashOnEditorOpen" />
                                         <label class="checkbox-label" for="chk-flash-on-open" we-tooltip-title="Briefly highlights an editor pane when it is opened or brought into focus.">Show visual indication when editor is opened</label>
+                                    </span>
+                                </div>
+                                <div class="we-modal-option" ng-if="hasSnUtils">
+                                    <span class="input-group-checkbox">
+                                        <input type="checkbox" class="checkbox" id="chk-show-open-in-vscode" ng-model="userPrefsEdit.showOpenInVsCode" />
+                                        <label class="checkbox-label" for="chk-show-open-in-vscode" we-tooltip-title="Displays an 'Open in VS Code' button in the header bar when the SN Utils browser extension is installed.">Show "Open in VS Code" button (SN Utils)</label>
                                     </span>
                                 </div>
                             </div>
@@ -3940,6 +3960,168 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.loadError = null;
                 $scope.widget = {};
                 $scope.isVersionView = !!VERSION_ID;
+
+                ////////////////////////////////////////////////////////////
+                // SN Utils "Edit in VS Code" integration
+                ////////////////////////////////////////////////////////////
+                function checkSnUtilsInstalled() {
+                    var installed = (
+                        typeof window.snusettings !== 'undefined' ||
+                        typeof window.SNUtilsInject !== 'undefined' ||
+                        typeof window.snuPostRequestToScriptSync === 'function' ||
+                        !!document.querySelector('snu-presence') ||
+                        !!document.querySelector('script[src*="snutils"], script[src*="lfabkiipmidkmhplochgpbaeekjjfbch"]')
+                    );
+                    if (!installed) {
+                        return false;
+                    }
+                    // Only hide if snusettings has been injected AND vsscriptsync is explicitly false
+                    if (typeof window.snusettings !== 'undefined' && window.snusettings && window.snusettings.vsscriptsync === false) {
+                        return false;
+                    }
+                    return true;
+                }
+
+                function updateSnUtilsState() {
+                    var active = checkSnUtilsInstalled();
+                    if (active !== $scope.hasSnUtils) {
+                        $scope.$applyAsync(function () {
+                            $scope.hasSnUtils = active;
+                        });
+                    }
+                    return active;
+                }
+
+                $scope.hasSnUtils = checkSnUtilsInstalled();
+
+                // Hook into snuSettingsAdded if SN Utils injects settings after page load
+                var origSnuSettingsAdded = window.snuSettingsAdded;
+                window.snuSettingsAdded = function () {
+                    if (typeof origSnuSettingsAdded === 'function') {
+                        try { origSnuSettingsAdded.apply(this, arguments); } catch (e) {}
+                    }
+                    updateSnUtilsState();
+                };
+
+                var _snuObserver = new MutationObserver(function () {
+                    updateSnUtilsState();
+                });
+                _snuObserver.observe(document.documentElement, {
+                    childList: true,
+                    subtree: true,
+                });
+
+                // Delayed re-evaluations to account for async snusettings injection after page load
+                $timeout(updateSnUtilsState, 500);
+                $timeout(updateSnUtilsState, 1500);
+                $timeout(updateSnUtilsState, 3000);
+
+                $timeout(function () {
+                    updateSnUtilsState();
+                    _snuObserver.disconnect();
+                }, 10000);
+
+                $scope.c = $scope.c || {};
+                $scope.$watch('widget', function (w) {
+                    if (!w) return;
+                    $scope.c.readOnly = !$scope.canWriteWidget;
+                    $scope.data = $scope.data || {};
+                    $scope.data.title = w.name || '';
+                    $scope.data.sys_id = w.sys_id || '';
+                    var scopeVal = typeof w.sys_scope === 'object' && w.sys_scope ? w.sys_scope.value || 'global' : (w.sys_scope || 'global');
+                    var scopeDisp = typeof w.sys_scope === 'object' && w.sys_scope ? w.sys_scope.displayValue || scopeVal : scopeVal;
+                    $scope.data.f = {
+                        _fields: {
+                            name: { value: w.name || '', displayValue: w.name || '' },
+                            id: { value: w.id || '', displayValue: w.id || '' },
+                            template: { value: w.template || '' },
+                            css: { value: w.css || '' },
+                            client_script: { value: w.client_script || '' },
+                            script: { value: w.script || '' },
+                            link: { value: w.link || '' },
+                            option_schema: { value: w.option_schema || '' },
+                            demo_data: { value: w.demo_data || '' },
+                            sys_scope: { value: scopeVal, displayValue: scopeDisp },
+                            data_table: { value: 'sp_widget', displayValue: 'Widget', choices: [] },
+                        },
+                    };
+                }, true);
+
+                $scope.editInVsCode = function () {
+                    if (!$scope.widget || !$scope.widget.sys_id) return;
+
+                    if (!$scope.canWriteWidget || $scope.widget.read_only) {
+                        alert(
+                            'This is a read-only widget and cannot be opened in VS Code. Please clone the widget first.'
+                        );
+                        return;
+                    }
+
+                    var g_ck_val =
+                        window.g_ck ||
+                        (typeof g_ck !== 'undefined' ? g_ck : '');
+                    var instanceName = window.location.host.split('.')[0];
+                    var instanceUrl = window.location.origin;
+
+                    var instance = {
+                        name: instanceName,
+                        url: instanceUrl,
+                        g_ck: g_ck_val,
+                    };
+
+                    var scopeVal = typeof $scope.widget.sys_scope === 'object' && $scope.widget.sys_scope ? $scope.widget.sys_scope.value || 'global' : ($scope.widget.sys_scope || 'global');
+                    var scopeDisp = typeof $scope.widget.sys_scope === 'object' && $scope.widget.sys_scope ? $scope.widget.sys_scope.displayValue || scopeVal : scopeVal;
+
+                    var fields = {
+                        name: { value: $scope.widget.name || '', displayValue: $scope.widget.name || '' },
+                        id: { value: $scope.widget.id || '', displayValue: $scope.widget.id || '' },
+                        template: { value: $scope.widget.template || '' },
+                        css: { value: $scope.widget.css || '' },
+                        client_script: { value: $scope.widget.client_script || '' },
+                        script: { value: $scope.widget.script || '' },
+                        link: { value: $scope.widget.link || '' },
+                        option_schema: { value: $scope.widget.option_schema || '' },
+                        demo_data: { value: $scope.widget.demo_data || '' },
+                        sys_scope: { value: scopeVal, displayValue: scopeDisp },
+                        data_table: { value: 'sp_widget', displayValue: 'Widget', choices: [] },
+                    };
+
+                    var data = {
+                        action: 'saveWidget',
+                        tableName: 'sp_widget',
+                        name: $scope.widget.name || '',
+                        sys_id: $scope.widget.sys_id,
+                        instance: instance,
+                        widget: fields,
+                    };
+
+                    // Trigger SN Utils ScriptSync once (prefer extension functions if exposed, otherwise dispatch custom event)
+                    if (typeof window.snuScriptSyncPostData === 'function') {
+                        if (typeof window.snuScriptSync === 'function') {
+                            try { window.snuScriptSync(); } catch (e) {}
+                        }
+                        try { window.snuScriptSyncPostData(data); } catch (e) {}
+                    } else if (window.SNUtilsInject && window.SNUtilsInject.IDEBridge && typeof window.SNUtilsInject.IDEBridge.scriptSyncPostData === 'function') {
+                        if (typeof window.SNUtilsInject.IDEBridge.scriptSync === 'function') {
+                            try { window.SNUtilsInject.IDEBridge.scriptSync(); } catch (e) {}
+                        }
+                        try { window.SNUtilsInject.IDEBridge.scriptSyncPostData(data); } catch (e) {}
+                    } else {
+                        try {
+                            var evtSync = new CustomEvent('snutils-event', {
+                                detail: { event: 'scriptsync', command: '' },
+                            });
+                            (window.top || window).document.dispatchEvent(evtSync);
+                        } catch (e) {}
+
+                        try {
+                            var evtPost = new CustomEvent('snutils-event', {
+                                detail: { event: 'scriptsyncpostdata', command: data },
+                            });
+                            (window.top || window).document.dispatchEvent(evtPost);
+                        } catch (e) {}
+                    }
+                };
                 $scope.versionInfo = {};
                 $scope.versions = [];
                 $scope.templates = [];
@@ -4094,6 +4276,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     tabSize: 4,
                     ctrlSSaveActiveOnly: true,
                     flashOnEditorOpen: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+                    showOpenInVsCode: true,
                     // Snapshot of the last-saved editor order and visibility.
                     // Used by the Preferences dialog so it reflects saved state,
                     // not any temporary live changes the user has made.
@@ -4453,6 +4636,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         'insertSpaceBeforeFuncParen',
                         'linkedEditing',
                         'flashOnEditorOpen',
+                        'showOpenInVsCode',
                     ].forEach(function (k) {
                         if (p.hasOwnProperty(k)) {
                             $scope.userPrefs[k] = !!p[k];
@@ -8137,6 +8321,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.userPrefs.ctrlSSaveActiveOnly;
                     prefs.flashOnEditorOpen =
                         $scope.userPrefs.flashOnEditorOpen;
+                    prefs.showOpenInVsCode =
+                        $scope.userPrefs.showOpenInVsCode;
                     prefs.order = $scope.coreEditorDefs.map(function (d) {
                         return d.key;
                     });
@@ -9916,6 +10102,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.userPrefs.ctrlSSaveActiveOnly,
                         flashOnEditorOpen:
                             $scope.userPrefs.flashOnEditorOpen,
+                        showOpenInVsCode:
+                            $scope.userPrefs.showOpenInVsCode !== false,
                         availableFonts: _getAvailableMonospaceFonts(),
                         googleFonts: _GOOGLE_FONTS,
                     };
@@ -9982,6 +10170,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         !!$scope.userPrefsEdit.ctrlSSaveActiveOnly;
                     $scope.userPrefs.flashOnEditorOpen =
                         !!$scope.userPrefsEdit.flashOnEditorOpen;
+                    $scope.userPrefs.showOpenInVsCode =
+                        !!$scope.userPrefsEdit.showOpenInVsCode;
                     var ts = parseInt($scope.userPrefsEdit.tabSize, 10);
                     if (ts >= 1 && ts <= 8) {
                         $scope.userPrefs.tabSize = ts;
@@ -10102,6 +10292,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.userPrefsEdit.tabSize = 4;
                     $scope.userPrefsEdit.ctrlSSaveActiveOnly = true;
                     $scope.userPrefsEdit.flashOnEditorOpen = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    $scope.userPrefsEdit.showOpenInVsCode = true;
                 };
 
                 /* Trigger the modal leave animation, then invoke the close callback after it
