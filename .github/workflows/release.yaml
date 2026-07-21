@@ -75,7 +75,7 @@ jobs:
                   },
                   body: JSON.stringify({
                     tag_name: tag,
-                    name: `Release ${tag}`,
+                    name: tag,
                     body: `Automated release for ${tag}`,
                     draft: false,
                     prerelease: false
@@ -145,7 +145,7 @@ jobs:
               gh release upload "${TAG_NAME}" target/* --clobber
             else
               echo "Creating new GitHub release..."
-              gh release create "${TAG_NAME}" target/* --title "Release ${TAG_NAME}" --notes "Automated release for ${TAG_NAME}"
+              gh release create "${TAG_NAME}" target/* --title "${TAG_NAME}" --notes "Automated release for ${TAG_NAME}"
             fi
           fi
 
