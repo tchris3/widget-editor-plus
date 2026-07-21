@@ -19,9 +19,9 @@ Registers as window.MONACO_CODE_ACTIONS.`,
     // JavaScript — "Add JSDoc comment"
     //   Offers to insert a JSDoc block above any function declaration near the cursor.
     //   For client-controller and Angular-provider editors (marked via markAngular),
-    //   parameters that begin with '$' are automatically typed against the AngularJS
-    //   interfaces declared in monaco_language_client:
-    //     $scope → ng.IScope,  $http → ng.IHttpService,  $timeout → ng.ITimeoutService, …
+    //   parameters matching known AngularJS / ServiceNow DI tokens are automatically
+    //   typed against the interfaces declared in monaco_language_client:
+    //     $scope → angular.IScope,  spUtil → SpUtil,  snRecordWatcher → SnRecordWatcher, …
     //
     // SCSS — "Convert Npx → Nrem"
     //   Offers per-match px → rem conversion on the current line.
@@ -33,8 +33,11 @@ Registers as window.MONACO_CODE_ACTIONS.`,
     //   window.MONACO_CODE_ACTIONS.markAngular(modelId)       — call per Angular-aware JS editor
     // -----------------------------------------------------------------------------
 
-    // AngularJS DI token → TypeScript interface name.
+    // AngularJS / ServiceNow DI token → TypeScript type name.
     // Only applied in editors marked as Angular-aware (client_script / provider panes).
+    // Kept in sync with the declarations in monaco_language_client; when that
+    // script is loaded, its MONACO_LANGUAGE_CLIENT_DI.types map takes precedence
+    // (single source of truth — see _diTypes()).
     var ANGULAR_TYPES = {
         $scope: 'angular.IScope',
         $rootScope: 'angular.IRootScopeService',
@@ -46,7 +49,7 @@ Registers as window.MONACO_CODE_ACTIONS.`,
         $filter: 'angular.IFilterService',
         $log: 'angular.ILogService',
         $window: 'Window',
-        $document: 'Document',
+        $document: 'JQLite',
         $element: 'JQLite',
         $attrs: 'angular.IAttributes',
         $sce: 'angular.ISCEService',
@@ -59,11 +62,28 @@ Registers as window.MONACO_CODE_ACTIONS.`,
         $parse: 'angular.IParseService',
         $templateCache: 'angular.ITemplateCacheService',
         $exceptionHandler: 'angular.IExceptionHandlerService',
+        $uibModal: 'SpModal',
+        spUtil: 'SpUtil',
+        spModal: 'SpModal',
+        snRecordWatcher: 'SnRecordWatcher',
+        cabrillo: 'Cabrillo',
+        i18n: 'I18n',
+        spAriaUtil: 'SpAriaUtil',
+        spNavServiceClient: 'SpNavServiceClient',
     };
 
-    // Matches @param with no type or an empty {}, followed by a $-prefixed name.
-    // Does NOT match when a non-empty type is already present.
-    var RE_UNTYPED_PARAM = /@param\\s+(?:\\{\\s*\\}\\s+)?(\\$\\w+)/;
+    /** DI token → type map, preferring the one shipped with the client DTS. */
+    function _diTypes() {
+        return (
+            (window.MONACO_LANGUAGE_CLIENT_DI &&
+                window.MONACO_LANGUAGE_CLIENT_DI.types) ||
+            ANGULAR_TYPES
+        );
+    }
+
+    // Matches @param with no type, an empty {}, or a placeholder {*} / {any},
+    // followed by the parameter name. Does NOT match a real type annotation.
+    var RE_UNTYPED_PARAM = /@param\\s+(?:\\{\\s*(?:\\*|any)?\\s*\\}\\s+)?([\\w$]+)/;
     var RE_NG_TYPE_PARAM = /@param\\s+\\{\\s*ng\\.([\\w$.]+)\\s*\\}(\\s+\\$\\w+)/;
 
     /**
@@ -79,7 +99,7 @@ Registers as window.MONACO_CODE_ACTIONS.`,
                 continue;
             }
             var name = m[1];
-            var type = ANGULAR_TYPES[name];
+            var type = _diTypes()[name];
             if (!type) {
                 continue;
             }
@@ -415,11 +435,9 @@ Registers as window.MONACO_CODE_ACTIONS.`,
 
         if (params.length > 0) {
             lines.push(indent + ' *');
+            var types = isAngular ? _diTypes() : {};
             params.forEach(function (p) {
-                var type = null;
-                if (isAngular && p.charAt(0) === '$') {
-                    type = ANGULAR_TYPES[p] || 'any';
-                }
+                var type = types[p] || null;
                 if (type) {
                     lines.push(indent + ' * @param {' + type + '} ' + p);
                 } else {
