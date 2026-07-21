@@ -459,9 +459,19 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             });
         }
 
+        var widgetGr = new GlideRecordSecure('sp_widget');
+        if (!widgetGr.get(sysId)) {
+            return this._answer({
+                success: false,
+                error: 'Widget not found',
+            });
+        }
+        // version name uses sys_class_name, e.g. sp_header_footer, not always sp_widget
+        var className = widgetGr.getValue('sys_class_name') || 'sp_widget';
+
         var versions = [];
         var gr = new GlideRecordSecure('sys_update_version');
-        gr.addQuery('name', 'sp_widget_' + sysId);
+        gr.addQuery('name', className + '_' + sysId);
         gr.addExtraField('source.name');
         gr.addExtraField('source.state');
         gr.orderByDesc('sys_created_on');
