@@ -14,6 +14,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         'client_script',
         'script',
         'link',
+        'static',
     ],
 
     ADDITIONAL_WIDGET_FIELDS_PROPERTY: 'monaco.plus.widget.fields',
@@ -122,6 +123,8 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         var canWrite = gr.canWrite() && !isServiceNow;
         var scopeMismatch = widgetScopeId !== currentAppId;
         var isDeprecated = this._isDeprecatedWidget(gr);
+        var sysClassName = gr.getValue('sys_class_name') || 'sp_widget';
+        var isHeaderFooter = sysClassName === 'sp_header_footer';
 
         // sys_policy + servicenow
         var sysPolicy = gr.getValue('sys_policy') || '';
@@ -219,6 +222,15 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             update_set_mismatch: updateSetMismatch,
             widget_update_set_id: widgetUpdateSetId,
             widget_update_set_name: widgetUpdateSetName,
+            sys_class_name: sysClassName,
+            is_header_footer: isHeaderFooter,
+            'static': isHeaderFooter && gr.getValue('static') == '1',
+            option_schema_has_value: this._hasProperJsonObjectValue(
+                gr.getValue('option_schema')
+            ),
+            demo_data_has_value: this._hasProperJsonObjectValue(
+                gr.getValue('demo_data')
+            ),
         };
 
         for (var ai = 0; ai < additionalDefs.length; ai++) {
@@ -3053,8 +3065,94 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     },
 
     ////////////////////////////////////////////////////////////
+    // Demo Data
+    ////////////////////////////////////////////////////////////
+
+    /**
+     * Returns the demo_data JSON field for a widget.
+     * Accepts `sys_id` (sp_widget sys_id).
+     * @returns {{success: boolean, demo_data: string}} Return value.
+     */
+    getDemoData: function () {
+        var sysId = this.getParameter('sys_id');
+        if (!sysId) {
+            return this._answer({
+                success: false,
+                error: 'No sys_id provided',
+            });
+        }
+        var gr = new GlideRecordSecure('sp_widget');
+        if (!gr.get(sysId)) {
+            return this._answer({
+                success: false,
+                error: 'Widget not found',
+            });
+        }
+        return this._answer({
+            success: true,
+            demo_data: gr.getValue('demo_data') || '',
+        });
+    },
+
+    /**
+     * Saves the demo_data field on an sp_widget record.
+     * Accepts `sys_id` (sp_widget sys_id) and `value` (new demo_data value, JSON string).
+     * @returns {{success: boolean}} Return value.
+     */
+    saveDemoData: function () {
+        var sysId = this.getParameter('sys_id');
+        var value = this.getParameter('value');
+        if (!sysId) {
+            return this._answer({
+                success: false,
+                error: 'No sys_id provided',
+            });
+        }
+        var gr = new GlideRecordSecure('sp_widget');
+        if (!gr.get(sysId)) {
+            return this._answer({
+                success: false,
+                error: 'Widget not found',
+            });
+        }
+        gr.setValue('demo_data', value);
+        if (!gr.update()) {
+            return this._answer({
+                success: false,
+                error: 'Save failed. You may not have write access.',
+            });
+        }
+        return this._answer({
+            success: true,
+        });
+    },
+
+    ////////////////////////////////////////////////////////////
     // Private helpers
     ////////////////////////////////////////////////////////////
+
+    /**
+     * True when a raw JSON string parses to an object with at least one property.
+     * Used to decide whether option_schema/demo_data have a "proper" value.
+     * @param {string} raw - Raw field value (JSON string).
+     * @returns {boolean} True if the value is a non-empty object.
+     */
+    _hasProperJsonObjectValue: function (raw) {
+        if (!raw) {
+            return false;
+        }
+        try {
+            var parsed = JSON.parse(raw);
+            return (
+                !!parsed &&
+                typeof parsed === 'object' &&
+                !Array.isArray(parsed) &&
+                Object.keys(parsed).length > 0
+            );
+        } catch (e) {
+            return false;
+        }
+    },
 
     /**
      * Returns additional sp_widget field names configured in the system property
@@ -3198,7 +3296,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
      * @returns {boolean} True if the field type is boolean.
      */
     _isBooleanWidgetField: function (fieldName) {
-        if (fieldName === 'public') {
+        if (fieldName === 'public' || fieldName === 'static') {
             return true;
         }
         var defs = this._getAdditionalWidgetFieldDefs();

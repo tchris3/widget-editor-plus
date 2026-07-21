@@ -883,6 +883,17 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-pane-unsaved-dot::before { content: '\\25CF'; }
 
+        .we-status-dot {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 0.3125rem;
+            flex-shrink: 0;
+            line-height: 1;
+            font-size: 0.625rem;
+        }
+        .we-status-dot::before { content: '\\25CF'; }
+        .we-status-dot--green { color: rgb(var(--now-alert--success--color, var(--now-color_alert--low-3))); }
+
         .we-pane-id-input {
             width: 10rem;
         }
@@ -1979,6 +1990,19 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 </div>
                                 <input type="text" class="form-control" id="widget-controller-as" ng-model="widget.controller_as" ng-readonly="isVersionView || !canWriteWidget" />
                             </div>
+                            <div class="we-field" ng-if="widget.is_header_footer">
+                                <span class="input-group-checkbox">
+                                    <input type="checkbox" class="checkbox" id="widget-static" ng-model="widget.static" ng-disabled="isVersionView || !canWriteWidget" />
+                                    <label class="checkbox-label" for="widget-static">
+                                        <span style="display: flex; min-height: 0.825rem; gap: 0.25rem; align-items: center">
+                                            <span>Static</span>
+                                            <span style="display: inline-block; width: 0.5rem;">
+                                                <span class="we-pane-unsaved-dot" ng-if="!isVersionView &amp;&amp; canWriteWidget &amp;&amp; headerDirty.static" title="Unsaved changes"></span>
+                                            </span>
+                                        </span>
+                                    </label>
+                                </span>
+                            </div>
                             <div class="we-field" ng-repeat="field in additionalWidgetFields track by field.name">
                                 <div class="we-field-label-row" ng-if="field.type !== 'boolean'">
                                     <label ng-attr-for="widget-extra-{{field.name}}">{{field.label}}</label>
@@ -2252,7 +2276,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <div class="we-dropdown-item" ng-click="newWidget()">New widget</div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="cloneWidget()">Clone widget</div>
                             <div class="we-dropdown-divider" ng-if="!isNewWidget"></div>
-                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="openOptionSchemaModal()">Edit option schema</div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-click="openOptionSchemaModal()">Edit option schema <span class="we-status-dot we-status-dot--green" ng-if="widget.option_schema_has_value" title="Has an option schema defined"></span></div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-click="openDemoDataModal()">Edit demo data <span class="we-status-dot we-status-dot--green" ng-if="widget.demo_data_has_value" title="Has demo data defined"></span></div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="openXmlModal()">Show XML</div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="copyWidgetUrl()">Copy widget URL</div>
                             <div class="we-dropdown-divider" ng-if="!isNewWidget"></div>
@@ -2705,6 +2730,34 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <span ng-if="!optionSchemaSaveError &amp;&amp; optionSchemaJsonInvalid"><i class="icon-alert-triangle"></i>&nbsp;Invalid JSON</span>
                         </span>
                         <button class="btn btn-primary" ng-if="canWriteWidget" ng-click="saveOptionSchemaModal()" ng-disabled="optionSchemaSaving || optionSchemaJsonInvalid" ng-bind="optionSchemaSaving ? 'Saving\\u2026' : 'Save'"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo Data Modal -->
+        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showDemoDataModal" ng-click="closeDemoDataModal()">
+            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:45rem;max-width:95vw">
+                <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
+                    <span>Demo data</span>
+                    <span class="close" ng-click="closeDemoDataModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                </div>
+                <div class="we-modal-body" style="padding:0;gap:0">
+                    <div ng-if="demoDataLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
+                        <we-spinner></we-spinner>
+                        Loading…
+                    </div>
+                    <div ng-if="demoDataLoadError" style="padding:1rem;color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)))" ng-bind="demoDataLoadError"></div>
+                    <div ng-if="!demoDataLoading &amp;&amp; !demoDataLoadError" id="demo-data-editor" class="we-option-schema-editor"></div>
+                </div>
+                <div class="we-modal-footer">
+                    <button class="btn btn-default" ng-click="closeDemoDataModal()" style="margin-left:auto">Cancel</button>
+                    <div>
+                        <span style="color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3))); font-size:var(--now-font-size--sm);align-self:center">
+                            <span ng-if="demoDataSaveError" ng-bind="demoDataSaveError"></span>
+                            <span ng-if="!demoDataSaveError &amp;&amp; demoDataJsonInvalid"><i class="icon-alert-triangle"></i>&nbsp;Invalid JSON</span>
+                        </span>
+                        <button class="btn btn-primary" ng-if="canWriteWidget" ng-click="saveDemoDataModal()" ng-disabled="demoDataSaving || demoDataJsonInvalid" ng-bind="demoDataSaving ? 'Saving\\u2026' : 'Save'"></button>
                     </div>
                 </div>
             </div>
@@ -3918,6 +3971,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.headerDirty.is_public =
                         !!v !== originalHeader.is_public;
                 });
+                $scope.$watch('widget.static', function (v) {
+                    $scope.headerDirty.static =
+                        !!v !== originalHeader.static;
+                });
                 $scope.$watchCollection('rolesList', function (v) {
                     $scope.headerDirty.roles =
                         (v || []).join(',') !== originalHeader.roles;
@@ -4188,6 +4245,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     controller_as: false,
                     is_public: false,
                     roles: false,
+                    static: false,
                 };
                 var originalHeader = {
                     name: '',
@@ -4196,6 +4254,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     controller_as: 'c',
                     is_public: false,
                     roles: '',
+                    static: false,
                 };
 
                 // Core editor definitions (order = default pane order)
@@ -4300,6 +4359,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.optionSchemaSaveError = null;
                 $scope.optionSchemaSaving = false;
                 $scope.optionSchemaJsonInvalid = false;
+                $scope.showDemoDataModal = false;
+                $scope.demoDataLoading = false;
+                $scope.demoDataLoadError = null;
+                $scope.demoDataSaveError = null;
+                $scope.demoDataSaving = false;
+                $scope.demoDataJsonInvalid = false;
 
                 // Persistent pane state map (key → pane object). Prevents state loss on rebuild.
                 var paneMap = {};
@@ -4309,6 +4374,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 var monacoEditors = {};
                 // Option schema modal editor instance
                 var _optionSchemaEditor = null;
+                // Demo data modal editor instance
+                var _demoDataEditor = null;
                 // XML modal editor instance
                 var _xmlEditor = null;
                 // Original values loaded from server (used for dirty-checking)
@@ -4384,6 +4451,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         controller_as: $scope.widget.controller_as || 'c',
                         public: $scope.widget.is_public,
                         roles: $scope.widget.roles,
+                        static: !!$scope.widget.static,
                         template: $scope.widget.template || '',
                         css: $scope.widget.css || '',
                         client_script: $scope.widget.client_script || '',
@@ -4715,6 +4783,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 script: '',
                                 link: '',
                                 es12: true,
+                                is_header_footer: false,
+                                static: false,
+                                option_schema_has_value: false,
+                                demo_data_has_value: false,
                             };
                             $scope.es12RecordExists = false;
                             $scope.rolesList = [];
@@ -4725,6 +4797,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 controller_as: 'c',
                                 is_public: false,
                                 roles: '',
+                                static: false,
                             };
                             originalValues = {
                                 template: '',
@@ -4891,6 +4964,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 controller_as: data.widget.controller_as || 'c',
                                 is_public: !!data.widget.is_public,
                                 roles: parseRoles(data.widget.roles).join(','),
+                                static: !!data.widget.static,
                             };
                             _captureAdditionalHeaderValues(data.widget);
                             loadSnTypeDefinitions(
@@ -7519,6 +7593,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         controller_as: $scope.widget.controller_as || 'c',
                         public: $scope.widget.is_public,
                         roles: $scope.widget.roles,
+                        static: !!$scope.widget.static,
                         template: $scope.widget.template || '',
                         css: $scope.widget.css || '',
                         client_script: $scope.widget.client_script || '',
@@ -7608,6 +7683,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     $scope.widget.controller_as || 'c',
                                 public: !!$scope.widget.is_public,
                                 roles: $scope.rolesList.join(','),
+                                static: !!$scope.widget.static,
                             };
                             _captureAdditionalHeaderValues($scope.widget);
                             $scope.headerDirty = {
@@ -7617,6 +7693,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 controller_as: false,
                                 is_public: false,
                                 roles: false,
+                                static: false,
                             };
                             ($scope.additionalWidgetFields || []).forEach(
                                 function (fieldDef) {
@@ -9624,6 +9701,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.closeOptionSchemaModal();
                         return true;
                     }
+                    if ($scope.showDemoDataModal) {
+                        $scope.closeDemoDataModal();
+                        return true;
+                    }
                     if ($scope.showLinkProviderModal) {
                         $scope.cancelLinkProviderModal();
                         return true;
@@ -9870,6 +9951,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         !!$scope.headerDirty.controller_as ||
                         !!$scope.headerDirty.is_public ||
                         !!$scope.headerDirty.roles ||
+                        !!$scope.headerDirty.static ||
                         ($scope.additionalWidgetFields || []).some(function (
                             fieldDef
                         ) {
@@ -10456,9 +10538,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                     $scope.optionSchemaSaving = true;
                     $scope.optionSchemaSaveError = null;
+                    var newValue = _optionSchemaEditor.getValue();
                     ajax('saveOptionSchema', {
                         sys_id: $scope.widget.sys_id,
-                        value: _optionSchemaEditor.getValue(),
+                        value: newValue,
                     }).then(function (data) {
                         $scope.optionSchemaSaving = false;
                         if (!data.success) {
@@ -10466,6 +10549,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 data.error || 'Save failed';
                             return;
                         }
+                        $scope.widget.option_schema_has_value =
+                            _hasProperJsonObjectValue(newValue);
                         $scope.closeOptionSchemaModal();
                     });
                 };
@@ -10478,6 +10563,166 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 _optionSchemaEditor.dispose();
                             } catch (e) {}
                             _optionSchemaEditor = null;
+                        }
+                    });
+                };
+
+                // True when a raw JSON string parses to an object with at least one property.
+                function _hasProperJsonObjectValue(raw) {
+                    if (!raw || !raw.trim()) {
+                        return false;
+                    }
+                    try {
+                        var parsed = JSON.parse(raw);
+                        return (
+                            !!parsed &&
+                            typeof parsed === 'object' &&
+                            !Array.isArray(parsed) &&
+                            Object.keys(parsed).length > 0
+                        );
+                    } catch (e) {
+                        return false;
+                    }
+                }
+
+                ////////////////////////////////////////////////////////////
+                // Demo Data modal
+                ////////////////////////////////////////////////////////////
+
+                $scope.openDemoDataModal = function () {
+                    $scope.openDropdown = null;
+                    $scope.demoDataLoading = true;
+                    $scope.demoDataLoadError = null;
+                    $scope.demoDataSaveError = null;
+                    $scope.demoDataSaving = false;
+                    $scope.showDemoDataModal = true;
+
+                    ajax('getDemoData', {
+                        sys_id: $scope.widget.sys_id,
+                    }).then(function (data) {
+                        if (!data.success) {
+                            $scope.demoDataLoading = false;
+                            $scope.demoDataLoadError =
+                                data.error || 'Failed to load demo data';
+                            return;
+                        }
+                        $scope.demoDataLoading = false;
+                        $timeout(function () {
+                            var container = document.getElementById(
+                                'demo-data-editor'
+                            );
+                            if (!container) {
+                                return;
+                            }
+                            if (_demoDataEditor) {
+                                try {
+                                    _demoDataEditor.dispose();
+                                } catch (e) {}
+                                _demoDataEditor = null;
+                            }
+                            var raw = data.demo_data || '';
+                            var value = raw;
+                            try {
+                                if (value.trim())
+                                    value = JSON.stringify(
+                                        JSON.parse(value),
+                                        null,
+                                        4
+                                    );
+                            } catch (e) {}
+                            _ensureMonacoThemes();
+                            _ensureWeJsonLanguage();
+                            function _create() {
+                                $scope.demoDataJsonInvalid = false;
+                                _demoDataEditor = monaco.editor.create(
+                                    container,
+                                    {
+                                        value: value,
+                                        language: 'we-json',
+                                        theme: _resolveMonacoTheme(),
+                                        readOnly: !$scope.canWriteWidget,
+                                        automaticLayout: true,
+                                        fontSize: 12,
+                                        scrollBeyondLastLine: false,
+                                        minimap: { enabled: false },
+                                        tabSize: 4,
+                                        insertSpaces: true,
+                                        wordWrap: $scope.userPrefs.wordWrap
+                                            ? 'on'
+                                            : 'off',
+                                        fixedOverflowWidgets: true,
+                                        mouseWheelZoom: true,
+                                    }
+                                );
+                                // Validate JSON manually on every content change
+                                function _validateJson() {
+                                    var content =
+                                        _demoDataEditor.getValue();
+                                    var invalid = !!content.trim();
+                                    if (invalid) {
+                                        try {
+                                            JSON.parse(content);
+                                            invalid = false;
+                                        } catch (e) {}
+                                    }
+                                    $scope.$apply(function () {
+                                        $scope.demoDataJsonInvalid =
+                                            invalid;
+                                    });
+                                }
+                                _demoDataEditor.onDidChangeModelContent(
+                                    _validateJson
+                                );
+                                _validateJson(); // run immediately in case initial value is invalid
+                            }
+                            if (window.monaco && window.monaco.editor) {
+                                _create();
+                            } else {
+                                require(['vs/editor/editor.main'], function () {
+                                    _ensureMonacoThemes();
+                                    _ensureWeJsonLanguage();
+                                    _create();
+                                });
+                            }
+                        }, 50);
+                    });
+                };
+
+                $scope.saveDemoDataModal = function () {
+                    if (
+                        !_demoDataEditor ||
+                        !$scope.canWriteWidget ||
+                        $scope.demoDataJsonInvalid
+                    ) {
+                        return;
+                    }
+                    $scope.demoDataSaving = true;
+                    $scope.demoDataSaveError = null;
+                    var newValue = _demoDataEditor.getValue();
+                    ajax('saveDemoData', {
+                        sys_id: $scope.widget.sys_id,
+                        value: newValue,
+                    }).then(function (data) {
+                        $scope.demoDataSaving = false;
+                        if (!data.success) {
+                            $scope.demoDataSaveError =
+                                data.error || 'Save failed';
+                            return;
+                        }
+                        $scope.widget.demo_data_has_value =
+                            _hasProperJsonObjectValue(newValue);
+                        $scope.closeDemoDataModal();
+                    });
+                };
+
+                $scope.closeDemoDataModal = function () {
+                    _closeModal(function () {
+                        $scope.showDemoDataModal = false;
+                        if (_demoDataEditor) {
+                            try {
+                                _demoDataEditor.dispose();
+                            } catch (e) {}
+                            _demoDataEditor = null;
                         }
                     });
                 };
