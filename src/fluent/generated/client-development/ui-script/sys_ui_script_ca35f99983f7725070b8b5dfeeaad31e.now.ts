@@ -52,7 +52,7 @@ Record({
         return;
     }
 
-    var _v = '2026-04-25T12:00';
+    var _v = '2026-07-21T12:00';
     var CORE_UI_SCRIPT_URL = '/monaco_plus_core.jsdbx?sysparm_substitute=false&v=' + _v;
     var MONACO_BUNDLE_URL =
         '/scripts/snc-code-editor/monaco.bundle.min.jsx?sysparm_substitute=false';
