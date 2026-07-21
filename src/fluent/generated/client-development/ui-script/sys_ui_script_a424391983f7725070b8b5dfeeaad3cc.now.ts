@@ -85,7 +85,7 @@ Record({
     };
     var _pollIntervalMs = 200;
     var _maxWaitMs = 10000;
-    var _v = '2026-04-25T12:00';
+    var _v = '2026-07-21T12:00';
     var _definitionUrl =
         'monaco_language_server.jsdbx?sysparm_substitute=false&v=' + _v;
     var _clientDefinitionUrl =

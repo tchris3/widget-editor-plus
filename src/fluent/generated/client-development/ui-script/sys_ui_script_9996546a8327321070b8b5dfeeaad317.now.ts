@@ -2406,6 +2406,8 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 ['<', '>'],
                 ['(', ')']
             ],
+            /* VS Code's HTML fix for < > in Angular attr values; ServiceNow's Monaco ignores it (see per-model BPC disable in _watchHtmlModel) but kept for future Monaco upgrades */
+            colorizedBracketPairs: [],
             autoClosingPairs: [
                 { open: '{',  close: '}' },
                 { open: '[',  close: ']' },
@@ -2529,6 +2531,22 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 return;
             }
             _htmlTrackedModels.push({ model: model, monacoRef: monaco });
+            /* Angular attr values contain < > which BPC mis-pairs (red "unmatched" >); ServiceNow's Monaco ignores colorizedBracketPairs, so disable BPC per model */
+            function _disableBpc() {
+                model.updateOptions({ bracketColorizationOptions: { enabled: false, independentColorPoolPerBracketType: false } });
+            }
+            if (typeof model.updateOptions === 'function') {
+                _disableBpc();
+                /* Monaco's ModelService re-enables BPC on every editor.create — revert whenever that happens */
+                if (model.onDidChangeOptions) {
+                    model.onDidChangeOptions(function () {
+                        var bpcOpts = model.getOptions().bracketPairColorizationOptions;
+                        if (bpcOpts && bpcOpts.enabled) {
+                            _disableBpc();
+                        }
+                    });
+                }
+            }
             _scheduleHtmlValidation(model, monaco);
             model.onDidChangeContent(function () {
                 _scheduleHtmlValidation(model, monaco);
