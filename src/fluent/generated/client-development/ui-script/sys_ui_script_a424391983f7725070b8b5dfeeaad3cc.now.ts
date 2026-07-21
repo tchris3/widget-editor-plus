@@ -216,6 +216,9 @@ Record({
     var _clientDiWatcherInstalled = false;
     var _clientDiLastParamsKey = null;
     var _clientDiTimers = {};
+    /* Replacement TS/JS quick-info hover (see _installQuickInfoHover). */
+    var _qiHoverInstalled = false;
+    var _qiKeepAliveTimer = null;
     var _htmlMonarchLoading = false;
     var _htmlMonarchPending = [];
     var _cssLanguageLoading = false;
@@ -2299,7 +2302,8 @@ Record({
                 _registerSiDts(
                     name,
                     _siMethodCache[name],
-                    _siInterfaceCache[name]
+                    _siInterfaceCache[name],
+                    _siConstantCache[name]
                 );
             } else {
                 fetchSiMethods(name);
@@ -2776,6 +2780,27 @@ Record({
      *                  model for 'var instance = new ClassName(' and fetching that
      *                  Script Include's script field via the REST API.
      */
+    /**
+     * Resolves the Script Include class assigned to an instance property of the
+     * class being edited, e.g. \\\`this.utils = new IncidentUtilsSNC();\\\` →
+     * 'IncidentUtilsSNC'. TypeScript cannot type \\\`this\\\` inside the
+     * PrototypeJS object-literal pattern (Class.create()), so completions,
+     * hover, and signature help resolve \\\`this.<prop>.\\\` through this scan.
+     *
+     * @param {string} content  - Full model text.
+     * @param {string} propName - Property name after \\\`this.\\\`.
+     * @returns {string|null} Class name, or null when no assignment is found.
+     */
+    function _getThisPropClass(content, propName) {
+        var re = new RegExp(
+            '\\\\bthis\\\\s*\\\\.\\\\s*' +
+                propName +
+                '\\\\s*=\\\\s*new\\\\s+([A-Z][A-Za-z0-9_]*)\\\\s*\\\\('
+        );
+        var m = re.exec(content);
+        return m ? m[1] : null;
+    }
+
     function registerDotCompletions() {
         if (_completionRegistered || !window.monaco) {
             return;
@@ -2825,6 +2850,45 @@ Record({
                                 };
                             }),
                     };
+                }
+
+                /* this.prop. — instance property assigned via this.prop = new SI().
+                 * TypeScript types \\\`this\\\` as any inside the Class.create()
+                 * object-literal pattern, so we supply the method completions. */
+                var thisPropMatch = beforeCursor.match(
+                    /\\bthis\\.(\\w+)\\.(\\w*)$/
+                );
+                if (thisPropMatch) {
+                    var thisPropClass = _getThisPropClass(
+                        model.getValue(),
+                        thisPropMatch[1]
+                    );
+                    if (thisPropClass) {
+                        return fetchSiMethods(thisPropClass).then(function (
+                            methods
+                        ) {
+                            return {
+                                suggestions: (methods || [])
+                                    .filter(function (m) {
+                                        return !m.isConstructor && m.name;
+                                    })
+                                    .map(function (m) {
+                                        return {
+                                            label: String(m.name),
+                                            kind: monaco.languages
+                                                .CompletionItemKind.Method,
+                                            detail: String(m.signature),
+                                            documentation: {
+                                                value: String(m.documentation),
+                                                isTrusted: true,
+                                            },
+                                            insertText: String(m.name),
+                                            range: targetRange,
+                                        };
+                                    }),
+                            };
+                        });
+                    }
                 }
 
                 /* new ClassName(). — direct chain without a variable assignment */
@@ -3022,6 +3086,218 @@ Record({
         monaco.languages.registerCompletionItemProvider('javascript', provider);
     }
 
+    ///////////////////////////////////////////
+    // Quick-info hover replacement
+    ///////////////////////////////////////////
+
+    /*
+     * ServiceNow's bundled Monaco language features predate the TypeScript
+     * worker it ships (TS 5.x returns JSDoc tag text as an array of display
+     * parts; the bundled renderer expects a string), so the native hover
+     * renders every JSDoc tag as a bare '@ \\u2014' fragment with no name,
+     * type, or description.
+     *
+     * setModeConfiguration({hovers: false}) does not help — SN's build only
+     * reads the mode configuration at language setup, before our scripts run.
+     * Instead we suppress the native hover at the shared worker-client level:
+     * getQuickInfoAtPosition on the client proxy is replaced with a function
+     * returning undefined (the native provider treats that as 'no hover'),
+     * while our replacement provider calls the saved original and renders
+     * displayParts / documentation / tags correctly for both string and
+     * parts-array tag text.
+     *
+     * The worker client is recreated if Monaco recycles an idle worker, so a
+     * keep-alive interval re-applies the patch (and, as a side effect, keeps
+     * the worker from being recycled at all).
+     */
+
+    /** Joins a TS displayParts array (or passes a plain string through). */
+    function _qiPartsToString(parts) {
+        if (!parts) {
+            return '';
+        }
+        if (typeof parts === 'string') {
+            return parts;
+        }
+        return parts
+            .map(function (p) {
+                return p.text;
+            })
+            .join('');
+    }
+
+    /** Renders one JSDoc tag as markdown, e.g. *@param* \`name\` — description. */
+    function _qiRenderTag(tag) {
+        var label = '*@' + tag.name + '*';
+        var text = _qiPartsToString(tag.text);
+        if (!text) {
+            return label;
+        }
+        if (tag.name === 'param') {
+            var m = /^\\s*(\\S+)\\s*([\\s\\S]*)$/.exec(text);
+            if (m) {
+                var rest = m[2].replace(/^[-\\u2014]\\s*/, '');
+                label += ' \`' + m[1] + '\`';
+                if (rest) {
+                    label += ' \\u2014 ' + rest;
+                }
+                return label;
+            }
+        }
+        return label + ' \\u2014 ' + text.replace(/^[-\\u2014]\\s*/, '');
+    }
+
+    /**
+     * Replaces getQuickInfoAtPosition on a worker client proxy so the native
+     * hover provider receives no result. The original is kept for our own
+     * provider. Idempotent per client instance.
+     */
+    function _qiEnsurePatched(client) {
+        if (!client || client.__weQiPatched) {
+            return;
+        }
+        client.__weQiPatched = true;
+        client.__weOrigQi = client.getQuickInfoAtPosition.bind(client);
+        client.getQuickInfoAtPosition = function () {
+            return Promise.resolve(undefined);
+        };
+    }
+
+    /** Patches the worker client for one language; resolves quietly on failure. */
+    function _qiPatchLanguage(lang) {
+        var ts = monaco.languages.typescript;
+        var getWorker =
+            lang === 'typescript'
+                ? ts.getTypeScriptWorker
+                : ts.getJavaScriptWorker;
+        if (!getWorker) {
+            return Promise.resolve(null);
+        }
+        var models = monaco.editor.getModels().filter(function (m) {
+            return m.getLanguageId() === lang;
+        });
+        if (!models.length) {
+            return Promise.resolve(null);
+        }
+        return getWorker()
+            .then(function (worker) {
+                return worker(models[0].uri);
+            })
+            .then(function (client) {
+                _qiEnsurePatched(client);
+                return client;
+            })
+            .catch(function () {
+                return null;
+            });
+    }
+
+    /**
+     * Suppresses the native (broken) TS/JS hover and registers a replacement
+     * that renders quick info with correct JSDoc tag formatting. Idempotent.
+     */
+    function _installQuickInfoHover() {
+        if (
+            _qiHoverInstalled ||
+            !window.monaco ||
+            !monaco.languages ||
+            !monaco.languages.typescript
+        ) {
+            return;
+        }
+        _qiHoverInstalled = true;
+
+        // Eager patch + keep-alive: re-applies after any worker recycle and,
+        // by touching the worker, prevents idle recycling in the first place.
+        function _patchAll() {
+            _qiPatchLanguage('javascript');
+            _qiPatchLanguage('typescript');
+        }
+        _patchAll();
+        if (!_qiKeepAliveTimer) {
+            _qiKeepAliveTimer = setInterval(_patchAll, 30000);
+        }
+
+        var provider = {
+            provideHover: function (model, position) {
+                var lang = model.getLanguageId();
+                if (lang !== 'javascript' && lang !== 'typescript') {
+                    return null;
+                }
+                var ts = monaco.languages.typescript;
+                var getWorker =
+                    lang === 'typescript'
+                        ? ts.getTypeScriptWorker
+                        : ts.getJavaScriptWorker;
+                if (!getWorker) {
+                    return null;
+                }
+                var offset = model.getOffsetAt(position);
+                return getWorker()
+                    .then(function (worker) {
+                        return worker(model.uri);
+                    })
+                    .then(function (client) {
+                        _qiEnsurePatched(client);
+                        return client.__weOrigQi(
+                            model.uri.toString(),
+                            offset
+                        );
+                    })
+                    .then(function (info) {
+                        if (!info || model.isDisposed()) {
+                            return null;
+                        }
+                        var sig = _qiPartsToString(info.displayParts);
+                        var doc = _qiPartsToString(info.documentation);
+                        var tagsMd = (info.tags || [])
+                            .map(_qiRenderTag)
+                            .join('  \\n\\n');
+                        /* Bare 'any' with no docs is noise (e.g. this.utils.* —
+                         * handled by the Script Include hover provider). */
+                        if (sig === 'any' && !doc && !tagsMd) {
+                            return null;
+                        }
+                        var contents = [];
+                        if (sig) {
+                            contents.push({
+                                value:
+                                    '\`\`\`typescript\\n' + sig + '\\n\`\`\`',
+                            });
+                        }
+                        var body = [doc, tagsMd]
+                            .filter(Boolean)
+                            .join('\\n\\n');
+                        if (body) {
+                            contents.push({ value: body, isTrusted: true });
+                        }
+                        if (!contents.length) {
+                            return null;
+                        }
+                        var start = model.getPositionAt(info.textSpan.start);
+                        var end = model.getPositionAt(
+                            info.textSpan.start + info.textSpan.length
+                        );
+                        return {
+                            contents: contents,
+                            range: new monaco.Range(
+                                start.lineNumber,
+                                start.column,
+                                end.lineNumber,
+                                end.column
+                            ),
+                        };
+                    })
+                    .catch(function () {
+                        return null;
+                    });
+            },
+        };
+
+        monaco.languages.registerHoverProvider('javascript', provider);
+        monaco.languages.registerHoverProvider('typescript', provider);
+    }
+
     /**
      * Registers a hover provider for TypeScript and JavaScript that shows JSDoc
      * documentation when the cursor hovers over a method name accessed via:
@@ -3095,6 +3371,20 @@ Record({
                         return null;
                     }
                     return buildResult(parseSiMethods(content));
+                }
+
+                /* this.prop.method — instance property assigned via
+                 * this.prop = new SI(). TypeScript sees \\\`this\\\` as any here,
+                 * so the native hover shows nothing useful. */
+                var thisPropHover = preWord.match(/\\bthis\\.(\\w+)\\.\\s*$/);
+                if (thisPropHover) {
+                    var thisPropClass = _getThisPropClass(
+                        model.getValue(),
+                        thisPropHover[1]
+                    );
+                    if (thisPropClass) {
+                        return fetchSiMethods(thisPropClass).then(buildResult);
+                    }
                 }
 
                 // GlideRecord/GlideRecordSecure — show field type on hover
@@ -3275,6 +3565,21 @@ Record({
                         return null;
                     }
                     return buildResult(parseSiMethods(content));
+                }
+
+                /* this.prop.method( — instance property assigned via
+                 * this.prop = new SI(). */
+                var thisPropCall = beforeCursor.match(
+                    /\\bthis\\.(\\w+)\\.(\\w+)\\s*\\(([^)]*)$/
+                );
+                if (thisPropCall) {
+                    var thisPropClass = _getThisPropClass(
+                        model.getValue(),
+                        thisPropCall[1]
+                    );
+                    if (thisPropClass) {
+                        return fetchSiMethods(thisPropClass).then(buildResult);
+                    }
                 }
 
                 var assignRe = new RegExp(
@@ -3949,6 +4254,7 @@ Record({
                 _registerScssVarCompletions();
                 _registerScssVarHover();
                 if (_isJs) {
+                    _installQuickInfoHover();
                     registerDotCompletions();
                     registerHoverProvider();
                     registerSignatureHelp();
