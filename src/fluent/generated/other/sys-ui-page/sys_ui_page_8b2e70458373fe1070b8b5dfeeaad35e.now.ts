@@ -143,13 +143,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
             flex-wrap: wrap;
         }
 
-        /* Save status + action buttons: treat as one atomic cluster so it
-           wraps as a whole onto a clean row 2 instead of splitting
-           button-by-button when the header runs out of room. */
+        /* Save status + action buttons: one cluster that keeps the buttons
+           intact and lets the status text wrap in place first; the whole
+           cluster only drops to row 2 when there's no room even for that. */
         .we-header-actions {
             flex-wrap: nowrap;
-            flex-shrink: 0;
+            flex: 1 1 12rem;
+            max-width: max-content;
+            min-width: min-content;
             margin-left: auto;
+        }
+        .we-header-actions > button,
+        .we-header-actions > .we-presence,
+        .we-header-actions > .we-dropdown {
+            flex-shrink: 0;
         }
 
         .we-header-sep {
@@ -1604,12 +1611,16 @@ Features version history, side-by-side diff comparison, related lists, and user 
         /* Unsaved warning */
         .we-unsaved-warning {
             color: rgb(var(--we-unsaved-color));
-            white-space: nowrap;
             display: inline-flex;
             flex-wrap: wrap;
             align-items: center;
             gap: 0.375rem;
+            font-size: 0.75rem;
+            line-height: 1;
+            flex: 1 1 6rem;
+            min-width: min-content;
         }
+        .we-unsaved-compare { white-space: nowrap; }
         .we-unsaved-diff-btn {
             padding: 0;
             color: rgb(var(--we-unsaved-color));
@@ -1625,7 +1636,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
         /* No write access label */
         .we-no-write-access {
             color: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)));
-            white-space: nowrap;
+            font-size: 0.75rem;
+            line-height: 1;
+            min-width: min-content;
         }
 
         /* Last save time */
@@ -1635,20 +1648,22 @@ Features version history, side-by-side diff comparison, related lists, and user 
             display: flex;
             flex-direction: column;
             color: rgb(var(--now-color_text--tertiary, 114 114 114));
-            font-size: var(--now-font-size--sm);
-            white-space: nowrap;
+            font-size: 0.75rem;
+            line-height: 1.2;
             margin-right: 0.5rem;
             text-align: right;
             text-underline-offset: 3px;
+            flex: 1 1 6rem;
+            min-width: 6rem;
         }
 
         /* Save error (header) */
         .we-save-error {
             color: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)));
-            white-space: nowrap;
-            max-width: 15rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 0.75rem;
+            line-height: 1.2;
+            flex: 1 1 6rem;
+            min-width: 6rem;
             cursor: default;
         }
 
@@ -2233,12 +2248,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 <div class="we-header-group we-header-actions">
                     <!-- Unsaved warning -->
                     <span class="we-unsaved-warning" ng-if="!isVersionView &amp;&amp; hasUnsavedChanges()">
-                        <span class="icon-warning-circle"></span> Unsaved changes
-                        <span ng-if="!isNewWidget">(<button class="btn btn-link we-unsaved-diff-btn" ng-click="openUnsavedDiff()" title="Compare unsaved changes with current saved version">Compare</button>)</span>
+                        Unsaved changes
+                        <span class="we-unsaved-compare" ng-if="!isNewWidget">(<button class="btn btn-link we-unsaved-diff-btn" ng-click="openUnsavedDiff()" title="Compare unsaved changes with current saved version">Compare</button>)</span>
                     </span>
 
                     <!-- Save error -->
-                    <span class="we-save-error" ng-if="!isVersionView &amp;&amp; saveError" title="{{saveError}}"><i class="icon-alert-triangle"></i>&nbsp;<span ng-bind="saveError"></span></span>
+                    <span class="we-save-error" ng-if="!isVersionView &amp;&amp; saveError" title="{{saveError}}" ng-bind="saveError"></span>
 
                     <!-- Presence -->
                     <div class="we-presence" ng-if="presenceUsers.length">
