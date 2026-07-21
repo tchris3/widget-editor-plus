@@ -143,6 +143,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
             flex-wrap: wrap;
         }
 
+        /* Save status + action buttons: treat as one atomic cluster so it
+           wraps as a whole onto a clean row 2 instead of splitting
+           button-by-button when the header runs out of room. */
+        .we-header-actions {
+            flex-wrap: nowrap;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
         .we-header-sep {
             width: 1px;
             height: 1.375rem;
@@ -2197,7 +2206,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 <div class="we-spacer"></div>
 
-                <div class="we-header-group">
+                <div class="we-header-group we-header-actions">
                     <!-- Unsaved warning -->
                     <span class="we-unsaved-warning" ng-if="!isVersionView &amp;&amp; hasUnsavedChanges()">
                         <span class="icon-warning-circle"></span> Unsaved changes
