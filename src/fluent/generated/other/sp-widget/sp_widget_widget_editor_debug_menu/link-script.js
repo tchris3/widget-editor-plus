@@ -522,6 +522,48 @@ function link(scope, element, attrs, controller) {
     let _pendingContextmenuEvent = null;
 
     /**
+     * Retrieves the actual AngularJS scope for a widget element or target node.
+     * Handles element directives (like <sp-widget>) that create isolate scopes,
+     * inner .ng-scope elements, and walks up to the scope that holds widget data.
+     * @param   {Element} el
+     * @returns {Object|null}
+     */
+    function getActualWidgetScope(el) {
+        if (!el) return null;
+        try {
+            // Check if el is a directive root (like <sp-widget>) with an isolateScope
+            const isolate = angular.element(el).isolateScope();
+            if (isolate && (isolate.data || isolate.c || isolate.widget || isolate.options)) {
+                return isolate;
+            }
+
+            // Look for inner element with ng-scope inside el
+            const innerNg = el.querySelector ? el.querySelector('.ng-scope') : null;
+            let s = innerNg
+                ? (angular.element(innerNg).scope() || angular.element(innerNg).isolateScope())
+                : (angular.element(el).scope() || isolate);
+
+            if (!s) {
+                s = angular.element(el).scope();
+            }
+
+            // Walk up $parent chain if s is a child scope (e.g. ng-repeat, ng-if)
+            while (s) {
+                if (s.data || s.c || s.widget || s.options) {
+                    return s;
+                }
+                if (s.$root === s || (s.rectangle && s.rectangle.widget)) {
+                    return s;
+                }
+                s = s.$parent;
+            }
+            return angular.element(el).scope() || isolate || null;
+        } catch (_ex) {
+            return null;
+        }
+    }
+
+    /**
      * Walks up from el collecting every [widget] element that has a valid
      * SP-prefixed sys_id class.  Returns an array (innermost first).
      *
@@ -549,7 +591,7 @@ function link(scope, element, attrs, controller) {
                     // Display as "Widget Name" or "Widget Name [Instance Title]" when they differ.
                     let widgetName = '';
                     try {
-                        const s = angular.element(el).scope();
+                        const s = getActualWidgetScope(el);
                         widgetName = s?.widget?.name || '';
                     } catch (_ex) { }
                     const instanceTitle = el.getAttribute('sn-atf-area') || '';
@@ -575,7 +617,7 @@ function link(scope, element, attrs, controller) {
     function getWidgetSysId(el) {
         while (el && el !== document.body) {
             try {
-                const s = angular.element(el).scope();
+                const s = getActualWidgetScope(el);
                 if (s) {
                     const rect = s.rectangle || s.$parent?.rectangle;
                     if (rect?.widget?.sys_id) {
@@ -834,7 +876,7 @@ function link(scope, element, attrs, controller) {
     function injectWidgetDebugItems(ul, container) {
         if (!_pendingWidgetEl) return;
         try {
-            const wScope = angular.element(_pendingWidgetEl).scope();
+            const wScope = getActualWidgetScope(_pendingWidgetEl);
             if (!wScope) return;
 
             let items = null;
@@ -1038,7 +1080,7 @@ function link(scope, element, attrs, controller) {
             scopeDataA.addEventListener('click', function (e) {
                 e.preventDefault();
                 closeSpOverlay(menuContainer);
-                const s = angular.element(capturedEl).scope();
+                const s = getActualWidgetScope(capturedEl);
                 console.log('$scope.data\n', s && s.data);
             });
             scopeDataLi.appendChild(scopeDataA);
@@ -1055,29 +1097,48 @@ function link(scope, element, attrs, controller) {
             scopeA.addEventListener('click', function (e) {
                 e.preventDefault();
                 closeSpOverlay(menuContainer);
-                const s = angular.element(capturedEl).scope();
+                const s = getActualWidgetScope(capturedEl);
                 console.log('$scope\n', s);
+                if (prefs.assignConsoleVars !== false) {
+                    assignConsoleVar('$scope', s);
+                }
             });
             scopeLi.appendChild(scopeA);
             ul.appendChild(scopeLi);
         }
 
-        // Intercept native "Log to console: $scope" to assign window.$scope
-        // $scope.data is intentionally excluded - it is not added to the window.
-        if (prefs.assignConsoleVars !== false) {
-            const capturedWidgetEl = _pendingWidgetEl;
-            ul.querySelectorAll('li').forEach((li) => {
-                const a = li.querySelector('a');
-                if (!a) {
-                    return;
-                }
-                if (a.textContent.trim() === 'Log to console: $scope' && capturedWidgetEl) {
-                    li.addEventListener('click', function () {
-                        assignConsoleVar('$scope', angular.element(capturedWidgetEl).scope());
-                    });
-                }
-            });
-        }
+        // Override native SP "Log to console: $scope.data" and "Log to console: $scope" items
+        // to ensure they target the clicked widget's actual inner $scope (not the top-level container scope).
+        const targetWidgetEl = _pendingWidgetEl || (_pendingEmbeddedWidgets.length > 0 ? _pendingEmbeddedWidgets[0].el : null);
+        ul.querySelectorAll('li').forEach((li) => {
+            const a = li.querySelector('a');
+            if (!a) return;
+            const text = a.textContent.trim();
+            if (text === 'Log to console: $scope.data' && targetWidgetEl) {
+                const newA = a.cloneNode(true);
+                newA.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeSpOverlay(menuContainer);
+                    const s = getActualWidgetScope(targetWidgetEl);
+                    console.log('$scope.data\n', s && s.data);
+                });
+                a.parentNode.replaceChild(newA, a);
+            } else if (text === 'Log to console: $scope' && targetWidgetEl) {
+                const newA = a.cloneNode(true);
+                newA.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeSpOverlay(menuContainer);
+                    const s = getActualWidgetScope(targetWidgetEl);
+                    console.log('$scope\n', s);
+                    if (prefs.assignConsoleVars !== false) {
+                        assignConsoleVar('$scope', s);
+                    }
+                });
+                a.parentNode.replaceChild(newA, a);
+            }
+        });
 
         // Remove disabled native SP items, then clean up orphan dividers
         filterNativeItems(ul, prefs);
@@ -1091,7 +1152,7 @@ function link(scope, element, attrs, controller) {
 
             // Fall back to the right-clicked widget's $scope.data when URL params are absent
             if ((!recordTable || !recordSysId) && _pendingWidgetEl) {
-                const wScope = angular.element(_pendingWidgetEl).scope();
+                const wScope = getActualWidgetScope(_pendingWidgetEl);
                 const wData = wScope && wScope.data;
                 if (wData) {
                     if (!recordTable) { recordTable = wData.table || wData.tableName || null; }
@@ -1304,7 +1365,8 @@ function link(scope, element, attrs, controller) {
                         (function (capturedInfo) {
                             logEmbA.addEventListener('click', function (e) {
                                 e.preventDefault();
-                                const embeddedScope = angular.element(capturedInfo.el).scope();
+                                closeSpOverlay(menuContainer);
+                                const embeddedScope = getActualWidgetScope(capturedInfo.el);
                                 console.log('Embedded $scope (' + capturedInfo.name + ')\n', embeddedScope);
                                 if (prefs.assignConsoleVars !== false) {
                                     assignConsoleVar('$scope', embeddedScope);
