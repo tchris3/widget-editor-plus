@@ -156,6 +156,7 @@ Record({
     var _siMethodCache = {};
     var _siInterfaceCache = {};
     var _siConstantCache = {};
+    var _siPropertyCache = {};
     var _siPendingCache = {};
 
     /*
@@ -455,6 +456,7 @@ Record({
      */
     function parseSiConstants(script, className) {
         var constants = [];
+                    var properties = [];
         var escaped = className.replace(/[.*+?^\${}()|[\\]\\\\]/g, '\\\\$&');
         var re = new RegExp(
             '(\\\\/\\\\*\\\\*(?:(?!\\\\*\\\\/)[\\\\s\\\\S])*\\\\*\\\\/)?\\\\s*' +
@@ -482,6 +484,108 @@ Record({
             constants.push({ name: m[2], tsType: tsType, documentation: doc });
         }
         return constants;
+    }
+
+    /**
+     * Infers the TypeScript type string for a prototype property value expression.
+     *
+     * @param {string} rawValue - Property value string.
+     * @returns {string} TypeScript type string.
+     */
+    function inferPropertyValueType(rawValue) {
+        if (!rawValue) {
+            return 'any';
+        }
+        var v = rawValue.trim().replace(/\s*;.*$/, '').replace(/,$/, '').trim();
+        if (
+            (v.charAt(0) === "'" || v.charAt(0) === '"' || v.charAt(0) === '\x60') &&
+            v.charAt(v.length - 1) === v.charAt(0)
+        ) {
+            return 'string';
+        }
+        if (/^-?(?:0x[0-9a-fA-F]+|\d+(?:\.\d+)?|\.\d+)$/.test(v)) {
+            return 'number';
+        }
+        if (v === 'true' || v === 'false') {
+            return 'boolean';
+        }
+        if (v.charAt(0) === '[') {
+            return 'any[]';
+        }
+        if (v.charAt(0) === '{') {
+            return 'Record<string, any>';
+        }
+        if (v === 'null' || v === 'undefined') {
+            return 'any';
+        }
+        return 'any';
+    }
+
+    /**
+     * Parses all PrototypeJS prototype properties from a Script Include script string.
+     * Extracts property names, inferred or JSDoc-annotated TypeScript types, and
+     * documentation comments for use in completions, hover tooltips, and DTS generation.
+     *
+     * @param {string} script - Full content of a Script Include script field.
+     * @returns {Array<{name: string, tsType: string, documentation: string}>}
+     */
+    function parseSiProperties(script) {
+        var properties = [];
+        var seen = {};
+
+        function addProp(name, rawValue, comment) {
+            if (!name || name === 'type' || name === 'initialize' || seen[name]) {
+                return;
+            }
+
+            var tsType = null;
+            if (comment) {
+                var typeMatch = comment.match(/@type\s+\{([^}]+)\}/);
+                if (typeMatch) {
+                    tsType = jsDocTypeToTs(typeMatch[1]);
+                }
+            }
+
+            if (!tsType) {
+                tsType = inferPropertyValueType(rawValue);
+            }
+
+            var docLines = [];
+            if (comment) {
+                var descText = comment
+                    .replace(/^\/\*+\s*/, '')
+                    .replace(/\s*\*+\/$/, '')
+                    .replace(/^\s*\*\s?/gm, '');
+                var descMatch = descText.match(/^([\s\S]*?)(?=\s*@|\s*$)/);
+                if (descMatch && descMatch[1].trim()) {
+                    docLines.push(descMatch[1].trim());
+                }
+            }
+
+            seen[name] = true;
+            properties.push({
+                name: name,
+                tsType: tsType,
+                documentation: docLines.join('\\n\\n'),
+            });
+        }
+
+        /* Pattern 1: Object literal properties: key: value (not starting with function) */
+        var propRe =
+            /(\/\*\*[\s\S]*?\*\/|\/\*[\s\S]*?\*\/)?\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:\s*(?!function\b)([^,\}\n]+|\[[\s\S]*?\]|\{[\s\S]*?\})/g;
+        var m;
+        while ((m = propRe.exec(script)) !== null) {
+            addProp(m[2], m[3], m[1] || null);
+        }
+
+        /* Pattern 2: Direct prototype assignments: ClassName.prototype.key = value; */
+        var directRe =
+            /(\/\*\*[\s\S]*?\*\/|\/\*[\s\S]*?\*\/)?\s*(?:[A-Z]\w*|this)\.prototype\.([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(?!function\b)([^;\n]+)/g;
+        while ((m = directRe.exec(script)) !== null) {
+            addProp(m[2], m[3], m[1] || null);
+        }
+
+        return properties;
     }
 
     /**
@@ -607,6 +711,7 @@ Record({
                     var methods = null;
                     var interfaces = [];
                     var constants = [];
+                    var properties = [];
                     try {
                         if (xhr.status === 200) {
                             var data = JSON.parse(xhr.responseText);
@@ -620,6 +725,7 @@ Record({
                                         script,
                                         className
                                     );
+                                    properties = parseSiProperties(script);
                                 } else {
                                     methods = [];
                                 }
@@ -630,11 +736,13 @@ Record({
                         _siMethodCache[className] = methods;
                         _siInterfaceCache[className] = interfaces;
                         _siConstantCache[className] = constants;
+                        _siPropertyCache[className] = properties;
                         _registerSiDts(
                             className,
                             methods,
                             interfaces,
-                            constants
+                            constants,
+                            properties
                         );
                     } else {
                         methods = [];
@@ -1161,7 +1269,7 @@ Record({
      * @param {string[]}      [interfaces] - Interface declarations from \\\`parseSiTypedefs\\\`.
      * @param {Array<Object>} [constants] - Static property descriptors from \\\`parseSiConstants\\\`.
      */
-    function _registerSiDts(className, methods, interfaces, constants) {
+    function _registerSiDts(className, methods, interfaces, constants, properties) {
         if (
             !window.monaco ||
             !monaco.languages ||
@@ -1265,6 +1373,14 @@ Record({
                 lines.push(
                     '    static readonly ' + c.name + ': ' + c.tsType + ';'
                 );
+            });
+        }
+        if (properties && properties.length) {
+            properties.forEach(function (p) {
+                if (p.documentation) {
+                    lines.push('    /** ' + p.documentation + ' */');
+                }
+                lines.push('    ' + p.name + ': ' + p.tsType + ';');
             });
         }
         methods.forEach(function (m) {
@@ -2303,7 +2419,8 @@ Record({
                     name,
                     _siMethodCache[name],
                     _siInterfaceCache[name],
-                    _siConstantCache[name]
+                    _siConstantCache[name],
+                    _siPropertyCache[name]
                 );
             } else {
                 fetchSiMethods(name);
@@ -2830,25 +2947,42 @@ Record({
                             suggestions: [],
                         };
                     }
+                    var methodSugs = parseSiMethods(content)
+                        .filter(function (m) {
+                            return !m.isConstructor && m.name;
+                        })
+                        .map(function (m) {
+                            return {
+                                label: String(m.name),
+                                kind: monaco.languages.CompletionItemKind
+                                    .Method,
+                                detail: String(m.signature),
+                                documentation: {
+                                    value: String(m.documentation),
+                                    isTrusted: true,
+                                },
+                                insertText: String(m.name),
+                                range: targetRange,
+                            };
+                        });
+                    var propSugs = parseSiProperties(content).map(function (p) {
+                        return {
+                            label: String(p.name),
+                            kind: monaco.languages.CompletionItemKind
+                                .Property,
+                            detail: String(p.name) + ': ' + String(p.tsType),
+                            documentation: p.documentation
+                                ? {
+                                      value: String(p.documentation),
+                                      isTrusted: true,
+                                  }
+                                : undefined,
+                            insertText: String(p.name),
+                            range: targetRange,
+                        };
+                    });
                     return {
-                        suggestions: parseSiMethods(content)
-                            .filter(function (m) {
-                                return !m.isConstructor && m.name;
-                            })
-                            .map(function (m) {
-                                return {
-                                    label: String(m.name),
-                                    kind: monaco.languages.CompletionItemKind
-                                        .Method,
-                                    detail: String(m.signature),
-                                    documentation: {
-                                        value: String(m.documentation),
-                                        isTrusted: true,
-                                    },
-                                    insertText: String(m.name),
-                                    range: targetRange,
-                                };
-                            }),
+                        suggestions: methodSugs.concat(propSugs),
                     };
                 }
 
@@ -2867,25 +3001,46 @@ Record({
                         return fetchSiMethods(thisPropClass).then(function (
                             methods
                         ) {
+                            var methodSugs = (methods || [])
+                                .filter(function (m) {
+                                    return !m.isConstructor && m.name;
+                                })
+                                .map(function (m) {
+                                    return {
+                                        label: String(m.name),
+                                        kind: monaco.languages
+                                            .CompletionItemKind.Method,
+                                        detail: String(m.signature),
+                                        documentation: {
+                                            value: String(m.documentation),
+                                            isTrusted: true,
+                                        },
+                                        insertText: String(m.name),
+                                        range: targetRange,
+                                    };
+                                });
+                            var props = _siPropertyCache[thisPropClass] || [];
+                            var propSugs = props.map(function (p) {
+                                return {
+                                    label: String(p.name),
+                                    kind: monaco.languages
+                                        .CompletionItemKind.Property,
+                                    detail:
+                                        String(p.name) +
+                                        ': ' +
+                                        String(p.tsType),
+                                    documentation: p.documentation
+                                        ? {
+                                              value: String(p.documentation),
+                                              isTrusted: true,
+                                          }
+                                        : undefined,
+                                    insertText: String(p.name),
+                                    range: targetRange,
+                                };
+                            });
                             return {
-                                suggestions: (methods || [])
-                                    .filter(function (m) {
-                                        return !m.isConstructor && m.name;
-                                    })
-                                    .map(function (m) {
-                                        return {
-                                            label: String(m.name),
-                                            kind: monaco.languages
-                                                .CompletionItemKind.Method,
-                                            detail: String(m.signature),
-                                            documentation: {
-                                                value: String(m.documentation),
-                                                isTrusted: true,
-                                            },
-                                            insertText: String(m.name),
-                                            range: targetRange,
-                                        };
-                                    }),
+                                suggestions: methodSugs.concat(propSugs),
                             };
                         });
                     }
@@ -3476,7 +3631,9 @@ Record({
                     return null;
                 }
 
-                return fetchSiMethods(assignMatch[1]).then(buildResult);
+                return fetchSiMethods(assignMatch[1]).then(function (methods) {
+                    return buildResult(methods, assignMatch[1]);
+                });
             },
         };
 
@@ -3596,7 +3753,9 @@ Record({
                     return null;
                 }
 
-                return fetchSiMethods(assignMatch[1]).then(buildResult);
+                return fetchSiMethods(assignMatch[1]).then(function (methods) {
+                    return buildResult(methods, assignMatch[1]);
+                });
             },
         };
 
