@@ -39,7 +39,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
     // Each entry:
     //   name        — attribute name as written in HTML
     //   detail      — one-line summary for the completion list
-    //   snippet     — TabStop snippet inserted on completion (value only, no \`=\`)
+    //   snippet     — TabStop snippet inserted on completion (value only, no \\\`=\\\`)
     //   description — full Markdown documentation for hover / completion detail
     // -------------------------------------------------------------------------
 

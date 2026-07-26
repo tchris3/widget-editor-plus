@@ -1,6 +1,6 @@
 {
   "name": "widget-editor-plus",
-  "version": "1.15.2",
+  "version": "1.16.2",
   "description": "Enhanced Service Portal widget editor with Monaco-powered code editors, real-time user presence, per-field save, version history with diff comparison, and Angular template and provider management.",
   "license": "UNLICENSED",
   "imports": {
@@ -9,6 +9,7 @@
   "scripts": {
     "build": "now-sdk build",
     "deploy": "now-sdk install",
+    "pack": "now-sdk pack && node scripts/generate-update-set-xml.js",
     "transform": "now-sdk transform",
     "types": "now-sdk dependencies"
   },
