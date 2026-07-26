@@ -11,6 +11,17 @@ function escapeXml(str) {
         .replace(/'/g, '&apos;');
 }
 
+// Decodes entities from values read out of already-escaped XML, so escapeXml runs exactly once on output.
+function unescapeXml(str) {
+    return str
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&#0?39;/g, "'")
+        .replace(/&amp;/g, '&');
+}
+
 function generateSysId() {
     return crypto.randomBytes(16).toString('hex');
 }
@@ -125,9 +136,9 @@ function main() {
         const sysNameMatch = content.match(/<sys_name>(.*?)<\/sys_name>/) || content.match(/<name>(.*?)<\/name>/);
         const tableMatch = content.match(/<record_update table="([^"]+)">/);
 
-        const table = tableMatch ? tableMatch[1] : '';
-        const updateName = updateNameMatch ? updateNameMatch[1] : path.basename(file, '.xml');
-        const targetName = sysNameMatch ? sysNameMatch[1] : updateName;
+        const table = tableMatch ? unescapeXml(tableMatch[1]) : '';
+        const updateName = updateNameMatch ? unescapeXml(updateNameMatch[1]) : path.basename(file, '.xml');
+        const targetName = sysNameMatch ? unescapeXml(sysNameMatch[1]) : updateName;
         const type = TABLE_TYPE_MAP[table] || table || 'Custom Record';
 
         const entrySysId = generateSysId();
@@ -138,7 +149,7 @@ function main() {
         xml += `<application display_value="Widget Editor+">d65bb60783e7321070b8b5dfeeaad3b2</application>\n`;
         xml += `<category>customer</category>\n`;
         xml += `<comments/>\n`;
-        xml += `<name>${updateName}</name>\n`;
+        xml += `<name>${escapeXml(updateName)}</name>\n`;
         xml += `<payload>${escapeXml(content)}</payload>\n`;
         xml += `<payload_hash>${payloadHash}</payload_hash>\n`;
         xml += `<remote_update_set display_value="${appName} (${appVersion})">${updateSetSysId}</remote_update_set>\n`;
@@ -152,7 +163,7 @@ function main() {
         xml += `<sys_updated_on>${formattedDate}</sys_updated_on>\n`;
         xml += `<table/>\n`;
         xml += `<target_name>${escapeXml(targetName)}</target_name>\n`;
-        xml += `<type>${type}</type>\n`;
+        xml += `<type>${escapeXml(type)}</type>\n`;
         xml += `<update_domain>global</update_domain>\n`;
         xml += `<update_guid/>\n`;
         xml += `<update_guid_history/>\n`;
