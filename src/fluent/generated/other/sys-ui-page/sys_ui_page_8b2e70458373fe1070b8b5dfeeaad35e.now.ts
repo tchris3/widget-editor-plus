@@ -143,6 +143,22 @@ Features version history, side-by-side diff comparison, related lists, and user 
             flex-wrap: wrap;
         }
 
+        /* Save status + action buttons: one cluster that keeps the buttons
+           intact and lets the status text wrap in place first; the whole
+           cluster only drops to row 2 when there's no room even for that. */
+        .we-header-actions {
+            flex-wrap: nowrap;
+            flex: 1 1 12rem;
+            max-width: max-content;
+            min-width: min-content;
+            margin-left: auto;
+        }
+        .we-header-actions > button,
+        .we-header-actions > .we-presence,
+        .we-header-actions > .we-dropdown {
+            flex-shrink: 0;
+        }
+
         .we-header-sep {
             width: 1px;
             height: 1.375rem;
@@ -874,6 +890,17 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-pane-unsaved-dot::before { content: '\\25CF'; }
 
+        .we-status-dot {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 0.3125rem;
+            flex-shrink: 0;
+            line-height: 1;
+            font-size: 0.625rem;
+        }
+        .we-status-dot::before { content: '\\25CF'; }
+        .we-status-dot--green { color: rgb(var(--now-alert--success--color, var(--now-color_alert--low-3))); }
+
         .we-pane-id-input {
             width: 10rem;
         }
@@ -1584,12 +1611,16 @@ Features version history, side-by-side diff comparison, related lists, and user 
         /* Unsaved warning */
         .we-unsaved-warning {
             color: rgb(var(--we-unsaved-color));
-            white-space: nowrap;
             display: inline-flex;
             flex-wrap: wrap;
             align-items: center;
             gap: 0.375rem;
+            font-size: 0.75rem;
+            line-height: 1;
+            flex: 1 1 6rem;
+            min-width: min-content;
         }
+        .we-unsaved-compare { white-space: nowrap; }
         .we-unsaved-diff-btn {
             padding: 0;
             color: rgb(var(--we-unsaved-color));
@@ -1605,7 +1636,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
         /* No write access label */
         .we-no-write-access {
             color: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)));
-            white-space: nowrap;
+            font-size: 0.75rem;
+            line-height: 1;
+            min-width: min-content;
         }
 
         /* Last save time */
@@ -1615,20 +1648,22 @@ Features version history, side-by-side diff comparison, related lists, and user 
             display: flex;
             flex-direction: column;
             color: rgb(var(--now-color_text--tertiary, 114 114 114));
-            font-size: var(--now-font-size--sm);
-            white-space: nowrap;
+            font-size: 0.75rem;
+            line-height: 1.2;
             margin-right: 0.5rem;
             text-align: right;
             text-underline-offset: 3px;
+            flex: 1 1 6rem;
+            min-width: 6rem;
         }
 
         /* Save error (header) */
         .we-save-error {
             color: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)));
-            white-space: nowrap;
-            max-width: 15rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 0.75rem;
+            line-height: 1.2;
+            flex: 1 1 6rem;
+            min-width: 6rem;
             cursor: default;
         }
 
@@ -1970,6 +2005,19 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 </div>
                                 <input type="text" class="form-control" id="widget-controller-as" ng-model="widget.controller_as" ng-readonly="isVersionView || !canWriteWidget" />
                             </div>
+                            <div class="we-field" ng-if="widget.is_header_footer">
+                                <span class="input-group-checkbox">
+                                    <input type="checkbox" class="checkbox" id="widget-static" ng-model="widget.static" ng-disabled="isVersionView || !canWriteWidget" />
+                                    <label class="checkbox-label" for="widget-static">
+                                        <span style="display: flex; min-height: 0.825rem; gap: 0.25rem; align-items: center">
+                                            <span>Static</span>
+                                            <span style="display: inline-block; width: 0.5rem;">
+                                                <span class="we-pane-unsaved-dot" ng-if="!isVersionView &amp;&amp; canWriteWidget &amp;&amp; headerDirty.static" title="Unsaved changes"></span>
+                                            </span>
+                                        </span>
+                                    </label>
+                                </span>
+                            </div>
                             <div class="we-field" ng-repeat="field in additionalWidgetFields track by field.name">
                                 <div class="we-field-label-row" ng-if="field.type !== 'boolean'">
                                     <label ng-attr-for="widget-extra-{{field.name}}">{{field.label}}</label>
@@ -2197,15 +2245,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 <div class="we-spacer"></div>
 
-                <div class="we-header-group">
+                <div class="we-header-group we-header-actions">
                     <!-- Unsaved warning -->
                     <span class="we-unsaved-warning" ng-if="!isVersionView &amp;&amp; hasUnsavedChanges()">
-                        <span class="icon-warning-circle"></span> Unsaved changes
-                        <span ng-if="!isNewWidget">(<button class="btn btn-link we-unsaved-diff-btn" ng-click="openUnsavedDiff()" title="Compare unsaved changes with current saved version">Compare</button>)</span>
+                        Unsaved changes
+                        <span class="we-unsaved-compare" ng-if="!isNewWidget">(<button class="btn btn-link we-unsaved-diff-btn" ng-click="openUnsavedDiff()" title="Compare unsaved changes with current saved version">Compare</button>)</span>
                     </span>
 
                     <!-- Save error -->
-                    <span class="we-save-error" ng-if="!isVersionView &amp;&amp; saveError" title="{{saveError}}"><i class="icon-alert-triangle"></i>&nbsp;<span ng-bind="saveError"></span></span>
+                    <span class="we-save-error" ng-if="!isVersionView &amp;&amp; saveError" title="{{saveError}}" ng-bind="saveError"></span>
 
                     <!-- Presence -->
                     <div class="we-presence" ng-if="presenceUsers.length">
@@ -2222,6 +2270,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-primary" ng-click="saveAll()" ng-if="!isVersionView" ng-disabled="!canWriteWidget"
                             ng-class="{'we-btn-save--error': hasLintErrors, 'we-btn-save--warn': !hasLintErrors &amp;&amp; hasLintWarnings}" style="padding-left: 1.25rem; padding-right: 1.25rem;margin-left: 0.3125rem; margin-right: 0.3125rem;">Save</button>
 
+                    <!-- Open in VS Code (SN Utils) -->
+                    <button id="vscode-btn" class="btn btn-default" ng-if="!isVersionView &amp;&amp; hasSnUtils &amp;&amp; userPrefs.showOpenInVsCode !== false" ng-click="editInVsCode()" title="Open in VS Code (SN ScriptSync)" aria-label="Open in VS Code" style="padding:0.125rem 0.625rem;line-height:1.2;margin-right:0.3125rem;">
+                        <svg viewBox="0 0 100 100" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: text-bottom;">
+                            <mask id="we-vsc-mask0" mask-type="alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M70.9119 99.3171C72.4869 99.9307 74.2828 99.8914 75.8725 99.1264L96.4608 89.2197C98.6242 88.1787 100 85.9892 100 83.5872V16.4133C100 14.0113 98.6243 11.8218 96.4609 10.7808L75.8725 0.873756C73.7862 -0.130129 71.3446 0.11576 69.5135 1.44695C69.252 1.63711 69.0028 1.84943 68.769 2.08341L29.3551 38.0415L12.1872 25.0096C10.589 23.7965 8.35363 23.8959 6.86933 25.2461L1.36303 30.2549C-0.452552 31.9064 -0.454633 34.7627 1.35853 36.417L16.2471 50.0001L1.35853 63.5832C-0.454633 65.2374 -0.452552 68.0938 1.36303 69.7453L6.86933 74.7541C8.35363 76.1043 10.589 76.2037 12.1872 74.9905L29.3551 61.9587L68.769 97.9167C69.3925 98.5406 70.1246 99.0104 70.9119 99.3171ZM75.0152 27.2989L45.1091 50.0001L75.0152 72.7012V27.2989Z" fill="white"/>
+                            </mask>
+                            <g mask="url(#we-vsc-mask0)">
+                                <path d="M96.4614 10.7962L75.8569 0.875542C73.4719 -0.272773 70.6217 0.211611 68.75 2.08333L1.29858 63.5832C-0.515693 65.2373 -0.513607 68.0937 1.30308 69.7452L6.81272 74.754C8.29793 76.1042 10.5347 76.2036 12.1338 74.9905L93.3609 13.3699C96.086 11.3026 100 13.2462 100 16.6667V16.4275C100 14.0265 98.6246 11.8378 96.4614 10.7962Z" fill="#0065A9"/>
+                                <path d="M96.4614 89.2038L75.8569 99.1245C73.4719 100.273 70.6217 99.7884 68.75 97.9167L1.29858 36.4169C-0.515693 34.7627 -0.513607 31.9063 1.30308 30.2548L6.81272 25.246C8.29793 23.8958 10.5347 23.7964 12.1338 25.0095L93.3609 86.6301C96.086 88.6974 100 86.7538 100 83.3334V83.5726C100 85.9735 98.6246 88.1622 96.4614 89.2038Z" fill="#007ACC"/>
+                                <path d="M75.8578 99.1263C73.4721 100.274 70.6219 99.7885 68.75 97.9166C71.0564 100.223 75 95.3278 75 95.3278V4.67213C75 1.41039 71.0564 -0.223106 68.75 2.08329C70.6219 0.211402 73.4721 -0.273666 75.8578 0.873633L96.4587 10.7807C98.6234 11.8217 100 14.0112 100 16.4132V83.5871C100 85.9891 98.6234 88.1786 96.4586 89.2196L75.8578 99.1263Z" fill="#1F9CF0"/>
+                            </g>
+                        </svg>
+                    </button>
+
                     <!-- Burger menu -->
                     <div class="we-dropdown" we-close-on-outside-click="openDropdown" close-key="'burger'">
                         <button class="btn btn-default" ng-click="toggleDropdown('burger')" title="Menu" aria-label="Menu" style="padding:0.125rem 0.625rem;line-height:1.2"><span class="icon-menu"></span></button>
@@ -2229,7 +2291,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <div class="we-dropdown-item" ng-click="newWidget()">New widget</div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="cloneWidget()">Clone widget</div>
                             <div class="we-dropdown-divider" ng-if="!isNewWidget"></div>
-                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="openOptionSchemaModal()">Edit option schema</div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-click="openOptionSchemaModal()">Edit option schema <span class="we-status-dot we-status-dot--green" ng-if="widget.option_schema_has_value" title="Has an option schema defined"></span></div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-click="openDemoDataModal()">Edit demo data <span class="we-status-dot we-status-dot--green" ng-if="widget.demo_data_has_value" title="Has demo data defined"></span></div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="openXmlModal()">Show XML</div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="copyWidgetUrl()">Copy widget URL</div>
                             <div class="we-dropdown-divider" ng-if="!isNewWidget"></div>
@@ -2436,6 +2499,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     <span class="input-group-checkbox">
                                         <input type="checkbox" class="checkbox" id="chk-flash-on-open" ng-model="userPrefsEdit.flashOnEditorOpen" />
                                         <label class="checkbox-label" for="chk-flash-on-open" we-tooltip-title="Briefly highlights an editor pane when it is opened or brought into focus.">Show visual indication when editor is opened</label>
+                                    </span>
+                                </div>
+                                <div class="we-modal-option" ng-if="hasSnUtils">
+                                    <span class="input-group-checkbox">
+                                        <input type="checkbox" class="checkbox" id="chk-show-open-in-vscode" ng-model="userPrefsEdit.showOpenInVsCode" />
+                                        <label class="checkbox-label" for="chk-show-open-in-vscode" we-tooltip-title="Displays an 'Open in VS Code' button in the header bar when the SN Utils browser extension is installed.">Show "Open in VS Code" button (SN Utils)</label>
                                     </span>
                                 </div>
                             </div>
@@ -2676,6 +2745,34 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <span ng-if="!optionSchemaSaveError &amp;&amp; optionSchemaJsonInvalid"><i class="icon-alert-triangle"></i>&nbsp;Invalid JSON</span>
                         </span>
                         <button class="btn btn-primary" ng-if="canWriteWidget" ng-click="saveOptionSchemaModal()" ng-disabled="optionSchemaSaving || optionSchemaJsonInvalid" ng-bind="optionSchemaSaving ? 'Saving\\u2026' : 'Save'"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo Data Modal -->
+        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showDemoDataModal" ng-click="closeDemoDataModal()">
+            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:45rem;max-width:95vw">
+                <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
+                    <span>Demo data</span>
+                    <span class="close" ng-click="closeDemoDataModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                </div>
+                <div class="we-modal-body" style="padding:0;gap:0">
+                    <div ng-if="demoDataLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
+                        <we-spinner></we-spinner>
+                        Loading…
+                    </div>
+                    <div ng-if="demoDataLoadError" style="padding:1rem;color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)))" ng-bind="demoDataLoadError"></div>
+                    <div ng-if="!demoDataLoading &amp;&amp; !demoDataLoadError" id="demo-data-editor" class="we-option-schema-editor"></div>
+                </div>
+                <div class="we-modal-footer">
+                    <button class="btn btn-default" ng-click="closeDemoDataModal()" style="margin-left:auto">Cancel</button>
+                    <div>
+                        <span style="color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3))); font-size:var(--now-font-size--sm);align-self:center">
+                            <span ng-if="demoDataSaveError" ng-bind="demoDataSaveError"></span>
+                            <span ng-if="!demoDataSaveError &amp;&amp; demoDataJsonInvalid"><i class="icon-alert-triangle"></i>&nbsp;Invalid JSON</span>
+                        </span>
+                        <button class="btn btn-primary" ng-if="canWriteWidget" ng-click="saveDemoDataModal()" ng-disabled="demoDataSaving || demoDataJsonInvalid" ng-bind="demoDataSaving ? 'Saving\\u2026' : 'Save'"></button>
                     </div>
                 </div>
             </div>
@@ -3889,6 +3986,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.headerDirty.is_public =
                         !!v !== originalHeader.is_public;
                 });
+                $scope.$watch('widget.static', function (v) {
+                    $scope.headerDirty.static =
+                        !!v !== originalHeader.static;
+                });
                 $scope.$watchCollection('rolesList', function (v) {
                     $scope.headerDirty.roles =
                         (v || []).join(',') !== originalHeader.roles;
@@ -3940,6 +4041,168 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.loadError = null;
                 $scope.widget = {};
                 $scope.isVersionView = !!VERSION_ID;
+
+                ////////////////////////////////////////////////////////////
+                // SN Utils "Edit in VS Code" integration
+                ////////////////////////////////////////////////////////////
+                function checkSnUtilsInstalled() {
+                    var installed = (
+                        typeof window.snusettings !== 'undefined' ||
+                        typeof window.SNUtilsInject !== 'undefined' ||
+                        typeof window.snuPostRequestToScriptSync === 'function' ||
+                        !!document.querySelector('snu-presence') ||
+                        !!document.querySelector('script[src*="snutils"], script[src*="lfabkiipmidkmhplochgpbaeekjjfbch"]')
+                    );
+                    if (!installed) {
+                        return false;
+                    }
+                    // Only hide if snusettings has been injected AND vsscriptsync is explicitly false
+                    if (typeof window.snusettings !== 'undefined' && window.snusettings && window.snusettings.vsscriptsync === false) {
+                        return false;
+                    }
+                    return true;
+                }
+
+                function updateSnUtilsState() {
+                    var active = checkSnUtilsInstalled();
+                    if (active !== $scope.hasSnUtils) {
+                        $scope.$applyAsync(function () {
+                            $scope.hasSnUtils = active;
+                        });
+                    }
+                    return active;
+                }
+
+                $scope.hasSnUtils = checkSnUtilsInstalled();
+
+                // Hook into snuSettingsAdded if SN Utils injects settings after page load
+                var origSnuSettingsAdded = window.snuSettingsAdded;
+                window.snuSettingsAdded = function () {
+                    if (typeof origSnuSettingsAdded === 'function') {
+                        try { origSnuSettingsAdded.apply(this, arguments); } catch (e) {}
+                    }
+                    updateSnUtilsState();
+                };
+
+                var _snuObserver = new MutationObserver(function () {
+                    updateSnUtilsState();
+                });
+                _snuObserver.observe(document.documentElement, {
+                    childList: true,
+                    subtree: true,
+                });
+
+                // Delayed re-evaluations to account for async snusettings injection after page load
+                $timeout(updateSnUtilsState, 500);
+                $timeout(updateSnUtilsState, 1500);
+                $timeout(updateSnUtilsState, 3000);
+
+                $timeout(function () {
+                    updateSnUtilsState();
+                    _snuObserver.disconnect();
+                }, 10000);
+
+                $scope.c = $scope.c || {};
+                $scope.$watch('widget', function (w) {
+                    if (!w) return;
+                    $scope.c.readOnly = !$scope.canWriteWidget;
+                    $scope.data = $scope.data || {};
+                    $scope.data.title = w.name || '';
+                    $scope.data.sys_id = w.sys_id || '';
+                    var scopeVal = typeof w.sys_scope === 'object' && w.sys_scope ? w.sys_scope.value || 'global' : (w.sys_scope || 'global');
+                    var scopeDisp = typeof w.sys_scope === 'object' && w.sys_scope ? w.sys_scope.displayValue || scopeVal : scopeVal;
+                    $scope.data.f = {
+                        _fields: {
+                            name: { value: w.name || '', displayValue: w.name || '' },
+                            id: { value: w.id || '', displayValue: w.id || '' },
+                            template: { value: w.template || '' },
+                            css: { value: w.css || '' },
+                            client_script: { value: w.client_script || '' },
+                            script: { value: w.script || '' },
+                            link: { value: w.link || '' },
+                            option_schema: { value: w.option_schema || '' },
+                            demo_data: { value: w.demo_data || '' },
+                            sys_scope: { value: scopeVal, displayValue: scopeDisp },
+                            data_table: { value: 'sp_widget', displayValue: 'Widget', choices: [] },
+                        },
+                    };
+                }, true);
+
+                $scope.editInVsCode = function () {
+                    if (!$scope.widget || !$scope.widget.sys_id) return;
+
+                    if (!$scope.canWriteWidget || $scope.widget.read_only) {
+                        alert(
+                            'This is a read-only widget and cannot be opened in VS Code. Please clone the widget first.'
+                        );
+                        return;
+                    }
+
+                    var g_ck_val =
+                        window.g_ck ||
+                        (typeof g_ck !== 'undefined' ? g_ck : '');
+                    var instanceName = window.location.host.split('.')[0];
+                    var instanceUrl = window.location.origin;
+
+                    var instance = {
+                        name: instanceName,
+                        url: instanceUrl,
+                        g_ck: g_ck_val,
+                    };
+
+                    var scopeVal = typeof $scope.widget.sys_scope === 'object' && $scope.widget.sys_scope ? $scope.widget.sys_scope.value || 'global' : ($scope.widget.sys_scope || 'global');
+                    var scopeDisp = typeof $scope.widget.sys_scope === 'object' && $scope.widget.sys_scope ? $scope.widget.sys_scope.displayValue || scopeVal : scopeVal;
+
+                    var fields = {
+                        name: { value: $scope.widget.name || '', displayValue: $scope.widget.name || '' },
+                        id: { value: $scope.widget.id || '', displayValue: $scope.widget.id || '' },
+                        template: { value: $scope.widget.template || '' },
+                        css: { value: $scope.widget.css || '' },
+                        client_script: { value: $scope.widget.client_script || '' },
+                        script: { value: $scope.widget.script || '' },
+                        link: { value: $scope.widget.link || '' },
+                        option_schema: { value: $scope.widget.option_schema || '' },
+                        demo_data: { value: $scope.widget.demo_data || '' },
+                        sys_scope: { value: scopeVal, displayValue: scopeDisp },
+                        data_table: { value: 'sp_widget', displayValue: 'Widget', choices: [] },
+                    };
+
+                    var data = {
+                        action: 'saveWidget',
+                        tableName: 'sp_widget',
+                        name: $scope.widget.name || '',
+                        sys_id: $scope.widget.sys_id,
+                        instance: instance,
+                        widget: fields,
+                    };
+
+                    // Trigger SN Utils ScriptSync once (prefer extension functions if exposed, otherwise dispatch custom event)
+                    if (typeof window.snuScriptSyncPostData === 'function') {
+                        if (typeof window.snuScriptSync === 'function') {
+                            try { window.snuScriptSync(); } catch (e) {}
+                        }
+                        try { window.snuScriptSyncPostData(data); } catch (e) {}
+                    } else if (window.SNUtilsInject && window.SNUtilsInject.IDEBridge && typeof window.SNUtilsInject.IDEBridge.scriptSyncPostData === 'function') {
+                        if (typeof window.SNUtilsInject.IDEBridge.scriptSync === 'function') {
+                            try { window.SNUtilsInject.IDEBridge.scriptSync(); } catch (e) {}
+                        }
+                        try { window.SNUtilsInject.IDEBridge.scriptSyncPostData(data); } catch (e) {}
+                    } else {
+                        try {
+                            var evtSync = new CustomEvent('snutils-event', {
+                                detail: { event: 'scriptsync', command: '' },
+                            });
+                            (window.top || window).document.dispatchEvent(evtSync);
+                        } catch (e) {}
+
+                        try {
+                            var evtPost = new CustomEvent('snutils-event', {
+                                detail: { event: 'scriptsyncpostdata', command: data },
+                            });
+                            (window.top || window).document.dispatchEvent(evtPost);
+                        } catch (e) {}
+                    }
+                };
                 $scope.versionInfo = {};
                 $scope.versions = [];
                 $scope.templates = [];
@@ -3997,6 +4260,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     controller_as: false,
                     is_public: false,
                     roles: false,
+                    static: false,
                 };
                 var originalHeader = {
                     name: '',
@@ -4005,6 +4269,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     controller_as: 'c',
                     is_public: false,
                     roles: '',
+                    static: false,
                 };
 
                 // Core editor definitions (order = default pane order)
@@ -4094,6 +4359,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     tabSize: 4,
                     ctrlSSaveActiveOnly: true,
                     flashOnEditorOpen: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+                    showOpenInVsCode: true,
                     // Snapshot of the last-saved editor order and visibility.
                     // Used by the Preferences dialog so it reflects saved state,
                     // not any temporary live changes the user has made.
@@ -4108,6 +4374,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.optionSchemaSaveError = null;
                 $scope.optionSchemaSaving = false;
                 $scope.optionSchemaJsonInvalid = false;
+                $scope.showDemoDataModal = false;
+                $scope.demoDataLoading = false;
+                $scope.demoDataLoadError = null;
+                $scope.demoDataSaveError = null;
+                $scope.demoDataSaving = false;
+                $scope.demoDataJsonInvalid = false;
 
                 // Persistent pane state map (key → pane object). Prevents state loss on rebuild.
                 var paneMap = {};
@@ -4117,6 +4389,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 var monacoEditors = {};
                 // Option schema modal editor instance
                 var _optionSchemaEditor = null;
+                // Demo data modal editor instance
+                var _demoDataEditor = null;
                 // XML modal editor instance
                 var _xmlEditor = null;
                 // Original values loaded from server (used for dirty-checking)
@@ -4192,6 +4466,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         controller_as: $scope.widget.controller_as || 'c',
                         public: $scope.widget.is_public,
                         roles: $scope.widget.roles,
+                        static: !!$scope.widget.static,
                         template: $scope.widget.template || '',
                         css: $scope.widget.css || '',
                         client_script: $scope.widget.client_script || '',
@@ -4453,6 +4728,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         'insertSpaceBeforeFuncParen',
                         'linkedEditing',
                         'flashOnEditorOpen',
+                        'showOpenInVsCode',
                     ].forEach(function (k) {
                         if (p.hasOwnProperty(k)) {
                             $scope.userPrefs[k] = !!p[k];
@@ -4522,6 +4798,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 script: '',
                                 link: '',
                                 es12: true,
+                                is_header_footer: false,
+                                static: false,
+                                option_schema_has_value: false,
+                                demo_data_has_value: false,
                             };
                             $scope.es12RecordExists = false;
                             $scope.rolesList = [];
@@ -4532,6 +4812,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 controller_as: 'c',
                                 is_public: false,
                                 roles: '',
+                                static: false,
                             };
                             originalValues = {
                                 template: '',
@@ -4698,6 +4979,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 controller_as: data.widget.controller_as || 'c',
                                 is_public: !!data.widget.is_public,
                                 roles: parseRoles(data.widget.roles).join(','),
+                                static: !!data.widget.static,
                             };
                             _captureAdditionalHeaderValues(data.widget);
                             loadSnTypeDefinitions(
@@ -7326,6 +7608,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         controller_as: $scope.widget.controller_as || 'c',
                         public: $scope.widget.is_public,
                         roles: $scope.widget.roles,
+                        static: !!$scope.widget.static,
                         template: $scope.widget.template || '',
                         css: $scope.widget.css || '',
                         client_script: $scope.widget.client_script || '',
@@ -7415,6 +7698,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     $scope.widget.controller_as || 'c',
                                 public: !!$scope.widget.is_public,
                                 roles: $scope.rolesList.join(','),
+                                static: !!$scope.widget.static,
                             };
                             _captureAdditionalHeaderValues($scope.widget);
                             $scope.headerDirty = {
@@ -7424,6 +7708,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 controller_as: false,
                                 is_public: false,
                                 roles: false,
+                                static: false,
                             };
                             ($scope.additionalWidgetFields || []).forEach(
                                 function (fieldDef) {
@@ -8137,6 +8422,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.userPrefs.ctrlSSaveActiveOnly;
                     prefs.flashOnEditorOpen =
                         $scope.userPrefs.flashOnEditorOpen;
+                    prefs.showOpenInVsCode =
+                        $scope.userPrefs.showOpenInVsCode;
                     prefs.order = $scope.coreEditorDefs.map(function (d) {
                         return d.key;
                     });
@@ -9429,6 +9716,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.closeOptionSchemaModal();
                         return true;
                     }
+                    if ($scope.showDemoDataModal) {
+                        $scope.closeDemoDataModal();
+                        return true;
+                    }
                     if ($scope.showLinkProviderModal) {
                         $scope.cancelLinkProviderModal();
                         return true;
@@ -9675,6 +9966,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         !!$scope.headerDirty.controller_as ||
                         !!$scope.headerDirty.is_public ||
                         !!$scope.headerDirty.roles ||
+                        !!$scope.headerDirty.static ||
                         ($scope.additionalWidgetFields || []).some(function (
                             fieldDef
                         ) {
@@ -9916,6 +10208,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.userPrefs.ctrlSSaveActiveOnly,
                         flashOnEditorOpen:
                             $scope.userPrefs.flashOnEditorOpen,
+                        showOpenInVsCode:
+                            $scope.userPrefs.showOpenInVsCode !== false,
                         availableFonts: _getAvailableMonospaceFonts(),
                         googleFonts: _GOOGLE_FONTS,
                     };
@@ -9982,6 +10276,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         !!$scope.userPrefsEdit.ctrlSSaveActiveOnly;
                     $scope.userPrefs.flashOnEditorOpen =
                         !!$scope.userPrefsEdit.flashOnEditorOpen;
+                    $scope.userPrefs.showOpenInVsCode =
+                        !!$scope.userPrefsEdit.showOpenInVsCode;
                     var ts = parseInt($scope.userPrefsEdit.tabSize, 10);
                     if (ts >= 1 && ts <= 8) {
                         $scope.userPrefs.tabSize = ts;
@@ -10102,6 +10398,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.userPrefsEdit.tabSize = 4;
                     $scope.userPrefsEdit.ctrlSSaveActiveOnly = true;
                     $scope.userPrefsEdit.flashOnEditorOpen = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    $scope.userPrefsEdit.showOpenInVsCode = true;
                 };
 
                 /* Trigger the modal leave animation, then invoke the close callback after it
@@ -10256,9 +10553,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                     $scope.optionSchemaSaving = true;
                     $scope.optionSchemaSaveError = null;
+                    var newValue = _optionSchemaEditor.getValue();
                     ajax('saveOptionSchema', {
                         sys_id: $scope.widget.sys_id,
-                        value: _optionSchemaEditor.getValue(),
+                        value: newValue,
                     }).then(function (data) {
                         $scope.optionSchemaSaving = false;
                         if (!data.success) {
@@ -10266,6 +10564,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 data.error || 'Save failed';
                             return;
                         }
+                        $scope.widget.option_schema_has_value =
+                            _hasProperJsonObjectValue(newValue);
                         $scope.closeOptionSchemaModal();
                     });
                 };
@@ -10278,6 +10578,166 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 _optionSchemaEditor.dispose();
                             } catch (e) {}
                             _optionSchemaEditor = null;
+                        }
+                    });
+                };
+
+                // True when a raw JSON string parses to an object with at least one property.
+                function _hasProperJsonObjectValue(raw) {
+                    if (!raw || !raw.trim()) {
+                        return false;
+                    }
+                    try {
+                        var parsed = JSON.parse(raw);
+                        return (
+                            !!parsed &&
+                            typeof parsed === 'object' &&
+                            !Array.isArray(parsed) &&
+                            Object.keys(parsed).length > 0
+                        );
+                    } catch (e) {
+                        return false;
+                    }
+                }
+
+                ////////////////////////////////////////////////////////////
+                // Demo Data modal
+                ////////////////////////////////////////////////////////////
+
+                $scope.openDemoDataModal = function () {
+                    $scope.openDropdown = null;
+                    $scope.demoDataLoading = true;
+                    $scope.demoDataLoadError = null;
+                    $scope.demoDataSaveError = null;
+                    $scope.demoDataSaving = false;
+                    $scope.showDemoDataModal = true;
+
+                    ajax('getDemoData', {
+                        sys_id: $scope.widget.sys_id,
+                    }).then(function (data) {
+                        if (!data.success) {
+                            $scope.demoDataLoading = false;
+                            $scope.demoDataLoadError =
+                                data.error || 'Failed to load demo data';
+                            return;
+                        }
+                        $scope.demoDataLoading = false;
+                        $timeout(function () {
+                            var container = document.getElementById(
+                                'demo-data-editor'
+                            );
+                            if (!container) {
+                                return;
+                            }
+                            if (_demoDataEditor) {
+                                try {
+                                    _demoDataEditor.dispose();
+                                } catch (e) {}
+                                _demoDataEditor = null;
+                            }
+                            var raw = data.demo_data || '';
+                            var value = raw;
+                            try {
+                                if (value.trim())
+                                    value = JSON.stringify(
+                                        JSON.parse(value),
+                                        null,
+                                        4
+                                    );
+                            } catch (e) {}
+                            _ensureMonacoThemes();
+                            _ensureWeJsonLanguage();
+                            function _create() {
+                                $scope.demoDataJsonInvalid = false;
+                                _demoDataEditor = monaco.editor.create(
+                                    container,
+                                    {
+                                        value: value,
+                                        language: 'we-json',
+                                        theme: _resolveMonacoTheme(),
+                                        readOnly: !$scope.canWriteWidget,
+                                        automaticLayout: true,
+                                        fontSize: 12,
+                                        scrollBeyondLastLine: false,
+                                        minimap: { enabled: false },
+                                        tabSize: 4,
+                                        insertSpaces: true,
+                                        wordWrap: $scope.userPrefs.wordWrap
+                                            ? 'on'
+                                            : 'off',
+                                        fixedOverflowWidgets: true,
+                                        mouseWheelZoom: true,
+                                    }
+                                );
+                                // Validate JSON manually on every content change
+                                function _validateJson() {
+                                    var content =
+                                        _demoDataEditor.getValue();
+                                    var invalid = !!content.trim();
+                                    if (invalid) {
+                                        try {
+                                            JSON.parse(content);
+                                            invalid = false;
+                                        } catch (e) {}
+                                    }
+                                    $scope.$apply(function () {
+                                        $scope.demoDataJsonInvalid =
+                                            invalid;
+                                    });
+                                }
+                                _demoDataEditor.onDidChangeModelContent(
+                                    _validateJson
+                                );
+                                _validateJson(); // run immediately in case initial value is invalid
+                            }
+                            if (window.monaco && window.monaco.editor) {
+                                _create();
+                            } else {
+                                require(['vs/editor/editor.main'], function () {
+                                    _ensureMonacoThemes();
+                                    _ensureWeJsonLanguage();
+                                    _create();
+                                });
+                            }
+                        }, 50);
+                    });
+                };
+
+                $scope.saveDemoDataModal = function () {
+                    if (
+                        !_demoDataEditor ||
+                        !$scope.canWriteWidget ||
+                        $scope.demoDataJsonInvalid
+                    ) {
+                        return;
+                    }
+                    $scope.demoDataSaving = true;
+                    $scope.demoDataSaveError = null;
+                    var newValue = _demoDataEditor.getValue();
+                    ajax('saveDemoData', {
+                        sys_id: $scope.widget.sys_id,
+                        value: newValue,
+                    }).then(function (data) {
+                        $scope.demoDataSaving = false;
+                        if (!data.success) {
+                            $scope.demoDataSaveError =
+                                data.error || 'Save failed';
+                            return;
+                        }
+                        $scope.widget.demo_data_has_value =
+                            _hasProperJsonObjectValue(newValue);
+                        $scope.closeDemoDataModal();
+                    });
+                };
+
+                $scope.closeDemoDataModal = function () {
+                    _closeModal(function () {
+                        $scope.showDemoDataModal = false;
+                        if (_demoDataEditor) {
+                            try {
+                                _demoDataEditor.dispose();
+                            } catch (e) {}
+                            _demoDataEditor = null;
                         }
                     });
                 };

@@ -5,8 +5,8 @@ Record({
     table: 'sys_ui_script',
     data: {
         active: 'true',
-        description: `TypeScript ambient declarations for ServiceNow client-side APIs — AngularJS, jQuery, GlideForm, GlideUser, GlideAjax, and SP widget globals. 
-Registers as window.MONACO_LANGUAGE_CLIENT_DTS.`,
+        description: `TypeScript ambient declarations for ServiceNow client-side APIs — AngularJS, jQuery, GlideForm, GlideUser, GlideAjax, and SP widget globals.
+Registers as window.MONACO_LANGUAGE_CLIENT_DTS, plus window.MONACO_LANGUAGE_CLIENT_DI (DI token → type map and api.controller signature builder used by monaco_plus_core for name-based injection typing).`,
         global: 'false',
         ignore_in_now_experience: 'false',
         name: 'monaco_language_client',
@@ -255,7 +255,7 @@ declare namespace angular {
          * If window.name contains prefix NG_DEFER_BOOTSTRAP! when angular.bootstrap is called, the bootstrap process will be paused until angular.resumeBootstrap() is called.
          * @param extraModules An optional array of modules that should be added to the original list of modules that the app was about to be bootstrapped with.
          */
-        resumeBootstrap?(extraModules?: string[]): ng.auto.IInjectorService;
+        resumeBootstrap?(extraModules?: string[]): auto.IInjectorService;
 
         /**
          * Restores the pre-1.8 behavior of jqLite that turns XHTML-like strings like
@@ -1536,6 +1536,39 @@ declare namespace angular {
     }
 
     /**
+     * $animate - service in module ng (no-op core version; full CSS/JS
+     * transitions require the ngAnimate module).
+     * @see {@link https://docs.angularjs.org/api/ng/service/$animate}
+     */
+    interface IAnimateService {
+        /** Sets up an event listener to fire whenever the animation event has fired on the given element. */
+        on(event: string, container: JQLite, callback: (element?: JQLite, phase?: string) => any): void;
+        /** Deregisters event listeners registered with $animate.on(). */
+        off(event: string, container?: JQLite, callback?: (element?: JQLite, phase?: string) => any): void;
+        /** Associates the provided element with a host parent element to allow the element to be animated even if it exists outside of the DOM structure of the AngularJS application. */
+        pin(element: JQLite, parentElement: JQLite): void;
+        /** Globally enables/disables animations, or enables/disables them on the given element. */
+        enabled(enabled?: boolean): boolean;
+        enabled(element: JQLite, enabled?: boolean): boolean;
+        /** Cancels the provided animation. */
+        cancel(animationPromise: IPromise<any>): void;
+        /** Inserts the element into the DOM either after the 'after' element (if provided) or as the first child within the parent element, then runs the enter animation. */
+        enter(element: JQLite, parent: JQLite, after?: JQLite, options?: object): IPromise<any>;
+        /** Moves the element to the position within the DOM, then runs the move animation. */
+        move(element: JQLite, parent: JQLite, after?: JQLite): IPromise<any>;
+        /** Runs the leave animation, then removes the element from the DOM. */
+        leave(element: JQLite, options?: object): IPromise<any>;
+        /** Adds the provided CSS class(es), running an animation for the change. */
+        addClass(element: JQLite, className: string, options?: object): IPromise<any>;
+        /** Removes the provided CSS class(es), running an animation for the change. */
+        removeClass(element: JQLite, className: string, options?: object): IPromise<any>;
+        /** Adds and/or removes the given CSS classes, running an animation for the change. */
+        setClass(element: JQLite, add: string, remove: string, options?: object): IPromise<any>;
+        /** Performs an inline animation on the element, applying the provided 'from' and 'to' styles. */
+        animate(element: JQLite, from: object, to: object, className?: string, options?: object): IPromise<any>;
+    }
+
+    /**
      * $cacheFactory - service in module ng
      *
      * Factory that constructs Cache objects and gives access to them.
@@ -1768,7 +1801,7 @@ declare namespace angular {
      * The minimal local definitions required by $controller(ctrl, locals) calls.
      */
     interface IControllerLocals {
-        $scope: ng.IScope;
+        $scope: IScope;
         $element: JQuery;
     }
 
@@ -2703,80 +2736,37 @@ declare var data: { [key: string]: any };
 /** Service Portal options object (widget instance options configured on the page). */
 declare var options: { [key: string]: any };
 
-/**
- * Service Portal widget component API object.
- *
- * Assign \\\`api.controller\\\` and optionally \\\`api.link\\\` inside the client controller field.
- * AngularJS resolves injected services **by parameter name**, so the order of parameters
- * does not matter at runtime. However, to get IntelliSense on parameters like \\\`$scope\\\` or
- * \\\`$http\\\`, you have two options:
- *
- * **Option A — JSDoc \\\`@param\\\` (recommended, works for any injection order):**
- * Requires \\\`checkJs\\\` to be active (enabled automatically by this editor).
- * \\\`\\\`\\\`js
- * /**
- *  * @param {angular.IScope} $scope
- *  * @param {angular.IHttpService} $http
- *  * @param {angular.IQService} $q
- *  * /
- * api.controller = function($scope, $http, $q) {
- *     $scope.$watch(...)   // ✓ full IntelliSense
- *     $http.get(...)       // ✓ full IntelliSense
- * };
- * \\\`\\\`\\\`
- *
- * **Option B — standard injection order (zero annotation required):**
- * When \\\`$scope\\\` is the first parameter, its type is inferred automatically via contextual
- * typing from this declaration. Other services typed here are also inferred positionally if
- * kept in the order listed.
- */
-declare var api: {
-    /**
-     * Widget controller function. AngularJS injects services by parameter name.
-     *
-     * \\\`$scope\\\` is inferred as \\\`angular.IScope\\\` automatically when it is the first parameter.
-     * For all other services use a JSDoc \\\`@param\\\` block on the function to get completions.
-     * @see {@link https://docs.angularjs.org/guide/di}
-     */
-    controller: (
-        $scope: angular.IScope,
-        $rootScope?: angular.IRootScopeService,
-        $location?: angular.ILocationService,
-        $http?: angular.IHttpService,
-        $q?: angular.IQService,
-        $timeout?: angular.ITimeoutService,
-        $interval?: angular.IIntervalService,
-        $filter?: angular.IFilterService,
-        $log?: angular.ILogService,
-        $window?: Window & typeof globalThis,
-        $document?: JQLite,
-        $element?: JQLite,
-        $sce?: angular.ISCEService,
-        $anchorScroll?: angular.IAnchorScrollService,
-        $cacheFactory?: angular.ICacheFactoryService,
-        $compile?: angular.ICompileService,
-        $controller?: angular.IControllerService,
-        $interpolate?: angular.IInterpolateService,
-        $parse?: angular.IParseService,
-        $templateCache?: angular.ITemplateCacheService,
-        $animate?: angular.IAnimateService,
-        $exceptionHandler?: angular.IExceptionHandlerService,
-        spUtil?: any,
-        data?: { [key: string]: any },
-        options?: { [key: string]: any },
-        ...rest: any[]
-    ) => void;
-    /**
-     * Widget link function for direct DOM manipulation. Runs after the template is compiled.
-     * @see {@link https://docs.angularjs.org/api/ng/service/$compile#-link-}
-     */
-    link: (
-        $scope: angular.IScope,
-        $element: JQLite,
-        $attrs: angular.IAttributes,
-        ...rest: any[]
-    ) => void;
-};
+/** Service Portal client utility service. */
+declare var spUtil: SpUtil;
+/** Service Portal modal dialog service. */
+declare var spModal: SpModal;
+type spUtil = SpUtil;
+type spModal = SpModal;
+type $uibModal = SpModal;
+type snRecordWatcher = SnRecordWatcher;
+type cabrillo = Cabrillo;
+type i18n = I18n;
+type spAriaUtil = SpAriaUtil;
+type spNavServiceClient = SpNavServiceClient;
+type $scope = angular.IScope;
+type $http = angular.IHttpService;
+type $q = angular.IQService;
+type $timeout = angular.ITimeoutService;
+type $location = angular.ILocationService;
+type $rootScope = angular.IRootScopeService;
+type $element = JQLite;
+type $window = Window & typeof globalThis;
+type $document = JQLite;
+
+// NOTE: The 'api' object (api.controller / api.link) is intentionally NOT
+// declared in this static lib. AngularJS injects controller arguments by
+// parameter NAME, not position, so any fixed positional signature would
+// mis-type every controller whose injection order differs from it.
+// Instead, monaco_plus_core watches the client-controller model, parses the
+// parameter list the developer actually wrote, and (re)registers a matching
+// 'declare var api' signature as extra lib 'ts:snlib-client-api.d.ts',
+// typing each parameter by name via the DI token map exposed below as
+// window.MONACO_LANGUAGE_CLIENT_DI.
 
     /**
     * Compiles a string with \\\`{{ }}\\\` markup into an interpolation function.
@@ -3597,8 +3587,7 @@ declare var api: {
     *
     * @see https://developer.servicenow.com/dev.do#!/reference/api/rome/client/c_SPUtilAPI
     */
-    declare var spUtil: {
-    
+    interface SpUtil {
         /**
          * Displays a dismissible red error banner at the top of the portal page.
          * @param message Message text (HTML allowed).
@@ -3612,15 +3601,15 @@ declare var api: {
         addInfoMessage(message: string): void;
     
         /**
-         * Interpolates a template string by replacing \\\`\\\\\${key}\\\` placeholders with
+         * Interpolates a template string by replacing \\\`\\u0024{key}\\\` placeholders with
          * values from the supplied object.
          *
-         * @param template A string containing \\\`\\\\\${key}\\\` tokens.
+         * @param template A string containing \\\`\\u0024{key}\\\` tokens.
          * @param values Key-value pairs used for substitution.
          * @returns The interpolated string.
          *
          * @example
-         * var msg = spUtil.format('Hello \\\${name}, you have \\\${count} items.', {
+         * var msg = spUtil.format('Hello \\u0024{name}, you have \\u0024{count} items.', {
          *     name: g_user.getFullName(),
          *     count: data.items.length
          * });
@@ -3664,7 +3653,8 @@ declare var api: {
          * @returns Promise resolving with the updated data object.
          */
         update(widgetScope: angular.IScope, data?: { [key: string]: any }): angular.IPromise<{ [key: string]: any }>;
-    };
+    }
+    declare var spUtil: SpUtil;
     
     // -----------------------------------------------------------------------------
     // spModal — Service Portal Modal API
@@ -3702,7 +3692,7 @@ declare var api: {
     *
     * @see https://developer.servicenow.com/dev.do#!/reference/api/xanadu/client/sp-modal-api
     */
-    declare var spModal: {
+    interface SpModal {
     
         /**
          * Opens a modal dialog with the given options.
@@ -3735,7 +3725,68 @@ declare var api: {
          * @returns A promise that resolves with the entered string, or rejects if cancelled.
          */
         prompt(message: string, defaultValue?: string, options?: SpModalOptions): angular.IPromise<string>;
-    };
+    }
+    declare var spModal: SpModal;
+
+    interface SnRecordWatcher {
+        /** Initializes a record watcher channel on a table with an optional query filter. */
+        initChannel(scope: angular.IScope, tableName: string, filter?: string, actionCallback?: Function): void;
+        /** Subscribes to record watcher events for a table. */
+        watch(scope: angular.IScope, tableName: string, filter?: string): void;
+        /** Registers a callback for record change events on a table. */
+        initList(tableName: string, filter?: string): void;
+        /** Returns true if Record Watcher is supported in the current browser/portal environment. */
+        isSupported(): boolean;
+    }
+    declare var snRecordWatcher: SnRecordWatcher;
+
+    interface Cabrillo {
+        /** Returns true if running inside the native mobile container app. */
+        isNative(): boolean;
+        viewLayout: {
+            setTitle(title: string): void;
+            setSubtitle(subtitle: string): void;
+            setNavigationBarButtons(buttons: any[], position?: string): void;
+        };
+        camera: {
+            getPhoto(options?: any): angular.IPromise<any>;
+        };
+        attachments: {
+            addFile(options?: any): angular.IPromise<any>;
+        };
+        modal: {
+            dismiss(result?: any): void;
+        };
+    }
+    declare var cabrillo: Cabrillo;
+
+    interface I18n {
+        /** Asynchronously gets translated string for a key or array of keys. */
+        getMessage(message: string | string[], callback?: (translated: any) => void): angular.IPromise<any>;
+        /** Synchronously formats a template string replacing {0}, {1} placeholders. */
+        format(template: string, values: any[] | { [key: string]: any }): string;
+        /** Returns cached translation for a key, or key itself if uncached. */
+        get(message: string): string;
+    }
+    declare var i18n: I18n;
+
+    interface SpAriaUtil {
+        /**
+         * Announces a message via an ARIA live region so screen readers read it aloud.
+         * @param message Text to announce.
+         * @param assertive If \\\`true\\\`, uses \\\`aria-live="assertive"\\\` (default is \\\`"polite"\\\`).
+         */
+        sendLiveMessage(message: string, assertive?: boolean): void;
+    }
+    declare var spAriaUtil: SpAriaUtil;
+
+    interface SpNavServiceClient {
+        open(url: string, target?: string): void;
+        navigate(url: string): void;
+    }
+    declare var spNavServiceClient: SpNavServiceClient;
+
+    declare var $uibModal: SpModal;
     
     // -----------------------------------------------------------------------------
     // GlideFlow — Client-Side Flow Execution
@@ -4264,24 +4315,7 @@ declare var api: {
         pageLoad(pageId?: string): void;
     };
     
-    // -----------------------------------------------------------------------------
-    // spAriaUtil — Service Portal Accessibility Utilities
-    // -----------------------------------------------------------------------------
-    
-    /**
-    * ARIA accessibility utilities for Service Portal widgets.
-    *
-    * @see https://developer.servicenow.com/dev.do#!/reference/api/xanadu/client/sp-aria-util-api
-    */
-    declare var spAriaUtil: {
-    
-        /**
-         * Announces a message via an ARIA live region so screen readers read it aloud.
-         * @param message Text to announce.
-         * @param assertive If \\\`true\\\`, uses \\\`aria-live="assertive"\\\` (default is \\\`"polite"\\\`).
-         */
-        sendLiveMessage(message: string, assertive?: boolean): void;
-    };
+
     
     // -----------------------------------------------------------------------------
     // spContextManager — Service Portal Context Manager
@@ -5622,7 +5656,7 @@ declare var api: {
     * A jQuery object wrapping one or more DOM elements.
     * Available via $j(), jQuery(), or $() in widget client controllers.
     */
-    interface JQuery<TElement extends Element = HTMLElement> {
+    interface JQuery<TElement = HTMLElement> {
         /** Number of elements in the jQuery object. */
         length: number;
         [index: number]: TElement;
@@ -6065,6 +6099,137 @@ declare var api: {
         inheritedData(key?: string): any;
     }
 \`;
+
+    // -----------------------------------------------------------------------------
+    // AngularJS dependency-injection support for the widget 'api' object.
+    //
+    // AngularJS resolves injected services by parameter NAME, not position, so
+    // the ambient 'declare var api' signature must mirror the exact parameter
+    // order written in the controller being edited. buildApiDts() generates
+    // that declaration from a parsed parameter-name list; every name is typed
+    // via DI_TYPES (unknown names fall back to any). monaco_plus_core calls it
+    // on (debounced) controller edits and re-registers the result under the
+    // stable extra-lib URI 'ts:snlib-client-api.d.ts'.
+    // -----------------------------------------------------------------------------
+
+    // DI token → TypeScript type name, matching the declarations in the DTS above.
+    var DI_TYPES = {
+        $scope: 'angular.IScope',
+        $rootScope: 'angular.IRootScopeService',
+        $http: 'angular.IHttpService',
+        $q: 'angular.IQService',
+        $timeout: 'angular.ITimeoutService',
+        $interval: 'angular.IIntervalService',
+        $location: 'angular.ILocationService',
+        $filter: 'angular.IFilterService',
+        $log: 'angular.ILogService',
+        $window: 'Window & typeof globalThis',
+        $document: 'JQLite',
+        $element: 'JQLite',
+        $attrs: 'angular.IAttributes',
+        $sce: 'angular.ISCEService',
+        $animate: 'angular.IAnimateService',
+        $anchorScroll: 'angular.IAnchorScrollService',
+        $cacheFactory: 'angular.ICacheFactoryService',
+        $compile: 'angular.ICompileService',
+        $controller: 'angular.IControllerService',
+        $exceptionHandler: 'angular.IExceptionHandlerService',
+        $interpolate: 'angular.IInterpolateService',
+        $parse: 'angular.IParseService',
+        $templateCache: 'angular.ITemplateCacheService',
+        $uibModal: 'SpModal',
+        spUtil: 'SpUtil',
+        spModal: 'SpModal',
+        snRecordWatcher: 'SnRecordWatcher',
+        cabrillo: 'Cabrillo',
+        i18n: 'I18n',
+        spAriaUtil: 'SpAriaUtil',
+        spNavServiceClient: 'SpNavServiceClient',
+        data: '{ [key: string]: any }',
+        options: '{ [key: string]: any }',
+    };
+
+    // Signature used until a controller parameter list has been parsed.
+    var DEFAULT_CONTROLLER_PARAMS = [
+        '$scope',
+        'spUtil',
+        'spModal',
+        '$http',
+        '$q',
+        '$timeout',
+        '$location',
+        '$rootScope',
+        '$element',
+        '$window',
+    ];
+
+    /** True when the name is a valid TS identifier we can emit as a parameter. */
+    function _isValidParamName(name) {
+        return /^[A-Za-z_$][\\w$]*$/.test(name);
+    }
+
+    /**
+     * Build the 'declare var api' ambient declaration.
+     *
+     * @param {string[]} [controllerParams] - Parameter names in the order the
+     *   developer wrote them. Falls back to DEFAULT_CONTROLLER_PARAMS.
+     * @returns {string} d.ts source for the api object.
+     */
+    function buildApiDts(controllerParams) {
+        var params =
+            controllerParams && controllerParams.length
+                ? controllerParams
+                : DEFAULT_CONTROLLER_PARAMS;
+
+        var lines = [
+            '/**',
+            ' * Service Portal widget component API object.',
+            ' *',
+            ' * Assign api.controller inside the client controller field. AngularJS',
+            ' * injects services by parameter name, in any order. This signature is',
+            ' * regenerated automatically to match the parameter list in the editor.',
+            ' */',
+            'declare var api: {',
+            '    /**',
+            '     * Widget controller function. AngularJS injects services by parameter name.',
+            '     * @see {@link https://docs.angularjs.org/guide/di}',
+            '     */',
+            '    controller: (',
+        ];
+
+        params.forEach(function (name) {
+            if (!_isValidParamName(name)) {
+                return;
+            }
+            var type = DI_TYPES[name] || 'any';
+            lines.push('        ' + name + ': ' + type + ',');
+        });
+
+        lines.push(
+            '        ...rest: any[]',
+            '    ) => void;',
+            '    /**',
+            '     * Widget link function for direct DOM manipulation. Runs after the',
+            '     * template is compiled. Arguments are positional: scope, element, attrs.',
+            '     * @see {@link https://docs.angularjs.org/api/ng/service/$compile#-link-}',
+            '     */',
+            '    link: (',
+            '        scope: angular.IScope,',
+            '        element: JQLite,',
+            '        attrs: angular.IAttributes,',
+            '        ...rest: any[]',
+            '    ) => void;',
+            '};'
+        );
+
+        return lines.join('\\n');
+    }
+
+    window.MONACO_LANGUAGE_CLIENT_DI = {
+        types: DI_TYPES,
+        defaultParams: DEFAULT_CONTROLLER_PARAMS,
+        buildApiDts: buildApiDts,
+    };
 })();
 `,
         ui_type: '0',
