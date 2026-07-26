@@ -14,8 +14,8 @@
     "types": "now-sdk dependencies"
   },
   "devDependencies": {
-    "@servicenow/sdk": "4.6.0",
     "@servicenow/glide": "27.0.5",
+    "@servicenow/sdk": "4.9.1",
     "typescript": "5.5.4"
   }
 }
