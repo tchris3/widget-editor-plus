@@ -405,10 +405,24 @@ Record({
             }
             var name = typedefMatch[1];
             var props = [];
-            var propRe = /@property\\s+\\{([^}]+)\\}\\s+(\\w+)/g;
+            /* Captures the trailing description too, so hover has something to
+             * show; \\\`[name]\\\` marks the property optional. */
+            var propRe =
+                /@property\\s*\\{([^}]+)\\}\\s*(\\[?)([\\w$]+)\\]?[ \\t]*(?:-[ \\t]*)?([^\\r\\n]*)/g;
             var pm;
             while ((pm = propRe.exec(body)) !== null) {
-                props.push('    ' + pm[2] + ': ' + jsDocTypeToTs(pm[1]) + ';');
+                var propDesc = pm[4].replace(/\\s*\\*+\\/?\\s*$/, '').trim();
+                if (propDesc) {
+                    props.push('    /** ' + propDesc + ' */');
+                }
+                props.push(
+                    '    ' +
+                        pm[3] +
+                        (pm[2] ? '?' : '') +
+                        ': ' +
+                        jsDocTypeToTs(pm[1]) +
+                        ';'
+                );
             }
             interfaces.push(
                 'interface ' + name + ' {\\n' + props.join('\\n') + '\\n}'
@@ -496,14 +510,14 @@ Record({
         if (!rawValue) {
             return 'any';
         }
-        var v = rawValue.trim().replace(/\s*;.*$/, '').replace(/,$/, '').trim();
+        var v = rawValue.trim().replace(/\\s*;.*$/, '').replace(/,$/, '').trim();
         if (
             (v.charAt(0) === "'" || v.charAt(0) === '"' || v.charAt(0) === '\x60') &&
             v.charAt(v.length - 1) === v.charAt(0)
         ) {
             return 'string';
         }
-        if (/^-?(?:0x[0-9a-fA-F]+|\d+(?:\.\d+)?|\.\d+)$/.test(v)) {
+        if (/^-?(?:0x[0-9a-fA-F]+|\\d+(?:\\.\\d+)?|\\.\\d+)$/.test(v)) {
             return 'number';
         }
         if (v === 'true' || v === 'false') {
@@ -515,10 +529,82 @@ Record({
         if (v.charAt(0) === '{') {
             return 'Record<string, any>';
         }
+        var newMatch = v.match(/^new\\s+([A-Z][A-Za-z0-9_]*)\\b/);
+        if (newMatch) {
+            return newMatch[1];
+        }
         if (v === 'null' || v === 'undefined') {
             return 'any';
         }
         return 'any';
+    }
+
+    /**
+     * Replaces every function body with an empty block so prototype-property
+     * scanning only sees top-level members. Brace-balanced (skipping strings
+     * and comments) because a non-greedy regex stops at the first \\\`}\\\` and
+     * leaks the keys of any object literal returned from a method.
+     *
+     * @param {string} script - Full content of a Script Include script field.
+     * @returns {string} Script with all function bodies collapsed to \\\`{}\\\`.
+     */
+    function _stripFunctionBodies(script) {
+        var out = '';
+        var i = 0;
+        var n = script.length;
+        while (i < n) {
+            var idx = script.indexOf('function', i);
+            if (idx === -1) {
+                out += script.slice(i);
+                break;
+            }
+            var open = script.indexOf('{', idx);
+            if (open === -1) {
+                out += script.slice(i);
+                break;
+            }
+            out += script.slice(i, open) + '{}';
+
+            var depth = 0;
+            var inStr = null;
+            var j = open;
+            for (; j < n; j++) {
+                var ch = script.charAt(j);
+                if (inStr) {
+                    if (ch === '\\\\') {
+                        j++;
+                    } else if (ch === inStr) {
+                        inStr = null;
+                    }
+                    continue;
+                }
+                if (ch === '"' || ch === "'") {
+                    inStr = ch;
+                    continue;
+                }
+                if (ch === '/' && script.charAt(j + 1) === '*') {
+                    var blockEnd = script.indexOf('*/', j + 2);
+                    j = blockEnd === -1 ? n : blockEnd + 1;
+                    continue;
+                }
+                if (ch === '/' && script.charAt(j + 1) === '/') {
+                    var lineEnd = script.indexOf('\\n', j);
+                    j = lineEnd === -1 ? n : lineEnd;
+                    continue;
+                }
+                if (ch === '{') {
+                    depth++;
+                } else if (ch === '}') {
+                    depth--;
+                    if (depth === 0) {
+                        j++;
+                        break;
+                    }
+                }
+            }
+            i = j;
+        }
+        return out;
     }
 
     /**
@@ -537,51 +623,70 @@ Record({
             if (!name || name === 'type' || name === 'initialize' || seen[name]) {
                 return;
             }
+            if (rawValue && /^\\s*(?:async\\s+)?function\\b/.test(rawValue.trim())) {
+                return;
+            }
 
             var tsType = null;
             if (comment) {
-                var typeMatch = comment.match(/@type\s+\{([^}]+)\}/);
+                var typeMatch = comment.match(/@type\\s*\\{([^}]+)\\}/);
                 if (typeMatch) {
                     tsType = jsDocTypeToTs(typeMatch[1]);
                 }
             }
 
-            if (!tsType) {
+            if (!tsType && rawValue) {
                 tsType = inferPropertyValueType(rawValue);
             }
 
             var docLines = [];
             if (comment) {
                 var descText = comment
-                    .replace(/^\/\*+\s*/, '')
-                    .replace(/\s*\*+\/$/, '')
-                    .replace(/^\s*\*\s?/gm, '');
-                var descMatch = descText.match(/^([\s\S]*?)(?=\s*@|\s*$)/);
+                    .replace(/^\\/\\*+\\s*/, '')
+                    .replace(/\\s*\\*+\\/$/, '')
+                    .replace(/^\\s*\\*\\s?/gm, '');
+                var descMatch = descText.match(/^([\\s\\S]*?)(?=\\s*@|\\s*$)/);
                 if (descMatch && descMatch[1].trim()) {
                     docLines.push(descMatch[1].trim());
+                } else {
+                    /* One-liners put the text after the tag: @type{X} Description. */
+                    var tagDesc = descText.match(
+                        /@type\\s*\\{[^}]*\\}[ \\t]*([^\\r\\n]+)/
+                    );
+                    if (tagDesc && tagDesc[1].trim()) {
+                        docLines.push(tagDesc[1].trim());
+                    }
                 }
             }
 
             seen[name] = true;
             properties.push({
                 name: name,
-                tsType: tsType,
+                tsType: tsType || 'any',
                 documentation: docLines.join('\\n\\n'),
             });
         }
 
         /* Pattern 1: Object literal properties: key: value (not starting with function) */
+        var prototypeScript = _stripFunctionBodies(script);
         var propRe =
-            /(\/\*\*[\s\S]*?\*\/|\/\*[\s\S]*?\*\/)?\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:\s*(?!function\b)([^,\}\n]+|\[[\s\S]*?\]|\{[\s\S]*?\})/g;
+            /(\\/\\*\\*[\\s\\S]*?\\*\\/|\\/\\*[\\s\\S]*?\\*\\/)?\\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\\s*:\\s*(?!function\\b)([^,\\}\\n]+|\\[[\\s\\S]*?\\]|\\{[\\s\\S]*?\\})/g;
         var m;
-        while ((m = propRe.exec(script)) !== null) {
+        while ((m = propRe.exec(prototypeScript)) !== null) {
             addProp(m[2], m[3], m[1] || null);
         }
 
         /* Pattern 2: Direct prototype assignments: ClassName.prototype.key = value; */
         var directRe =
-            /(\/\*\*[\s\S]*?\*\/|\/\*[\s\S]*?\*\/)?\s*(?:[A-Z]\w*|this)\.prototype\.([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(?!function\b)([^;\n]+)/g;
+            /(\\/\\*\\*[\\s\\S]*?\\*\\/|\\/\\*[\\s\\S]*?\\*\\/)?\\s*(?:[A-Z]\\w*|this)\\.prototype\\.([a-zA-Z_$][a-zA-Z0-9_$]*)\\s*=\\s*(?!function\\b)([^;\\n]+)/g;
         while ((m = directRe.exec(script)) !== null) {
+            addProp(m[2], m[3], m[1] || null);
+        }
+
+        /* Pattern 3: Property assignments to this inside methods/constructor: this.key = value; */
+        var thisPropRe =
+            /(\\/\\*\\*[\\s\\S]*?\\*\\/|\\/\\*[\\s\\S]*?\\*\\/)?\\s*\\bthis\\.([a-zA-Z_$][a-zA-Z0-9_$]*)\\s*=\\s*(?!function\\b)([^;\\n]+)/g;
+        while ((m = thisPropRe.exec(script)) !== null) {
             addProp(m[2], m[3], m[1] || null);
         }
 
@@ -1277,12 +1382,19 @@ Record({
         ) {
             return;
         }
-        if (!methods || !methods.length) {
+        /* A Script Include may expose only properties, which is still worth a DTS. */
+        if (
+            (!methods || !methods.length) &&
+            (!properties || !properties.length)
+        ) {
             return;
         }
 
-        var ourUri = 'ts:snlib-si-' + className + '.d.ts';
-        var classMarker = 'declare class ' + className;
+        /* Distinct from SN's own 'ts:snlib-si-*' URI: overwriting SN's entry in place
+         * does not propagate to the TS worker, and the filter below must be able to
+         * tell our declarations apart from SN's untyped ones. */
+        var ourUri = 'ts:snlib-si-plus-' + className + '.d.ts';
+        var classMarker = 'class ' + className;
 
         /* One-time: strip SN's primitive-type augmentations from all registered libs.
          * SN's global DTS declares \\\`interface Number extends GlideElement, number {}\\\`
@@ -1333,14 +1445,14 @@ Record({
          * that future calls with SN's untyped class declarations are stripped
          * for any class we have taken ownership of.
          *
-         * We intercept ALL addExtraLib calls except our own 'ts:snlib-si-*' URIs.
+         * We intercept ALL addExtraLib calls except our own 'ts:snlib-si-plus-*' URIs.
          * Restricting by URI pattern (e.g. only 'global.X' or unkeyed) misses
          * cases where SN re-registers using unexpected URI patterns. The replace
          * is gated on _siProtectedClasses, so we never strip a class we haven't
          * explicitly taken ownership of. */
         if (!_addExtraLibFilterInstalled) {
             _addExtraLibFilterInstalled = true;
-            var _OUR_URI_RE = /^ts:snlib-si-/;
+            var _OUR_URI_RE = /^ts:snlib-si-plus-/;
             ['javascriptDefaults', 'typescriptDefaults'].forEach(function (
                 target
             ) {
@@ -1383,7 +1495,7 @@ Record({
                 lines.push('    ' + p.name + ': ' + p.tsType + ';');
             });
         }
-        methods.forEach(function (m) {
+        (methods || []).forEach(function (m) {
             lines.push('    ' + m.signature + ';');
         });
         lines.push('}');
