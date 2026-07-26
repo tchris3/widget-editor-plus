@@ -2,6 +2,7 @@ import { Property } from '@servicenow/sdk/core'
 
 Property({
     $id: Now.ID['ad059fa1832fb61070b8b5dfeeaad32d'],
+    $meta: { installMethod: 'first install' },
     name: 'monaco.plus.css.variables',
     value: `{
     "example-variable": "#a4c5ea"
