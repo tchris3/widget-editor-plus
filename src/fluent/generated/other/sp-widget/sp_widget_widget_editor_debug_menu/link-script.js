@@ -2084,7 +2084,7 @@ function link(scope, element, attrs, controller) {
             ul.querySelectorAll('li:not([data-we-injected]) a').forEach((a) => {
                 const text = a.textContent;
                 if (/[➚↗]/.test(text)) {
-                    a.innerHTML = text.replace(/\s*[➚↗]\s*$/, '') + EXTERNAL_LINK_ICON;
+                    a.innerHTML = Utils.escapeHtml(text.replace(/\s*[➚↗]\s*$/, '')) + EXTERNAL_LINK_ICON;
                 }
             });
 
