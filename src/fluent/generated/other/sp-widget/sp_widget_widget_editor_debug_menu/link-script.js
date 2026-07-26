@@ -436,9 +436,9 @@ function link(scope, element, attrs, controller) {
                 if (!sc) return false;
                 try {
                     return Object.prototype.hasOwnProperty.call(sc, 'c') ||
-                           Object.prototype.hasOwnProperty.call(sc, 'data') ||
-                           Object.prototype.hasOwnProperty.call(sc, 'options') ||
-                           Object.prototype.hasOwnProperty.call(sc, 'widget');
+                        Object.prototype.hasOwnProperty.call(sc, 'data') ||
+                        Object.prototype.hasOwnProperty.call(sc, 'options') ||
+                        Object.prototype.hasOwnProperty.call(sc, 'widget');
                 } catch (_e) {
                     return false;
                 }
@@ -2161,6 +2161,8 @@ function link(scope, element, attrs, controller) {
                         headerLiEmb.setAttribute('role', 'presentation');
                         headerLiEmb.className = 'dropdown-header';
                         headerLiEmb.textContent = info.name;
+                        headerLiEmb.style.color = 'rgb(var(--now-dropdown-list_sublabel--color, 66, 80, 81))';
+                        headerLiEmb.style.fontWeight = '600';
                         ul.appendChild(headerLiEmb);
 
                         if (showOpen) {
@@ -2498,6 +2500,22 @@ function link(scope, element, attrs, controller) {
     ///////////////////////////////////////////
 
     document.addEventListener('contextmenu', function (e) {
+        /*
+         * Right-clicking inside an already-open debug menu (e.g. to use the
+         * browser's own "Copy Link Address" on "Open in Widget Editor+" while
+         * impersonating, where a left-click would redirect) must not run our
+         * own menu-teardown logic below, and must not let some other
+         * capture/bubble-phase listener (SP's own overlay-closing handling,
+         * a bootstrap dropdown, etc.) react to the same event first.
+         * stopPropagation() here — before anything else sees the event —
+         * isolates the click so only the browser's native default action
+         * (showing its context menu) proceeds.
+         */
+        const menuItem = e.target.closest && e.target.closest('[role="contentinfo"].dropdown ul.dropdown-menu, dialog[open] ul.dropdown-menu');
+        if (menuItem) {
+            e.stopPropagation();
+            return;
+        }
         _pendingWidgetSysId = null;
         _pendingWidgetEl = null;
         _pendingEmbeddedWidgets = [];
