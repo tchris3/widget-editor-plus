@@ -56,7 +56,7 @@ UiPage({
         }
 
         body {
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
         }
 
         /* App shell */
@@ -93,7 +93,7 @@ UiPage({
             color: #f47878;
             background: rgba(244, 120, 120, 0.08);
             border-bottom: 1px solid rgba(244, 120, 120, 0.2);
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
         }
 
         /* Content wrapper — flex column */
@@ -127,9 +127,9 @@ UiPage({
             background: rgb(var(--now-color_background--tertiary, 237 237 237));
             border-top: 1px solid rgba(var(--now-color--neutral-0, 0 0 0), 0.06);
         }
-        /* Spacer = sft-col-label (7.5rem) + dc-simple-section left border (1px) */
+        /* Spacer = sft-col-label (12rem) + dc-simple-section left border (1px) */
         .dc-version-spacer {
-            width: calc(7.5rem + 1px);
+            width: calc(12rem + 1px);
             flex-shrink: 0;
             display: flex;
             align-items: center;
@@ -170,7 +170,7 @@ UiPage({
             align-items: center;
             flex-wrap: wrap;
             gap: 0;
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
             color: rgb(var(--now-color_text--secondary, 82 82 82));
         }
 
@@ -182,7 +182,7 @@ UiPage({
         .dc-meta-label {
             color: rgb(var(--now-color_text--tertiary, 114 114 114));
             text-transform: uppercase;
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
             letter-spacing: 0.4px;
             margin-right: 0.25rem;
         }
@@ -257,11 +257,11 @@ UiPage({
         .sft-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
             table-layout: fixed;
         }
 
-        .sft-col-label { width: 7.5rem; }
+        .sft-col-label { width: 12rem; }
 
 
         .sft-row td {
@@ -281,7 +281,7 @@ UiPage({
             display: table-cell !important;
             color: rgb(var(--now-color_text--tertiary, 114 114 114));
             border-right: 1px solid rgba(var(--now-color--neutral-0, 0 0 0), 0.1);
-            width: 7.5rem;
+            width: 12rem;
             cursor: default;
         }
 
@@ -291,7 +291,7 @@ UiPage({
         }
 
         .sft-label .sft-label-main {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 0.25rem;
         }
@@ -301,9 +301,12 @@ UiPage({
             word-break: break-word;
         }
 
-        .sft-textarea {
+        textarea.sft-textarea {
+            height: auto;
             resize: vertical;
-            min-height: 2rem;
+            font-size: var(--now-global-font-size--md, 14px);
+            padding: 6px var(--now-global-space--sm, 6px);
+            min-height: calc(var(--now-global-font-size--md, 14px) * 1.4 + 14px);
             max-height: 10rem;
             line-height: 1.4;
             overflow-y: auto;
@@ -383,10 +386,14 @@ UiPage({
 
         /* Script field accordions */
         .da-section {
-            border: 1px solid rgba(var(--now-color--neutral-0, 0 0 0), 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 0.25rem;
             overflow: hidden;
-            background: rgb(var(--now-color_background--secondary, 246 246 246));
+            background: rgba(255, 255, 255, 0.03);
+        }
+        html.we-light .da-section {
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            background: rgba(0, 0, 0, 0.015);
         }
 
         .da-section.da-changed {
@@ -428,11 +435,14 @@ UiPage({
             align-items: center;
             gap: 0.5rem;
             user-select: none;
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
         }
 
         .da-summary:hover {
-            background: rgba(var(--now-color_text--primary), 0.05);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        html.we-light .da-summary:hover {
+            background: rgba(0, 0, 0, 0.04);
         }
 
         .da-toggle-icon { display: none; }
@@ -452,7 +462,7 @@ UiPage({
 
         .da-field-key {
             font-family: 'Consolas', 'Menlo', 'Monaco', monospace;
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
             color: rgba(var(--now-color_text--primary, 29 29 29), 0.38);
         }
 
@@ -460,13 +470,13 @@ UiPage({
         .sft-field-key {
             display: block;
             font-family: 'Consolas', 'Menlo', 'Monaco', monospace;
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
             color: rgba(var(--now-color_text--primary, 29 29 29), 0.35);
             margin-top: 0.0625rem;
         }
 
         .da-same {
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
             color: rgba(var(--now-color_text--primary, 29 29 29), 0.35);
             margin-left: 0.625rem;
         }
@@ -474,10 +484,16 @@ UiPage({
         .da-editor-wrap {
             display: flex;
             height: 21.875rem;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        html.we-light .da-editor-wrap {
+            border: 1px solid rgba(0, 0, 0, 0.15);
         }
 
         .da-editor-spacer {
-            width: 7.5rem;
+            width: 12rem;
             flex-shrink: 0;
             display: flex;
             justify-content: flex-end;
@@ -546,7 +562,7 @@ UiPage({
             padding: 1rem;
             color: rgba(var(--now-color_text--primary, 29 29 29), 0.45);
             font-style: italic;
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
         }
 
         /* Bottom indicator for changed fields below viewport */
@@ -598,7 +614,7 @@ UiPage({
 
         button.dc-version-dd-btn {
             width: 100%;
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
             font-family: inherit;
             text-align: left;
             display: flex;
@@ -647,7 +663,7 @@ UiPage({
         .dc-version-dd-item {
             padding: 0.5rem 0.75rem;
             cursor: pointer;
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
             display: block;
         }
 
@@ -705,12 +721,12 @@ UiPage({
             padding: 0.75rem 1rem;
             color: rgb(var(--now-color_text--tertiary, 114 114 114));
             font-style: italic;
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
         }
 
         /* Diff line-count badges (+N -M) */
         .da-diff-counts {
-            font-size: var(--now-font-size--md);
+            font-size: var(--now-global-font-size--md, 14px);
             font-weight: 600;
             margin-left: 0.625rem;
         }
@@ -890,7 +906,7 @@ UiPage({
         .select2-drop .select2-result:last-child { border-bottom: none !important; }
         .select2-drop .select2-result-label {
             color: rgb(var(--now-color_text--primary, 29 29 29)) !important;
-            font-size: var(--now-font-size--md) !important;
+            font-size: var(--now-global-font-size--md, 14px) !important;
             padding: 0.375rem 0.625rem !important;
             white-space: nowrap !important;
             overflow: hidden !important;
@@ -1138,7 +1154,7 @@ UiPage({
         <div id="diff-loading" ng-show="ctrl.loading"><div class="dc-spinner"></div></div>
 
         <!-- Error -->
-        <div id="diff-error" ng-show="ctrl.errorMsg"><i class="icon-alert-triangle"></i>&#160;<span ng-bind="ctrl.errorMsg"></span></div>
+        <div id="diff-error" ng-show="ctrl.errorMsg"><i class="icon-alert-triangle"></i>&nbsp;<span ng-bind="ctrl.errorMsg"></span></div>
 
         <!-- Content -->
         <div id="diff-content" ng-show="!ctrl.errorMsg">
@@ -1146,11 +1162,11 @@ UiPage({
             <div class="dc-header">
                 <div class="dc-header-row" ng-hide="ctrl.isEmbedded">
                     <div class="dc-title">
-                        <span class="dc-title-label" ng-if="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString">Compare&#160;</span>
-                        <span class="dc-table-picker-wrap" ng-show="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString" we-diff-table-picker="we-diff-table-picker"></span>
-                        <span class="dc-title-colon" ng-if="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString &amp;&amp; !ctrl.tableNoVersions">:</span>
-                        <span class="dc-picker-wrap" ng-show="ctrl.expandedIndex === null &amp;&amp; !ctrl.expandedString &amp;&amp; !ctrl.tableNoVersions" we-diff-record-picker="we-diff-record-picker"></span>
-                        <span class="dc-title-label" ng-if="ctrl.expandedIndex !== null || ctrl.expandedString" ng-bind="ctrl.expandedFieldLabel()"></span>
+                        <span class="dc-title-label" ng-if="ctrl.expandedIndex === null &amp;&amp; ctrl.expandedExtraIndex === null &amp;&amp; !ctrl.expandedString">Compare&nbsp;</span>
+                        <span class="dc-table-picker-wrap" ng-show="ctrl.expandedIndex === null &amp;&amp; ctrl.expandedExtraIndex === null &amp;&amp; !ctrl.expandedString" we-diff-table-picker="we-diff-table-picker"></span>
+                        <span class="dc-title-colon" ng-if="ctrl.expandedIndex === null &amp;&amp; ctrl.expandedExtraIndex === null &amp;&amp; !ctrl.expandedString &amp;&amp; !ctrl.tableNoVersions">:</span>
+                        <span class="dc-picker-wrap" ng-show="ctrl.expandedIndex === null &amp;&amp; ctrl.expandedExtraIndex === null &amp;&amp; !ctrl.expandedString &amp;&amp; !ctrl.tableNoVersions" we-diff-record-picker="we-diff-record-picker"></span>
+                        <span class="dc-title-label" ng-if="ctrl.expandedIndex !== null || ctrl.expandedExtraIndex !== null || ctrl.expandedString" ng-bind="ctrl.expandedFieldLabel()"></span>
                     </div>
                     <div class="dc-header-btns" ng-hide="ctrl.recordNotFound || ctrl.noRecordSelected || ctrl.tableNoVersions">
                         <button class="btn btn-default" ng-if="ctrl.isSpWidget" ng-hide="ctrl.noVersions" ng-click="ctrl.goToWidgetEditor()" ng-bind="ctrl.isFromList ? 'Close' : (ctrl.hasWidgetEditorOpener ? 'Return to Widget Editor+' : 'Open Widget Editor+')"></button>
@@ -1162,7 +1178,7 @@ UiPage({
                 <div class="dc-version-row" ng-hide="ctrl.noVersions || ctrl.recordNotFound || ctrl.noRecordSelected || ctrl.tableNoVersions">
                     <div class="dc-version-spacer">
                         <button class="btn btn-default dc-collapse-btn"
-                                ng-if="ctrl.expandedIndex !== null || ctrl.expandedString"
+                                ng-if="ctrl.expandedIndex !== null || ctrl.expandedString || ctrl.expandedExtraIndex !== null"
                                 ng-click="ctrl.collapseAnyExpanded()"
                                 title="Collapse editor"
                                 aria-label="Collapse editor"></button>
@@ -1192,7 +1208,8 @@ UiPage({
                                  ng-click="ctrl.selectLeftVersion(v.sys_id)">
                                 <span class="dc-vrow">
                                     <span class="dc-vrow-date" title="{{ctrl.formatDateFull(v.sys_created_on)}}"><span ng-if="v.state === 'current'" class="dc-current-dot" title="Current"></span><span ng-bind="ctrl.formatDate(v.sys_created_on)"></span></span>
-                                    <span class="dc-vrow-uset" ng-bind="v.update_set_name" title="{{v.update_set_name}}&#13;&#10;[{{v.update_set_state_label}}]"></span>
+                                    <span class="dc-vrow-uset" ng-bind="v.update_set_name" title="{{v.update_set_name}}
+[{{v.update_set_state_label}}]"></span>
                                     <span class="dc-vrow-user" ng-bind="v.sys_created_by" title="{{v.sys_created_by}}"></span>
                                 </span>
                             </div>
@@ -1229,7 +1246,8 @@ UiPage({
                                  ng-click="ctrl.selectRightVersion(v.sys_id)">
                                 <span class="dc-vrow">
                                     <span class="dc-vrow-date" title="{{ctrl.formatDateFull(v.sys_created_on)}}"><span ng-if="v.state === 'current'" class="dc-current-dot" title="Current"></span><span ng-bind="ctrl.formatDate(v.sys_created_on)"></span></span>
-                                    <span class="dc-vrow-uset" ng-bind="v.update_set_name" title="{{v.update_set_name}}&#13;&#10;[{{v.update_set_state_label}}]"></span>
+                                    <span class="dc-vrow-uset" ng-bind="v.update_set_name" title="{{v.update_set_name}}
+[{{v.update_set_state_label}}]"></span>
                                     <span class="dc-vrow-user" ng-bind="v.sys_created_by" title="{{v.sys_created_by}}"></span>
                                 </span>
                             </div>
@@ -1279,7 +1297,11 @@ UiPage({
                         <tbody>
                             <!-- Metadata rows -->
                             <tr class="sft-row" ng-if="ctrl.metaLeft.usn || ctrl.metaRight.usn">
-                                <td class="sft-label" we-tooltip="source.name">Update set</td>
+                                <td class="sft-label">
+                                    <div class="sft-label-main" we-tooltip="source.name">
+                                        <span>Update set</span>
+                                    </div>
+                                </td>
                                 <td class="sft-val" ng-class="{'sft-col-loading': ctrl.loadingLeft}">
                                     <a ng-if="ctrl.metaLeft.uss" class="dc-link"
                                        ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{ctrl.metaLeft.uss}}"
@@ -1295,7 +1317,11 @@ UiPage({
                             </tr>
 
                             <tr class="sft-row" ng-if="ctrl.metaLeft.by || ctrl.metaRight.by">
-                                <td class="sft-label" we-tooltip="sys_created_by">Created by</td>
+                                <td class="sft-label">
+                                    <div class="sft-label-main" we-tooltip="sys_created_by">
+                                        <span>Created by</span>
+                                    </div>
+                                </td>
                                 <td class="sft-val" ng-class="{'sft-col-loading': ctrl.loadingLeft}">
                                     <input type="text" class="form-control" readonly="readonly" ng-model="ctrl.metaLeft.by"
                                            aria-label="Created by (left)" />
@@ -1306,18 +1332,21 @@ UiPage({
                                 </td>
                             </tr>
 
-                            <!-- Simple field rows -->
-                            <tr class="sft-row" ng-repeat="f in ctrl.simpleFields"
-                                ng-class="{'sft-changed': ctrl.isChanged(f.key), 'sft-row--top': f.renderAs === 'textarea'}">
-                                <td class="sft-label" we-tooltip="{{f.key}}">
-                                    <div class="sft-label-main">
+                            <!-- Field rows (simple and script) in layout order -->
+                            <tr class="sft-row" ng-repeat="f in ctrl.fields"
+                                ng-class="{'sft-changed': f.isScript ? f.changed : ctrl.isChanged(f.key), 'sft-row--top': !f.isScript &amp;&amp; (f.renderAs === 'textarea' || f.renderAs === 'text' || f.renderAs === 'list' || !f.renderAs)}"
+                                ng-attr-id="{{f.isScript ? 'da-row-' + f.scriptIndex : 'row-' + f.key}}">
+
+                                <!-- If it's a simple field, render the three standard tds -->
+                                <td ng-if="!f.isScript" class="sft-label">
+                                    <div class="sft-label-main" we-tooltip="{{f.key}}">
                                         <span ng-bind="f.label"></span>
                                         <span class="diff-glyph" ng-if="ctrl.isChanged(f.key)"><i class="icon-circle-solid"></i></span>
                                     </div>
                                 </td>
 
                                 <!-- Left value -->
-                                <td class="sft-val"
+                                <td ng-if="!f.isScript" class="sft-val"
                                     ng-class="{'sft-val--cb': f.renderAs === 'boolean', 'sft-col-loading': ctrl.loadingLeft}"
                                     ng-switch="f.renderAs">
                                     <span ng-switch-when="boolean"
@@ -1328,7 +1357,8 @@ UiPage({
                                     <span ng-switch-when="textarea" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
                                                   readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
-                                                  aria-label="{{f.label}} (left)"></textarea>
+                                                  aria-label="{{f.label}} (left)"
+                                                  we-sync-row-height="we-sync-row-height"></textarea>
                                         <button ng-if="ctrl.shouldShowStringExpand(f, false)"
                                                 class="btn btn-default sft-expand-btn"
                                                 ng-click="ctrl.toggleStringExpand(f, false, $event)"
@@ -1354,10 +1384,17 @@ UiPage({
                                         <img ng-src="/{{ctrl.leftFields[f.key]}}.iix?t=medium"
                                              class="sft-img-preview" ng-attr-alt="{{ctrl.leftFields[f.key]}}" ng-attr-title="{{ctrl.leftFields[f.key]}}" />
                                     </a>
+                                    <span ng-switch-when="list" class="sft-string-wrap">
+                                        <textarea class="form-control sft-textarea"
+                                                  readonly="readonly" ng-model="ctrl.leftListDisplay[f.key]"
+                                                  aria-label="{{f.label}} (left)"
+                                                  we-sync-row-height="we-sync-row-height"></textarea>
+                                    </span>
                                     <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
-                                        <input type="text" class="form-control"
-                                               readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
-                                               aria-label="{{f.label}} (left)" />
+                                        <textarea class="form-control sft-textarea"
+                                                  readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
+                                                  aria-label="{{f.label}} (left)"
+                                                  we-sync-row-height="we-sync-row-height"></textarea>
                                         <button ng-if="ctrl.shouldShowStringExpand(f, false)"
                                                 class="btn btn-default sft-expand-btn"
                                                 ng-click="ctrl.toggleStringExpand(f, false, $event)"
@@ -1367,7 +1404,7 @@ UiPage({
                                 </td>
 
                                 <!-- Right value -->
-                                <td class="sft-val"
+                                <td ng-if="!f.isScript" class="sft-val"
                                     ng-class="{'sft-val--cb': f.renderAs === 'boolean', 'sft-col-loading': ctrl.loadingRight}"
                                     ng-switch="f.renderAs">
                                     <span ng-switch-when="boolean"
@@ -1378,7 +1415,8 @@ UiPage({
                                     <span ng-switch-when="textarea" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
                                                   readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
-                                                  aria-label="{{f.label}} (right)"></textarea>
+                                                  aria-label="{{f.label}} (right)"
+                                                  we-sync-row-height="we-sync-row-height"></textarea>
                                         <button ng-if="ctrl.shouldShowStringExpand(f, false)"
                                                 class="btn btn-default sft-expand-btn"
                                                 ng-click="ctrl.toggleStringExpand(f, false, $event)"
@@ -1404,10 +1442,17 @@ UiPage({
                                         <img ng-src="/{{ctrl.rightFields[f.key]}}.iix?t=medium"
                                              class="sft-img-preview" ng-attr-alt="{{ctrl.rightFields[f.key]}}" ng-attr-title="{{ctrl.rightFields[f.key]}}" />
                                     </a>
+                                    <span ng-switch-when="list" class="sft-string-wrap">
+                                        <textarea class="form-control sft-textarea"
+                                                  readonly="readonly" ng-model="ctrl.rightListDisplay[f.key]"
+                                                  aria-label="{{f.label}} (right)"
+                                                  we-sync-row-height="we-sync-row-height"></textarea>
+                                    </span>
                                     <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
-                                        <input type="text" class="form-control"
-                                               readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
-                                               aria-label="{{f.label}} (right)" />
+                                        <textarea class="form-control sft-textarea"
+                                                  readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
+                                                  aria-label="{{f.label}} (right)"
+                                                  we-sync-row-height="we-sync-row-height"></textarea>
                                         <button ng-if="ctrl.shouldShowStringExpand(f, false)"
                                                 class="btn btn-default sft-expand-btn"
                                                 ng-click="ctrl.toggleStringExpand(f, false, $event)"
@@ -1415,67 +1460,69 @@ UiPage({
                                                 aria-label="Expand"></button>
                                     </span>
                                 </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
 
-                <!-- Script field accordions -->
-                <details ng-repeat="f in ctrl.scriptFields track by $index"
-                         we-diff-accordion="we-diff-accordion"
-                         class="da-section"
-                         ng-class="{'da-changed': f.changed, 'da-expanded': ctrl.expandedIndex === $index}"
-                         id="da-{{$index}}">
-                    <summary class="da-summary">
-                        <span class="da-toggle-icon"><i class="icon-chevron-right"></i></span>
-                        <span class="da-label">
-                            <span class="da-label-main" we-tooltip="{{f.key}}">
-                                <span ng-bind="f.label"></span>
-                                <span class="diff-glyph" ng-if="f.changed"><i class="icon-circle-solid"></i></span>
-                                <span class="da-diff-counts" ng-if="f.changed &amp;&amp; f.counts">
-                                    <span class="da-diff-added" ng-if="f.counts.added" ng-bind-template="+{{f.counts.added}}"></span>
-                                    <span ng-if="f.counts.added &amp;&amp; f.counts.removed"> </span>
-                                    <span class="da-diff-removed" ng-if="f.counts.removed" ng-bind-template="-{{f.counts.removed}}"></span>
-                                </span>
-                                <span class="da-same" ng-if="!f.changed">Unchanged</span>
-                            </span>
-                        </span>
-                    </summary>
-                    <div class="da-editor-wrap">
-                        <div class="da-editor-spacer">
-                            <button class="btn btn-default da-expand-btn" ng-click="ctrl.toggleExpand($index, $event)"
-                                    title="{{ctrl.expandedIndex === $index ? 'Collapse editor' : 'Expand editor'}}"
-                                    aria-label="{{ctrl.expandedIndex === $index ? 'Collapse editor' : 'Expand editor'}}"></button>
-                        </div>
-                        <div class="da-editor-canvas-outer">
-                            <div id="da-ed-{{$index}}" class="da-editor-canvas"></div>
-                            <div class="da-editor-loading-overlay"
-                                 ng-show="ctrl.loadingLeft || ctrl.loadingRight">
-                                <div class="dc-spinner-sm"></div>
-                            </div>
-                        </div>
-                    </div>
-                </details>
+                                <!-- If it's a script field, render the label in the first column and editor in colspan="2" -->
+                                <td ng-if="f.isScript" class="sft-label" style="vertical-align: top; padding-top: 0.75rem;">
+                                    <div>
+                                        <div class="sft-label-main" we-tooltip="{{f.key}}">
+                                            <span ng-bind="f.label"></span>
+                                            <span class="diff-glyph" ng-if="f.changed"><i class="icon-circle-solid"></i></span>
+                                        </div>
+                                    </div>
+                                    <div class="da-diff-counts" ng-if="f.changed &amp;&amp; f.counts" style="margin-top: 0.25rem; font-size: 0.8125rem;">
+                                        <span class="da-diff-added" ng-if="f.counts.added" ng-bind-template="+{{f.counts.added}}"></span>
+                                        <span ng-if="f.counts.added &amp;&amp; f.counts.removed"> </span>
+                                        <span class="da-diff-removed" ng-if="f.counts.removed" ng-bind-template="-{{f.counts.removed}}"></span>
+                                    </div>
+                                    <!-- Original Expand button under field name/lines changed -->
+                                    <button class="btn btn-default sft-expand-btn"
+                                            style="margin-top: 0.5rem;"
+                                            ng-click="ctrl.toggleExpand(f.scriptIndex, $event)"
+                                            title="Expand"
+                                            aria-label="Expand"></button>
+                                </td>
+
+                                <td ng-if="f.isScript" colspan="2" style="padding: 0.5rem 0.75rem; vertical-align: top;">
+                                    <div we-diff-editor="f.scriptIndex"
+                                         script-index="{{f.scriptIndex}}"
+                                         class="da-section"
+                                         ng-class="{'da-changed': f.changed, 'da-expanded': ctrl.expandedIndex === f.scriptIndex}"
+                                         id="da-{{f.scriptIndex}}">
+                                        <div class="da-editor-wrap">
+                                            <div class="da-editor-canvas-outer" style="margin-left: 0;">
+                                                <div id="da-ed-{{f.scriptIndex}}" class="da-editor-canvas"></div>
+                                                <div class="da-editor-loading-overlay"
+                                                     ng-show="ctrl.loadingLeft || ctrl.loadingRight">
+                                                    <div class="dc-spinner-sm"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
 
                 <!-- Extra changed fields not in the Default view form layout -->
-                <div ng-if="ctrl.extraChangedSimpleFields.length > 0 || ctrl.extraChangedScriptFields.length > 0">
+                <div ng-if="ctrl.extraFields.length > 0">
                     <div class="dc-extra-label">Other changed fields</div>
 
-                    <!-- Extra simple / non-code fields -->
-                    <div class="dc-simple-section" ng-if="ctrl.extraChangedSimpleFields.length > 0">
+                    <div class="dc-simple-section">
                         <table class="sft-table">
                             <colgroup><col class="sft-col-label" /><col /><col /></colgroup>
                             <tbody>
-                                <tr class="sft-row sft-changed" ng-repeat="f in ctrl.extraChangedSimpleFields"
-                                    ng-class="{'sft-row--top': f.renderAs === 'textarea'}">
-                                    <td class="sft-label" we-tooltip="{{f.key}}">
-                                        <div class="sft-label-main">
+                                <tr ng-repeat="f in ctrl.extraFields"
+                                    class="sft-row sft-changed"
+                                    ng-class="{'sft-row--top': !f.isScript &amp;&amp; (f.renderAs === 'textarea' || f.renderAs === 'text' || f.renderAs === 'list' || !f.renderAs)}"
+                                    ng-attr-id="{{f.isScript ? 'da-ex-row-' + f.scriptIndex : 'ex-row-' + f.key}}">
+
+                                    <!-- Simple field -->
+                                    <td ng-if="!f.isScript" class="sft-label">
+                                        <div class="sft-label-main" we-tooltip="{{f.key}}">
                                             <span ng-bind="f.label"></span>
                                             <span class="diff-glyph"><i class="icon-circle-solid"></i></span>
                                         </div>
                                     </td>
 
-                                    <td class="sft-val"
+                                    <td ng-if="!f.isScript" class="sft-val"
                                         ng-class="{'sft-val--cb': f.renderAs === 'boolean', 'sft-col-loading': ctrl.loadingLeft}"
                                         ng-switch="f.renderAs">
                                         <span ng-switch-when="boolean"
@@ -1486,7 +1533,8 @@ UiPage({
                                         <span ng-switch-when="textarea" class="sft-string-wrap">
                                             <textarea class="form-control sft-textarea"
                                                       readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
-                                                      aria-label="{{f.label}} (left)"></textarea>
+                                                      aria-label="{{f.label}} (left)"
+                                                      we-sync-row-height="we-sync-row-height"></textarea>
                                             <button ng-if="ctrl.shouldShowStringExpand(f, true)"
                                                     class="btn btn-default sft-expand-btn"
                                                     ng-click="ctrl.toggleStringExpand(f, true, $event)"
@@ -1512,10 +1560,17 @@ UiPage({
                                             <img ng-src="/{{ctrl.extraLeftFields[f.key]}}.iix?t=medium"
                                                  class="sft-img-preview" ng-attr-alt="{{ctrl.extraLeftFields[f.key]}}" ng-attr-title="{{ctrl.extraLeftFields[f.key]}}" />
                                         </a>
+                                        <span ng-switch-when="list" class="sft-string-wrap">
+                                            <textarea class="form-control sft-textarea"
+                                                      readonly="readonly" ng-model="ctrl.extraLeftListDisplay[f.key]"
+                                                      aria-label="{{f.label}} (left)"
+                                                      we-sync-row-height="we-sync-row-height"></textarea>
+                                        </span>
                                         <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
-                                            <input type="text" class="form-control"
-                                                   readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
-                                                   aria-label="{{f.label}} (left)" />
+                                            <textarea class="form-control sft-textarea"
+                                                      readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
+                                                      aria-label="{{f.label}} (left)"
+                                                      we-sync-row-height="we-sync-row-height"></textarea>
                                             <button ng-if="ctrl.shouldShowStringExpand(f, true)"
                                                     class="btn btn-default sft-expand-btn"
                                                     ng-click="ctrl.toggleStringExpand(f, true, $event)"
@@ -1524,7 +1579,7 @@ UiPage({
                                         </span>
                                     </td>
 
-                                    <td class="sft-val"
+                                    <td ng-if="!f.isScript" class="sft-val"
                                         ng-class="{'sft-val--cb': f.renderAs === 'boolean', 'sft-col-loading': ctrl.loadingRight}"
                                         ng-switch="f.renderAs">
                                         <span ng-switch-when="boolean"
@@ -1535,7 +1590,8 @@ UiPage({
                                         <span ng-switch-when="textarea" class="sft-string-wrap">
                                             <textarea class="form-control sft-textarea"
                                                       readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
-                                                      aria-label="{{f.label}} (right)"></textarea>
+                                                      aria-label="{{f.label}} (right)"
+                                                      we-sync-row-height="we-sync-row-height"></textarea>
                                             <button ng-if="ctrl.shouldShowStringExpand(f, true)"
                                                     class="btn btn-default sft-expand-btn"
                                                     ng-click="ctrl.toggleStringExpand(f, true, $event)"
@@ -1561,10 +1617,17 @@ UiPage({
                                             <img ng-src="/{{ctrl.extraRightFields[f.key]}}.iix?t=medium"
                                                  class="sft-img-preview" ng-attr-alt="{{ctrl.extraRightFields[f.key]}}" ng-attr-title="{{ctrl.extraRightFields[f.key]}}" />
                                         </a>
+                                        <span ng-switch-when="list" class="sft-string-wrap">
+                                            <textarea class="form-control sft-textarea"
+                                                      readonly="readonly" ng-model="ctrl.extraRightListDisplay[f.key]"
+                                                      aria-label="{{f.label}} (right)"
+                                                      we-sync-row-height="we-sync-row-height"></textarea>
+                                        </span>
                                         <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
-                                            <input type="text" class="form-control"
-                                                   readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
-                                                   aria-label="{{f.label}} (right)" />
+                                            <textarea class="form-control sft-textarea"
+                                                      readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
+                                                      aria-label="{{f.label}} (right)"
+                                                      we-sync-row-height="we-sync-row-height"></textarea>
                                             <button ng-if="ctrl.shouldShowStringExpand(f, true)"
                                                     class="btn btn-default sft-expand-btn"
                                                     ng-click="ctrl.toggleStringExpand(f, true, $event)"
@@ -1572,41 +1635,48 @@ UiPage({
                                                     aria-label="Expand"></button>
                                         </span>
                                     </td>
+
+                                    <!-- Extra script / code fields -->
+                                    <td ng-if="f.isScript" class="sft-label" style="vertical-align: top; padding-top: 0.75rem;">
+                                        <div>
+                                            <div class="sft-label-main" we-tooltip="{{f.key}}">
+                                                <span ng-bind="f.label"></span>
+                                                <span class="diff-glyph"><i class="icon-circle-solid"></i></span>
+                                            </div>
+                                        </div>
+                                        <div class="da-diff-counts" ng-if="f.counts" style="margin-top: 0.25rem; font-size: 0.8125rem;">
+                                            <span class="da-diff-added" ng-if="f.counts.added" ng-bind-template="+{{f.counts.added}}"></span>
+                                            <span ng-if="f.counts.added &amp;&amp; f.counts.removed"> </span>
+                                            <span class="da-diff-removed" ng-if="f.counts.removed" ng-bind-template="-{{f.counts.removed}}"></span>
+                                        </div>
+                                        <!-- Original Expand button under field name/lines changed -->
+                                        <button class="btn btn-default sft-expand-btn"
+                                                style="margin-top: 0.5rem;"
+                                                ng-click="ctrl.toggleExtraExpand(f.scriptIndex, $event)"
+                                                title="Expand"
+                                                aria-label="Expand"></button>
+                                    </td>
+
+                                    <td ng-if="f.isScript" colspan="2" style="padding: 0.5rem 0.75rem; vertical-align: middle;">
+                                        <div we-diff-extra-editor="f.scriptIndex"
+                                             class="da-section da-changed"
+                                             id="da-extra-{{f.scriptIndex}}"
+                                             script-index="{{f.scriptIndex}}">
+                                            <div class="da-editor-wrap">
+                                                <div class="da-editor-canvas-outer" style="margin-left: 0;">
+                                                    <div id="da-ex-ed-{{f.scriptIndex}}" class="da-editor-canvas"></div>
+                                                    <div class="da-editor-loading-overlay"
+                                                         ng-show="ctrl.loadingLeft || ctrl.loadingRight">
+                                                        <div class="dc-spinner-sm"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-
-                    <!-- Extra code / script fields -->
-                    <details ng-repeat="f in ctrl.extraChangedScriptFields track by $index"
-                             we-diff-extra-accordion="we-diff-extra-accordion"
-                             class="da-section da-changed"
-                             id="da-extra-{{$index}}">
-                        <summary class="da-summary">
-                            <span class="da-toggle-icon"><i class="icon-chevron-right"></i></span>
-                            <span class="da-label">
-                                <span class="da-label-main" we-tooltip="{{f.key}}">
-                                    <span ng-bind="f.label"></span>
-                                    <span class="diff-glyph"><i class="icon-circle-solid"></i></span>
-                                    <span class="da-diff-counts" ng-if="f.counts">
-                                        <span class="da-diff-added" ng-if="f.counts.added" ng-bind-template="+{{f.counts.added}}"></span>
-                                        <span ng-if="f.counts.added &amp;&amp; f.counts.removed"> </span>
-                                        <span class="da-diff-removed" ng-if="f.counts.removed" ng-bind-template="-{{f.counts.removed}}"></span>
-                                    </span>
-                                </span>
-                            </span>
-                        </summary>
-                        <div class="da-editor-wrap">
-                            <div class="da-editor-spacer"></div>
-                            <div class="da-editor-canvas-outer">
-                                <div id="da-ex-ed-{{$index}}" class="da-editor-canvas"></div>
-                                <div class="da-editor-loading-overlay"
-                                     ng-show="ctrl.loadingLeft || ctrl.loadingRight">
-                                    <div class="dc-spinner-sm"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </details>
                 </div>
 
             </div>
@@ -1767,6 +1837,7 @@ UiPage({
             }
             _registerSnProviders();
         });
+        _bs.init({ language: 'html' });
     }
 
     var urlParams    = new URLSearchParams(window.location.search);
@@ -1922,6 +1993,32 @@ UiPage({
         return result;
     }
 
+    function _buildListDisplay(versionDataOrNull, recordData, fieldDefs) {
+        var result = {};
+        if (!fieldDefs) { return result; }
+        var dvMap = versionDataOrNull
+            ? (versionDataOrNull.display_values || {})
+            : ((recordData && recordData.display_values) || {});
+        var rawMap = versionDataOrNull
+            ? (versionDataOrNull.fields || {})
+            : ((recordData && recordData.values) || {});
+        for (var i = 0; i < fieldDefs.length; i++) {
+            if (fieldDefs[i].renderAs !== 'list') { continue; }
+            var key = fieldDefs[i].key;
+            var rawVal = (rawMap[key] !== null && rawMap[key] !== undefined) ? String(rawMap[key]) : '';
+            var dv = dvMap[key] || '';
+            if (!rawVal) { result[key] = ''; continue; }
+            var ids   = rawVal.split(',');
+            var names = dv ? dv.split(',') : [];
+            result[key] = ids.map(function(id, idx) {
+                id = id.trim();
+                var name = (names[idx] || '').trim();
+                return (name && name !== id) ? name + ' [' + id + ']' : id;
+            }).join('\\n');
+        }
+        return result;
+    }
+
     function _countsFromLineChanges(lineChanges) {
         var added = 0, removed = 0;
         if (!lineChanges) { return { added: 0, removed: 0 }; }
@@ -1996,10 +2093,12 @@ UiPage({
         ctrl.metaRight   = {};
         ctrl.simpleFields = [];   // populated after getDiffFieldDefs returns
         ctrl.scriptFields = [];   // populated after getDiffFieldDefs returns
+        ctrl.fields       = [];   // populated after getDiffFieldDefs returns, in layout order
         ctrl.tableLabel   = '';   // human-readable table name, e.g. "Widget"
         ctrl.editors       = {};
         ctrl.extraChangedSimpleFields = [];
         ctrl.extraChangedScriptFields = [];
+        ctrl.extraFields               = [];   // in layout order
         ctrl.extraEditors      = {};
         ctrl.extraLeftFields   = {};
         ctrl.extraRightFields  = {};
@@ -2011,6 +2110,10 @@ UiPage({
         ctrl.rightRefDisplay      = {};
         ctrl.extraLeftRefDisplay  = {};
         ctrl.extraRightRefDisplay = {};
+        ctrl.leftListDisplay       = {};
+        ctrl.rightListDisplay      = {};
+        ctrl.extraLeftListDisplay  = {};
+        ctrl.extraRightListDisplay = {};
         ctrl.loadingLeft      = false;
         ctrl.loadingRight     = false;
         ctrl.currentIsUnsaved = false;
@@ -2020,6 +2123,7 @@ UiPage({
         ctrl.canWrite         = false;
         ctrl.wordWrap         = true;
         ctrl.expandedIndex    = null;
+        ctrl.expandedExtraIndex = null;
         ctrl.expandedString   = null;   // { key, label, isExtra } when a long string field is expanded
         ctrl.stringEditor     = null;   // shared Monaco diff editor for expanded strings
         ctrl.hasChangedBelowViewport = false;
@@ -2042,7 +2146,7 @@ UiPage({
         var _changedBelowRaf     = null;
 
         function _updateChangedBelowIndicator() {
-            if (ctrl.expandedIndex !== null || ctrl.expandedString) {
+            if (ctrl.expandedIndex !== null || ctrl.expandedExtraIndex !== null || ctrl.expandedString) {
                 ctrl.hasChangedBelowViewport = false;
                 return;
             }
@@ -2179,6 +2283,10 @@ UiPage({
                 ? _buildRefDisplay(null, _savedRef, _fieldDefs)
                 : _buildRefDisplay(_leftVersionData, _recordData, _fieldDefs);
             ctrl.rightRefDisplay = _buildRefDisplay(_rightVersionData, _unsavedRef, _fieldDefs);
+            ctrl.leftListDisplay = _leftIsCurrentSaved
+                ? _buildListDisplay(null, _savedRef, _fieldDefs)
+                : _buildListDisplay(_leftVersionData, _recordData, _fieldDefs);
+            ctrl.rightListDisplay = _buildListDisplay(_rightVersionData, _unsavedRef, _fieldDefs);
 
             var lMeta;
             if (_leftIsCurrentSaved) {
@@ -2283,6 +2391,7 @@ UiPage({
                 if (model && fDef) {
                     model.original.setValue(lf[fDef.key] || '');
                     model.modified.setValue(rf[fDef.key] || '');
+                    ctrl.updateEditorHeight(parseInt(k, 10), false);
                 }
             }
 
@@ -2300,22 +2409,41 @@ UiPage({
                     ? _buildRefDisplay(null, _savedRef, _extraFieldDefs)
                     : _buildRefDisplay(_leftVersionData, _recordData, _extraFieldDefs);
                 ctrl.extraRightRefDisplay = _buildRefDisplay(_rightVersionData, _unsavedRef, _extraFieldDefs);
+                ctrl.extraLeftListDisplay = _leftIsCurrentSaved
+                    ? _buildListDisplay(null, _savedRef, _extraFieldDefs)
+                    : _buildListDisplay(_leftVersionData, _recordData, _extraFieldDefs);
+                ctrl.extraRightListDisplay = _buildListDisplay(_rightVersionData, _unsavedRef, _extraFieldDefs);
 
                 var extraSimple = [];
                 var extraCode   = [];
+                var extraFields = [];
                 for (var ei = 0; ei < _extraFieldDefs.length; ei++) {
                     var eDef = _extraFieldDefs[ei];
                     var lv = (lfe[eDef.key] || '').replace(/\\r\\n/g, '\\n');
                     var rv = (rfe[eDef.key] || '').replace(/\\r\\n/g, '\\n');
                     if (lv === rv) { continue; }
-                    if (eDef.renderAs === 'code') {
-                        extraCode.push({ key: eDef.key, label: eDef.label, language: eDef.language, reference: eDef.reference, counts: _diffLineCounts(lv, rv) });
+                    if (eDef.renderAs === 'code' || eDef.type === 'html' || eDef.type === 'html_script') {
+                        var extraScriptObj = {
+                            isScript: true,
+                            key: eDef.key,
+                            label: eDef.label,
+                            language: eDef.language || (eDef.type === 'html' || eDef.type === 'html_script' ? 'html' : 'plaintext'),
+                            reference: eDef.reference,
+                            counts: _diffLineCounts(lv, rv),
+                            scriptIndex: extraCode.length
+                        };
+                        extraCode.push(extraScriptObj);
+                        extraFields.push(extraScriptObj);
                     } else {
-                        extraSimple.push(eDef);
+                        var extraSimpleObj = Object.assign({}, eDef);
+                        extraSimpleObj.isScript = false;
+                        extraSimple.push(extraSimpleObj);
+                        extraFields.push(extraSimpleObj);
                     }
                 }
                 ctrl.extraChangedSimpleFields = extraSimple;
                 ctrl.extraChangedScriptFields = extraCode;
+                ctrl.extraFields               = extraFields;
 
                 // Refresh any already-open extra diff editors
                 for (var ek in ctrl.extraEditors) {
@@ -2325,11 +2453,13 @@ UiPage({
                     if (eModel && efDef) {
                         eModel.original.setValue(lfe[efDef.key] || '');
                         eModel.modified.setValue(rfe[efDef.key] || '');
+                        ctrl.updateEditorHeight(parseInt(ek, 10), true);
                     }
                 }
             } else {
                 ctrl.extraChangedSimpleFields = [];
                 ctrl.extraChangedScriptFields = [];
+                ctrl.extraFields               = [];
                 ctrl.extraLeftFields         = {};
                 ctrl.extraRightFields        = {};
                 ctrl.extraLeftDisplayFields  = {};
@@ -2387,15 +2517,21 @@ UiPage({
                     }
                     if (!_fieldDefs && _leftVersionData && _leftVersionData.fields) {
                         var derivedSimple = [];
+                        var fields = [];
                         for (var _dk in _leftVersionData.fields) {
                             if (_leftVersionData.fields.hasOwnProperty(_dk)) {
-                                derivedSimple.push({ key: _dk, label: _dk, renderAs: 'text', reference: '', changed: false, counts: null });
+                                var fdObj = { key: _dk, label: _dk, renderAs: 'text', reference: '', changed: false, counts: null };
+                                derivedSimple.push(fdObj);
+                                var fdCopy = Object.assign({}, fdObj);
+                                fdCopy.isScript = false;
+                                fields.push(fdCopy);
                             }
                         }
                         _fieldDefs = derivedSimple;
                         _extraFieldDefs = [];
                         ctrl.simpleFields = derivedSimple;
                         ctrl.scriptFields = [];
+                        ctrl.fields       = fields;
                     }
                 }
                 if (!_recordData) {
@@ -2509,7 +2645,55 @@ UiPage({
             wrap.style.height = '';
             var outer = wrap.querySelector('.da-editor-canvas-outer');
             if (outer) { outer.style.height = ''; }
+            ctrl.updateEditorHeight(index, false);
         }
+
+        function _setExtraWrapTop(index) {
+            var wrap = document.querySelector('#da-extra-' + index + ' .da-editor-wrap');
+            if (!wrap) { return; }
+            var top = _headerHeight();
+            var h   = window.innerHeight - top;
+            wrap.style.top    = top + 'px';
+            wrap.style.height = h + 'px';
+            var outer = wrap.querySelector('.da-editor-canvas-outer');
+            if (outer) { outer.style.height = h + 'px'; }
+        }
+
+        function _clearExtraWrapTop(index) {
+            var wrap = document.querySelector('#da-extra-' + index + ' .da-editor-wrap');
+            if (!wrap) { return; }
+            wrap.style.top    = '';
+            wrap.style.height = '';
+            var outer = wrap.querySelector('.da-editor-canvas-outer');
+            if (outer) { outer.style.height = ''; }
+            ctrl.updateEditorHeight(index, true);
+        }
+
+        ctrl.updateEditorHeight = function(index, isExtra) {
+            var fDef = isExtra ? ctrl.extraChangedScriptFields[index] : ctrl.scriptFields[index];
+            var prefix = isExtra ? 'da-ex-ed-' : 'da-ed-';
+            var idPrefix = isExtra ? '#da-extra-' : '#da-';
+            var editor = isExtra ? ctrl.extraEditors[index] : ctrl.editors[index];
+            var container = document.getElementById(prefix + index);
+            if (!editor || !container || !fDef) { return; }
+
+            var model = editor.getModel();
+            if (!model) { return; }
+
+            var lines = Math.max(model.original.getLineCount(), model.modified.getLineCount());
+            var linesToShow = Math.max(1, Math.min(10, lines));
+            var lineHeight = editor.getOriginalEditor().getOption(monaco.editor.EditorOption.lineHeight) || 19;
+            var calculatedHeight = Math.max(34, (linesToShow * lineHeight) + 8);
+
+            if ((isExtra ? ctrl.expandedExtraIndex : ctrl.expandedIndex) !== index) {
+                var wrap = document.querySelector(idPrefix + index + ' .da-editor-wrap');
+                var outer = container.parentElement;
+                if (wrap) { wrap.style.height = calculatedHeight + 'px'; }
+                if (outer) { outer.style.height = calculatedHeight + 'px'; }
+                container.style.height = calculatedHeight + 'px';
+                editor.layout();
+            }
+        };
 
         function _scrollAccordionIntoView(index) {
             var details = document.getElementById('da-' + index);
@@ -2548,15 +2732,12 @@ UiPage({
         }
 
         ctrl.toggleExpand = function(index, event) {
-            event.stopPropagation();
+            if (event) { event.stopPropagation(); }
+            if (ctrl.expandedExtraIndex !== null) { ctrl.collapseExtraExpanded(); }
+
             var wasExpanded = ctrl.expandedIndex === index;
             var prevIndex   = ctrl.expandedIndex;
             ctrl.expandedIndex = wasExpanded ? null : index;
-
-            if (!wasExpanded) {
-                var details = document.getElementById('da-' + index);
-                if (details && !details.open) { details.open = true; }
-            }
 
             if (!wasExpanded) {
                 var _f = ctrl.scriptFields[index];
@@ -2581,6 +2762,48 @@ UiPage({
                 }
                 _scheduleChangedBelowIndicatorUpdate();
             }, 10);
+        };
+
+        ctrl.toggleExtraExpand = function(index, event) {
+            if (event) { event.stopPropagation(); }
+            if (ctrl.expandedIndex !== null) { ctrl.collapseExpanded(); }
+
+            var wasExpanded = ctrl.expandedExtraIndex === index;
+            var prevIndex   = ctrl.expandedExtraIndex;
+            ctrl.expandedExtraIndex = wasExpanded ? null : index;
+
+            if (!wasExpanded) {
+                var _f = ctrl.extraChangedScriptFields[index];
+                _notifyParentExpand(_f ? _f.label : '');
+            } else {
+                _notifyParentExpand(null);
+            }
+
+            $timeout(function() {
+                if (!wasExpanded) {
+                    _setExtraWrapTop(index);
+                } else {
+                    _clearExtraWrapTop(index);
+                }
+                if (ctrl.extraEditors[index]) { ctrl.extraEditors[index].layout(); }
+                if (prevIndex !== null && prevIndex !== index) {
+                    _clearExtraWrapTop(prevIndex);
+                    if (ctrl.extraEditors[prevIndex]) { ctrl.extraEditors[prevIndex].layout(); }
+                }
+                _scheduleChangedBelowIndicatorUpdate();
+            }, 10);
+        };
+
+        ctrl.collapseExtraExpanded = function() {
+            var idx = ctrl.expandedExtraIndex;
+            if (idx === null) { return; }
+            ctrl.expandedExtraIndex = null;
+            _clearExtraWrapTop(idx);
+            $timeout(function() {
+                if (ctrl.extraEditors[idx]) { ctrl.extraEditors[idx].layout(); }
+                _scheduleChangedBelowIndicatorUpdate();
+            }, 0);
+            _notifyParentExpand(null);
         };
 
         ctrl.scrollAccordionIntoView = function(index) {
@@ -2610,7 +2833,7 @@ UiPage({
         ctrl.shouldShowStringExpand = function(f, isExtra) {
             if (!f) { return false; }
             var ra = f.renderAs;
-            if (ra === 'boolean' || ra === 'reference' || ra === 'choice' || ra === 'image') {
+            if (ra === 'boolean' || ra === 'reference' || ra === 'choice' || ra === 'image' || ra === 'list') {
                 return false;
             }
             var lv, rv;
@@ -2700,17 +2923,22 @@ UiPage({
         };
 
         ctrl.collapseAnyExpanded = function() {
-            if (ctrl.expandedIndex !== null) { ctrl.collapseExpanded(); }
-            if (ctrl.expandedString)         { ctrl.collapseStringExpanded(); }
+            if (ctrl.expandedIndex !== null)      { ctrl.collapseExpanded(); }
+            if (ctrl.expandedExtraIndex !== null) { ctrl.collapseExtraExpanded(); }
+            if (ctrl.expandedString)              { ctrl.collapseStringExpanded(); }
         };
 
         ctrl.expandedFieldLabel = function() {
             if (ctrl.expandedIndex !== null) {
                 var f = ctrl.scriptFields[ctrl.expandedIndex];
-                return f ? (ctrl.recordName + ' \\u2014 ' + f.label) : ctrl.recordName;
+                return f ? (ctrl.recordName + ' \u2014 ' + f.label) : ctrl.recordName;
+            }
+            if (ctrl.expandedExtraIndex !== null) {
+                var fx = ctrl.extraChangedScriptFields[ctrl.expandedExtraIndex];
+                return fx ? (ctrl.recordName + ' \u2014 ' + fx.label) : ctrl.recordName;
             }
             if (ctrl.expandedString) {
-                return ctrl.recordName + ' \\u2014 ' + ctrl.expandedString.label;
+                return ctrl.recordName + ' \u2014 ' + ctrl.expandedString.label;
             }
             return '';
         };
@@ -2785,20 +3013,36 @@ UiPage({
                 if (data.success && data.fields && data.fields.length > 0) {
                     _fieldDefs      = data.fields;
                     _extraFieldDefs = data.extra_fields || [];
-                    // Partition into simple fields and script/code fields
+                    // Partition into simple fields and script/code fields, keeping overall order
                     var simple = [];
                     var code   = [];
+                    var fields = [];
                     for (var i = 0; i < data.fields.length; i++) {
                         var fd = data.fields[i];
-                        if (fd.renderAs === 'code') {
-                            code.push({ key: fd.key, label: fd.label, language: fd.language, reference: fd.reference, changed: false, counts: null });
+                        if (fd.renderAs === 'code' || fd.type === 'html' || fd.type === 'html_script') {
+                            var scriptObj = {
+                                isScript: true,
+                                key: fd.key,
+                                label: fd.label,
+                                language: fd.language || (fd.type === 'html' || fd.type === 'html_script' ? 'html' : 'plaintext'),
+                                reference: fd.reference,
+                                changed: false,
+                                counts: null,
+                                scriptIndex: code.length
+                            };
+                            code.push(scriptObj);
+                            fields.push(scriptObj);
                         } else {
-                            simple.push(fd);
+                            var simpleObj = Object.assign({}, fd);
+                            simpleObj.isScript = false;
+                            simple.push(simpleObj);
+                            fields.push(simpleObj);
                         }
                     }
                     _apply(function() {
                         ctrl.simpleFields = simple;
                         ctrl.scriptFields = code;
+                        ctrl.fields       = fields;
                         ctrl.tableLabel   = data.table_label || '';
                     });
                 } else if (data.error === 'Table does not track versions') {
@@ -3096,7 +3340,8 @@ UiPage({
                 enableSplitViewResizing: true,
                 readOnly: true,
                 scrollBeyondLastLine: false,
-                wordWrap: ctrl.wordWrap ? 'on' : 'off'
+                wordWrap: ctrl.wordWrap ? 'on' : 'off',
+                minimap: { enabled: false }
             });
             diffEditor.setModel({
                 original: monaco.editor.createModel(ctrl.leftFields[fDef.key]  || '', _langForEditor(fDef.language)),
@@ -3110,6 +3355,9 @@ UiPage({
                 });
             });
             ctrl.editors[index] = diffEditor;
+            $timeout(function() {
+                ctrl.updateEditorHeight(index, false);
+            }, 50);
         };
 
         ctrl.initExtraEditor = function(index) {
@@ -3132,7 +3380,8 @@ UiPage({
                 enableSplitViewResizing: true,
                 readOnly: true,
                 scrollBeyondLastLine: false,
-                wordWrap: ctrl.wordWrap ? 'on' : 'off'
+                wordWrap: ctrl.wordWrap ? 'on' : 'off',
+                minimap: { enabled: false }
             });
             diffEditor.setModel({
                 original: monaco.editor.createModel(ctrl.extraLeftFields[fDef.key]  || '', _langForEditor(fDef.language)),
@@ -3146,6 +3395,9 @@ UiPage({
                 });
             });
             ctrl.extraEditors[index] = diffEditor;
+            $timeout(function() {
+                ctrl.updateEditorHeight(index, true);
+            }, 50);
         };
     }])
 
@@ -3269,48 +3521,63 @@ UiPage({
         };
     }])
 
-    .directive('weDiffAccordion', ['$timeout', function($timeout) {
+    .directive('weDiffEditor', ['$timeout', function($timeout) {
         return {
-            link: function(scope, element) {
-                element[0].addEventListener('toggle', function() {
-                    if (!element[0].open) {
-                        if (scope.ctrl.expandedIndex === scope.$index) {
-                            $timeout(function() { scope.ctrl.collapseExpanded(); });
-                        }
-                        return;
-                    }
-                    $timeout(function() {
-                        scope.ctrl.initEditor(scope.$index);
-                        scope.ctrl.scrollAccordionIntoView(scope.$index);
-                    }, 0);
-                });
+            link: function(scope, element, attrs) {
+                var index = parseInt(attrs.scriptIndex || scope.$eval(attrs.weDiffEditor) || scope.$index, 10);
+                $timeout(function() {
+                    scope.ctrl.initEditor(index);
+                }, 0);
             }
         };
     }])
 
-    .directive('weDiffExtraAccordion', ['$timeout', function($timeout) {
+    .directive('weDiffExtraEditor', ['$timeout', function($timeout) {
         return {
-            link: function(scope, element) {
-                element[0].addEventListener('toggle', function() {
-                    if (!element[0].open) { return; }
-                    $timeout(function() {
-                        scope.ctrl.initExtraEditor(scope.$index);
-                    }, 0);
-                });
+            link: function(scope, element, attrs) {
+                var index = parseInt(attrs.scriptIndex || scope.$eval(attrs.weDiffExtraEditor) || scope.$index, 10);
+                $timeout(function() {
+                    scope.ctrl.initExtraEditor(index);
+                }, 0);
             }
         };
     }])
 
+    .directive('weSyncRowHeight', ['$timeout', function($timeout) {
+        return {
+            restrict: 'A',
+            require: 'ngModel',
+            link: function(scope, el, attrs, ngModel) {
+                var _orig = ngModel.$render.bind(ngModel);
+                ngModel.$render = function() {
+                    _orig();
+                    $timeout(function() {
+                        var row = el[0].closest('tr');
+                        if (!row) { return; }
+                        var tas = row.querySelectorAll('textarea.sft-textarea');
+                        tas.forEach(function(ta) { 
+                            ta.style.height = ''; 
+                        });
+                        var max = 0;
+                        var borderHeight = 0;
+                        tas.forEach(function(ta) {
+                            max = Math.max(max, ta.scrollHeight);
+                            borderHeight = Math.max(borderHeight, ta.offsetHeight - ta.clientHeight);
+                        });
+                        tas.forEach(function(ta) {
+                            ta.style.height = (max + borderHeight) + 'px';
+                        });
+                    }, 0, false);
+                };
+            }
+        };
+    }])
     .directive('weTooltip', [function() {
         return {
             restrict: 'A',
             link: function(scope, element, attrs) {
-                element.tooltip({ container: 'body', placement: 'bottom' });
                 attrs.$observe('weTooltip', function(val) {
-                    element.attr('data-original-title', val || '');
-                });
-                scope.$on('$destroy', function() {
-                    try { element.tooltip('destroy'); } catch(e) {}
+                    element.attr('title', val || '');
                 });
             }
         };
