@@ -6892,6 +6892,17 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     'ng-non-bindable': true,
                 };
 
+                // Directives whose attribute value is an interpolated string (plain
+                // text with embedded {{ }} expressions), not itself an expression —
+                // e.g. ng-href="?id={{::portal.homepage_dv}}". $parse'ing the whole
+                // value would misfire on the literal text; the {{ }} portions are
+                // already caught separately via interpRe below.
+                var NG_INTERPOLATE_ONLY_ATTRS = {
+                    'ng-href': true,
+                    'ng-src': true,
+                    'ng-srcset': true,
+                };
+
                 var _ngParseFn = null;
                 function _getNgParse() {
                     if (_ngParseFn) {
@@ -6938,6 +6949,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     while ((m = attrRe.exec(text))) {
                         var attrName = m[1].replace(/^data-/, '').toLowerCase();
                         if (NG_NON_EXPRESSION_ATTRS[attrName]) {
+                            continue;
+                        }
+                        if (
+                            NG_INTERPOLATE_ONLY_ATTRS[attrName] ||
+                            attrName.indexOf('ng-attr-') === 0
+                        ) {
                             continue;
                         }
                         var valueIndices = m.indices[3] || m.indices[4];
