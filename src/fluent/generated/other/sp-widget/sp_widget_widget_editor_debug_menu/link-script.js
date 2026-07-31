@@ -1917,7 +1917,7 @@ function link(scope, element, attrs, controller) {
                     const s = ScopeResolver.getActualWidgetScope(capturedEl);
                     const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
                     const label = wName ? '$scope.data (' + wName + ')' : '$scope.data';
-                    console.log('%c' + label + '\n', 'color: #2563eb; font-weight: bold;', s && s.data);
+                    console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s && s.data);
                 });
                 scopeDataLi.appendChild(scopeDataA);
                 ul.appendChild(scopeDataLi);
@@ -1936,7 +1936,7 @@ function link(scope, element, attrs, controller) {
                     const s = ScopeResolver.getActualWidgetScope(capturedEl);
                     const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
                     const label = wName ? '$scope (' + wName + ')' : '$scope';
-                    console.log('%c' + label + '\n', 'color: #2563eb; font-weight: bold;', s);
+                    console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s);
                     if (prefs.assignConsoleVars !== false) {
                         Utils.assignConsoleVar('$scope', s);
                     }
@@ -1961,7 +1961,7 @@ function link(scope, element, attrs, controller) {
                         const s = ScopeResolver.getActualWidgetScope(targetWidgetEl);
                         const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
                         const label = wName ? '$scope.data (' + wName + ')' : '$scope.data';
-                        console.log('%c' + label + '\n', 'color: #2563eb; font-weight: bold;', s && s.data);
+                        console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s && s.data);
                     });
                     a.parentNode.replaceChild(newA, a);
                 } else if (text === 'Log to console: $scope' && targetWidgetEl) {
@@ -1973,7 +1973,7 @@ function link(scope, element, attrs, controller) {
                         const s = ScopeResolver.getActualWidgetScope(targetWidgetEl);
                         const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
                         const label = wName ? '$scope (' + wName + ')' : '$scope';
-                        console.log('%c' + label + '\n', 'color: #2563eb; font-weight: bold;', s);
+                        console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s);
                         if (prefs.assignConsoleVars !== false) {
                             Utils.assignConsoleVar('$scope', s);
                         }
@@ -2053,7 +2053,7 @@ function link(scope, element, attrs, controller) {
                     e.preventDefault();
                     OverlayManager.closeSpOverlay(menuContainer);
                     const rootScope = angular.element(document.body).scope();
-                    console.log('%c$rootScope\n', 'color: #2563eb; font-weight: bold;', rootScope);
+                    console.log('%c$rootScope\n', 'color: #0891b2; font-weight: bold;', rootScope);
                     if (prefs.assignConsoleVars !== false) {
                         Utils.assignConsoleVar('$rootScope', rootScope);
                     }
@@ -2211,7 +2211,7 @@ function link(scope, element, attrs, controller) {
                                     e.preventDefault();
                                     OverlayManager.closeSpOverlay(menuContainer);
                                     const embeddedScope = ScopeResolver.getActualWidgetScope(capturedInfo.el);
-                                    console.log('%cEmbedded $scope (' + capturedInfo.name + ')\n', 'color: #2563eb; font-weight: bold;', embeddedScope);
+                                    console.log('%cEmbedded $scope (' + capturedInfo.name + ')\n', 'color: #0891b2; font-weight: bold;', embeddedScope);
                                     if (prefs.assignConsoleVars !== false) {
                                         Utils.assignConsoleVar('$scope', embeddedScope);
                                     }
