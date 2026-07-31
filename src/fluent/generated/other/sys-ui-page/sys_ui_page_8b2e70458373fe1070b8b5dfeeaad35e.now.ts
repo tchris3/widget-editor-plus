@@ -1807,27 +1807,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .monaco-editor.vs-dark .we-jsdoc-tag { color: #569cd6; }
         .monaco-editor.vs-dark .we-jsdoc-type { color: #4ec9b0; }
         .monaco-editor.vs-dark .we-jsdoc-name { color: #9cdcfe; }
-        /* AngularJS expression sub-highlighting inside {{ }} interpolations and
-           ng-*/data-ng-* directive attributes — Monaco's built-in html tokenizer has
-           no notion of these, so they're painted as decorations instead. Colors match
-           the (previously unused) attribute.name.ng / ng.delimiter / ng.expression
-           rules already defined in we-vs / we-vs-dark below. */
-        /* !important: Monaco's own token-color stylesheet (.mtkNN rules, regenerated
-           by the theme service) has equal CSS specificity to a single class selector
-           and is injected after this static block, so it wins cascade ties without
-           !important — leaving every decoration looking like the default string color. */
-        .monaco-editor.vs .we-ng-delim { color: #af00db !important; }
-        .monaco-editor.vs .we-ng-attr { color: #267f99 !important; font-weight: bold; }
-        .monaco-editor.vs .we-ng-string { color: #a31515 !important; }
-        .monaco-editor.vs .we-ng-number { color: #098658 !important; }
-        .monaco-editor.vs .we-ng-keyword { color: #0000ff !important; }
-        .monaco-editor.vs .we-ng-filter { color: #795e26 !important; }
-        .monaco-editor.vs-dark .we-ng-delim { color: #c678dd !important; }
-        .monaco-editor.vs-dark .we-ng-attr { color: #4ec9b0 !important; font-weight: bold; }
-        .monaco-editor.vs-dark .we-ng-string { color: #ce9178 !important; }
-        .monaco-editor.vs-dark .we-ng-number { color: #b5cea8 !important; }
-        .monaco-editor.vs-dark .we-ng-keyword { color: #569cd6 !important; }
-        .monaco-editor.vs-dark .we-ng-filter { color: #dcdcaa !important; }
     </style>
 
     <!-- GlideEditor5Includes (in js_includes_doctype) sets getWorkerUrl to .js paths
@@ -4990,11 +4969,16 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         return;
                     }
 
-                    // Load widget + prefs in sequence; side-data in parallel
-                    ajax('getWidget', {
-                        sys_id: SYS_ID,
-                    })
-                        .then(function (data) {
+                    // Widget + prefs are independent — fetch in parallel; side-data also parallel
+                    $q.all([
+                        ajax('getWidget', {
+                            sys_id: SYS_ID,
+                        }),
+                        ajax('getUserPrefs', {}),
+                    ])
+                        .then(function (results) {
+                            var data = results[0];
+                            var prefsData = results[1];
                             if (!data.success) {
                                 throw new Error(
                                     data.error || 'Failed to load widget'
@@ -5104,9 +5088,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             };
                             lastServerValues = angular.copy(originalValues);
 
-                            return ajax('getUserPrefs', {});
-                        })
-                        .then(function (prefsData) {
                             if (
                                 prefsData &&
                                 prefsData.success &&
@@ -5649,30 +5630,46 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     // Each pane loads its own DTS (server or client) when it initialises;
                     // no need to gate all editors on a single DTS load here.
                     $timeout(function () {
-                        $scope.visibleItems.forEach(function (item) {
-                            if (
-                                item.type === 'pane' &&
-                                !monacoEditors[item.key]
-                            ) {
-                                initEditorForPane(item);
+                        var panesToInit = $scope.visibleItems.filter(
+                            function (item) {
+                                return (
+                                    item.type === 'pane' &&
+                                    !monacoEditors[item.key]
+                                );
                             }
-                        });
-                        $timeout(layoutAllEditors, 20);
-                        $timeout(layoutAllEditors, 500);
-                        $timeout(layoutAllEditors, 900);
-                        // Font metrics can arrive after editor creation and delay proper paint.
-                        // Re-layout once fonts are ready so token colors are visible immediately.
-                        try {
-                            if (
-                                document.fonts &&
-                                document.fonts.ready &&
-                                document.fonts.ready.then
-                            ) {
-                                document.fonts.ready.then(function () {
-                                    $timeout(layoutAllEditors, 0);
-                                });
+                        );
+
+                        // Create editors one pane per tick instead of all at once, so the
+                        // browser can paint/respond to input between each editor.create()
+                        // call rather than blocking the main thread for their combined cost.
+                        function initNextPane(idx) {
+                            if (idx >= panesToInit.length) {
+                                $timeout(layoutAllEditors, 20);
+                                $timeout(layoutAllEditors, 500);
+                                $timeout(layoutAllEditors, 900);
+                                // Font metrics can arrive after editor creation and delay proper
+                                // paint. Re-layout once fonts are ready so token colors are
+                                // visible immediately.
+                                try {
+                                    if (
+                                        document.fonts &&
+                                        document.fonts.ready &&
+                                        document.fonts.ready.then
+                                    ) {
+                                        document.fonts.ready.then(function () {
+                                            $timeout(layoutAllEditors, 0);
+                                        });
+                                    }
+                                } catch (e) {}
+                                return;
                             }
-                        } catch (e) {}
+                            initEditorForPane(panesToInit[idx]);
+                            $timeout(function () {
+                                initNextPane(idx + 1);
+                            }, 0);
+                        }
+
+                        initNextPane(0);
                     });
                 }
 
@@ -6348,27 +6345,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                             }
 
-                            if (lang === 'html') {
-                                var _ngHighlightDecoIds = [];
-                                var _ngHighlightTimer = null;
-                                function _refreshNgHighlightDecorations() {
-                                    _ngHighlightDecoIds = ed.deltaDecorations(
-                                        _ngHighlightDecoIds,
-                                        _computeNgHighlightDecorations(
-                                            ed.getModel()
-                                        )
-                                    );
-                                }
-                                _refreshNgHighlightDecorations();
-                                ed.onDidChangeModelContent(function () {
-                                    clearTimeout(_ngHighlightTimer);
-                                    _ngHighlightTimer = setTimeout(
-                                        _refreshNgHighlightDecorations,
-                                        150
-                                    );
-                                });
-                            }
-
                             if (isJs) {
                                 var _jsDocDecoIds = [];
                                 var _jsDocTimer = null;
@@ -6589,11 +6565,18 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                             }
                         } // end _doCreate
+                        // Fire-and-forget, matching loadServerMonarchDts/loadClientMonarchDts
+                        // below: don't block the editor's first paint on the HTML Monarch
+                        // language bundle loading over the network. monaco.editor.create()
+                        // runs immediately with whatever 'html' tokenizer is registered so
+                        // far (Monaco's built-in one on a cold load); once
+                        // MONACO_LANGUAGE_HTML registers its Angular-aware tokenizer, Monaco
+                        // automatically re-tokenizes existing models — same as how the JS
+                        // panes' DTS/IntelliSense loads in behind an already-visible editor.
                         if (lang === 'html') {
-                            loadHtmlMonarchDts(_doCreate);
-                        } else {
-                            _doCreate();
+                            loadHtmlMonarchDts();
                         }
+                        _doCreate();
                     }
 
                     // Use Monaco directly via AMD require (bypasses GlideEditorMonaco
@@ -6997,108 +6980,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
 
                     return out;
-                }
-
-                ////////////////////////////////////////////////////////////
-                // AngularJS expression syntax highlighting — decorations, not a Monarch
-                // tokenizer. Reuses the same {{ }} / ng-*/data-ng-* scanning as
-                // _extractNgExpressions above, plus a lightweight sub-scan of each
-                // expression body for strings, numbers, true/false/null/undefined, and
-                // filter names (the "orderBy" in "| orderBy:'name'") — VS Code-like
-                // coloring without a full expression-language grammar. Colors are defined
-                // in the page <style> block (we-ng-delim / we-ng-attr / we-ng-string /
-                // we-ng-number / we-ng-keyword / we-ng-filter), matching the light/dark
-                // colors already reserved (but unused) in we-vs / we-vs-dark below for
-                // attribute.name.ng / ng.delimiter / ng.expression.
-                // NOTE: same template-literal escaping caveat as above — every regex
-                // escape here is deliberately doubled.
-                function _tokenizeNgExpression(exprText) {
-                    var out = [];
-                    var re =
-                        /('[^']*'|"[^"]*")|(\\b\\d+(?:\\.\\d+)?\\b)|(\\b(?:true|false|null|undefined)\\b)|(?<!\\|)\\|(?!\\|)(\\s*)([a-zA-Z_$][\\w$]*)/gd;
-                    var m;
-                    while ((m = re.exec(exprText))) {
-                        if (m[1] !== undefined) {
-                            out.push({
-                                start: m.indices[1][0],
-                                length: m[1].length,
-                                cls: 'we-ng-string',
-                            });
-                        } else if (m[2] !== undefined) {
-                            out.push({
-                                start: m.indices[2][0],
-                                length: m[2].length,
-                                cls: 'we-ng-number',
-                            });
-                        } else if (m[3] !== undefined) {
-                            out.push({
-                                start: m.indices[3][0],
-                                length: m[3].length,
-                                cls: 'we-ng-keyword',
-                            });
-                        } else if (m[5] !== undefined) {
-                            out.push({
-                                start: m.indices[5][0],
-                                length: m[5].length,
-                                cls: 'we-ng-filter',
-                            });
-                        }
-                    }
-                    return out;
-                }
-
-                function _computeNgHighlightDecorations(model) {
-                    var text = model.getValue();
-                    var decos = [];
-                    function pushRange(start, length, className) {
-                        var s = model.getPositionAt(start);
-                        var e = model.getPositionAt(start + length);
-                        decos.push({
-                            range: new monaco.Range(
-                                s.lineNumber,
-                                s.column,
-                                e.lineNumber,
-                                e.column
-                            ),
-                            options: { inlineClassName: className },
-                        });
-                    }
-                    function highlightExprBody(exprStart, body) {
-                        _tokenizeNgExpression(body).forEach(function (tok) {
-                            pushRange(
-                                exprStart + tok.start,
-                                tok.length,
-                                tok.cls
-                            );
-                        });
-                    }
-
-                    var interpRe = /\\{\\{([^\\n]*?)\\}\\}/g;
-                    var m;
-                    while ((m = interpRe.exec(text))) {
-                        pushRange(m.index, 2, 'we-ng-delim');
-                        pushRange(
-                            m.index + 2 + m[1].length,
-                            2,
-                            'we-ng-delim'
-                        );
-                        highlightExprBody(m.index + 2, m[1]);
-                    }
-
-                    var attrRe =
-                        /((?:data-)?ng-[a-zA-Z-]+)\\s*=\\s*("([^"\\n]*)"|'([^'\\n]*)')/gd;
-                    while ((m = attrRe.exec(text))) {
-                        var attrName = m[1].replace(/^data-/, '').toLowerCase();
-                        pushRange(m.indices[1][0], m[1].length, 'we-ng-attr');
-                        if (NG_NON_EXPRESSION_ATTRS[attrName]) {
-                            continue;
-                        }
-                        var valueIndices = m.indices[3] || m.indices[4];
-                        var value = m[3] !== undefined ? m[3] : m[4];
-                        highlightExprBody(valueIndices[0], value);
-                    }
-
-                    return decos;
                 }
 
                 function _computeNgExpressionMarkers(model) {
