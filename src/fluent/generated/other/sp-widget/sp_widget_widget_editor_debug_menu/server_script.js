@@ -6,29 +6,47 @@
  *      the client sends a savePreferences action.
  *   2. Returns the stored preferences JSON string on every server call so the
  *      client can restore them across devices.
+ *
+ * Note: When impersonating a user, preferences are always loaded and saved for
+ * the real user (impersonator), never the impersonated user.
  */
 (function () {
-    // Check if user has sp_admin role
-    var realUser;
+    var PREF_KEY = 'we_debug_menu_prefs';
     var impersonatedUser = gs.getImpersonatingUserName();
+    var realUserId = null;
+    var hasAccess = false;
 
-    if (!impersonatedUser && !gs.hasRole('sp_admin')) {
-        data.hasAccess = false;
-    } else if (impersonatedUser) {
-        realUser = gs.getUser().getUserByID(impersonatedUser);
-        data.hasAccess = realUser.hasRole('sp_admin');
+    if (impersonatedUser) {
+        // When impersonating, gs.getImpersonatingUserName() returns the username of the real user
+        var grUser = new GlideRecord('sys_user');
+        grUser.addQuery('user_name', impersonatedUser);
+        grUser.query();
+        if (grUser.next()) {
+            realUserId = grUser.getValue('sys_id');
+        }
+
+        if (realUserId) {
+            var grRole = new GlideRecord('sys_user_has_role');
+            grRole.addQuery('user', realUserId);
+            grRole.addQuery('role.name', 'IN', 'sp_admin,admin');
+            grRole.query();
+            hasAccess = grRole.hasNext();
+        }
     } else {
-        realUser = gs.getUser();
-        data.hasAccess = true;
+        // Not impersonating — real user is current session user
+        realUserId = gs.getUserID();
+        hasAccess = gs.hasRole('sp_admin');
     }
 
-    if (data.hasAccess === false) {
+    data.hasAccess = hasAccess;
+    data.isImpersonating = !!impersonatedUser;
+    data.realUserId = realUserId;
+
+    if (data.hasAccess === false || !realUserId) {
         return;
     }
 
-    var PREF_KEY = 'we_debug_menu_prefs';
-
-    if (input && input.action === 'savePreferences' && realUser) {
+    if (input && input.action === 'savePreferences') {
         /*
          * input.preferences is a Java-backed object in Rhino — serialise it to a
          * JSON string before storing.  Passing it as an object from the client
@@ -41,8 +59,9 @@
             toStore = '{}';
         }
 
-        var grSave = new GlideRecordSecure('sys_user_preference');
-        grSave.addQuery('user', realUser.getID());
+        // Use GlideRecord (not GlideRecordSecure) so the real user's preference record can be updated even when impersonating
+        var grSave = new GlideRecord('sys_user_preference');
+        grSave.addQuery('user', realUserId);
         grSave.addQuery('name', PREF_KEY);
         grSave.query();
         if (grSave.next()) {
@@ -50,7 +69,7 @@
             grSave.update();
         } else {
             grSave.initialize();
-            grSave.setValue('user', realUser.getID());
+            grSave.setValue('user', realUserId);
             grSave.setValue('name', PREF_KEY);
             grSave.setValue('value', toStore);
             grSave.setValue('type', 'string');
@@ -58,12 +77,11 @@
         }
     }
 
-    if (realUser) {
-        // Return stored preferences string; client parses it and backfills defaults.
-        var grLoad = new GlideRecordSecure('sys_user_preference');
-        grLoad.addQuery('user', realUser.getID());
-        grLoad.addQuery('name', PREF_KEY);
-        grLoad.query();
-        data.preferences = grLoad.next() ? grLoad.getValue('value') : null;
-    }
+    // Return stored preferences string of the real user; client parses it and backfills defaults.
+    // Use GlideRecord (not GlideRecordSecure) so the real user's preference record can be loaded even when impersonating.
+    var grLoad = new GlideRecord('sys_user_preference');
+    grLoad.addQuery('user', realUserId);
+    grLoad.addQuery('name', PREF_KEY);
+    grLoad.query();
+    data.preferences = grLoad.next() ? grLoad.getValue('value') : null;
 })();

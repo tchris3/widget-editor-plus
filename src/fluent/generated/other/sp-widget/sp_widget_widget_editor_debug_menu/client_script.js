@@ -108,9 +108,13 @@ api.controller = function ($scope, spUtil) {
      * localStorage is checked first so changes made in this browser session are
      * always used immediately.  sys_user_preference (up to 65 000 chars) serves
      * as cross-device backup and is used when no local value exists.
+     * When impersonating, user-scoped localStorage key ensures real user's saved
+     * preferences are loaded and saved, not the impersonated user's.
      */
+    const userPrefsKey = c.data.realUserId ? (LOCAL_PREFS_KEY + '_' + c.data.realUserId) : LOCAL_PREFS_KEY;
+
     try {
-        const rawPrefs = localStorage.getItem(LOCAL_PREFS_KEY) || $scope.data.preferences;
+        const rawPrefs = localStorage.getItem(userPrefsKey) || $scope.data.preferences || localStorage.getItem(LOCAL_PREFS_KEY);
         c.preferences = rawPrefs ? JSON.parse(rawPrefs) : angular.copy(DEFAULT_PREFS);
     } catch (e) {
         c.preferences = angular.copy(DEFAULT_PREFS);
@@ -153,7 +157,10 @@ api.controller = function ($scope, spUtil) {
 
         const json = JSON.stringify(c.editPreferences);
 
-        // Persist to localStorage immediately — reliable regardless of server limits.
+        // Persist to user-scoped localStorage key immediately
+        if (c.data.realUserId) {
+            localStorage.setItem(LOCAL_PREFS_KEY + '_' + c.data.realUserId, json);
+        }
         localStorage.setItem(LOCAL_PREFS_KEY, json);
 
         c.preferences = angular.copy(c.editPreferences);
