@@ -1545,18 +1545,21 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
             otherTag: [
                 [/\\/?>/, 'delimiter.html', '@pop'],
 
-                // Double-quoted attribute value
-                [/"/, { token: 'attribute.value', next: '@attrValDq' }],
-                // Single-quoted attribute value
-                [/'/, { token: 'attribute.value', next: '@attrValSq' }],
-
-                // data-* / data-ng-* / ng-* attribute → Angular directive or custom data
-                [/(?:data-)?ng-[\\w-]+/, 'attribute.name.ng'],
+                // data-* / data-ng-* / ng-* attribute → Angular directive. Its value
+                // is routed through ngAttrEq/ngAttrValDq/ngAttrValSq (below) instead of
+                // the generic attrValDq/attrValSq, so predicate expressions get real
+                // string/number/keyword/operator coloring instead of one flat run.
+                [/(?:data-)?ng-[\\w-]+/, { token: 'attribute.name.ng', next: '@ngAttrEq' }],
                 [/data-[\\w-]+/, 'attribute.name.ng'],
                 // sp-* ServiceNow SP attribute
                 [/sp-[\\w-]+/, 'attribute.name.sp'],
                 // Regular attribute name
                 [/[\\w-:]+/, 'attribute.name'],
+
+                // Double-quoted attribute value (non ng-* attributes)
+                [/"/, { token: 'attribute.value', next: '@attrValDq' }],
+                // Single-quoted attribute value (non ng-* attributes)
+                [/'/, { token: 'attribute.value', next: '@attrValSq' }],
 
                 [/=/, 'delimiter'],
                 [/[ \\t\\r\\n]+/]
@@ -1574,6 +1577,52 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 [/[^'{}]+/, 'attribute.value'],
                 [/[{}]/, 'attribute.value'],
                 [/'/, { token: 'attribute.value', next: '@pop' }]
+            ],
+
+            // ---- ng-*/data-ng-* attribute value entry -----------------------
+            // After the directive name: wait for '=' then a quote before switching
+            // to the expression-aware value states. Anything unexpected (a
+            // boolean-style directive with no '=', e.g. ng-cloak) rematches in
+            // otherTag rather than consuming input meant for the next attribute.
+            ngAttrEq: [
+                [/=/, 'delimiter', '@ngAttrValStart'],
+                [/[ \\t\\r\\n]+/],
+                [/./, { token: '@rematch', next: '@pop' }]
+            ],
+            ngAttrValStart: [
+                [/"/, { token: 'attribute.value', next: '@ngAttrValDq' }],
+                [/'/, { token: 'attribute.value', next: '@ngAttrValSq' }],
+                [/[ \\t\\r\\n]+/],
+                [/./, { token: '@rematch', next: '@pop' }]
+            ],
+
+            // ---- ng-*/data-ng-* directive attribute values ------------------
+            // Sub-tokenized like a real expression — strings, numbers, boolean
+            // literals, and operators get their own token names (which the base
+            // vs / vs-dark themes already color sensibly) instead of one flat
+            // attribute.value run. {{ }} inside still behaves the same as it does
+            // in a plain attribute value.
+            ngAttrValDq: [
+                [/\\{\\{/, { token: 'ng.delimiter', next: '@ngExpr' }],
+                [/"/, { token: 'attribute.value', next: '@pop' }],
+                [/'[^']*'/, 'string'],
+                [/\\b\\d+(?:\\.\\d+)?\\b/, 'number'],
+                [/\\b(?:true|false|null|undefined)\\b/, 'keyword'],
+                [/(?:===|!==|==|!=|<=|>=|&&|\\|\\|)/, 'keyword.operator'],
+                [/[a-zA-Z_$][\\w$]*/, 'ng.expression'],
+                [/[ \\t\\r\\n]+/, 'ng.expression'],
+                [/./, 'ng.expression']
+            ],
+            ngAttrValSq: [
+                [/\\{\\{/, { token: 'ng.delimiter', next: '@ngExpr' }],
+                [/'/, { token: 'attribute.value', next: '@pop' }],
+                [/"[^"]*"/, 'string'],
+                [/\\b\\d+(?:\\.\\d+)?\\b/, 'number'],
+                [/\\b(?:true|false|null|undefined)\\b/, 'keyword'],
+                [/(?:===|!==|==|!=|<=|>=|&&|\\|\\|)/, 'keyword.operator'],
+                [/[a-zA-Z_$][\\w$]*/, 'ng.expression'],
+                [/[ \\t\\r\\n]+/, 'ng.expression'],
+                [/./, 'ng.expression']
             ],
 
             // ---- <script> state with embedded JavaScript --------------------

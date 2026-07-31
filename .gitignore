@@ -5,3 +5,13 @@ node_modules/
 target/
 *.tsbuildinfo
 .jest_cache
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Playwright artifacts & reports
+playwright/.auth/
+playwright-report/
+test-results/

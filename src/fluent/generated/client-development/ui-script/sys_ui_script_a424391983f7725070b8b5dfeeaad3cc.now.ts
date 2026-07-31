@@ -120,6 +120,8 @@ Record({
             _api.loadCodeActions({ modelId: modelId, isAngular: true });
         },
         scanAndFetchSIs: function () {},
+        scanLocalTypedefs: function () {},
+        notifyScriptContextFocus: function () {},
         getSiSysId: function () {
             return null;
         },
@@ -399,7 +401,7 @@ Record({
         var block;
         while ((block = blockRe.exec(script)) !== null) {
             var body = block[1];
-            var typedefMatch = body.match(/@typedef\\s+\\{Object\\}\\s+(\\w+)/);
+            var typedefMatch = body.match(/@typedef\\s+\\{Object\\}\\s+(\\w+)/i);
             if (!typedefMatch) {
                 continue;
             }
@@ -429,6 +431,30 @@ Record({
             );
         }
         return interfaces;
+    }
+
+    /**
+     * Registers a model's own \\\`@typedef {Object}\\\` blocks as real TypeScript
+     * interfaces so \\\`@type\\\` references to them resolve immediately, without
+     * waiting on an external \\\`new ClassName()\\\` reference (the SI-to-SI path)
+     * to trigger a fetch. Each pane gets its own URI so switching panes doesn't
+     * leak one widget's typedefs into another's model.
+     *
+     * @param {string} modelId - Unique key for the editing pane (e.g. pane.key).
+     * @param {string} content - Full text of the model.
+     */
+    function _registerLocalTypedefs(modelId, content) {
+        if (
+            !window.monaco ||
+            !monaco.languages ||
+            !monaco.languages.typescript
+        ) {
+            return;
+        }
+        var dts = parseSiTypedefs(content || '').join('\\n\\n');
+        var uri = 'ts:snlib-local-typedefs-' + modelId + '.d.ts';
+        monaco.languages.typescript.typescriptDefaults.addExtraLib(dts, uri);
+        monaco.languages.typescript.javascriptDefaults.addExtraLib(dts, uri);
     }
 
     /**
@@ -1943,7 +1969,14 @@ Record({
                       monaco.languages.typescript.javascriptDefaults,
                   ];
             _snDtsTargets.forEach(function (def) {
-                def.addExtraLib(declarations, 'ts:snlib-servicenow.d.ts');
+                if (def === monaco.languages.typescript.javascriptDefaults) {
+                    // Cached and applied only while the server profile is
+                    // active — see _applyJsScriptContextLibs.
+                    _cachedServerSnDts = declarations;
+                    _applyJsScriptContextLibs();
+                } else {
+                    def.addExtraLib(declarations, 'ts:snlib-servicenow.d.ts');
+                }
                 def.setEagerModelSync(true);
             });
         };
@@ -1974,7 +2007,12 @@ Record({
                       monaco.languages.typescript.javascriptDefaults,
                   ];
             _serverDtsTargets.forEach(function (def) {
-                def.addExtraLib(dts, 'ts:snlib-server-monarch.d.ts');
+                if (def === monaco.languages.typescript.javascriptDefaults) {
+                    _cachedServerMonarchDts = dts;
+                    _applyJsScriptContextLibs();
+                } else {
+                    def.addExtraLib(dts, 'ts:snlib-server-monarch.d.ts');
+                }
             });
         }
 
@@ -2024,6 +2062,98 @@ Record({
                 noUnusedParameters: true,
             })
         );
+    }
+
+    /*
+     * Widget server script / Script Include panes and widget client controller
+     * / link panes now share Monaco's single 'javascript' language service
+     * (needed so checkJs binds @typedef/@type — see parseSiTypedefs), which
+     * means their API surfaces (GlideRecord/$sp-server vs g_form/AngularJS/
+     * $sp-client) would otherwise collide in the same javascriptDefaults extra
+     * lib registry. Since Monaco has no per-file DTS scoping, we keep only one
+     * side's declarations registered at a time, swapping on editor focus.
+     */
+    var _activeJsScriptContext = 'server'; // 'server' | 'client'
+    var _cachedServerSnDts = '';
+    var _cachedServerMonarchDts = '';
+    var _cachedClientMonarchDts = '';
+
+    function _findModelById(modelId) {
+        if (!window.monaco || !monaco.editor) {
+            return null;
+        }
+        var models = monaco.editor.getModels();
+        for (var i = 0; i < models.length; i++) {
+            if (models[i].id === modelId) {
+                return models[i];
+            }
+        }
+        return null;
+    }
+
+    /** Pushes whichever profile's cached DTS is active into javascriptDefaults,
+     * clearing the other profile's URIs so its declarations disappear. */
+    function _applyJsScriptContextLibs() {
+        if (
+            !window.monaco ||
+            !monaco.languages ||
+            !monaco.languages.typescript
+        ) {
+            return;
+        }
+        var jsDef = monaco.languages.typescript.javascriptDefaults;
+        if (_activeJsScriptContext === 'server') {
+            jsDef.addExtraLib(_cachedServerSnDts, 'ts:snlib-servicenow.d.ts');
+            jsDef.addExtraLib(
+                _cachedServerMonarchDts,
+                'ts:snlib-server-monarch.d.ts'
+            );
+            jsDef.addExtraLib('', 'ts:snlib-client-monarch.d.ts');
+            jsDef.addExtraLib('', _CLIENT_API_LIB_URI);
+        } else {
+            jsDef.addExtraLib('', 'ts:snlib-servicenow.d.ts');
+            jsDef.addExtraLib('', 'ts:snlib-server-monarch.d.ts');
+            jsDef.addExtraLib(
+                _cachedClientMonarchDts,
+                'ts:snlib-client-monarch.d.ts'
+            );
+            // Client DI signature (_CLIENT_API_LIB_URI) is re-populated by
+            // _refreshClientApiLib, called separately once this context is live.
+        }
+    }
+
+    /**
+     * Switches which side's server/client API declarations are live in
+     * javascriptDefaults. Called on editor focus from the Widget Editor+ page.
+     *
+     * @param {string} kind - 'server' or 'client'.
+     */
+    function setActiveScriptContext(kind) {
+        if (
+            (kind !== 'server' && kind !== 'client') ||
+            kind === _activeJsScriptContext
+        ) {
+            return;
+        }
+        _activeJsScriptContext = kind;
+        _applyJsScriptContextLibs();
+    }
+
+    /**
+     * Notifies the core that a pane's editor gained focus, switching the
+     * active server/client API profile and — for client panes — immediately
+     * resyncing the 'api' DI signature for the focused model rather than
+     * waiting for the next keystroke.
+     *
+     * @param {string} modelId - \\\`ed.getModel().id\\\` of the focused pane.
+     * @param {string} kind    - 'server' or 'client'.
+     */
+    function notifyScriptContextFocus(modelId, kind) {
+        setActiveScriptContext(kind);
+        if (kind === 'client') {
+            _clientDiLastParamsKey = null;
+            _refreshClientApiLib(_findModelById(modelId));
+        }
     }
 
     /*
@@ -2080,7 +2210,8 @@ Record({
             !di ||
             !window.monaco ||
             !monaco.languages ||
-            !monaco.languages.typescript
+            !monaco.languages.typescript ||
+            _activeJsScriptContext !== 'client'
         ) {
             return;
         }
@@ -2163,10 +2294,8 @@ Record({
         }
 
         if (window.MONACO_LANGUAGE_CLIENT_DTS) {
-            monaco.languages.typescript.javascriptDefaults.addExtraLib(
-                window.MONACO_LANGUAGE_CLIENT_DTS,
-                'ts:snlib-client-monarch.d.ts'
-            );
+            _cachedClientMonarchDts = window.MONACO_LANGUAGE_CLIENT_DTS;
+            _applyJsScriptContextLibs();
             _applyClientMonarchCompilerOptions();
             _installClientDiWatcher();
             if (typeof cb === 'function') {
@@ -2188,10 +2317,8 @@ Record({
             function () {
                 _clientMonarchLoading = false;
                 if (window.MONACO_LANGUAGE_CLIENT_DTS) {
-                    monaco.languages.typescript.javascriptDefaults.addExtraLib(
-                        window.MONACO_LANGUAGE_CLIENT_DTS,
-                        'ts:snlib-client-monarch.d.ts'
-                    );
+                    _cachedClientMonarchDts = window.MONACO_LANGUAGE_CLIENT_DTS;
+                    _applyJsScriptContextLibs();
                     _applyClientMonarchCompilerOptions();
                     _installClientDiWatcher();
                 } else {
@@ -4481,6 +4608,8 @@ Record({
             _api.loadHtmlMonarchDts = loadHtmlMonarchDts;
             _api.loadCodeActions = loadCodeActions;
             _api.scanAndFetchSIs = _scanAndFetchSIs;
+            _api.scanLocalTypedefs = _registerLocalTypedefs;
+            _api.notifyScriptContextFocus = notifyScriptContextFocus;
             _api.getSiSysId = function (name) {
                 return _siNameMap[name] || null;
             };
@@ -4540,6 +4669,10 @@ Record({
                             .forEach(_prewarmFieldCompletions);
                         monaco.editor.getModels().forEach(function (m) {
                             _scanAndFetchSIs(m.getValue());
+                            _registerLocalTypedefs(
+                                m.id,
+                                m.getValue()
+                            );
                         });
                     }
                 }

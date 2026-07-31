@@ -30,6 +30,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         window.WE_CONFIG = {
             sys_id: _weConfigParams.get('widget_id') || '',
             version_id: _weConfigParams.get('version_id') || '',
+            is_new: _weConfigParams.get('new') === '1',
             widgetPageSysId: '8b2e70458373fe1070b8b5dfeeaad35e',
             diffPageSysId: '51ec3d258363b61070b8b5dfeeaad36b',
             siteTitle: '\${gs.getProperty("glide.product.name", "ServiceNow")}',
@@ -1797,6 +1798,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-kbd-mouse-desc {
             color: rgb(var(--now-color_text--secondary, 82 82 82));
         }
+        /* JSDoc sub-highlighting inside block comments — Monaco's built-in JS/TS
+           tokenizer emits the whole /** ... *\/ block as one 'comment.doc' token,
+           so tag/type/name coloring is applied as decorations instead. */
+        .monaco-editor.vs .we-jsdoc-tag { color: #0000ff; }
+        .monaco-editor.vs .we-jsdoc-type { color: #267f99; }
+        .monaco-editor.vs .we-jsdoc-name { color: #001080; }
+        .monaco-editor.vs-dark .we-jsdoc-tag { color: #569cd6; }
+        .monaco-editor.vs-dark .we-jsdoc-type { color: #4ec9b0; }
+        .monaco-editor.vs-dark .we-jsdoc-name { color: #9cdcfe; }
     </style>
 
     <!-- GlideEditor5Includes (in js_includes_doctype) sets getWorkerUrl to .js paths
@@ -2295,6 +2305,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-click="openDemoDataModal()">Edit demo data <span class="we-status-dot we-status-dot--green" ng-if="widget.demo_data_has_value" title="Has demo data defined"></span></div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="openXmlModal()">Show XML</div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="copyWidgetUrl()">Copy widget URL</div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-class="{'disabled': !widget.has_active_instances}" ng-click="openOnPortalModal()" title="{{widget.has_active_instances ? '' : 'This widget is not placed on any active page'}}">Open in portal</div>
                             <div class="we-dropdown-divider" ng-if="!isNewWidget"></div>
                             <div class="we-dropdown-item" ng-click="openUserPrefsModal()">User preferences</div>
                             <div class="we-dropdown-item" ng-click="openKeyboardShortcutsModal()">Keyboard shortcuts</div>
@@ -2718,6 +2729,50 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 <div class="we-modal-footer">
                     <div class="we-spacer"></div>
                     <button class="btn btn-default we-btn we-btn-secondary" ng-click="cancelLinkProviderModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Open on Portal Modal -->
+        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showOpenOnPortalModal" ng-click="closeOpenOnPortalModal()">
+            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:26rem">
+                <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
+                    <span ng-if="openOnPortalStep === 'params'">URL parameters</span>
+                    <span ng-if="openOnPortalStep === 'instance'">Select a page</span>
+                    <span ng-if="openOnPortalStep === 'portal'">Select a portal</span>
+                    <span class="close" ng-click="closeOpenOnPortalModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                </div>
+                <div class="we-modal-body" style="padding:0;gap:0">
+                    <div ng-if="openOnPortalLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
+                        <we-spinner></we-spinner>
+                        Loading…
+                    </div>
+                    <div ng-if="openOnPortalError &amp;&amp; !openOnPortalLoading" style="padding:1rem;color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)))" ng-bind="openOnPortalError"></div>
+                    <div style="padding:1rem;display:flex;flex-direction:column;gap:0.75rem" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'params'">
+                        <div ng-repeat="p in openOnPortalParams">
+                            <label class="we-pane-meta-label" ng-attr-for="'oop-param-' + $index" ng-bind="p.name"></label>
+                            <input class="form-control" type="text" ng-attr-id="'oop-param-' + $index" ng-model="p.value" ng-change="saveOpenOnPortalParams()" />
+                        </div>
+                    </div>
+                    <div class="we-link-list" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'instance'">
+                        <div ng-if="openOnPortalInstances.length === 0" class="we-link-empty">This widget isn't placed on any active page.</div>
+                        <div class="we-link-item" ng-repeat="inst in openOnPortalInstances" ng-click="selectOpenOnPortalInstance(inst)">
+                            <span class="we-link-id" ng-bind="inst.pageTitle || inst.pageId"></span>
+                        </div>
+                    </div>
+                    <div class="we-link-list" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'portal'">
+                        <div ng-if="openOnPortalPortals.length === 0" class="we-link-empty">No active portals found.</div>
+                        <div class="we-link-item" ng-repeat="portal in openOnPortalPortals" ng-click="selectOpenOnPortalPortal(portal)">
+                            <span class="we-link-id" ng-bind="portal.title"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="we-modal-footer">
+                    <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalStep === 'params' &amp;&amp; openOnPortalParams.length" ng-click="resetOpenOnPortalParams()">Reset</button>
+                    <div class="we-spacer"></div>
+                    <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalCanGoBack()" ng-click="openOnPortalBack()">Back</button>
+                    <button class="btn btn-default we-btn we-btn-secondary" ng-click="closeOpenOnPortalModal()">Cancel</button>
+                    <button class="btn btn-primary we-btn" ng-if="openOnPortalStep === 'params'" ng-click="openOnPortalParamsNext()">Next</button>
                 </div>
             </div>
         </div>
@@ -3941,10 +3996,21 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 ////////////////////////////////////////////////////////////
                 // Config
                 ////////////////////////////////////////////////////////////
+                // Read from window.WE_CONFIG (captured in an inline <script> before Angular
+                // bootstraps) rather than re-parsing window.location.search here — ServiceNow's
+                // app shell can rewrite the URL (e.g. via history.replaceState) while Angular's
+                // own bootstrap is deliberately deferred, so a second parse can intermittently
+                // see a stripped URL and read empty values, silently skipping the whole widget
+                // load (and everything that depends on it, e.g. presence) in favor of the
+                // "no widget_id" / new-widget code path.
                 var _params = new URLSearchParams(window.location.search);
-                var SYS_ID = _params.get('widget_id') || '';
-                var VERSION_ID = _params.get('version_id') || '';
-                var IS_NEW = _params.get('new') === '1';
+                var _weConfig = window.WE_CONFIG || {};
+                var SYS_ID = _weConfig.sys_id || _params.get('widget_id') || '';
+                var VERSION_ID = _weConfig.version_id || _params.get('version_id') || '';
+                var IS_NEW =
+                    _weConfig.is_new !== undefined
+                        ? !!_weConfig.is_new
+                        : _params.get('new') === '1';
                 var APP_TITLE = 'Widget Editor+';
                 var SITE_TITLE =
                     (window.WE_CONFIG && window.WE_CONFIG.siteTitle) ||
@@ -4306,7 +4372,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         key: 'script',
                         label: 'Server script',
                         field: 'script',
-                        language: 'typescript',
+                        language: 'javascript',
                         visible: true,
                     },
                 ];
@@ -4486,10 +4552,18 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     return payload;
                 }
 
+                // Tracks the most recently issued request so a slower, earlier response (e.g. the
+                // unfiltered initial load) can't overwrite a later, filtered one that resolves first —
+                // requests aren't guaranteed to resolve in the order they were sent.
+                var _widgetListRequestId = 0;
                 function loadWidgetList(search) {
                     $scope.pickerLoading = true;
+                    var requestId = ++_widgetListRequestId;
                     ajax('getWidgets', { search: search }).then(
                         function (d) {
+                            if (requestId !== _widgetListRequestId) {
+                                return;
+                            }
                             $scope.pickerWidgets =
                                 d.success && d.widgets
                                     ? d.widgets.map(function (w) {
@@ -4501,6 +4575,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.pickerLoading = false;
                         },
                         function () {
+                            if (requestId !== _widgetListRequestId) {
+                                return;
+                            }
                             $scope.pickerWidgets = [];
                             $scope.pickerLoading = false;
                         }
@@ -4892,11 +4969,16 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         return;
                     }
 
-                    // Load widget + prefs in sequence; side-data in parallel
-                    ajax('getWidget', {
-                        sys_id: SYS_ID,
-                    })
-                        .then(function (data) {
+                    // Widget + prefs are independent — fetch in parallel; side-data also parallel
+                    $q.all([
+                        ajax('getWidget', {
+                            sys_id: SYS_ID,
+                        }),
+                        ajax('getUserPrefs', {}),
+                    ])
+                        .then(function (results) {
+                            var data = results[0];
+                            var prefsData = results[1];
                             if (!data.success) {
                                 throw new Error(
                                     data.error || 'Failed to load widget'
@@ -5006,9 +5088,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             };
                             lastServerValues = angular.copy(originalValues);
 
-                            return ajax('getUserPrefs', {});
-                        })
-                        .then(function (prefsData) {
                             if (
                                 prefsData &&
                                 prefsData.success &&
@@ -5282,6 +5361,94 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 }
 
+                // Monaco's built-in JS/TS Monarch tokenizer emits an entire
+                // JSDoc comment block as one 'comment.doc' token — no sub-highlighting
+                // for @tags, {types}, or param/property names the way VS Code's
+                // TextMate jsdoc grammar does. Decorations fill that gap: scan each
+                // JSDoc block for @tag / {type} / name and paint them with the
+                // we-jsdoc-* classes defined in the page <style> block.
+                var _JSDOC_NAME_TAGS = {
+                    param: true,
+                    arg: true,
+                    argument: true,
+                    property: true,
+                    prop: true,
+                    typedef: true,
+                    member: true,
+                };
+                function _computeJsDocDecorations(model) {
+                    if (!model) {
+                        return [];
+                    }
+                    var text = model.getValue();
+                    var decos = [];
+                    function pushRange(start, length, className) {
+                        var s = model.getPositionAt(start);
+                        var e = model.getPositionAt(start + length);
+                        decos.push({
+                            range: new monaco.Range(
+                                s.lineNumber,
+                                s.column,
+                                e.lineNumber,
+                                e.column
+                            ),
+                            options: { inlineClassName: className },
+                        });
+                    }
+
+                    var blockRe = /\\/\\*\\*[\\s\\S]*?\\*\\//g;
+                    var block;
+                    while ((block = blockRe.exec(text)) !== null) {
+                        var full = block[0];
+                        var base = block.index;
+                        var tagRe = /@([a-zA-Z]+)/g;
+                        var tm;
+                        while ((tm = tagRe.exec(full)) !== null) {
+                            var tagName = tm[1];
+                            pushRange(
+                                base + tm.index,
+                                tm[0].length,
+                                'we-jsdoc-tag'
+                            );
+
+                            var afterOffset = base + tm.index + tm[0].length;
+                            var rest = full.slice(tm.index + tm[0].length);
+                            var consumed = 0;
+
+                            var typeM = /^\\s*(\\{[^}]*\\})/.exec(rest);
+                            if (typeM) {
+                                var typeStart =
+                                    afterOffset + typeM[0].indexOf('{');
+                                pushRange(
+                                    typeStart,
+                                    typeM[1].length,
+                                    'we-jsdoc-type'
+                                );
+                                consumed = typeM[0].length;
+                            }
+
+                            if (_JSDOC_NAME_TAGS[tagName]) {
+                                var nameRest = rest.slice(consumed);
+                                var nameM = /^\\s+(\\[?[\\w$.]+\\]?)/.exec(
+                                    nameRest
+                                );
+                                if (nameM) {
+                                    var nameStart =
+                                        afterOffset +
+                                        consumed +
+                                        nameM[0].indexOf(nameM[1]);
+                                    pushRange(
+                                        nameStart,
+                                        nameM[1].length,
+                                        'we-jsdoc-name'
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    return decos;
+                }
+
                 // Register a lightweight JSON language that uses only a Monarch tokenizer
                 // (main thread, no worker). Avoids the "Unexpected usage" console error
                 // that occurs when Monaco tries to load the JSON language service worker.
@@ -5463,30 +5630,46 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     // Each pane loads its own DTS (server or client) when it initialises;
                     // no need to gate all editors on a single DTS load here.
                     $timeout(function () {
-                        $scope.visibleItems.forEach(function (item) {
-                            if (
-                                item.type === 'pane' &&
-                                !monacoEditors[item.key]
-                            ) {
-                                initEditorForPane(item);
+                        var panesToInit = $scope.visibleItems.filter(
+                            function (item) {
+                                return (
+                                    item.type === 'pane' &&
+                                    !monacoEditors[item.key]
+                                );
                             }
-                        });
-                        $timeout(layoutAllEditors, 20);
-                        $timeout(layoutAllEditors, 500);
-                        $timeout(layoutAllEditors, 900);
-                        // Font metrics can arrive after editor creation and delay proper paint.
-                        // Re-layout once fonts are ready so token colors are visible immediately.
-                        try {
-                            if (
-                                document.fonts &&
-                                document.fonts.ready &&
-                                document.fonts.ready.then
-                            ) {
-                                document.fonts.ready.then(function () {
-                                    $timeout(layoutAllEditors, 0);
-                                });
+                        );
+
+                        // Create editors one pane per tick instead of all at once, so the
+                        // browser can paint/respond to input between each editor.create()
+                        // call rather than blocking the main thread for their combined cost.
+                        function initNextPane(idx) {
+                            if (idx >= panesToInit.length) {
+                                $timeout(layoutAllEditors, 20);
+                                $timeout(layoutAllEditors, 500);
+                                $timeout(layoutAllEditors, 900);
+                                // Font metrics can arrive after editor creation and delay proper
+                                // paint. Re-layout once fonts are ready so token colors are
+                                // visible immediately.
+                                try {
+                                    if (
+                                        document.fonts &&
+                                        document.fonts.ready &&
+                                        document.fonts.ready.then
+                                    ) {
+                                        document.fonts.ready.then(function () {
+                                            $timeout(layoutAllEditors, 0);
+                                        });
+                                    }
+                                } catch (e) {}
+                                return;
                             }
-                        } catch (e) {}
+                            initEditorForPane(panesToInit[idx]);
+                            $timeout(function () {
+                                initNextPane(idx + 1);
+                            }, 0);
+                        }
+
+                        initNextPane(0);
                     });
                 }
 
@@ -5932,6 +6115,32 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             _registerJsFormattingProvider();
                             _applyJsFormatOptions();
 
+                            // Server script/Script Include and client controller/
+                            // link/provider panes share Monaco's single 'javascript'
+                            // language service, so only one side's GlideRecord/$sp-
+                            // server vs g_form/AngularJS/$sp-client declarations can
+                            // be registered at a time. Swap on focus.
+                            if (isJs) {
+                                var _jsScriptKind =
+                                    pane.field === 'script' || isSI
+                                        ? 'server'
+                                        : pane.recordType === 'provider' ||
+                                            pane.field === 'link' ||
+                                            pane.field === 'client_script'
+                                          ? 'client'
+                                          : null;
+                                if (_jsScriptKind) {
+                                    ed.onDidFocusEditorText(function () {
+                                        if (window.SNMonacoPlus) {
+                                            window.SNMonacoPlus.notifyScriptContextFocus(
+                                                ed.getModel().id,
+                                                _jsScriptKind
+                                            );
+                                        }
+                                    });
+                                }
+                            }
+
                             monacoEditors[pane.key] = {
                                 getValue: function () {
                                     return ed.getValue();
@@ -6088,6 +6297,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             ) {
                                 if (window.SNMonacoPlus) {
                                     window.SNMonacoPlus.scanAndFetchSIs(value);
+                                    window.SNMonacoPlus.scanLocalTypedefs(
+                                        pane.key,
+                                        value
+                                    );
                                 }
                                 var _siTimer = null;
                                 ed.onDidChangeModelContent(function () {
@@ -6095,6 +6308,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     _siTimer = setTimeout(function () {
                                         if (window.SNMonacoPlus) {
                                             window.SNMonacoPlus.scanAndFetchSIs(
+                                                ed.getValue()
+                                            );
+                                            window.SNMonacoPlus.scanLocalTypedefs(
+                                                pane.key,
                                                 ed.getValue()
                                             );
                                         }
@@ -6107,6 +6324,43 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 _triggerLint(pane.key);
                                 ed.onDidChangeModelContent(function () {
                                     _triggerLint(pane.key);
+                                });
+                            }
+
+                            if (lang === 'html' && !$scope.isVersionView) {
+                                _lintNgExpressions(pane.key);
+                                var _ngLintTimer = null;
+                                ed.onDidChangeModelContent(function () {
+                                    clearTimeout(_ngLintTimer);
+                                    _ngLintTimer = setTimeout(function () {
+                                        _lintNgExpressions(pane.key);
+                                    }, 600);
+                                });
+                                // Force a final check on blur (e.g. clicking Save, switching
+                                // panes) so nothing goes unvalidated if focus leaves before the
+                                // debounce above has a chance to fire.
+                                ed.onDidBlurEditorWidget(function () {
+                                    clearTimeout(_ngLintTimer);
+                                    _lintNgExpressions(pane.key);
+                                });
+                            }
+
+                            if (isJs) {
+                                var _jsDocDecoIds = [];
+                                var _jsDocTimer = null;
+                                function _refreshJsDocDecorations() {
+                                    _jsDocDecoIds = ed.deltaDecorations(
+                                        _jsDocDecoIds,
+                                        _computeJsDocDecorations(ed.getModel())
+                                    );
+                                }
+                                _refreshJsDocDecorations();
+                                ed.onDidChangeModelContent(function () {
+                                    clearTimeout(_jsDocTimer);
+                                    _jsDocTimer = setTimeout(
+                                        _refreshJsDocDecorations,
+                                        300
+                                    );
                                 });
                             }
 
@@ -6311,11 +6565,18 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                             }
                         } // end _doCreate
+                        // Fire-and-forget, matching loadServerMonarchDts/loadClientMonarchDts
+                        // below: don't block the editor's first paint on the HTML Monarch
+                        // language bundle loading over the network. monaco.editor.create()
+                        // runs immediately with whatever 'html' tokenizer is registered so
+                        // far (Monaco's built-in one on a cold load); once
+                        // MONACO_LANGUAGE_HTML registers its Angular-aware tokenizer, Monaco
+                        // automatically re-tokenizes existing models — same as how the JS
+                        // panes' DTS/IntelliSense loads in behind an already-visible editor.
                         if (lang === 'html') {
-                            loadHtmlMonarchDts(_doCreate);
-                        } else {
-                            _doCreate();
+                            loadHtmlMonarchDts();
                         }
+                        _doCreate();
                     }
 
                     // Use Monaco directly via AMD require (bypasses GlideEditorMonaco
@@ -6583,6 +6844,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     try {
                         monaco.editor.setModelMarkers(model, 'LINT_MARKER', []);
                     } catch (e) {}
+                    try {
+                        monaco.editor.setModelMarkers(
+                            model,
+                            'NG_EXPR_MARKER',
+                            []
+                        );
+                    } catch (e) {}
                 }
 
                 function _applyEsVersion(es12Enabled) {
@@ -6592,6 +6860,182 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     Object.keys(monacoEditors).forEach(function (k) {
                         _triggerLint(k);
                     });
+                }
+
+                ////////////////////////////////////////////////////////////
+                // AngularJS expression validation — real syntax checking via
+                // AngularJS's own $parse, not a hand-rolled grammar. $parse compiles
+                // an expression string and throws a SyntaxError on malformed input;
+                // it needs no scope/DOM, so it's cheap to run on every edit.
+                // Catches syntax errors only (unbalanced parens, bad operators, etc.) —
+                // it has no way to know whether foo.bar actually exists on the widget's
+                // controller, since that's a runtime concern, not a parse-time one.
+                ////////////////////////////////////////////////////////////
+
+                // ngRepeat's "item in collection [as alias] [track by expr]" syntax is
+                // split by this regex inside Angular's own ngRepeat directive *before* the
+                // pieces are handed to $parse — the whole attribute value is not itself
+                // valid expression syntax, so it can't be $parse'd as one string.
+                // NOTE: this field is a JS template literal in the .ts source — template
+                // literal parsing silently strips a backslash from any non-special escape
+                // (\\s becomes plain "s") and turns \\n into a literal newline byte, so every
+                // regex escape below is deliberately doubled to survive that parse and land
+                // as a single, correct backslash in the deployed script.
+                var NG_REPEAT_REGEXP =
+                    /^\\s*([\\s\\S]+?)\\s+in\\s+([\\s\\S]+?)(?:\\s+as\\s+([\\s\\S]+?))?(?:\\s+track\\s+by\\s+([\\s\\S]+?))?\\s*$/d;
+
+                // Directives whose attribute value is a plain identifier/string rather
+                // than an Angular expression — $parse'ing these would misfire.
+                var NG_NON_EXPRESSION_ATTRS = {
+                    'ng-app': true,
+                    'ng-controller': true,
+                    'ng-non-bindable': true,
+                };
+
+                var _ngParseFn = null;
+                function _getNgParse() {
+                    if (_ngParseFn) {
+                        return _ngParseFn;
+                    }
+                    if (!window.angular || !window.angular.injector) {
+                        return null;
+                    }
+                    try {
+                        _ngParseFn = window.angular
+                            .injector(['ng'])
+                            .get('$parse');
+                    } catch (e) {
+                        _ngParseFn = null;
+                    }
+                    return _ngParseFn;
+                }
+
+                // Scans raw template text for embedded Angular expressions — {{ }}
+                // interpolations and ng-*/data-ng-* directive attribute values — and
+                // returns each with a character offset into the text for mapping back
+                // onto editor positions.
+                function _extractNgExpressions(text) {
+                    var out = [];
+                    var m;
+
+                    // Deliberately excludes newlines from the interpolation/quote bodies below.
+                    // While a quote or "}}" is still unclosed mid-edit, a class that allows
+                    // newlines (e.g. a dot-all style class) will happily search across line breaks and match
+                    // an unrelated "}}" or quote several lines down as if it belonged here —
+                    // producing a garbled, wrong-location expression instead of simply not
+                    // matching yet.
+                    var interpRe = /\\{\\{([^\\n]*?)\\}\\}/g;
+                    while ((m = interpRe.exec(text))) {
+                        out.push({
+                            expr: m[1],
+                            exprStart: m.index + 2,
+                            length: m[1].length,
+                        });
+                    }
+
+                    var attrRe =
+                        /((?:data-)?ng-[a-zA-Z-]+)\\s*=\\s*("([^"\\n]*)"|'([^'\\n]*)')/gd;
+                    while ((m = attrRe.exec(text))) {
+                        var attrName = m[1].replace(/^data-/, '').toLowerCase();
+                        if (NG_NON_EXPRESSION_ATTRS[attrName]) {
+                            continue;
+                        }
+                        var valueIndices = m.indices[3] || m.indices[4];
+                        var value = m[3] !== undefined ? m[3] : m[4];
+                        var valueStart = valueIndices[0];
+
+                        if (attrName === 'ng-repeat' || attrName === 'ng-repeat-start') {
+                            var parts = NG_REPEAT_REGEXP.exec(value);
+                            if (!parts) {
+                                out.push({
+                                    expr: null,
+                                    exprStart: valueStart,
+                                    length: value.length,
+                                    forcedError:
+                                        'Expected "item in collection" (optionally "as alias" / "track by expr")',
+                                });
+                                continue;
+                            }
+                            out.push({
+                                expr: parts[2],
+                                exprStart: valueStart + parts.indices[2][0],
+                                length: parts[2].length,
+                            });
+                            if (parts[4]) {
+                                out.push({
+                                    expr: parts[4],
+                                    exprStart:
+                                        valueStart + parts.indices[4][0],
+                                    length: parts[4].length,
+                                });
+                            }
+                            continue;
+                        }
+
+                        out.push({
+                            expr: value,
+                            exprStart: valueStart,
+                            length: value.length,
+                        });
+                    }
+
+                    return out;
+                }
+
+                function _computeNgExpressionMarkers(model) {
+                    var $parse = _getNgParse();
+                    if (!$parse) {
+                        return [];
+                    }
+                    var expressions = _extractNgExpressions(model.getValue());
+                    var markers = [];
+                    expressions.forEach(function (item) {
+                        var message = item.forcedError;
+                        if (!message && item.expr && item.expr.trim() !== '') {
+                            try {
+                                $parse(item.expr);
+                            } catch (e) {
+                                message = e.message || 'Invalid Angular expression';
+                            }
+                        }
+                        if (!message) {
+                            return;
+                        }
+                        var startPos = model.getPositionAt(item.exprStart);
+                        var endPos = model.getPositionAt(
+                            item.exprStart + item.length
+                        );
+                        markers.push({
+                            startLineNumber: startPos.lineNumber,
+                            startColumn: startPos.column,
+                            endLineNumber: endPos.lineNumber,
+                            endColumn: endPos.column,
+                            message: 'AngularJS: ' + message,
+                            severity: monaco.MarkerSeverity.Error,
+                        });
+                    });
+                    return markers;
+                }
+
+                function _lintNgExpressions(paneKey) {
+                    if (!window.monaco) {
+                        return;
+                    }
+                    var edWrapper = monacoEditors[paneKey];
+                    if (!edWrapper) {
+                        return;
+                    }
+                    var model = edWrapper.getModel && edWrapper.getModel();
+                    if (!model) {
+                        return;
+                    }
+                    try {
+                        monaco.editor.setModelMarkers(
+                            model,
+                            'NG_EXPR_MARKER',
+                            _computeNgExpressionMarkers(model)
+                        );
+                    } catch (e) {}
                 }
 
                 ////////////////////////////////////////////////////////////
@@ -6608,7 +7052,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     if (!_serverPlusInitialized) {
                         _serverPlusInitialized = true;
                         _bs.init({
-                            language: 'typescript',
+                            language: 'javascript',
                             getRemBase: function () {
                                 return $scope.userPrefs &&
                                     $scope.userPrefs.remBase > 0
@@ -6623,7 +7067,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             return;
                         }
                         if (scope && api.loadSnTypeDefinitions) {
-                            api.loadSnTypeDefinitions(scope, 'typescript');
+                            api.loadSnTypeDefinitions(scope, 'javascript');
                         }
                         if (!_snProvidersRegistered) {
                             _snProvidersRegistered = true;
@@ -8641,12 +9085,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }, 300);
                 };
 
+                // Tracks the most recently issued request so a slower, earlier response (e.g. the
+                // unfiltered initial load) can't overwrite a later, filtered one that resolves first —
+                // requests aren't guaranteed to resolve in the order they were sent.
+                var _linkProviderRequestId = 0;
                 function loadLinkProviderResults(search) {
                     $scope.linkProviderSearching = true;
+                    var requestId = ++_linkProviderRequestId;
                     ajax('getAllProviders', {
                         sys_id: SYS_ID,
                         search: search,
                     }).then(function (d) {
+                        if (requestId !== _linkProviderRequestId) {
+                            return;
+                        }
                         $scope.linkProviderSearching = false;
                         if (d.success) {
                             $scope.linkProviderResults = d.providers;
@@ -8726,7 +9178,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         key: key,
                         label: si.name,
                         field: null,
-                        language: 'typescript',
+                        language: 'javascript',
                         type: 'pane',
                         hasIdInput: false,
                         closeable: true,
@@ -8891,12 +9343,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }, 300);
                 };
 
+                // Tracks the most recently issued request so a slower, earlier response (e.g. the
+                // unfiltered initial load) can't overwrite a later, filtered one that resolves first —
+                // requests aren't guaranteed to resolve in the order they were sent.
+                var _linkDependencyRequestId = 0;
                 function _loadLinkDependencyResults(search) {
                     $scope.linkDependencySearching = true;
+                    var requestId = ++_linkDependencyRequestId;
                     ajax('getAllDependencies', {
                         sys_id: SYS_ID,
                         search: search,
                     }).then(function (d) {
+                        if (requestId !== _linkDependencyRequestId) {
+                            return;
+                        }
                         $scope.linkDependencySearching = false;
                         if (d.success) {
                             $scope.linkDependencyResults = d.dependencies;
@@ -9724,6 +10184,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.cancelLinkProviderModal();
                         return true;
                     }
+                    if ($scope.showOpenOnPortalModal) {
+                        $scope.closeOpenOnPortalModal();
+                        return true;
+                    }
                     if ($scope.pendingUnlinkDependency) {
                         $scope.cancelUnlinkDependency();
                         return true;
@@ -10413,6 +10877,166 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         fn();
                     }, 150);
                 }
+
+                ////////////////////////////////////////////////////////////
+                // Open on Portal modal
+                ////////////////////////////////////////////////////////////
+
+                function _openOnPortalStorageKey() {
+                    return 'we_open_portal_params_' + SYS_ID;
+                }
+
+                function _loadOpenOnPortalParamsFromStorage() {
+                    try {
+                        return JSON.parse(localStorage.getItem(_openOnPortalStorageKey()) || '{}');
+                    } catch (e) {
+                        return {};
+                    }
+                }
+
+                $scope.saveOpenOnPortalParams = function () {
+                    var obj = {};
+                    $scope.openOnPortalParams.forEach(function (p) {
+                        obj[p.name] = p.value;
+                    });
+                    try {
+                        localStorage.setItem(_openOnPortalStorageKey(), JSON.stringify(obj));
+                    } catch (e) { /* localStorage unavailable/full — ignore */ }
+                };
+
+                $scope.resetOpenOnPortalParams = function () {
+                    $scope.openOnPortalParams.forEach(function (p) {
+                        p.value = '';
+                    });
+                    try {
+                        localStorage.removeItem(_openOnPortalStorageKey());
+                    } catch (e) { }
+                };
+
+                // Detects $sp.getParameter('name') calls in the server script — sourced from the
+                // live Monaco editor when the "script" pane is open (so unsaved edits are picked
+                // up), falling back to the last-saved widget.script otherwise. Prefills each
+                // detected name from localStorage so values persist across sessions.
+                function _detectSpGetParameters() {
+                    var script = (monacoEditors.script && monacoEditors.script.getValue()) ||
+                        ($scope.widget && $scope.widget.script) || '';
+                    var names = [];
+                    var seen = {};
+                    var re = /\\$sp\\.getParameter\\(\\s*['"]([^'"]+)['"]\\s*\\)/g;
+                    var m;
+                    while ((m = re.exec(script)) !== null) {
+                        if (!seen[m[1]]) {
+                            seen[m[1]] = true;
+                            names.push(m[1]);
+                        }
+                    }
+                    // sys_id (or its common alias "id") identifies the record the page is
+                    // about — always surface it as the first field to fill in, regardless of
+                    // where in the script it was detected. "sys_id" outranks "id" when both appear.
+                    ['id', 'sys_id'].forEach(function (priorityName) {
+                        var idx = names.indexOf(priorityName);
+                        if (idx > 0) {
+                            names.splice(idx, 1);
+                            names.unshift(priorityName);
+                        }
+                    });
+
+                    var stored = _loadOpenOnPortalParamsFromStorage();
+                    return names.map(function (name) {
+                        return { name: name, value: stored[name] || '' };
+                    });
+                }
+
+                function _loadOpenOnPortalInstancesAndPortals() {
+                    $scope.openOnPortalLoading = true;
+                    $scope.openOnPortalError = null;
+
+                    ajax('getOpenPageOptions', { sys_id: SYS_ID }).then(function (data) {
+                        $scope.openOnPortalLoading = false;
+                        if (!data.success) {
+                            $scope.openOnPortalError = data.error || 'Failed to load pages/portals';
+                            return;
+                        }
+                        $scope.openOnPortalInstances = data.instances || [];
+                        $scope.openOnPortalPortals = data.portals || [];
+                        $scope.openOnPortalStep = $scope.openOnPortalInstances.length > 1 ? 'instance' : 'portal';
+                    }, function () {
+                        $scope.openOnPortalLoading = false;
+                        $scope.openOnPortalError = 'Failed to load pages/portals';
+                    });
+                }
+
+                $scope.openOnPortalModal = function () {
+                    $scope.openDropdown = null;
+                    $scope.openOnPortalLoading = false;
+                    $scope.openOnPortalError = null;
+                    $scope.openOnPortalInstances = [];
+                    $scope.openOnPortalPortals = [];
+                    $scope.openOnPortalSelectedPage = null;
+                    $scope.openOnPortalParams = _detectSpGetParameters();
+                    $scope.showOpenOnPortalModal = true;
+
+                    if ($scope.openOnPortalParams.length) {
+                        // Show the params step immediately (no network round-trip needed yet);
+                        // instances/portals are fetched once the user clicks Next.
+                        $scope.openOnPortalStep = 'params';
+                    } else {
+                        _loadOpenOnPortalInstancesAndPortals();
+                    }
+                };
+
+                $scope.openOnPortalParamsNext = function () {
+                    $scope.saveOpenOnPortalParams();
+                    _loadOpenOnPortalInstancesAndPortals();
+                };
+
+                $scope.selectOpenOnPortalInstance = function (inst) {
+                    $scope.openOnPortalSelectedPage = { id: inst.pageId, title: inst.pageTitle };
+                    $scope.openOnPortalStep = 'portal';
+                };
+
+                $scope.openOnPortalCanGoBack = function () {
+                    if ($scope.openOnPortalStep === 'instance') {
+                        return !!$scope.openOnPortalParams.length;
+                    }
+                    if ($scope.openOnPortalStep === 'portal') {
+                        return $scope.openOnPortalInstances.length > 1 || !!$scope.openOnPortalParams.length;
+                    }
+                    return false;
+                };
+
+                $scope.openOnPortalBack = function () {
+                    if ($scope.openOnPortalStep === 'portal' && $scope.openOnPortalInstances.length > 1) {
+                        $scope.openOnPortalSelectedPage = null;
+                        $scope.openOnPortalStep = 'instance';
+                    } else if ($scope.openOnPortalParams.length) {
+                        $scope.openOnPortalStep = 'params';
+                    }
+                };
+
+                $scope.selectOpenOnPortalPortal = function (portal) {
+                    var page = $scope.openOnPortalSelectedPage ||
+                        ($scope.openOnPortalInstances.length === 1
+                            ? { id: $scope.openOnPortalInstances[0].pageId, title: $scope.openOnPortalInstances[0].pageTitle }
+                            : null);
+                    if (page && page.id) {
+                        var url = '/' + portal.url_suffix + '?id=' + encodeURIComponent(page.id);
+                        $scope.openOnPortalParams.forEach(function (p) {
+                            if (p.value) {
+                                url += '&' + encodeURIComponent(p.name) + '=' + encodeURIComponent(p.value);
+                            }
+                        });
+                        window.open(url, '_blank');
+                    }
+                    $scope.closeOpenOnPortalModal();
+                };
+
+                $scope.closeOpenOnPortalModal = function () {
+                    _closeModal(function () {
+                        $scope.showOpenOnPortalModal = false;
+                        $scope.openOnPortalSelectedPage = null;
+                    });
+                };
 
                 ////////////////////////////////////////////////////////////
                 // Keyboard shortcuts modal
