@@ -189,6 +189,13 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             }
         }
 
+        var instGr = new GlideRecordSecure('sp_instance');
+        instGr.addQuery('sp_widget', sysId);
+        instGr.addQuery('active', true);
+        instGr.setLimit(1);
+        instGr.query();
+        var hasActiveInstances = instGr.hasNext();
+
         var additionalDefs = this._getAdditionalWidgetFieldDefs(gr);
 
         var widget = {
@@ -231,6 +238,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             demo_data_has_value: this._hasProperJsonObjectValue(
                 gr.getValue('demo_data')
             ),
+            has_active_instances: hasActiveInstances,
         };
 
         for (var ai = 0; ai < additionalDefs.length; ai++) {
@@ -3376,6 +3384,80 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             return;
         }
         gr.setValue(fieldName, value);
+    },
+
+    /**
+     * Resolves every active sp_instance placement of a widget to its containing
+     * page, and lists all active portals. Used by the "Open on Portal" action.
+     * @returns {void} Writes JSON { success, instances, portals } via _answer.
+     */
+    getOpenPageOptions: function () {
+        var sysId = this.getParameter('sys_id');
+        var instances = [];
+
+        if (sysId) {
+            var grInstances = new GlideRecordSecure('sp_instance');
+            grInstances.addQuery('sp_widget', sysId);
+            grInstances.addQuery('active', true);
+            grInstances.setLimit(200);
+            grInstances.query();
+            while (grInstances.next()) {
+                var page = this._resolvePageForInstance(grInstances);
+                if (page) {
+                    instances.push({
+                        instanceSysId: grInstances.getValue('sys_id'),
+                        pageId: page.id,
+                        pageTitle: page.title
+                    });
+                }
+            }
+            instances.sort(function (a, b) {
+                return (a.pageTitle || '').localeCompare(b.pageTitle || '');
+            });
+        }
+
+        var portals = [];
+        var grPortal = new GlideRecordSecure('sp_portal');
+        // "inactive" is blank/unset on most portals (that also means active), not
+        // explicitly "false" — an exact-match query on false alone misses those.
+        grPortal.addEncodedQuery('inactive=false^ORinactiveISEMPTY');
+        grPortal.orderBy('title');
+        grPortal.query();
+        while (grPortal.next()) {
+            portals.push({
+                sys_id: grPortal.getValue('sys_id'),
+                title: grPortal.getValue('title'),
+                url_suffix: grPortal.getValue('url_suffix')
+            });
+        }
+
+        return this._answer({ success: true, instances: instances, portals: portals });
+    },
+
+    /**
+     * Resolves the sp_page (id/title) that an sp_instance record is placed on by
+     * walking sp_instance -> sp_column -> sp_row -> sp_container -> sp_page.
+     * @param {GlideRecord} grInstance - A queried sp_instance GlideRecord.
+     * @returns {Object|null} { id, title } or null if the chain can't be resolved.
+     */
+    _resolvePageForInstance: function (grInstance) {
+        var grColumn = new GlideRecordSecure('sp_column');
+        if (!grColumn.get(grInstance.getValue('sp_column'))) {
+            return null;
+        }
+        var grRow = new GlideRecordSecure('sp_row');
+        if (!grRow.get(grColumn.getValue('sp_row'))) {
+            return null;
+        }
+        var grContainer = new GlideRecordSecure('sp_container');
+        if (!grContainer.get(grRow.getValue('sp_container'))) {
+            return null;
+        }
+        var grPage = new GlideRecordSecure('sp_page');
+        if (!grPage.get(grContainer.getValue('sp_page'))) {
+            return null;
+        }
+        return { id: grPage.getValue('id'), title: grPage.getValue('title') };
     },
 
     /**

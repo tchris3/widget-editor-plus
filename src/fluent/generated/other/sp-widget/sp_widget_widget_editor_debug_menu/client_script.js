@@ -17,6 +17,7 @@ api.controller = function ($scope, spUtil) {
         instanceOptions: true,
         instanceInPageEditor: true,
         pageInDesigner: true,
+        openPageInPortal: true,
         // Records
         openRecordInBackend: true,
         // Widget
@@ -53,6 +54,11 @@ api.controller = function ($scope, spUtil) {
         { id: 'instanceOptions', label: 'Instance Options' },
         { id: 'instanceInPageEditor', label: 'Instance in Page Editor' },
         { id: 'pageInDesigner', label: 'Page in Designer' },
+        {
+            id: 'openPageInPortal',
+            label: 'Open page',
+            description: 'Only shown when the widget is placed via Page Designer (sp_instance). Prompts for an active portal to open the current page in.'
+        },
 
         { type: 'section', label: 'Record' },
         {

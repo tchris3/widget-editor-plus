@@ -595,7 +595,28 @@ function link(scope, element, attrs, controller) {
             return null;
         }
 
-        return { resolveToWidgetControllerScope, getActualWidgetScope, getEmbeddedWidgetInfos, getWidgetSysId };
+        /**
+         * Walks up the DOM from el and returns the sys_id of the nearest widget's
+         * sp_instance ("rectangle"), or null if the widget isn't rectangle-based
+         * (e.g. header/footer widgets, standalone previews).
+         * @param   {Element} el  Starting element.
+         * @returns {string|null}
+         */
+        function getInstanceSysId(el) {
+            while (el && el !== document.body) {
+                try {
+                    const s = getActualWidgetScope(el);
+                    const rect = s && (s.rectangle || s.$parent?.rectangle);
+                    if (rect) {
+                        return rect.id || rect.sys_id || null;
+                    }
+                } catch (_ex) { /* angular not ready or detached node — keep walking */ }
+                el = el.parentElement;
+            }
+            return null;
+        }
+
+        return { resolveToWidgetControllerScope, getActualWidgetScope, getEmbeddedWidgetInfos, getWidgetSysId, getInstanceSysId };
     }());
 
 
@@ -1524,6 +1545,7 @@ function link(scope, element, attrs, controller) {
      */
 
     let _pendingWidgetSysId = null;
+    let _pendingInstanceSysId = null;
     let _pendingWidgetEl = null;
     let _pendingEmbeddedWidgets = []; // [{ el, sysId, name }, ...] innermost-first
     let _pendingCursorX = 0;
@@ -1679,6 +1701,176 @@ function link(scope, element, attrs, controller) {
 
 
     ///////////////////////////////////////////
+    // 11.5 PortalPicker — "Open page" portal-selection popover
+    ///////////////////////////////////////////
+
+    const PortalPicker = (function () {
+        let _menu = null;
+        let _closeOnOutsideClick = null;
+
+        function close() {
+            document.removeEventListener('click', _closeOnOutsideClick, true);
+            _closeOnOutsideClick = null;
+            if (_menu) {
+                if (_menu.hidePopover) _menu.hidePopover();
+                _menu.remove();
+                _menu = null;
+            }
+        }
+
+        function buildUrl(portal, pageId, table, sysId) {
+            let url = '/' + portal.url_suffix + '?id=' + encodeURIComponent(pageId);
+            if (table && sysId) {
+                url += '&table=' + encodeURIComponent(table) + '&sys_id=' + encodeURIComponent(sysId);
+            }
+            return url;
+        }
+
+        /**
+         * Builds a popover shell (positioned at x/y, styled consistently) with a
+         * header and an empty body list ready to append items to.
+         * @returns {{menu: Element, list: Element}}
+         */
+        function createShell(x, y, headerText) {
+            close();
+
+            const menu = document.createElement('div');
+            menu.setAttribute('popover', 'manual');
+            Object.assign(menu.style, {
+                position: 'fixed', left: x + 'px', top: y + 'px',
+                background: '#fff', border: '1px solid #ccc', borderRadius: '6px',
+                padding: '6px', boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+                minWidth: '200px', maxWidth: '320px', maxHeight: '320px', overflow: 'auto',
+                fontSize: '13px', zIndex: '100000'
+            });
+
+            const header = document.createElement('div');
+            header.textContent = headerText;
+            Object.assign(header.style, { fontWeight: '600', padding: '4px 8px 8px', color: '#425051' });
+            menu.appendChild(header);
+
+            document.body.appendChild(menu);
+            if (menu.showPopover) menu.showPopover();
+            _menu = menu;
+
+            _closeOnOutsideClick = function (e) {
+                if (!menu.contains(e.target)) {
+                    close();
+                }
+            };
+            setTimeout(function () { document.addEventListener('click', _closeOnOutsideClick, true); }, 0);
+
+            return menu;
+        }
+
+        function addEmptyRow(menu, text) {
+            const empty = document.createElement('div');
+            empty.textContent = text;
+            Object.assign(empty.style, { padding: '4px 8px', color: '#999', fontStyle: 'italic' });
+            menu.appendChild(empty);
+        }
+
+        function addButtonRow(menu, label, onClick) {
+            const item = document.createElement('button');
+            item.textContent = label;
+            Object.assign(item.style, {
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '6px 8px', border: 'none', background: 'none',
+                cursor: 'pointer', borderRadius: '4px', font: 'inherit'
+            });
+            item.addEventListener('mouseenter', function () { item.style.background = 'rgba(0,0,0,0.05)'; });
+            item.addEventListener('mouseleave', function () { item.style.background = 'none'; });
+            item.addEventListener('click', onClick);
+            menu.appendChild(item);
+        }
+
+        /**
+         * Renders the portal-selection step for a single, already-resolved page.
+         * @param {number} x
+         * @param {number} y
+         * @param {{id: string, title: string}|null} page
+         * @param {Array}  portals
+         * @param {string} table  Only applied when this page is the widget's own instance.
+         * @param {string} sysId  Only applied when this page is the widget's own instance.
+         */
+        function renderPortalMenu(x, y, page, portals, table, sysId) {
+            const menu = createShell(x, y, page ? ('Open "' + page.title + '" in…') : 'Could not resolve the page for this widget.');
+
+            if (!page) return;
+
+            if (!portals.length) {
+                addEmptyRow(menu, 'No active portals found.');
+                return;
+            }
+
+            portals.forEach(function (portal) {
+                addButtonRow(menu, portal.title, function () {
+                    window.open(buildUrl(portal, page.id, table, sysId), '_blank');
+                    close();
+                });
+            });
+        }
+
+        /**
+         * Renders the instance-selection step (shown only when the widget has more
+         * than one active sp_instance). Each row is labeled by the page it's placed
+         * on; picking one moves to the portal-selection step for that page.
+         * table/sysId are only carried through when the chosen instance is the one
+         * that was actually right-clicked — for any other instance we haven't
+         * rendered its widget, so its own sys_id/table can't be known.
+         */
+        function renderInstanceMenu(x, y, instances, portals, currentInstanceSysId, table, sysId) {
+            const menu = createShell(x, y, 'This widget appears on multiple pages — select one:');
+
+            instances.forEach(function (inst) {
+                const label = inst.pageTitle || inst.pageId || 'Untitled page';
+                addButtonRow(menu, label, function () {
+                    const isCurrent = inst.instanceSysId === currentInstanceSysId;
+                    renderPortalMenu(
+                        x, y,
+                        { id: inst.pageId, title: inst.pageTitle },
+                        portals,
+                        isCurrent ? table : null,
+                        isCurrent ? sysId : null
+                    );
+                });
+            });
+        }
+
+        /**
+         * Resolves every active instance of widgetSysId plus the active portals,
+         * then shows the instance picker (if more than one instance) or goes
+         * straight to the portal picker.
+         * @param {string} widgetSysId       sp_widget sys_id.
+         * @param {string} instanceSysId     sp_instance sys_id of the right-clicked widget ("rectangle" scope).
+         * @param {string} table             Table detected from URL/widget data, or null.
+         * @param {string} sysId             sys_id detected from URL/widget data, or null.
+         * @param {number} x
+         * @param {number} y
+         */
+        function open(widgetSysId, instanceSysId, table, sysId, x, y) {
+            if (!widgetSysId) return;
+            scope.$applyAsync(function () {
+                scope.server.get({ action: 'getOpenPageOptions', widgetSysId: widgetSysId }).then(function (response) {
+                    const result = (response && response.openPageOptions) || (scope.data && scope.data.openPageOptions) || {};
+                    const instances = result.instances || [];
+                    const portals = result.portals || [];
+                    if (instances.length > 1) {
+                        renderInstanceMenu(x, y, instances, portals, instanceSysId, table, sysId);
+                    } else {
+                        const inst = instances[0] || null;
+                        const page = inst ? { id: inst.pageId, title: inst.pageTitle } : null;
+                        renderPortalMenu(x, y, page, portals, table, sysId);
+                    }
+                });
+            });
+        }
+
+        return { open };
+    }());
+
+
+    ///////////////////////////////////////////
     // 12. MenuInjector — builds the injected menu items inside an overlay
     ///////////////////////////////////////////
 
@@ -1798,6 +1990,7 @@ function link(scope, element, attrs, controller) {
             // Form Modal is opened via spUtil — no URL needed.
             let formModalLi = null;
             let nativeEditorLi = null;
+            let pageGroupLastLi = null; // last of Instance Options / Instance in Page Editor / Page in Designer — signals the widget is placed via Page Designer (sp_instance-embedded)
             for (const li of ul.querySelectorAll('li')) {
                 const a = li.querySelector('a');
                 if (!a) {
@@ -1810,6 +2003,9 @@ function link(scope, element, attrs, controller) {
                 }
                 if (t.startsWith('Widget in Editor') && !t.includes('+')) {
                     nativeEditorLi = li;
+                }
+                if (t === 'Instance Options' || t.startsWith('Instance in Page Editor') || t.startsWith('Page in Designer')) {
+                    pageGroupLastLi = li;
                 }
             }
 
@@ -1986,22 +2182,22 @@ function link(scope, element, attrs, controller) {
             filterNativeItems(ul, prefs);
             cleanupDividers(ul);
 
+            // Detect the record table/sys_id this widget is scoped to (URL params, falling back
+            // to $scope.data) — used both by "Open <table> record" and "Open page" below.
+            const recordParams = new URLSearchParams(location.search);
+            let recordTable = recordParams.get('table');
+            let recordSysId = recordParams.get('sys_id');
+            if ((!recordTable || !recordSysId) && _pendingWidgetEl) {
+                const wScope = ScopeResolver.getActualWidgetScope(_pendingWidgetEl);
+                const wData = wScope && wScope.data;
+                if (wData) {
+                    if (!recordTable) { recordTable = wData.table || wData.tableName || null; }
+                    if (!recordSysId) { recordSysId = wData.sys_id || null; }
+                }
+            }
+
             // Inject "Open <table> record" in the same section as the "Open with" items
             if (prefs.openRecordInBackend !== false) {
-                const recordParams = new URLSearchParams(location.search);
-                let recordTable = recordParams.get('table');
-                let recordSysId = recordParams.get('sys_id');
-
-                // Fall back to the right-clicked widget's $scope.data when URL params are absent
-                if ((!recordTable || !recordSysId) && _pendingWidgetEl) {
-                    const wScope = ScopeResolver.getActualWidgetScope(_pendingWidgetEl);
-                    const wData = wScope && wScope.data;
-                    if (wData) {
-                        if (!recordTable) { recordTable = wData.table || wData.tableName || null; }
-                        if (!recordSysId) { recordSysId = wData.sys_id || null; }
-                    }
-                }
-
                 if (recordTable && recordSysId) {
                     const openRecordLi = document.createElement('li');
                     openRecordLi.setAttribute('role', 'menuitem');
@@ -2019,6 +2215,30 @@ function link(scope, element, attrs, controller) {
                         ul.appendChild(openRecordLi);
                     }
                 }
+            }
+
+            // Inject "Open page" — prompts for an active portal, then opens the current
+            // page on it. Only shown when the native Page group is present, which is SP's
+            // own signal that this widget is placed via Page Designer (sp_instance-embedded);
+            // header/footer widgets and standalone previews never show that group.
+            if (prefs.openPageInPortal !== false && pageGroupLastLi && _pendingInstanceSysId) {
+                const openPageLi = document.createElement('li');
+                openPageLi.setAttribute('role', 'menuitem');
+                openPageLi.setAttribute('data-we-injected', '1');
+                const openPageA = document.createElement('a');
+                openPageA.className = 'sp-context-menu-padding';
+                openPageA.setAttribute('tabindex', '-1');
+                openPageA.href = 'javascript:void(0)';
+                openPageA.textContent = 'Open page…';
+                (function (capturedWidgetSysId, capturedInstanceSysId, capturedTable, capturedSysId, capturedX, capturedY) {
+                    openPageA.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        OverlayManager.closeSpOverlay(menuContainer);
+                        PortalPicker.open(capturedWidgetSysId, capturedInstanceSysId, capturedTable, capturedSysId, capturedX, capturedY);
+                    });
+                })(widgetSysId, _pendingInstanceSysId, recordTable, recordSysId, _pendingCursorX, _pendingCursorY);
+                openPageLi.appendChild(openPageA);
+                pageGroupLastLi.insertAdjacentElement('afterend', openPageLi);
             }
 
             // Inject logRootScope after native "Log to console: $scope"
@@ -2517,6 +2737,7 @@ function link(scope, element, attrs, controller) {
             return;
         }
         _pendingWidgetSysId = null;
+        _pendingInstanceSysId = null;
         _pendingWidgetEl = null;
         _pendingEmbeddedWidgets = [];
         _pendingCursorX = e.clientX;
@@ -2529,6 +2750,7 @@ function link(scope, element, attrs, controller) {
         // (SP's own guard is ctrlKey && !shiftKey && can_debug).
         OverlayManager.removeDebugOverlays();
         _pendingWidgetSysId = ScopeResolver.getWidgetSysId(e.target);
+        _pendingInstanceSysId = ScopeResolver.getInstanceSysId(e.target);
         _pendingEmbeddedWidgets = ScopeResolver.getEmbeddedWidgetInfos(e.target);
         // Walk up to find the closest [widget] element for scope access
         let el = e.target;

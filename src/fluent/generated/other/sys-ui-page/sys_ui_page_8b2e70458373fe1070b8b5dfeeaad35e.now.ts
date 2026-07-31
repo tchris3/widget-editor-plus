@@ -2304,6 +2304,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-click="openDemoDataModal()">Edit demo data <span class="we-status-dot we-status-dot--green" ng-if="widget.demo_data_has_value" title="Has demo data defined"></span></div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="openXmlModal()">Show XML</div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="copyWidgetUrl()">Copy widget URL</div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-class="{'disabled': !widget.has_active_instances}" ng-click="openOnPortalModal()" title="{{widget.has_active_instances ? '' : 'This widget is not placed on any active page'}}">Open in portal</div>
                             <div class="we-dropdown-divider" ng-if="!isNewWidget"></div>
                             <div class="we-dropdown-item" ng-click="openUserPrefsModal()">User preferences</div>
                             <div class="we-dropdown-item" ng-click="openKeyboardShortcutsModal()">Keyboard shortcuts</div>
@@ -2727,6 +2728,50 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 <div class="we-modal-footer">
                     <div class="we-spacer"></div>
                     <button class="btn btn-default we-btn we-btn-secondary" ng-click="cancelLinkProviderModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Open on Portal Modal -->
+        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showOpenOnPortalModal" ng-click="closeOpenOnPortalModal()">
+            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:26rem">
+                <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
+                    <span ng-if="openOnPortalStep === 'params'">URL parameters</span>
+                    <span ng-if="openOnPortalStep === 'instance'">Select a page</span>
+                    <span ng-if="openOnPortalStep === 'portal'">Select a portal</span>
+                    <span class="close" ng-click="closeOpenOnPortalModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                </div>
+                <div class="we-modal-body" style="padding:0;gap:0">
+                    <div ng-if="openOnPortalLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
+                        <we-spinner></we-spinner>
+                        Loading…
+                    </div>
+                    <div ng-if="openOnPortalError &amp;&amp; !openOnPortalLoading" style="padding:1rem;color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)))" ng-bind="openOnPortalError"></div>
+                    <div style="padding:1rem;display:flex;flex-direction:column;gap:0.75rem" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'params'">
+                        <div ng-repeat="p in openOnPortalParams">
+                            <label class="we-pane-meta-label" ng-attr-for="'oop-param-' + $index" ng-bind="p.name"></label>
+                            <input class="form-control" type="text" ng-attr-id="'oop-param-' + $index" ng-model="p.value" ng-change="saveOpenOnPortalParams()" />
+                        </div>
+                    </div>
+                    <div class="we-link-list" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'instance'">
+                        <div ng-if="openOnPortalInstances.length === 0" class="we-link-empty">This widget isn't placed on any active page.</div>
+                        <div class="we-link-item" ng-repeat="inst in openOnPortalInstances" ng-click="selectOpenOnPortalInstance(inst)">
+                            <span class="we-link-id" ng-bind="inst.pageTitle || inst.pageId"></span>
+                        </div>
+                    </div>
+                    <div class="we-link-list" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'portal'">
+                        <div ng-if="openOnPortalPortals.length === 0" class="we-link-empty">No active portals found.</div>
+                        <div class="we-link-item" ng-repeat="portal in openOnPortalPortals" ng-click="selectOpenOnPortalPortal(portal)">
+                            <span class="we-link-id" ng-bind="portal.title"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="we-modal-footer">
+                    <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalStep === 'params' &amp;&amp; openOnPortalParams.length" ng-click="resetOpenOnPortalParams()">Reset</button>
+                    <div class="we-spacer"></div>
+                    <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalCanGoBack()" ng-click="openOnPortalBack()">Back</button>
+                    <button class="btn btn-default we-btn we-btn-secondary" ng-click="closeOpenOnPortalModal()">Cancel</button>
+                    <button class="btn btn-primary we-btn" ng-if="openOnPortalStep === 'params'" ng-click="openOnPortalParamsNext()">Next</button>
                 </div>
             </div>
         </div>
@@ -9874,6 +9919,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.cancelLinkProviderModal();
                         return true;
                     }
+                    if ($scope.showOpenOnPortalModal) {
+                        $scope.closeOpenOnPortalModal();
+                        return true;
+                    }
                     if ($scope.pendingUnlinkDependency) {
                         $scope.cancelUnlinkDependency();
                         return true;
@@ -10563,6 +10612,166 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         fn();
                     }, 150);
                 }
+
+                ////////////////////////////////////////////////////////////
+                // Open on Portal modal
+                ////////////////////////////////////////////////////////////
+
+                function _openOnPortalStorageKey() {
+                    return 'we_open_portal_params_' + SYS_ID;
+                }
+
+                function _loadOpenOnPortalParamsFromStorage() {
+                    try {
+                        return JSON.parse(localStorage.getItem(_openOnPortalStorageKey()) || '{}');
+                    } catch (e) {
+                        return {};
+                    }
+                }
+
+                $scope.saveOpenOnPortalParams = function () {
+                    var obj = {};
+                    $scope.openOnPortalParams.forEach(function (p) {
+                        obj[p.name] = p.value;
+                    });
+                    try {
+                        localStorage.setItem(_openOnPortalStorageKey(), JSON.stringify(obj));
+                    } catch (e) { /* localStorage unavailable/full — ignore */ }
+                };
+
+                $scope.resetOpenOnPortalParams = function () {
+                    $scope.openOnPortalParams.forEach(function (p) {
+                        p.value = '';
+                    });
+                    try {
+                        localStorage.removeItem(_openOnPortalStorageKey());
+                    } catch (e) { }
+                };
+
+                // Detects $sp.getParameter('name') calls in the server script — sourced from the
+                // live Monaco editor when the "script" pane is open (so unsaved edits are picked
+                // up), falling back to the last-saved widget.script otherwise. Prefills each
+                // detected name from localStorage so values persist across sessions.
+                function _detectSpGetParameters() {
+                    var script = (monacoEditors.script && monacoEditors.script.getValue()) ||
+                        ($scope.widget && $scope.widget.script) || '';
+                    var names = [];
+                    var seen = {};
+                    var re = /\\$sp\\.getParameter\\(\\s*['"]([^'"]+)['"]\\s*\\)/g;
+                    var m;
+                    while ((m = re.exec(script)) !== null) {
+                        if (!seen[m[1]]) {
+                            seen[m[1]] = true;
+                            names.push(m[1]);
+                        }
+                    }
+                    // sys_id (or its common alias "id") identifies the record the page is
+                    // about — always surface it as the first field to fill in, regardless of
+                    // where in the script it was detected. "sys_id" outranks "id" when both appear.
+                    ['id', 'sys_id'].forEach(function (priorityName) {
+                        var idx = names.indexOf(priorityName);
+                        if (idx > 0) {
+                            names.splice(idx, 1);
+                            names.unshift(priorityName);
+                        }
+                    });
+
+                    var stored = _loadOpenOnPortalParamsFromStorage();
+                    return names.map(function (name) {
+                        return { name: name, value: stored[name] || '' };
+                    });
+                }
+
+                function _loadOpenOnPortalInstancesAndPortals() {
+                    $scope.openOnPortalLoading = true;
+                    $scope.openOnPortalError = null;
+
+                    ajax('getOpenPageOptions', { sys_id: SYS_ID }).then(function (data) {
+                        $scope.openOnPortalLoading = false;
+                        if (!data.success) {
+                            $scope.openOnPortalError = data.error || 'Failed to load pages/portals';
+                            return;
+                        }
+                        $scope.openOnPortalInstances = data.instances || [];
+                        $scope.openOnPortalPortals = data.portals || [];
+                        $scope.openOnPortalStep = $scope.openOnPortalInstances.length > 1 ? 'instance' : 'portal';
+                    }, function () {
+                        $scope.openOnPortalLoading = false;
+                        $scope.openOnPortalError = 'Failed to load pages/portals';
+                    });
+                }
+
+                $scope.openOnPortalModal = function () {
+                    $scope.openDropdown = null;
+                    $scope.openOnPortalLoading = false;
+                    $scope.openOnPortalError = null;
+                    $scope.openOnPortalInstances = [];
+                    $scope.openOnPortalPortals = [];
+                    $scope.openOnPortalSelectedPage = null;
+                    $scope.openOnPortalParams = _detectSpGetParameters();
+                    $scope.showOpenOnPortalModal = true;
+
+                    if ($scope.openOnPortalParams.length) {
+                        // Show the params step immediately (no network round-trip needed yet);
+                        // instances/portals are fetched once the user clicks Next.
+                        $scope.openOnPortalStep = 'params';
+                    } else {
+                        _loadOpenOnPortalInstancesAndPortals();
+                    }
+                };
+
+                $scope.openOnPortalParamsNext = function () {
+                    $scope.saveOpenOnPortalParams();
+                    _loadOpenOnPortalInstancesAndPortals();
+                };
+
+                $scope.selectOpenOnPortalInstance = function (inst) {
+                    $scope.openOnPortalSelectedPage = { id: inst.pageId, title: inst.pageTitle };
+                    $scope.openOnPortalStep = 'portal';
+                };
+
+                $scope.openOnPortalCanGoBack = function () {
+                    if ($scope.openOnPortalStep === 'instance') {
+                        return !!$scope.openOnPortalParams.length;
+                    }
+                    if ($scope.openOnPortalStep === 'portal') {
+                        return $scope.openOnPortalInstances.length > 1 || !!$scope.openOnPortalParams.length;
+                    }
+                    return false;
+                };
+
+                $scope.openOnPortalBack = function () {
+                    if ($scope.openOnPortalStep === 'portal' && $scope.openOnPortalInstances.length > 1) {
+                        $scope.openOnPortalSelectedPage = null;
+                        $scope.openOnPortalStep = 'instance';
+                    } else if ($scope.openOnPortalParams.length) {
+                        $scope.openOnPortalStep = 'params';
+                    }
+                };
+
+                $scope.selectOpenOnPortalPortal = function (portal) {
+                    var page = $scope.openOnPortalSelectedPage ||
+                        ($scope.openOnPortalInstances.length === 1
+                            ? { id: $scope.openOnPortalInstances[0].pageId, title: $scope.openOnPortalInstances[0].pageTitle }
+                            : null);
+                    if (page && page.id) {
+                        var url = '/' + portal.url_suffix + '?id=' + encodeURIComponent(page.id);
+                        $scope.openOnPortalParams.forEach(function (p) {
+                            if (p.value) {
+                                url += '&' + encodeURIComponent(p.name) + '=' + encodeURIComponent(p.value);
+                            }
+                        });
+                        window.open(url, '_blank');
+                    }
+                    $scope.closeOpenOnPortalModal();
+                };
+
+                $scope.closeOpenOnPortalModal = function () {
+                    _closeModal(function () {
+                        $scope.showOpenOnPortalModal = false;
+                        $scope.openOnPortalSelectedPage = null;
+                    });
+                };
 
                 ////////////////////////////////////////////////////////////
                 // Keyboard shortcuts modal
