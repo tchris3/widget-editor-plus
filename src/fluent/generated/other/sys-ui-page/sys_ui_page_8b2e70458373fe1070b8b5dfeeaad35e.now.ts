@@ -1807,6 +1807,27 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .monaco-editor.vs-dark .we-jsdoc-tag { color: #569cd6; }
         .monaco-editor.vs-dark .we-jsdoc-type { color: #4ec9b0; }
         .monaco-editor.vs-dark .we-jsdoc-name { color: #9cdcfe; }
+        /* AngularJS expression sub-highlighting inside {{ }} interpolations and
+           ng-*/data-ng-* directive attributes — Monaco's built-in html tokenizer has
+           no notion of these, so they're painted as decorations instead. Colors match
+           the (previously unused) attribute.name.ng / ng.delimiter / ng.expression
+           rules already defined in we-vs / we-vs-dark below. */
+        /* !important: Monaco's own token-color stylesheet (.mtkNN rules, regenerated
+           by the theme service) has equal CSS specificity to a single class selector
+           and is injected after this static block, so it wins cascade ties without
+           !important — leaving every decoration looking like the default string color. */
+        .monaco-editor.vs .we-ng-delim { color: #af00db !important; }
+        .monaco-editor.vs .we-ng-attr { color: #267f99 !important; font-weight: bold; }
+        .monaco-editor.vs .we-ng-string { color: #a31515 !important; }
+        .monaco-editor.vs .we-ng-number { color: #098658 !important; }
+        .monaco-editor.vs .we-ng-keyword { color: #0000ff !important; }
+        .monaco-editor.vs .we-ng-filter { color: #795e26 !important; }
+        .monaco-editor.vs-dark .we-ng-delim { color: #c678dd !important; }
+        .monaco-editor.vs-dark .we-ng-attr { color: #4ec9b0 !important; font-weight: bold; }
+        .monaco-editor.vs-dark .we-ng-string { color: #ce9178 !important; }
+        .monaco-editor.vs-dark .we-ng-number { color: #b5cea8 !important; }
+        .monaco-editor.vs-dark .we-ng-keyword { color: #569cd6 !important; }
+        .monaco-editor.vs-dark .we-ng-filter { color: #dcdcaa !important; }
     </style>
 
     <!-- GlideEditor5Includes (in js_includes_doctype) sets getWorkerUrl to .js paths
@@ -6309,6 +6330,45 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                             }
 
+                            if (lang === 'html' && !$scope.isVersionView) {
+                                _lintNgExpressions(pane.key);
+                                var _ngLintTimer = null;
+                                ed.onDidChangeModelContent(function () {
+                                    clearTimeout(_ngLintTimer);
+                                    _ngLintTimer = setTimeout(function () {
+                                        _lintNgExpressions(pane.key);
+                                    }, 600);
+                                });
+                                // Force a final check on blur (e.g. clicking Save, switching
+                                // panes) so nothing goes unvalidated if focus leaves before the
+                                // debounce above has a chance to fire.
+                                ed.onDidBlurEditorWidget(function () {
+                                    clearTimeout(_ngLintTimer);
+                                    _lintNgExpressions(pane.key);
+                                });
+                            }
+
+                            if (lang === 'html') {
+                                var _ngHighlightDecoIds = [];
+                                var _ngHighlightTimer = null;
+                                function _refreshNgHighlightDecorations() {
+                                    _ngHighlightDecoIds = ed.deltaDecorations(
+                                        _ngHighlightDecoIds,
+                                        _computeNgHighlightDecorations(
+                                            ed.getModel()
+                                        )
+                                    );
+                                }
+                                _refreshNgHighlightDecorations();
+                                ed.onDidChangeModelContent(function () {
+                                    clearTimeout(_ngHighlightTimer);
+                                    _ngHighlightTimer = setTimeout(
+                                        _refreshNgHighlightDecorations,
+                                        150
+                                    );
+                                });
+                            }
+
                             if (isJs) {
                                 var _jsDocDecoIds = [];
                                 var _jsDocTimer = null;
@@ -6801,6 +6861,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     try {
                         monaco.editor.setModelMarkers(model, 'LINT_MARKER', []);
                     } catch (e) {}
+                    try {
+                        monaco.editor.setModelMarkers(
+                            model,
+                            'NG_EXPR_MARKER',
+                            []
+                        );
+                    } catch (e) {}
                 }
 
                 function _applyEsVersion(es12Enabled) {
@@ -6810,6 +6877,284 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     Object.keys(monacoEditors).forEach(function (k) {
                         _triggerLint(k);
                     });
+                }
+
+                ////////////////////////////////////////////////////////////
+                // AngularJS expression validation — real syntax checking via
+                // AngularJS's own $parse, not a hand-rolled grammar. $parse compiles
+                // an expression string and throws a SyntaxError on malformed input;
+                // it needs no scope/DOM, so it's cheap to run on every edit.
+                // Catches syntax errors only (unbalanced parens, bad operators, etc.) —
+                // it has no way to know whether foo.bar actually exists on the widget's
+                // controller, since that's a runtime concern, not a parse-time one.
+                ////////////////////////////////////////////////////////////
+
+                // ngRepeat's "item in collection [as alias] [track by expr]" syntax is
+                // split by this regex inside Angular's own ngRepeat directive *before* the
+                // pieces are handed to $parse — the whole attribute value is not itself
+                // valid expression syntax, so it can't be $parse'd as one string.
+                // NOTE: this field is a JS template literal in the .ts source — template
+                // literal parsing silently strips a backslash from any non-special escape
+                // (\\s becomes plain "s") and turns \\n into a literal newline byte, so every
+                // regex escape below is deliberately doubled to survive that parse and land
+                // as a single, correct backslash in the deployed script.
+                var NG_REPEAT_REGEXP =
+                    /^\\s*([\\s\\S]+?)\\s+in\\s+([\\s\\S]+?)(?:\\s+as\\s+([\\s\\S]+?))?(?:\\s+track\\s+by\\s+([\\s\\S]+?))?\\s*$/d;
+
+                // Directives whose attribute value is a plain identifier/string rather
+                // than an Angular expression — $parse'ing these would misfire.
+                var NG_NON_EXPRESSION_ATTRS = {
+                    'ng-app': true,
+                    'ng-controller': true,
+                    'ng-non-bindable': true,
+                };
+
+                var _ngParseFn = null;
+                function _getNgParse() {
+                    if (_ngParseFn) {
+                        return _ngParseFn;
+                    }
+                    if (!window.angular || !window.angular.injector) {
+                        return null;
+                    }
+                    try {
+                        _ngParseFn = window.angular
+                            .injector(['ng'])
+                            .get('$parse');
+                    } catch (e) {
+                        _ngParseFn = null;
+                    }
+                    return _ngParseFn;
+                }
+
+                // Scans raw template text for embedded Angular expressions — {{ }}
+                // interpolations and ng-*/data-ng-* directive attribute values — and
+                // returns each with a character offset into the text for mapping back
+                // onto editor positions.
+                function _extractNgExpressions(text) {
+                    var out = [];
+                    var m;
+
+                    // Deliberately excludes newlines from the interpolation/quote bodies below.
+                    // While a quote or "}}" is still unclosed mid-edit, a class that allows
+                    // newlines (e.g. a dot-all style class) will happily search across line breaks and match
+                    // an unrelated "}}" or quote several lines down as if it belonged here —
+                    // producing a garbled, wrong-location expression instead of simply not
+                    // matching yet.
+                    var interpRe = /\\{\\{([^\\n]*?)\\}\\}/g;
+                    while ((m = interpRe.exec(text))) {
+                        out.push({
+                            expr: m[1],
+                            exprStart: m.index + 2,
+                            length: m[1].length,
+                        });
+                    }
+
+                    var attrRe =
+                        /((?:data-)?ng-[a-zA-Z-]+)\\s*=\\s*("([^"\\n]*)"|'([^'\\n]*)')/gd;
+                    while ((m = attrRe.exec(text))) {
+                        var attrName = m[1].replace(/^data-/, '').toLowerCase();
+                        if (NG_NON_EXPRESSION_ATTRS[attrName]) {
+                            continue;
+                        }
+                        var valueIndices = m.indices[3] || m.indices[4];
+                        var value = m[3] !== undefined ? m[3] : m[4];
+                        var valueStart = valueIndices[0];
+
+                        if (attrName === 'ng-repeat' || attrName === 'ng-repeat-start') {
+                            var parts = NG_REPEAT_REGEXP.exec(value);
+                            if (!parts) {
+                                out.push({
+                                    expr: null,
+                                    exprStart: valueStart,
+                                    length: value.length,
+                                    forcedError:
+                                        'Expected "item in collection" (optionally "as alias" / "track by expr")',
+                                });
+                                continue;
+                            }
+                            out.push({
+                                expr: parts[2],
+                                exprStart: valueStart + parts.indices[2][0],
+                                length: parts[2].length,
+                            });
+                            if (parts[4]) {
+                                out.push({
+                                    expr: parts[4],
+                                    exprStart:
+                                        valueStart + parts.indices[4][0],
+                                    length: parts[4].length,
+                                });
+                            }
+                            continue;
+                        }
+
+                        out.push({
+                            expr: value,
+                            exprStart: valueStart,
+                            length: value.length,
+                        });
+                    }
+
+                    return out;
+                }
+
+                ////////////////////////////////////////////////////////////
+                // AngularJS expression syntax highlighting — decorations, not a Monarch
+                // tokenizer. Reuses the same {{ }} / ng-*/data-ng-* scanning as
+                // _extractNgExpressions above, plus a lightweight sub-scan of each
+                // expression body for strings, numbers, true/false/null/undefined, and
+                // filter names (the "orderBy" in "| orderBy:'name'") — VS Code-like
+                // coloring without a full expression-language grammar. Colors are defined
+                // in the page <style> block (we-ng-delim / we-ng-attr / we-ng-string /
+                // we-ng-number / we-ng-keyword / we-ng-filter), matching the light/dark
+                // colors already reserved (but unused) in we-vs / we-vs-dark below for
+                // attribute.name.ng / ng.delimiter / ng.expression.
+                // NOTE: same template-literal escaping caveat as above — every regex
+                // escape here is deliberately doubled.
+                function _tokenizeNgExpression(exprText) {
+                    var out = [];
+                    var re =
+                        /('[^']*'|"[^"]*")|(\\b\\d+(?:\\.\\d+)?\\b)|(\\b(?:true|false|null|undefined)\\b)|(?<!\\|)\\|(?!\\|)(\\s*)([a-zA-Z_$][\\w$]*)/gd;
+                    var m;
+                    while ((m = re.exec(exprText))) {
+                        if (m[1] !== undefined) {
+                            out.push({
+                                start: m.indices[1][0],
+                                length: m[1].length,
+                                cls: 'we-ng-string',
+                            });
+                        } else if (m[2] !== undefined) {
+                            out.push({
+                                start: m.indices[2][0],
+                                length: m[2].length,
+                                cls: 'we-ng-number',
+                            });
+                        } else if (m[3] !== undefined) {
+                            out.push({
+                                start: m.indices[3][0],
+                                length: m[3].length,
+                                cls: 'we-ng-keyword',
+                            });
+                        } else if (m[5] !== undefined) {
+                            out.push({
+                                start: m.indices[5][0],
+                                length: m[5].length,
+                                cls: 'we-ng-filter',
+                            });
+                        }
+                    }
+                    return out;
+                }
+
+                function _computeNgHighlightDecorations(model) {
+                    var text = model.getValue();
+                    var decos = [];
+                    function pushRange(start, length, className) {
+                        var s = model.getPositionAt(start);
+                        var e = model.getPositionAt(start + length);
+                        decos.push({
+                            range: new monaco.Range(
+                                s.lineNumber,
+                                s.column,
+                                e.lineNumber,
+                                e.column
+                            ),
+                            options: { inlineClassName: className },
+                        });
+                    }
+                    function highlightExprBody(exprStart, body) {
+                        _tokenizeNgExpression(body).forEach(function (tok) {
+                            pushRange(
+                                exprStart + tok.start,
+                                tok.length,
+                                tok.cls
+                            );
+                        });
+                    }
+
+                    var interpRe = /\\{\\{([^\\n]*?)\\}\\}/g;
+                    var m;
+                    while ((m = interpRe.exec(text))) {
+                        pushRange(m.index, 2, 'we-ng-delim');
+                        pushRange(
+                            m.index + 2 + m[1].length,
+                            2,
+                            'we-ng-delim'
+                        );
+                        highlightExprBody(m.index + 2, m[1]);
+                    }
+
+                    var attrRe =
+                        /((?:data-)?ng-[a-zA-Z-]+)\\s*=\\s*("([^"\\n]*)"|'([^'\\n]*)')/gd;
+                    while ((m = attrRe.exec(text))) {
+                        var attrName = m[1].replace(/^data-/, '').toLowerCase();
+                        pushRange(m.indices[1][0], m[1].length, 'we-ng-attr');
+                        if (NG_NON_EXPRESSION_ATTRS[attrName]) {
+                            continue;
+                        }
+                        var valueIndices = m.indices[3] || m.indices[4];
+                        var value = m[3] !== undefined ? m[3] : m[4];
+                        highlightExprBody(valueIndices[0], value);
+                    }
+
+                    return decos;
+                }
+
+                function _computeNgExpressionMarkers(model) {
+                    var $parse = _getNgParse();
+                    if (!$parse) {
+                        return [];
+                    }
+                    var expressions = _extractNgExpressions(model.getValue());
+                    var markers = [];
+                    expressions.forEach(function (item) {
+                        var message = item.forcedError;
+                        if (!message && item.expr && item.expr.trim() !== '') {
+                            try {
+                                $parse(item.expr);
+                            } catch (e) {
+                                message = e.message || 'Invalid Angular expression';
+                            }
+                        }
+                        if (!message) {
+                            return;
+                        }
+                        var startPos = model.getPositionAt(item.exprStart);
+                        var endPos = model.getPositionAt(
+                            item.exprStart + item.length
+                        );
+                        markers.push({
+                            startLineNumber: startPos.lineNumber,
+                            startColumn: startPos.column,
+                            endLineNumber: endPos.lineNumber,
+                            endColumn: endPos.column,
+                            message: 'AngularJS: ' + message,
+                            severity: monaco.MarkerSeverity.Error,
+                        });
+                    });
+                    return markers;
+                }
+
+                function _lintNgExpressions(paneKey) {
+                    if (!window.monaco) {
+                        return;
+                    }
+                    var edWrapper = monacoEditors[paneKey];
+                    if (!edWrapper) {
+                        return;
+                    }
+                    var model = edWrapper.getModel && edWrapper.getModel();
+                    if (!model) {
+                        return;
+                    }
+                    try {
+                        monaco.editor.setModelMarkers(
+                            model,
+                            'NG_EXPR_MARKER',
+                            _computeNgExpressionMarkers(model)
+                        );
+                    } catch (e) {}
                 }
 
                 ////////////////////////////////////////////////////////////
