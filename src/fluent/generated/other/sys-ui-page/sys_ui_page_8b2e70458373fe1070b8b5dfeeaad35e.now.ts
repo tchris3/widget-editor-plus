@@ -30,6 +30,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         window.WE_CONFIG = {
             sys_id: _weConfigParams.get('widget_id') || '',
             version_id: _weConfigParams.get('version_id') || '',
+            is_new: _weConfigParams.get('new') === '1',
             widgetPageSysId: '8b2e70458373fe1070b8b5dfeeaad35e',
             diffPageSysId: '51ec3d258363b61070b8b5dfeeaad36b',
             siteTitle: '\${gs.getProperty("glide.product.name", "ServiceNow")}',
@@ -3995,10 +3996,21 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 ////////////////////////////////////////////////////////////
                 // Config
                 ////////////////////////////////////////////////////////////
+                // Read from window.WE_CONFIG (captured in an inline <script> before Angular
+                // bootstraps) rather than re-parsing window.location.search here — ServiceNow's
+                // app shell can rewrite the URL (e.g. via history.replaceState) while Angular's
+                // own bootstrap is deliberately deferred, so a second parse can intermittently
+                // see a stripped URL and read empty values, silently skipping the whole widget
+                // load (and everything that depends on it, e.g. presence) in favor of the
+                // "no widget_id" / new-widget code path.
                 var _params = new URLSearchParams(window.location.search);
-                var SYS_ID = _params.get('widget_id') || '';
-                var VERSION_ID = _params.get('version_id') || '';
-                var IS_NEW = _params.get('new') === '1';
+                var _weConfig = window.WE_CONFIG || {};
+                var SYS_ID = _weConfig.sys_id || _params.get('widget_id') || '';
+                var VERSION_ID = _weConfig.version_id || _params.get('version_id') || '';
+                var IS_NEW =
+                    _weConfig.is_new !== undefined
+                        ? !!_weConfig.is_new
+                        : _params.get('new') === '1';
                 var APP_TITLE = 'Widget Editor+';
                 var SITE_TITLE =
                     (window.WE_CONFIG && window.WE_CONFIG.siteTitle) ||
@@ -4540,10 +4552,18 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     return payload;
                 }
 
+                // Tracks the most recently issued request so a slower, earlier response (e.g. the
+                // unfiltered initial load) can't overwrite a later, filtered one that resolves first —
+                // requests aren't guaranteed to resolve in the order they were sent.
+                var _widgetListRequestId = 0;
                 function loadWidgetList(search) {
                     $scope.pickerLoading = true;
+                    var requestId = ++_widgetListRequestId;
                     ajax('getWidgets', { search: search }).then(
                         function (d) {
+                            if (requestId !== _widgetListRequestId) {
+                                return;
+                            }
                             $scope.pickerWidgets =
                                 d.success && d.widgets
                                     ? d.widgets.map(function (w) {
@@ -4555,6 +4575,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.pickerLoading = false;
                         },
                         function () {
+                            if (requestId !== _widgetListRequestId) {
+                                return;
+                            }
                             $scope.pickerWidgets = [];
                             $scope.pickerLoading = false;
                         }
@@ -8836,12 +8859,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }, 300);
                 };
 
+                // Tracks the most recently issued request so a slower, earlier response (e.g. the
+                // unfiltered initial load) can't overwrite a later, filtered one that resolves first —
+                // requests aren't guaranteed to resolve in the order they were sent.
+                var _linkProviderRequestId = 0;
                 function loadLinkProviderResults(search) {
                     $scope.linkProviderSearching = true;
+                    var requestId = ++_linkProviderRequestId;
                     ajax('getAllProviders', {
                         sys_id: SYS_ID,
                         search: search,
                     }).then(function (d) {
+                        if (requestId !== _linkProviderRequestId) {
+                            return;
+                        }
                         $scope.linkProviderSearching = false;
                         if (d.success) {
                             $scope.linkProviderResults = d.providers;
@@ -9086,12 +9117,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }, 300);
                 };
 
+                // Tracks the most recently issued request so a slower, earlier response (e.g. the
+                // unfiltered initial load) can't overwrite a later, filtered one that resolves first —
+                // requests aren't guaranteed to resolve in the order they were sent.
+                var _linkDependencyRequestId = 0;
                 function _loadLinkDependencyResults(search) {
                     $scope.linkDependencySearching = true;
+                    var requestId = ++_linkDependencyRequestId;
                     ajax('getAllDependencies', {
                         sys_id: SYS_ID,
                         search: search,
                     }).then(function (d) {
+                        if (requestId !== _linkDependencyRequestId) {
+                            return;
+                        }
                         $scope.linkDependencySearching = false;
                         if (d.success) {
                             $scope.linkDependencyResults = d.dependencies;

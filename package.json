@@ -11,11 +11,15 @@
     "deploy": "now-sdk install",
     "pack": "now-sdk pack && node scripts/generate-update-set-xml.js",
     "transform": "now-sdk transform",
-    "types": "now-sdk dependencies"
+    "types": "now-sdk dependencies",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@servicenow/glide": "27.0.5",
     "@servicenow/sdk": "4.9.1",
+    "dotenv": "^16.4.7",
     "typescript": "5.5.4"
   }
 }

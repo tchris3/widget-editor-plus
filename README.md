@@ -15,6 +15,10 @@ Widget Editor+ is an enhanced Service Portal widget editor for ServiceNow. It in
   - [Prerequisites](#prerequisites)
   - [Build Process](#build-process)
   - [Deployment / Installation](#deployment--installation)
+- [End-to-End Testing](#end-to-end-testing)
+  - [Environment Setup](#environment-setup)
+  - [Automated Test Data Seeding](#automated-test-data-seeding)
+  - [Running E2E Tests](#running-e2e-tests)
 - [Configuration](#configuration)
   - [System Properties](#system-properties)
   - [UI Scripts](#ui-scripts)
@@ -90,6 +94,46 @@ Deploy the application scope directly to a target ServiceNow instance:
 npm run deploy
 ```
 This executes `now-sdk install` to transmit and install the scope on the configured ServiceNow target instance.
+
+---
+
+## End-to-End Testing
+
+Widget Editor+ includes a Playwright end-to-end (E2E) testing framework designed for running automated browser tests against a ServiceNow Personal Developer Instance (PDI) or sub-production instance.
+
+### Environment Setup
+1. Install project dependencies (including Playwright):
+   ```bash
+   npm install
+   ```
+2. Copy `.env.example` to create your local `.env` file (which is git-ignored for security):
+   ```bash
+   cp .env.example .env
+   ```
+3. Configure your target ServiceNow instance URL, admin credentials, and optional portal suffix inside `.env`:
+   ```env
+   SN_INSTANCE_URL=https://devXXXXX.service-now.com
+   SN_USERNAME=admin
+   SN_PASSWORD=your_pdi_password
+   SN_PORTAL_SUFFIX=sp
+   ```
+4. Install Playwright browser engines:
+   ```bash
+   npx playwright install
+   ```
+
+### Automated Test Data Seeding
+Before running test suites, Playwright automatically interacts with the ServiceNow Table API to verify and create required test records (`sp_widget`, `sp_page`, `sp_instance`). This ensures tests pass out-of-the-box on any fresh PDI without needing manual pre-configuration.
+
+### Running E2E Tests
+- **Headless mode**:
+  ```bash
+  npm run test:e2e
+  ```
+- **Interactive UI mode**:
+  ```bash
+  npm run test:e2e:ui
+  ```
 
 ---
 
