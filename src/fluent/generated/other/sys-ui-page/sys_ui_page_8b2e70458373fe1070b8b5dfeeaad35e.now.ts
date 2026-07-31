@@ -1797,6 +1797,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-kbd-mouse-desc {
             color: rgb(var(--now-color_text--secondary, 82 82 82));
         }
+        /* JSDoc sub-highlighting inside block comments — Monaco's built-in JS/TS
+           tokenizer emits the whole /** ... *\/ block as one 'comment.doc' token,
+           so tag/type/name coloring is applied as decorations instead. */
+        .monaco-editor.vs .we-jsdoc-tag { color: #0000ff; }
+        .monaco-editor.vs .we-jsdoc-type { color: #267f99; }
+        .monaco-editor.vs .we-jsdoc-name { color: #001080; }
+        .monaco-editor.vs-dark .we-jsdoc-tag { color: #569cd6; }
+        .monaco-editor.vs-dark .we-jsdoc-type { color: #4ec9b0; }
+        .monaco-editor.vs-dark .we-jsdoc-name { color: #9cdcfe; }
     </style>
 
     <!-- GlideEditor5Includes (in js_includes_doctype) sets getWorkerUrl to .js paths
@@ -4306,7 +4315,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         key: 'script',
                         label: 'Server script',
                         field: 'script',
-                        language: 'typescript',
+                        language: 'javascript',
                         visible: true,
                     },
                 ];
@@ -5282,6 +5291,94 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 }
 
+                // Monaco's built-in JS/TS Monarch tokenizer emits an entire
+                // JSDoc comment block as one 'comment.doc' token — no sub-highlighting
+                // for @tags, {types}, or param/property names the way VS Code's
+                // TextMate jsdoc grammar does. Decorations fill that gap: scan each
+                // JSDoc block for @tag / {type} / name and paint them with the
+                // we-jsdoc-* classes defined in the page <style> block.
+                var _JSDOC_NAME_TAGS = {
+                    param: true,
+                    arg: true,
+                    argument: true,
+                    property: true,
+                    prop: true,
+                    typedef: true,
+                    member: true,
+                };
+                function _computeJsDocDecorations(model) {
+                    if (!model) {
+                        return [];
+                    }
+                    var text = model.getValue();
+                    var decos = [];
+                    function pushRange(start, length, className) {
+                        var s = model.getPositionAt(start);
+                        var e = model.getPositionAt(start + length);
+                        decos.push({
+                            range: new monaco.Range(
+                                s.lineNumber,
+                                s.column,
+                                e.lineNumber,
+                                e.column
+                            ),
+                            options: { inlineClassName: className },
+                        });
+                    }
+
+                    var blockRe = /\\/\\*\\*[\\s\\S]*?\\*\\//g;
+                    var block;
+                    while ((block = blockRe.exec(text)) !== null) {
+                        var full = block[0];
+                        var base = block.index;
+                        var tagRe = /@([a-zA-Z]+)/g;
+                        var tm;
+                        while ((tm = tagRe.exec(full)) !== null) {
+                            var tagName = tm[1];
+                            pushRange(
+                                base + tm.index,
+                                tm[0].length,
+                                'we-jsdoc-tag'
+                            );
+
+                            var afterOffset = base + tm.index + tm[0].length;
+                            var rest = full.slice(tm.index + tm[0].length);
+                            var consumed = 0;
+
+                            var typeM = /^\\s*(\\{[^}]*\\})/.exec(rest);
+                            if (typeM) {
+                                var typeStart =
+                                    afterOffset + typeM[0].indexOf('{');
+                                pushRange(
+                                    typeStart,
+                                    typeM[1].length,
+                                    'we-jsdoc-type'
+                                );
+                                consumed = typeM[0].length;
+                            }
+
+                            if (_JSDOC_NAME_TAGS[tagName]) {
+                                var nameRest = rest.slice(consumed);
+                                var nameM = /^\\s+(\\[?[\\w$.]+\\]?)/.exec(
+                                    nameRest
+                                );
+                                if (nameM) {
+                                    var nameStart =
+                                        afterOffset +
+                                        consumed +
+                                        nameM[0].indexOf(nameM[1]);
+                                    pushRange(
+                                        nameStart,
+                                        nameM[1].length,
+                                        'we-jsdoc-name'
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    return decos;
+                }
+
                 // Register a lightweight JSON language that uses only a Monarch tokenizer
                 // (main thread, no worker). Avoids the "Unexpected usage" console error
                 // that occurs when Monaco tries to load the JSON language service worker.
@@ -5932,6 +6029,32 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             _registerJsFormattingProvider();
                             _applyJsFormatOptions();
 
+                            // Server script/Script Include and client controller/
+                            // link/provider panes share Monaco's single 'javascript'
+                            // language service, so only one side's GlideRecord/$sp-
+                            // server vs g_form/AngularJS/$sp-client declarations can
+                            // be registered at a time. Swap on focus.
+                            if (isJs) {
+                                var _jsScriptKind =
+                                    pane.field === 'script' || isSI
+                                        ? 'server'
+                                        : pane.recordType === 'provider' ||
+                                            pane.field === 'link' ||
+                                            pane.field === 'client_script'
+                                          ? 'client'
+                                          : null;
+                                if (_jsScriptKind) {
+                                    ed.onDidFocusEditorText(function () {
+                                        if (window.SNMonacoPlus) {
+                                            window.SNMonacoPlus.notifyScriptContextFocus(
+                                                ed.getModel().id,
+                                                _jsScriptKind
+                                            );
+                                        }
+                                    });
+                                }
+                            }
+
                             monacoEditors[pane.key] = {
                                 getValue: function () {
                                     return ed.getValue();
@@ -6088,6 +6211,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             ) {
                                 if (window.SNMonacoPlus) {
                                     window.SNMonacoPlus.scanAndFetchSIs(value);
+                                    window.SNMonacoPlus.scanLocalTypedefs(
+                                        pane.key,
+                                        value
+                                    );
                                 }
                                 var _siTimer = null;
                                 ed.onDidChangeModelContent(function () {
@@ -6095,6 +6222,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     _siTimer = setTimeout(function () {
                                         if (window.SNMonacoPlus) {
                                             window.SNMonacoPlus.scanAndFetchSIs(
+                                                ed.getValue()
+                                            );
+                                            window.SNMonacoPlus.scanLocalTypedefs(
+                                                pane.key,
                                                 ed.getValue()
                                             );
                                         }
@@ -6107,6 +6238,25 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 _triggerLint(pane.key);
                                 ed.onDidChangeModelContent(function () {
                                     _triggerLint(pane.key);
+                                });
+                            }
+
+                            if (isJs) {
+                                var _jsDocDecoIds = [];
+                                var _jsDocTimer = null;
+                                function _refreshJsDocDecorations() {
+                                    _jsDocDecoIds = ed.deltaDecorations(
+                                        _jsDocDecoIds,
+                                        _computeJsDocDecorations(ed.getModel())
+                                    );
+                                }
+                                _refreshJsDocDecorations();
+                                ed.onDidChangeModelContent(function () {
+                                    clearTimeout(_jsDocTimer);
+                                    _jsDocTimer = setTimeout(
+                                        _refreshJsDocDecorations,
+                                        300
+                                    );
                                 });
                             }
 
@@ -6608,7 +6758,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     if (!_serverPlusInitialized) {
                         _serverPlusInitialized = true;
                         _bs.init({
-                            language: 'typescript',
+                            language: 'javascript',
                             getRemBase: function () {
                                 return $scope.userPrefs &&
                                     $scope.userPrefs.remBase > 0
@@ -6623,7 +6773,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             return;
                         }
                         if (scope && api.loadSnTypeDefinitions) {
-                            api.loadSnTypeDefinitions(scope, 'typescript');
+                            api.loadSnTypeDefinitions(scope, 'javascript');
                         }
                         if (!_snProvidersRegistered) {
                             _snProvidersRegistered = true;
@@ -8726,7 +8876,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         key: key,
                         label: si.name,
                         field: null,
-                        language: 'typescript',
+                        language: 'javascript',
                         type: 'pane',
                         hasIdInput: false,
                         closeable: true,
