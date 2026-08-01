@@ -6884,12 +6884,26 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 var NG_REPEAT_REGEXP =
                     /^\\s*([\\s\\S]+?)\\s+in\\s+([\\s\\S]+?)(?:\\s+as\\s+([\\s\\S]+?))?(?:\\s+track\\s+by\\s+([\\s\\S]+?))?\\s*$/d;
 
+                // ngOptions has its own grammar too — "select as label group by
+                // group for value in collection track by trackexpr" — lifted
+                // verbatim (escaping doubled per the note above) from AngularJS's
+                // own ngOptions directive source so the sub-clauses this splits
+                // out match exactly what real Angular accepts.
+                var NG_OPTIONS_REGEXP =
+                    /^\\s*([\\s\\S]+?)(?:\\s+as\\s+([\\s\\S]+?))?(?:\\s+group\\s+by\\s+([\\s\\S]+?))?(?:\\s+disable\\s+when\\s+([\\s\\S]+?))?\\s+for\\s+(?:([\\$\\w][\\$\\w]*)|(?:\\(\\s*([\\$\\w][\\$\\w]*)\\s*,\\s*([\\$\\w][\\$\\w]*)\\s*\\)))\\s+in\\s+([\\s\\S]+?)(?:\\s+track\\s+by\\s+([\\s\\S]+?))?\\s*$/d;
+
                 // Directives whose attribute value is a plain identifier/string rather
                 // than an Angular expression — $parse'ing these would misfire.
                 var NG_NON_EXPRESSION_ATTRS = {
                     'ng-app': true,
                     'ng-controller': true,
                     'ng-non-bindable': true,
+                    // ng-list's value (when given) is a literal delimiter string
+                    // (e.g. ng-list=" | "), not an expression.
+                    'ng-list': true,
+                    // ng-switch-when compares its value as a raw string (optionally
+                    // comma-separated for multiple matches), never $parse'd.
+                    'ng-switch-when': true,
                 };
 
                 // Directives whose attribute value is an interpolated string (plain
@@ -6901,6 +6915,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     'ng-href': true,
                     'ng-src': true,
                     'ng-srcset': true,
+                    'ng-bind-template': true,
                 };
 
                 var _ngParseFn = null;
@@ -6986,6 +7001,35 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     length: parts[4].length,
                                 });
                             }
+                            continue;
+                        }
+
+                        if (attrName === 'ng-options') {
+                            var optParts = NG_OPTIONS_REGEXP.exec(value);
+                            if (!optParts) {
+                                out.push({
+                                    expr: null,
+                                    exprStart: valueStart,
+                                    length: value.length,
+                                    forcedError:
+                                        'Expected "label for value in collection" (optionally "select as label", "group by group", "disable when disable", "for (key, value) in", "track by expr")',
+                                });
+                                continue;
+                            }
+                            // Groups 1 (label/select), 2 (select-as label), 3 (group by),
+                            // 4 (disable when), 8 (collection) and 9 (track by) are all
+                            // Angular expressions; 5/6/7 are bare loop variable names, not
+                            // expressions, so they're skipped.
+                            [1, 2, 3, 4, 8, 9].forEach(function (g) {
+                                if (optParts[g] === undefined) {
+                                    return;
+                                }
+                                out.push({
+                                    expr: optParts[g],
+                                    exprStart: valueStart + optParts.indices[g][0],
+                                    length: optParts[g].length,
+                                });
+                            });
                             continue;
                         }
 
