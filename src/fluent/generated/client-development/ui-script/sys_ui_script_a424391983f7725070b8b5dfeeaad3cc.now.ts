@@ -3157,6 +3157,73 @@ Record({
         return m ? m[1] : null;
     }
 
+    /**
+     * Builds instance-member suggestions (methods + properties) for a fetched
+     * Script Include, for use as the direct result of a completion request.
+     *
+     * @param {Array}  methods    - Result of fetchSiMethods(className).
+     * @param {string} className
+     * @param {Object} targetRange
+     * @returns {Array}
+     */
+    function _buildSiInstanceSuggestions(methods, className, targetRange) {
+        var methodSugs = (methods || [])
+            .filter(function (m) {
+                return !m.isConstructor && m.name;
+            })
+            .map(function (m) {
+                return {
+                    label: String(m.name),
+                    kind: monaco.languages.CompletionItemKind.Method,
+                    detail: String(m.signature),
+                    documentation: {
+                        value: String(m.documentation),
+                        isTrusted: true,
+                    },
+                    insertText: String(m.name),
+                    range: targetRange,
+                };
+            });
+        var props = _siPropertyCache[className] || [];
+        var propSugs = props.map(function (p) {
+            return {
+                label: String(p.name),
+                kind: monaco.languages.CompletionItemKind.Property,
+                detail: String(p.name) + ': ' + String(p.tsType),
+                documentation: p.documentation
+                    ? { value: String(p.documentation), isTrusted: true }
+                    : undefined,
+                insertText: String(p.name),
+                range: targetRange,
+            };
+        });
+        return methodSugs.concat(propSugs);
+    }
+
+    /**
+     * Builds constant suggestions for a fetched Script Include referenced by
+     * bare class name (e.g. IncidentUtilsSNC.SOME_CONSTANT).
+     *
+     * @param {string} className
+     * @param {Object} targetRange
+     * @returns {Array}
+     */
+    function _buildSiConstantSuggestions(className, targetRange) {
+        var consts = _siConstantCache[className] || [];
+        return consts.map(function (c) {
+            return {
+                label: String(c.name),
+                kind: monaco.languages.CompletionItemKind.Constant,
+                detail: className + '.' + c.name + ': ' + c.tsType,
+                documentation: c.documentation
+                    ? { value: c.documentation, isTrusted: true }
+                    : undefined,
+                insertText: String(c.name),
+                range: targetRange,
+            };
+        });
+    }
+
     function registerDotCompletions() {
         if (_completionRegistered || !window.monaco) {
             return;
@@ -3297,8 +3364,16 @@ Record({
                     if (_siMethodCache[siClassName]) {
                         return null;
                     }
-                    return fetchSiMethods(siClassName).then(function () {
-                        return null;
+                    return fetchSiMethods(siClassName).then(function (
+                        methods
+                    ) {
+                        return {
+                            suggestions: _buildSiInstanceSuggestions(
+                                methods,
+                                siClassName,
+                                targetRange
+                            ),
+                        };
                     });
                 }
 
@@ -3431,18 +3506,28 @@ Record({
                             return null;
                         }
                         return fetchSiMethods(varName).then(function () {
-                            return null;
+                            return {
+                                suggestions: _buildSiConstantSuggestions(
+                                    varName,
+                                    targetRange
+                                ),
+                            };
                         });
                     }
                     /* Not checked yet — verify name, register DTS if found */
                     return new Promise(function (resolve) {
                         _checkSiExists(varName, function (name) {
                             if (!name) {
-                                resolve(null);
+                                resolve({ suggestions: [] });
                                 return;
                             }
                             fetchSiMethods(name).then(function () {
-                                resolve(null);
+                                resolve({
+                                    suggestions: _buildSiConstantSuggestions(
+                                        name,
+                                        targetRange
+                                    ),
+                                });
                             });
                         });
                     });
@@ -3470,8 +3555,14 @@ Record({
                 if (_siMethodCache[className]) {
                     return null;
                 }
-                return fetchSiMethods(className).then(function () {
-                    return null;
+                return fetchSiMethods(className).then(function (methods) {
+                    return {
+                        suggestions: _buildSiInstanceSuggestions(
+                            methods,
+                            className,
+                            targetRange
+                        ),
+                    };
                 });
             },
         };

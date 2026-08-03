@@ -169,17 +169,33 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 : '';
         }
 
-        // Update set mismatch — only flag if widget's update set is still in progress
+        // Update set mismatch — only flag if widget's update set is still in progress.
+        // A revert creates a new sys_update_version marking the revert action, whose
+        // reverted_from points at the version actually reverted to; follow that chain
+        // to the version whose update set the widget's current content really reflects.
         var widgetUpdateSetId = '';
         var widgetUpdateSetName = '';
         var updateSetMismatch = false;
-        var uxGr = new GlideRecordSecure('sys_update_xml');
-        uxGr.addQuery('name', 'sp_widget_' + sysId);
-        uxGr.orderByDesc('sys_created_on');
-        uxGr.setLimit(1);
-        uxGr.query();
-        if (uxGr.next()) {
-            var uxSetId = uxGr.getValue('update_set');
+        var uvGr = new GlideRecordSecure('sys_update_version');
+        uvGr.addQuery('name', sysClassName + '_' + sysId);
+        uvGr.orderByDesc('sys_created_on');
+        uvGr.setLimit(1);
+        uvGr.query();
+        if (uvGr.next()) {
+            var seen = {};
+            seen[uvGr.getUniqueValue()] = true;
+            var revertedFrom = uvGr.getValue('reverted_from');
+            var resolvedGr = uvGr;
+            while (revertedFrom && !seen[revertedFrom]) {
+                seen[revertedFrom] = true;
+                var chainGr = new GlideRecordSecure('sys_update_version');
+                if (!chainGr.get(revertedFrom)) {
+                    break;
+                }
+                resolvedGr = chainGr;
+                revertedFrom = chainGr.getValue('reverted_from');
+            }
+            var uxSetId = resolvedGr.getValue('source');
             var usGr = new GlideRecordSecure('sys_update_set');
             if (usGr.get(uxSetId) && usGr.getValue('state') === 'in progress') {
                 widgetUpdateSetId = uxSetId;
