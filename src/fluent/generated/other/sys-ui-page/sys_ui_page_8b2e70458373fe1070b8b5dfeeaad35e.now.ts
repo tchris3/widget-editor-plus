@@ -987,37 +987,101 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
         /* Monaco popup overrides
            fixedOverflowWidgets:true causes Monaco to append suggest/hover widgets.
-           Override backgrounds so they're readable against the dark theme. */
-        .monaco-editor .suggest-widget,
-        .monaco-editor-overflowing-widgets .suggest-widget {
-            background-color: rgb(var(--now-color_background--tertiary)) !important;
-            border: 1px solid rgba(var(--now-color--neutral-0), 0.12) !important;
+           Colors key off Monaco's own vs/vs-dark theme-type class on .monaco-editor
+           (independent of the surrounding ServiceNow page theme), using VS Code's
+           default theme values for editorWidget/editorHoverWidget/editorSuggestWidget. */
+        .monaco-editor.vs-dark .suggest-widget,
+        .monaco-editor-overflowing-widgets.vs-dark .suggest-widget {
+            background-color: #252526 !important;
+            border: 1px solid rgba(204, 204, 204, 0.2) !important;
         }
-        .monaco-editor .suggest-widget .monaco-list-row,
-        .monaco-editor-overflowing-widgets .suggest-widget .monaco-list-row {
-            background-color: rgb(var(--now-color_background--tertiary));
-            color: rgb(var(--now-color_text--primary));
+        .monaco-editor.vs-dark .suggest-widget .monaco-list-row,
+        .monaco-editor-overflowing-widgets.vs-dark .suggest-widget .monaco-list-row {
+            background-color: #252526;
+            color: #bbbbbb;
         }
-        .monaco-editor .suggest-widget .monaco-list-row.focused,
-        .monaco-editor-overflowing-widgets .suggest-widget .monaco-list-row.focused {
-            background-color: rgba(var(--now-color--primary-1), 0.25);
-            color: rgb(var(--now-color--neutral-0));
+        .monaco-editor.vs-dark .suggest-widget .monaco-list-row.focused,
+        .monaco-editor-overflowing-widgets.vs-dark .suggest-widget .monaco-list-row.focused {
+            background-color: #04395e;
+            color: #ffffff;
         }
-        .monaco-editor .monaco-hover,
-        .monaco-editor-overflowing-widgets .monaco-hover {
-            background-color: rgb(var(--now-color_background--tertiary)) !important;
-            border: 1px solid rgba(var(--now-color--neutral-0), 0.12) !important;
-            color: rgb(var(--now-color_text--primary)) !important;
+        .monaco-editor.vs-dark .monaco-hover,
+        .monaco-editor-overflowing-widgets.vs-dark .monaco-hover {
+            background-color: #252526 !important;
+            border: 1px solid rgba(204, 204, 204, 0.2) !important;
+            color: #cccccc !important;
         }
-        .monaco-editor .monaco-hover .hover-row,
-        .monaco-editor-overflowing-widgets .monaco-hover .hover-row {
-            background-color: rgb(var(--now-color_background--tertiary));
+        .monaco-editor.vs-dark .monaco-hover .hover-row,
+        .monaco-editor-overflowing-widgets.vs-dark .monaco-hover .hover-row {
+            background-color: #252526;
         }
-        .monaco-editor .parameter-hints-widget,
-        .monaco-editor-overflowing-widgets .parameter-hints-widget {
-            background-color: rgb(var(--now-color_background--tertiary)) !important;
-            border: 1px solid rgba(var(--now-color--neutral-0), 0.12) !important;
-            color: rgb(var(--now-color_text--primary)) !important;
+        .monaco-editor.vs-dark .parameter-hints-widget,
+        .monaco-editor-overflowing-widgets.vs-dark .parameter-hints-widget {
+            background-color: #252526 !important;
+            border: 1px solid rgba(204, 204, 204, 0.2) !important;
+            color: #cccccc !important;
+        }
+        .monaco-editor.vs-dark .suggest-details,
+        .monaco-editor-overflowing-widgets.vs-dark .suggest-details {
+            background-color: #252526 !important;
+            border: 1px solid rgba(204, 204, 204, 0.2) !important;
+            color: #bbbbbb !important;
+        }
+        .monaco-editor.vs-dark .monaco-hover code,
+        .monaco-editor-overflowing-widgets.vs-dark .monaco-hover code,
+        .monaco-editor.vs-dark .suggest-details code,
+        .monaco-editor-overflowing-widgets.vs-dark .suggest-details code,
+        .monaco-editor.vs-dark .parameter-hints-widget .docs code,
+        .monaco-editor-overflowing-widgets.vs-dark .parameter-hints-widget .docs code {
+            background-color: rgba(10, 10, 10, 0.4) !important;
+            color: #cccccc !important;
+        }
+
+        .monaco-editor.vs .suggest-widget,
+        .monaco-editor-overflowing-widgets.vs .suggest-widget {
+            background-color: #f3f3f3 !important;
+            border: 1px solid rgba(97, 97, 97, 0.2) !important;
+        }
+        .monaco-editor.vs .suggest-widget .monaco-list-row,
+        .monaco-editor-overflowing-widgets.vs .suggest-widget .monaco-list-row {
+            background-color: #f3f3f3;
+            color: #333333;
+        }
+        .monaco-editor.vs .suggest-widget .monaco-list-row.focused,
+        .monaco-editor-overflowing-widgets.vs .suggest-widget .monaco-list-row.focused {
+            background-color: #0060c0;
+            color: #ffffff;
+        }
+        .monaco-editor.vs .monaco-hover,
+        .monaco-editor-overflowing-widgets.vs .monaco-hover {
+            background-color: #f3f3f3 !important;
+            border: 1px solid rgba(97, 97, 97, 0.2) !important;
+            color: #616161 !important;
+        }
+        .monaco-editor.vs .monaco-hover .hover-row,
+        .monaco-editor-overflowing-widgets.vs .monaco-hover .hover-row {
+            background-color: #f3f3f3;
+        }
+        .monaco-editor.vs .parameter-hints-widget,
+        .monaco-editor-overflowing-widgets.vs .parameter-hints-widget {
+            background-color: #f3f3f3 !important;
+            border: 1px solid rgba(97, 97, 97, 0.2) !important;
+            color: #616161 !important;
+        }
+        .monaco-editor.vs .suggest-details,
+        .monaco-editor-overflowing-widgets.vs .suggest-details {
+            background-color: #f3f3f3 !important;
+            border: 1px solid rgba(97, 97, 97, 0.2) !important;
+            color: #333333 !important;
+        }
+        .monaco-editor.vs .monaco-hover code,
+        .monaco-editor-overflowing-widgets.vs .monaco-hover code,
+        .monaco-editor.vs .suggest-details code,
+        .monaco-editor-overflowing-widgets.vs .suggest-details code,
+        .monaco-editor.vs .parameter-hints-widget .docs code,
+        .monaco-editor-overflowing-widgets.vs .parameter-hints-widget .docs code {
+            background-color: rgba(220, 220, 220, 0.4) !important;
+            color: #616161 !important;
         }
 
         /* Code action (lightbulb) popup */
