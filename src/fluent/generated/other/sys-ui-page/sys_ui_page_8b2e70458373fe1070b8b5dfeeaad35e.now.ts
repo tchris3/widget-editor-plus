@@ -6892,6 +6892,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 var NG_OPTIONS_REGEXP =
                     /^\\s*([\\s\\S]+?)(?:\\s+as\\s+([\\s\\S]+?))?(?:\\s+group\\s+by\\s+([\\s\\S]+?))?(?:\\s+disable\\s+when\\s+([\\s\\S]+?))?\\s+for\\s+(?:([\\$\\w][\\$\\w]*)|(?:\\(\\s*([\\$\\w][\\$\\w]*)\\s*,\\s*([\\$\\w][\\$\\w]*)\\s*\\)))\\s+in\\s+([\\s\\S]+?)(?:\\s+track\\s+by\\s+([\\s\\S]+?))?\\s*$/d;
 
+                // ngPattern accepts a scope expression or a bare regex literal (e.g. /^\\d+$/); validate literal shapes as RegExp, not via $parse.
+                var NG_PATTERN_REGEXP = /^\\/(.*)\\/([a-zA-Z]*)$/;
+
                 // Directives whose attribute value is a plain identifier/string rather
                 // than an Angular expression — $parse'ing these would misfire.
                 var NG_NON_EXPRESSION_ATTRS = {
@@ -6927,8 +6930,29 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         return null;
                     }
                     try {
-                        _ngParseFn = window.angular
-                            .injector(['ng'])
+                        var angular = window.angular;
+                        // Widget-defined filters aren't registered in this bare injector, so make $filter a no-op for unknown names.
+                        angular
+                            .module('weExprLintPermissiveFilters', [])
+                            .config([
+                                '$provide',
+                                function ($provide) {
+                                    $provide.decorator('$filter', [
+                                        '$delegate',
+                                        function ($delegate) {
+                                            return function (name) {
+                                                try {
+                                                    return $delegate(name);
+                                                } catch (e) {
+                                                    return angular.identity;
+                                                }
+                                            };
+                                        },
+                                    ]);
+                                },
+                            ]);
+                        _ngParseFn = angular
+                            .injector(['ng', 'weExprLintPermissiveFilters'])
                             .get('$parse');
                     } catch (e) {
                         _ngParseFn = null;
@@ -7031,6 +7055,25 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                             });
                             continue;
+                        }
+
+                        if (attrName === 'ng-pattern') {
+                            var patParts = NG_PATTERN_REGEXP.exec(value);
+                            if (patParts) {
+                                try {
+                                    new RegExp(patParts[1], patParts[2]);
+                                } catch (e) {
+                                    out.push({
+                                        expr: null,
+                                        exprStart: valueStart,
+                                        length: value.length,
+                                        forcedError:
+                                            e.message ||
+                                            'Invalid regular expression',
+                                    });
+                                }
+                                continue;
+                            }
                         }
 
                         out.push({
