@@ -8031,8 +8031,78 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }, 500);
                 };
 
+                var _providerScaffoldDefaultNames = {
+                    directive: 'myDirective',
+                    factory: 'myFactory',
+                    service: 'MyService',
+                };
+
+                function _buildProviderScaffold(providerType, fnName) {
+                    if (providerType === 'directive') {
+                        return (
+                            'function ' + fnName + '() {\\n' +
+                            '    return {\\n' +
+                            "        restrict: 'E',\\n" +
+                            '        scope: {},\\n' +
+                            "        controllerAs: 'c',\\n" +
+                            '        bindToController: true,\\n' +
+                            '        template: \`\`,\\n' +
+                            '        link: function (scope, element, attrs) {},\\n' +
+                            '        controller: function ($scope, $element, $attrs) {},\\n' +
+                            '    };\\n' +
+                            '}\\n'
+                        );
+                    }
+                    if (providerType === 'factory') {
+                        return (
+                            'function ' + fnName + '() {\\n' +
+                            '    return {\\n' +
+                            '        someMethod: function () {},\\n' +
+                            '    };\\n' +
+                            '}\\n'
+                        );
+                    }
+                    if (providerType === 'service') {
+                        return (
+                            'function ' + fnName + '() {\\n' +
+                            '    this.someMethod = function () {};\\n' +
+                            '}\\n'
+                        );
+                    }
+                    return null;
+                }
+
                 $scope.onProviderTypeChange = function (pane) {
                     pane.dirty = true;
+                    var editor = monacoEditors[pane.key];
+                    var currentValue = editor
+                        ? editor.getValue()
+                        : pane.content || '';
+                    // Only auto-swap when the pane is empty or still holds exactly
+                    // the scaffold we last inserted — anything the user typed over
+                    // it is left alone.
+                    if (
+                        currentValue.trim() !== '' &&
+                        currentValue !== pane._scaffoldContent
+                    ) {
+                        return;
+                    }
+                    var fnName =
+                        pane.recordId ||
+                        _providerScaffoldDefaultNames[pane.providerType] ||
+                        'myProvider';
+                    var scaffold = _buildProviderScaffold(
+                        pane.providerType,
+                        fnName
+                    );
+                    if (!scaffold) {
+                        return;
+                    }
+                    pane.content = scaffold;
+                    pane._scaffoldContent = scaffold;
+                    if (editor) {
+                        editor.setValue(scaffold);
+                    }
                 };
 
                 function _handleCtrlS(pane) {
