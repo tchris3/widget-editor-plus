@@ -186,9 +186,17 @@ Record({
     /* { name: true } — SI names already fetched or in-flight via _fetchSIIntellisense. */
     var _siFetched = {};
 
-    /* { TableName: FieldDescriptor[] } — populated lazily on first GlideRecord dot trigger. */
+    /* { TableName: FieldDescriptor[] } — populated lazily on first GlideRecord dot trigger.
+     * Holds the fully-merged field list (own + inherited) for the requested table. */
     var _tableFieldCache = {};
     var _tablePendingCache = {};
+
+    /* { TableName: FieldDescriptor[] } — fields defined directly on one table (no inheritance). */
+    var _ownTableFieldCache = {};
+    var _ownTablePendingCache = {};
+
+    /* { TableName: Promise<string[]> } — [table, parent, grandparent, ...] via super_class. */
+    var _tableHierarchyCache = {};
 
     /* { name: string, value: string }[] — CSS custom properties loaded from sys_properties. */
     var _cssVarCache = null;
@@ -893,19 +901,17 @@ Record({
     }
 
     /**
-     * Fetches field descriptors for a ServiceNow table from sys_dictionary.
-     * Results are cached per table name; concurrent requests are deduplicated.
-     *
+     * Fetches field descriptors defined directly on one table (no inheritance).
      * @param {string} tableName - ServiceNow table name (e.g. 'incident').
      * @returns {Promise<Array<Object>>}
      */
-    function fetchTableFields(tableName) {
-        if (_tableFieldCache[tableName]) {
-            return Promise.resolve(_tableFieldCache[tableName]);
+    function _fetchOwnTableFields(tableName) {
+        if (_ownTableFieldCache[tableName]) {
+            return Promise.resolve(_ownTableFieldCache[tableName]);
         }
 
-        if (!_tablePendingCache[tableName]) {
-            _tablePendingCache[tableName] = new Promise(function (resolve) {
+        if (!_ownTablePendingCache[tableName]) {
+            _ownTablePendingCache[tableName] = new Promise(function (resolve) {
                 var xhr = new XMLHttpRequest();
                 var url =
                     '/api/now/table/sys_dictionary' +
@@ -950,18 +956,110 @@ Record({
                         }
                     } catch (e) {}
                     if (fields !== null) {
-                        _tableFieldCache[tableName] = fields;
+                        _ownTableFieldCache[tableName] = fields;
                     } else {
                         fields = [];
                     }
-                    delete _tablePendingCache[tableName];
+                    delete _ownTablePendingCache[tableName];
                     resolve(fields);
                 };
                 xhr.onerror = function () {
-                    delete _tablePendingCache[tableName];
+                    delete _ownTablePendingCache[tableName];
                     resolve([]);
                 };
                 xhr.send();
+            });
+        }
+
+        return _ownTablePendingCache[tableName];
+    }
+
+    /**
+     * Walks a table's super_class chain: [tableName, parent, grandparent, ...].
+     * @param {string} tableName - ServiceNow table name.
+     * @returns {Promise<string[]>}
+     */
+    function _fetchTableHierarchy(tableName) {
+        if (_tableHierarchyCache[tableName]) {
+            return _tableHierarchyCache[tableName];
+        }
+
+        _tableHierarchyCache[tableName] = new Promise(function (resolve) {
+            var chain = [];
+
+            function step(name) {
+                if (!name || chain.indexOf(name) !== -1) {
+                    resolve(chain);
+                    return;
+                }
+                chain.push(name);
+
+                var xhr = new XMLHttpRequest();
+                var url =
+                    '/api/now/table/sys_db_object' +
+                    '?sysparm_query=name%3D' +
+                    encodeURIComponent(name) +
+                    '&sysparm_fields=super_class.name&sysparm_limit=1';
+                xhr.open('GET', url, true);
+                xhr.setRequestHeader('X-UserToken', window.g_ck || '');
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.onload = function () {
+                    var parent = null;
+                    try {
+                        if (xhr.status === 200) {
+                            var data = JSON.parse(xhr.responseText);
+                            var rec = data && data.result && data.result[0];
+                            parent = rec
+                                ? _snVal(rec['super_class.name'])
+                                : null;
+                        }
+                    } catch (e) {}
+                    step(parent || null);
+                };
+                xhr.onerror = function () {
+                    resolve(chain);
+                };
+                xhr.send();
+            }
+
+            step(tableName);
+        });
+
+        return _tableHierarchyCache[tableName];
+    }
+
+    /**
+     * Fetches field descriptors for a table, merged with all inherited fields.
+     * @param {string} tableName - ServiceNow table name (e.g. 'incident').
+     * @returns {Promise<Array<Object>>}
+     */
+    function fetchTableFields(tableName) {
+        if (_tableFieldCache[tableName]) {
+            return Promise.resolve(_tableFieldCache[tableName]);
+        }
+
+        if (!_tablePendingCache[tableName]) {
+            _tablePendingCache[tableName] = _fetchTableHierarchy(
+                tableName
+            ).then(function (chain) {
+                return Promise.all(
+                    (chain.length ? chain : [tableName]).map(
+                        _fetchOwnTableFields
+                    )
+                ).then(function (fieldLists) {
+                    var merged = {};
+                    for (var i = fieldLists.length - 1; i >= 0; i--) {
+                        fieldLists[i].forEach(function (f) {
+                            merged[f.name] = f;
+                        });
+                    }
+                    var fields = Object.keys(merged).map(function (k) {
+                        return merged[k];
+                    });
+                    _tableFieldCache[tableName] = fields;
+                    delete _tablePendingCache[tableName];
+                    return fields;
+                });
             });
         }
 

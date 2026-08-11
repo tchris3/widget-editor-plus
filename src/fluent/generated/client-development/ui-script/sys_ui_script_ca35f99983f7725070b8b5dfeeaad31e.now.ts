@@ -52,7 +52,7 @@ Record({
         return;
     }
 
-    var _v = '2026-08-03T12:00';
+    var _v = '2026-08-11T12:00';
     var CORE_UI_SCRIPT_URL = '/monaco_plus_core.jsdbx?sysparm_substitute=false&v=' + _v;
     var MONACO_BUNDLE_URL =
         '/scripts/snc-code-editor/monaco.bundle.min.jsx?sysparm_substitute=false';
@@ -231,6 +231,9 @@ Record({
      * @returns {Promise<Object|null>} Promise resolving to the enhancer API or null.
      */
     function init(config) {
+        /* Idempotent; safe on pages that already loaded these styles natively. */
+        _ensureMonacoCss();
+        _ensureHoverCodeColorFix();
         return ensureCoreLoaded().then(function (api) {
             if (api && typeof api.init === 'function') {
                 api.init(config || {});
@@ -281,6 +284,25 @@ Record({
         link.rel = 'stylesheet';
         link.href = MONACO_CSS_URL;
         global.document.head.appendChild(link);
+    }
+
+    /**
+     * Pins hover-widget code-span text color to Monaco's own theme.
+     */
+    function _ensureHoverCodeColorFix() {
+        if (
+            !global.document ||
+            global.document.getElementById('sn-monaco-plus-hover-code-fix')
+        ) {
+            return;
+        }
+        var style = global.document.createElement('style');
+        style.id = 'sn-monaco-plus-hover-code-fix';
+        style.textContent =
+            '.monaco-editor .monaco-hover code {' +
+            'color: var(--vscode-textPreformat-foreground, var(--vscode-editor-foreground));' +
+            '}';
+        global.document.head.appendChild(style);
     }
 
     /**
