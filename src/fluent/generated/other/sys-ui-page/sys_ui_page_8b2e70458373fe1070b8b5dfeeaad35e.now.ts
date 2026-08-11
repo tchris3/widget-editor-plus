@@ -6783,6 +6783,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     'ng-list': true,
                     // ng-switch-when compares its value as a raw (optionally comma-separated) string.
                     'ng-switch-when': true,
+                    // ng-switch-when-separator is a literal separator string, not an expression.
+                    'ng-switch-when-separator': true,
                 };
 
                 // Attributes holding interpolated text (e.g. {{ }} in a URL), not a standalone expression.
