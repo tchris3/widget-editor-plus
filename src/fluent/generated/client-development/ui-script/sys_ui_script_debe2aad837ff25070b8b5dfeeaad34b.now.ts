@@ -10,7 +10,23 @@ Registers as window.MONACO_LANGUAGE_CSS.`,
         global: 'false',
         ignore_in_now_experience: 'false',
         name: 'monaco_language_css',
-        script: `/* global monaco */
+        script: `/**
+ * ============================================================================
+ * UI Script: monaco_language_css
+ * ============================================================================
+ * Purpose: CSS/SCSS completion providers for at-rules (@media, @font-face,
+ * @keyframes, etc.) and their valid descriptors, for editors using the
+ * 'css'/'scss' Monaco languages.
+ *
+ * Contains:
+ *   - _atRules table — at-rule names, descriptions, MDN links, and each
+ *     rule's valid inner descriptors
+ *   - Completion provider for at-rule names (fires on '@')
+ *   - Completion provider for descriptors inside a recognised at-rule block
+ *   - global.MONACO_LANGUAGE_CSS.register(monacoInstance) — entry point
+ * ============================================================================
+ */
+/* global monaco */
 (function(global) {
     'use strict';
 
@@ -18,12 +34,7 @@ Registers as window.MONACO_LANGUAGE_CSS.`,
         return;
     }
 
-    /*
-     * At-rule definitions: name, human-readable description, and the list of
-     * valid descriptors (properties or conditions) inside the at-rule block.
-     * Descriptors prefixed with '@' are nested at-rules and receive Keyword kind;
-     * all others receive Property kind.
-     */
+    /* Descriptors prefixed with '@' are nested at-rules (Keyword kind); all others are Property kind. */
     var _atRules = [
         {
             name: '@charset',
@@ -346,20 +357,7 @@ Registers as window.MONACO_LANGUAGE_CSS.`,
 
 
     /**
-     * Registers CSS completion providers for at-rule names and their descriptors
-     * against the given Monaco instance. Safe to call multiple times — only
-     * registers on the first call.
-     *
-     * Registers two providers for the 'css' and 'scss' languages:
-     *
-     *   1. At-rule names — fires on '@', lists all known at-rules with descriptions.
-     *      The insertText omits the leading '@' because it is already in the document
-     *      and the replacement range starts directly after it.
-     *
-     *   2. Descriptors — when the cursor is inside a recognised @rule block, offers
-     *      the valid descriptors for that rule. @-prefixed descriptors (nested at-rules)
-     *      are treated as keywords; others are treated as properties.
-     *
+     * Registers CSS/SCSS completion providers for at-rule names and their descriptors.
      * @param {Object} monacoInstance - The global monaco namespace object.
      */
     function register(monacoInstance) {
@@ -444,11 +442,7 @@ Registers as window.MONACO_LANGUAGE_CSS.`,
                                 kind: isAtRule
                                     ? monacoInstance.languages.CompletionItemKind.Keyword
                                     : monacoInstance.languages.CompletionItemKind.Property,
-                                /*
-                                 * Nested @-rule descriptors: omit the '@' (already matched
-                                 * by the parent at-rule provider's trigger). Regular property
-                                 * descriptors: append ': ' to position the cursor for a value.
-                                 */
+                                /* Nested at-rules omit the already-matched '@'; properties append ': ' for the value. */
                                 insertText: isAtRule ? desc.slice(1) : desc + ': ',
                                 range: range
                             };

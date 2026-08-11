@@ -10,66 +10,30 @@ Registers as window.MONACO_LANGUAGE_CLIENT_DTS, plus window.MONACO_LANGUAGE_CLIE
         global: 'false',
         ignore_in_now_experience: 'false',
         name: 'monaco_language_client',
-        script: `(function () {
+        script: `/**
+ * ============================================================================
+ * UI Script: monaco_language_client
+ * ============================================================================
+ * Purpose: Ambient TypeScript declarations for AngularJS, jQuery, and
+ * ServiceNow client-side APIs, so Monaco's TS/JS language service gives
+ * accurate completions/hover/signature help in client_script, link, and
+ * Angular-provider editors.
+ *
+ * Contains:
+ *   - Vendored AngularJS 1.x + jQuery ambient declarations (adapted from
+ *     DefinitelyTyped's angular.d.ts / jquery.d.ts)
+ *   - ServiceNow client API declarations: GlideForm, GlideUser, GlideAjax,
+ *     GlideModal(Form), GlideDialogWindow, GlideList(2), GlideRecord (client),
+ *     spUtil, spModal, spAriaUtil, spContextManager, and more
+ *   - window.MONACO_LANGUAGE_CLIENT_DTS — the declaration string, injected
+ *     via loadClientMonarchDts() in monaco_plus_core
+ *   - window.MONACO_LANGUAGE_CLIENT_DI — DI token → type map and the
+ *     'declare var api' signature builder used for name-based Angular
+ *     injection typing on the widget api object
+ * ============================================================================
+ */
+(function () {
     'use strict';
-
-    // Exposes TypeScript ambient declarations for all ServiceNow client-side APIs
-    // used in SP widget client controllers, providers, and link functions:
-    //
-    //   AngularJS 1.x  (all @see links → https://docs.angularjs.org/api/ng/service/<name>)
-    //   • angular namespace    — IPromise, IDeferred, IScope, IHttpService, IQService,
-    //                            IAnchorScrollService, ICacheFactoryService, ICacheObject,
-    //                            ICompileService, IControllerService, IExceptionHandlerService,
-    //                            IInterpolateService, IParseService, ITemplateCacheService, etc.
-    //   • $scope, $http, $q, $timeout, $interval, $location, $filter, $log,
-    //     $window, $document, $rootScope, $sce, $animate,
-    //     $anchorScroll, $cacheFactory, $compile, $controller, $exceptionHandler,
-    //     $interpolate, $parse, $templateCache
-    //   • data, options        — SP widget injected variables
-    //   • $j, jQuery, $        — jQuery (JQueryStatic, JQuery, JQueryEventObject,
-    //                            JQueryAjaxSettings, JQueryXHR, JQueryDeferred,
-    //                            JQueryPromise)
-    //
-    //   ServiceNow Client APIs (Xanadu Client API Reference — complete)
-    //   • GlideForm / g_form         — form manipulation
-    //   • GlideUser / g_user         — current user
-    //   • GlideList2 / g_list        — legacy related-list interaction
-    //   • GlideList                  — Next Experience related-list API
-    //   • GlideAjax                  — async Script Include calls
-    //   • GlideDialogWindow          — legacy dialog windows
-    //   • GlideURL                   — URL builder
-    //   • GlideNavigation            — navigation helpers
-    //   • GlideRecord (client)       — async client-side record API
-    //   • GlideFlow                  — trigger flows / subflows / actions
-    //   • GlideDocument              — DOM element helpers
-    //   • GlideGuid                  — GUID generation
-    //   • GlideModal                 — legacy modal dialogs
-    //   • GlideModalForm             — legacy modal forms
-    //   • GlideNotification          — toast notifications
-    //   • GlideMenu / g_menu         — context menus
-    //   • GlideMenuItem / g_item     — context menu items
-    //   • GlideUIScripts             — on-demand UI script loading
-    //   • GlideAgentWorkspace / g_aw — Agent Workspace control
-    //   • spModal                    — Service Portal modal dialogs
-    //   • spUtil                     — Service Portal client utility
-    //   • spAriaUtil                 — Service Portal accessibility
-    //   • spContextManager           — Service Portal navigation
-    //   • g_service_catalog          — Service Catalog client helpers
-    //   • g_modal                    — global modal shortcut
-    //   • i18N                       — internationalisation
-    //   • DynamicTranslation         — real-time translation
-    //   • StandaloneClientMethods    — standalone script helpers
-    //   • ScriptLoader               — dynamic resource loading
-    //   • StopWatch                  — client-side timer
-    //   • SNAnalytics                — analytics events
-    //   • openFrameAPI               — OpenFrame CTI integration
-    //   • ScopedSessionDomain        — domain session API
-    //   • NotifyClient               — Notify voice/SMS
-    //   • NotifyOnTaskClient         — Notify scoped to a task
-    //   • GuidedTours                — Guided Tour API
-    //
-    // The consumer script calls loadClientMonarchDts() which injects this string
-    // into Monaco via javascriptDefaults.addExtraLib('ts:snlib-client-monarch.d.ts').
 
     window.MONACO_LANGUAGE_CLIENT_DTS = \`// -----------------------------------------------------------------------------
 // AngularJS 1.x type declarations
@@ -2758,15 +2722,7 @@ type $element = JQLite;
 type $window = Window & typeof globalThis;
 type $document = JQLite;
 
-// NOTE: The 'api' object (api.controller / api.link) is intentionally NOT
-// declared in this static lib. AngularJS injects controller arguments by
-// parameter NAME, not position, so any fixed positional signature would
-// mis-type every controller whose injection order differs from it.
-// Instead, monaco_plus_core watches the client-controller model, parses the
-// parameter list the developer actually wrote, and (re)registers a matching
-// 'declare var api' signature as extra lib 'ts:snlib-client-api.d.ts',
-// typing each parameter by name via the DI token map exposed below as
-// window.MONACO_LANGUAGE_CLIENT_DI.
+// 'api' isn't declared here since AngularJS injects by name, not position; monaco_plus_core builds a matching 'declare var api' from the parsed controller params (see MONACO_LANGUAGE_CLIENT_DI).
 
     /**
     * Compiles a string with \\\`{{ }}\\\` markup into an interpolation function.
@@ -6100,17 +6056,7 @@ type $document = JQLite;
     }
 \`;
 
-    // -----------------------------------------------------------------------------
-    // AngularJS dependency-injection support for the widget 'api' object.
-    //
-    // AngularJS resolves injected services by parameter NAME, not position, so
-    // the ambient 'declare var api' signature must mirror the exact parameter
-    // order written in the controller being edited. buildApiDts() generates
-    // that declaration from a parsed parameter-name list; every name is typed
-    // via DI_TYPES (unknown names fall back to any). monaco_plus_core calls it
-    // on (debounced) controller edits and re-registers the result under the
-    // stable extra-lib URI 'ts:snlib-client-api.d.ts'.
-    // -----------------------------------------------------------------------------
+    // buildApiDts() generates 'declare var api' from parsed controller params, typed via DI_TYPES.
 
     // DI token → TypeScript type name, matching the declarations in the DTS above.
     var DI_TYPES = {

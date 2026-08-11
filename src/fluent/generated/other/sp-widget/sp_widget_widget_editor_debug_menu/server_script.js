@@ -1,15 +1,4 @@
-/**
- * Server-side script for the Widget Editor Debug Menu widget.
- *
- * Handles two responsibilities:
- *   1. Saves the user's debug menu preferences to sys_user_preference when
- *      the client sends a savePreferences action.
- *   2. Returns the stored preferences JSON string on every server call so the
- *      client can restore them across devices.
- *
- * Note: When impersonating a user, preferences are always loaded and saved for
- * the real user (impersonator), never the impersonated user.
- */
+/** Saves/returns debug menu preferences; while impersonating, always uses the real user, not the impersonated one. */
 (function () {
     var PREF_KEY = 'we_debug_menu_prefs';
     var impersonatedUser = gs.getImpersonatingUserName();
@@ -113,11 +102,7 @@
     }
 
     if (input && input.action === 'savePreferences') {
-        /*
-         * input.preferences is a Java-backed object in Rhino — serialise it to a
-         * JSON string before storing.  Passing it as an object from the client
-         * (rather than a pre-stringified string) avoids SP's double-encoding bug.
-         */
+        // input.preferences is a Rhino object; JSON.stringify it before storing.
         var toStore = '';
         try {
             toStore = JSON.stringify(input.preferences) || '{}';

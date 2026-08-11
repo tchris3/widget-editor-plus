@@ -11,63 +11,27 @@ Record({
         ignore_in_now_experience: 'false',
         name: 'monaco_plus_core',
         script: `/**
- * SNMonacoPlus — Core Monaco enhancement library for ServiceNow.
+ * ============================================================================
+ * UI Script: monaco_plus_core
+ * ============================================================================
+ * Purpose: Core Monaco enhancement library — the bulk of Widget Editor+'s
+ * IntelliSense. Loaded on-demand via SNMonacoPlusBootstrap.init(); see
+ * monaco_plus_bootstrap for config options and the loading sequence.
  *
- * Enriches Monaco Editor instances on ServiceNow pages with:
- *  - Server-side IntelliSense: Script Include dot-completions, GlideRecord field
- *    completions, and hover documentation fetched live from the instance.
- *  - Type definitions: ServiceNow server API (via /api/now/syntax_editor/completions)
- *    and the Monarch DTS for server or client language services.
- *  - Client-side IntelliSense: AngularJS, g_form, spUtil, and $sp type declarations.
- *  - HTML editor support: AngularJS ng-* / sp-* tokenizer via MONACO_LANGUAGE_HTML.
- *  - Code actions: JSDoc insertion (JavaScript) and px→rem conversion (CSS/SCSS).
- *  - CSS variable completions sourced from sys_properties.
- *  - Configurable per-language initialisation: 'javascript' (server), 'javascript' +
- *    isClient:true (client), 'typescript' (Widget Editor server pane), 'html', 'css', 'scss'.
- *
- * This script is intentionally loaded on-demand by SNMonacoPlusBootstrap rather
- * than eagerly included on every page. Call SNMonacoPlusBootstrap.init() instead
- * of referencing this script directly.
- *
- * ── Usage ───────────────────────────────────────────────────────────────────────────
- *
- * Typical usage from a Client Script (onLoad) via the Bootstrap UI Script:
- *
- *   // Server-side Script Include form (default — javascript language):
- *   SNMonacoPlusBootstrap.init();
- *
- *   // Server-side Script Include form with app scope for SN type completions:
- *   SNMonacoPlusBootstrap.init({ appSysId: g_form.getValue('sys_scope') });
- *
- *   // Client script form (client-side DTS — AngularJS, g_form, spUtil):
- *   SNMonacoPlusBootstrap.init({ isClient: true });
- *
- *   // Widget Editor server pane (TypeScript language service, so it can coexist
- *   // with a simultaneous javascript-language client pane):
- *   SNMonacoPlusBootstrap.init({ language: 'typescript', appSysId: scopeSysId });
- *
- *   // Widget Editor client pane:
- *   SNMonacoPlusBootstrap.init({ language: 'javascript', isClient: true });
- *
- *   // SCSS editor (px→rem code actions + CSS variable completions):
- *   SNMonacoPlusBootstrap.init({ language: 'scss', getRemBase: function() { return 16; } });
- *
- * Safe to call multiple times — per-language initialisation is idempotent.
- * The Bootstrap script ensures the core is loaded only once regardless of how many
- * Client Scripts call init().
- *
- * ── Config options ───────────────────────────────────────────────────────────────────
- *
- *   language          'javascript' | 'typescript' | 'html' | 'css' | 'scss'  (default: 'javascript')
- *   isClient          boolean — load client-side DTS instead of server DTS    (default: false)
- *   appSysId          string  — scope sys_id passed to the SN completions API  (default: undefined)
- *   getRemBase        fn→number — returns the CSS rem base for px→rem actions  (default: ()=>16)
- *   pollIntervalMs    number  — Monaco readiness poll interval in ms            (default: 200)
- *   maxWaitMs         number  — max time to wait for Monaco in ms               (default: 10000)
- *   definitionUrl     string  — override URL for the server Monarch DTS script  (default: built-in)
- *   clientDefinitionUrl string — override URL for the client Monarch DTS script (default: built-in)
- *   codeActionsUrl    string  — override URL for the code actions script        (default: built-in)
- *   htmlMonarchUrl    string  — override URL for the HTML Monarch script        (default: built-in)
+ * Contains:
+ *   - Script Include parsing (methods/typedefs/constants) and dot-completion,
+ *     hover, and signature-help providers for this.X / instance.X
+ *   - GlideRecord/GlideRecordSecure field completion & hover, including
+ *     inherited fields via a sys_dictionary + sys_db_object.super_class walk
+ *   - Table-name completions for GlideRecord/GlideAggregate constructors
+ *   - SN server/client TypeScript DTS loading & runtime patching (strips
+ *     primitive-type augmentations, fixes the non-constructable
+ *     GlideRecordSecure declaration)
+ *   - CSS/SCSS custom-property completions & hover
+ *   - AngularJS widget 'api' object DI-aware typing (client panes)
+ *   - Quick-info hover replacement (works around SN's broken JSDoc rendering)
+ *   - window.SNMonacoPlus.init(config) — the main per-language entry point
+ * ============================================================================
  */
 /* global ScriptLoader */
 (function (global) {
@@ -149,45 +113,28 @@ Record({
     var _showUnusedVars = true;
     var _scheduleUnusedRefresh = null;
 
-    /*
-     * { ClassName: ParsedMethod[] }   — populated lazily on first dot trigger.
-     * { ClassName: string[] }         — interface declarations from @typedef blocks.
-     * { ClassName: ParsedConstant[] } — static property assignments (e.g. MyService.X = 1).
-     * { ClassName: Promise }          — deduplicates in-flight fetches.
-     */
+    /* Per-class SI parse caches: methods, typedef interfaces, static constants; keyed by class name. */
     var _siMethodCache = {};
     var _siInterfaceCache = {};
     var _siConstantCache = {};
     var _siPropertyCache = {};
     var _siPendingCache = {};
 
-    /*
-     * Set of class names for which we have registered a fully-typed d.ts.
-     * Used to filter out SN's untyped overloads that would otherwise cause
-     * TypeScript to merge \\\`getCount(): any\\\` with our \\\`getCount(): number\\\`,
-     * producing spurious GlideElement suggestions for primitive-typed variables.
-     */
+    /* { ClassName: true } — classes with a full d.ts, filtered from SN's untyped overloads to prevent type merging. */
     var _siProtectedClasses = {};
     var _addExtraLibFilterInstalled = false;
 
-    /* Matches SN's augmentations that make Number/String/Boolean/Any extend GlideElement,
-     * causing GlideElement methods to appear as completions on all primitive types. */
+    /* Matches SN's Number/String/Boolean/Any-extends-GlideElement augmentations. */
     var _PRIM_AUG_RE = /(?:declare\\s+)?interface\\s+(?:Number|String|Boolean|Any)\\s+extends\\s+GlideElement\\b[^{]*\\{[^}]*\\}/g;
     var _primitiveAugsCleaned = false;
 
-    /*
-     * Lazy SI name cache.
-     * { name: sys_id }  — confirmed Script Include (sys_id string).
-     * { name: '' }      — confirmed non-SI (negative cache, avoids repeat lookups).
-     * key absent        — not yet checked.
-     */
+    /* Lazy SI name cache: sys_id when confirmed, '' when confirmed non-SI, absent when unchecked. */
     var _siNameMap = {};
 
     /* { name: true } — SI names already fetched or in-flight via _fetchSIIntellisense. */
     var _siFetched = {};
 
-    /* { TableName: FieldDescriptor[] } — populated lazily on first GlideRecord dot trigger.
-     * Holds the fully-merged field list (own + inherited) for the requested table. */
+    /* { TableName: FieldDescriptor[] } — merged own + inherited fields for the table. */
     var _tableFieldCache = {};
     var _tablePendingCache = {};
 
@@ -266,8 +213,7 @@ Record({
         document.head.appendChild(script);
     }
 
-    /* Extracts a scalar value from a ServiceNow REST response field, which may be
-     * a plain string or a {value, display_value} link object depending on the endpoint. */
+    /* Extracts a scalar from a REST field that may be a plain string or a {value, display_value} object. */
     function _snVal(v, fallback) {
         if (v == null) {
             return fallback != null ? fallback : '';
@@ -415,8 +361,7 @@ Record({
             }
             var name = typedefMatch[1];
             var props = [];
-            /* Captures the trailing description too, so hover has something to
-             * show; \\\`[name]\\\` marks the property optional. */
+            /* Captures trailing description for hover; \\\`[name]\\\` marks the property optional. */
             var propRe =
                 /@property\\s*\\{([^}]+)\\}\\s*(\\[?)([\\w$]+)\\]?[ \\t]*(?:-[ \\t]*)?([^\\r\\n]*)/g;
             var pm;
@@ -1357,9 +1302,7 @@ Record({
             return null;
         }
 
-        // Detect dot-walk: split typed portion into completed path segments and the
-        // segment currently being typed.  Adjust range to cover only the last segment
-        // so completions replace only the current word, not the entire chain.
+        // Adjusts range to cover only the last dot-walk segment, so completions replace the current word, not the whole chain.
         var dotPath = [];
         var rangeStartCol = startIdx + 2; // 1-based, right after the opening quote
 
@@ -1368,9 +1311,7 @@ Record({
             var pathPart = typed.substring(0, lastDot);
             dotPath =
                 pathPart.length > 0 ? pathPart.split('.').filter(Boolean) : [];
-            // 1-based column of the character right after the dot:
-            //   startIdx(0-based quote) + lastDot(offset in typed) + 3
-            // = (startIdx+1)(first string char) + lastDot + 1(past the dot) + 1(1-based)
+            // rangeStartCol: 1-based column right after the last dot.
             rangeStartCol = startIdx + lastDot + 3;
         }
 
@@ -1514,18 +1455,11 @@ Record({
             return;
         }
 
-        /* Distinct from SN's own 'ts:snlib-si-*' URI: overwriting SN's entry in place
-         * does not propagate to the TS worker, and the filter below must be able to
-         * tell our declarations apart from SN's untyped ones. */
+        /* Uses a distinct URI from SN's own — overwriting SN's entry in place doesn't propagate to the TS worker. */
         var ourUri = 'ts:snlib-si-plus-' + className + '.d.ts';
         var classMarker = 'class ' + className;
 
-        /* One-time: strip SN's primitive-type augmentations from all registered libs.
-         * SN's global DTS declares \\\`interface Number extends GlideElement, number {}\\\`
-         * (and the same for String/Boolean/Any), which makes GlideElement methods
-         * appear on every number/string/boolean variable. These are registered by
-         * SN's page code before our patch is installed, so we scan and re-register
-         * each affected lib with those lines removed. */
+        /* One-time: strips SN's Number/String/Boolean/Any-extends-GlideElement augmentations from all registered libs. */
         if (!_primitiveAugsCleaned) {
             _primitiveAugsCleaned = true;
             ['javascriptDefaults', 'typescriptDefaults'].forEach(function (
@@ -1546,12 +1480,7 @@ Record({
             });
         }
 
-        /* Reactive: clear any existing random-URI libs that contain an untyped
-         * declaration for this class. SN's native addDeclarations() calls
-         * addExtraLib() without a URI, landing the class at a random key.
-         * TypeScript would otherwise merge the two overloads (one returning \\\`any\\\`,
-         * one returning our typed value), surfacing spurious GlideElement suggestions
-         * for variables whose return type we have correctly annotated. */
+        /* Reactive: clears random-URI libs with an untyped declaration for this class so TypeScript doesn't merge overloads. */
         ['javascriptDefaults', 'typescriptDefaults'].forEach(function (target) {
             var defs = monaco.languages.typescript[target];
             var libs = defs.getExtraLibs();
@@ -1565,15 +1494,7 @@ Record({
             });
         });
 
-        /* Proactive: patch both javascriptDefaults and typescriptDefaults so
-         * that future calls with SN's untyped class declarations are stripped
-         * for any class we have taken ownership of.
-         *
-         * We intercept ALL addExtraLib calls except our own 'ts:snlib-si-plus-*' URIs.
-         * Restricting by URI pattern (e.g. only 'global.X' or unkeyed) misses
-         * cases where SN re-registers using unexpected URI patterns. The replace
-         * is gated on _siProtectedClasses, so we never strip a class we haven't
-         * explicitly taken ownership of. */
+        /* Proactive: patches addExtraLib to strip SN's untyped declarations for classes we own, except our own URIs. */
         if (!_addExtraLibFilterInstalled) {
             _addExtraLibFilterInstalled = true;
             var _OUR_URI_RE = /^ts:snlib-si-plus-/;
@@ -1897,15 +1818,7 @@ Record({
         jsDef.setEagerModelSync(true);
     }
 
-    /*
-     * Installs per-model watchers that call the TypeScript/JavaScript language
-     * service worker directly to retrieve only unused-variable (6133) and
-     * unused-parameter (6196) diagnostics. These are set as custom Warning
-     * markers under the 'we-unused' owner, keeping them completely separate
-     * from Monaco's own 'typescript' marker set.  noSemanticValidation remains
-     * true so no other semantic squiggles appear; noUnusedLocals/Parameters
-     * must be true in compiler options so the worker generates these codes.
-     */
+    /* Installs per-model watchers that fetch only unused-var/param diagnostics (6133/6196) as separate 'we-unused' markers. */
     var _unusedVarPatchInstalled = false;
     function _installUnusedVarSeverityPatch() {
         if (_unusedVarPatchInstalled || !window.monaco || !monaco.editor) {
@@ -1995,12 +1908,7 @@ Record({
         monaco.editor.onDidCreateModel(_watch);
     }
 
-    /**
-     * Fetches ServiceNow's server-side type declaration file from the syntax
-     * editor completions endpoint and registers it with both TypeScript and
-     * JavaScript language services. Applies a patch for a mis-declared
-     * GlideRecordSecure that would otherwise suppress all its instance completions.
-     */
+    /** Fetches and registers SN's server-side type declarations, patching the mis-declared GlideRecordSecure. */
     function loadSnTypeDefinitions(scopeOverride, targetLang) {
         if (
             !window.monaco ||
@@ -2045,12 +1953,7 @@ Record({
                 return;
             }
 
-            /*
-             * The SN DTS declares GlideRecordSecure as extending GlideRecord,
-             * which TypeScript marks as non-constructable (TS2351). Patch it to
-             * extend GlideRecordGenerated — the actual root of the GlideRecord
-             * hierarchy — so all inherited methods appear in instance completions.
-             */
+            /* Patches GlideRecordSecure to extend GlideRecordGenerated instead of GlideRecord, which TS marks non-constructable (TS2351). */
             declarations = declarations.replace(
                 /\\/\\*\\*[\\s\\S]*?GlideRecordSecure is a class[\\s\\S]*?\\*\\/\\s*declare class GlideRecordSecure extends GlideRecord \\{[\\s\\S]*?\\n\\}/,
                 'declare class GlideRecordSecure extends GlideRecordGenerated {\\n' +
@@ -2081,12 +1984,7 @@ Record({
         xhr.send();
     }
 
-    /**
-     * Injects the Monaco server language DTS — additional GlideRecordSecure
-     * methods and the $sp server API — into Monaco's TypeScript and JavaScript
-     * language services. Loads the UI script via its jsdbx URL if not already
-     * present on the page.
-     */
+    /** Injects the server language DTS (GlideRecordSecure + $sp), loading the UI script if not already present. */
     function loadServerMonarchDts(targetLang) {
         if (
             !window.monaco ||
@@ -2162,15 +2060,7 @@ Record({
         );
     }
 
-    /*
-     * Widget server script / Script Include panes and widget client controller
-     * / link panes now share Monaco's single 'javascript' language service
-     * (needed so checkJs binds @typedef/@type — see parseSiTypedefs), which
-     * means their API surfaces (GlideRecord/$sp-server vs g_form/AngularJS/
-     * $sp-client) would otherwise collide in the same javascriptDefaults extra
-     * lib registry. Since Monaco has no per-file DTS scoping, we keep only one
-     * side's declarations registered at a time, swapping on editor focus.
-     */
+    /* Server and client panes share one 'javascript' language service, so only one side's API declarations are registered at a time, swapped on focus. */
     var _activeJsScriptContext = 'server'; // 'server' | 'client'
     var _cachedServerSnDts = '';
     var _cachedServerMonarchDts = '';
@@ -2254,15 +2144,7 @@ Record({
         }
     }
 
-    /*
-     * AngularJS injects api.controller arguments by parameter NAME, not
-     * position, so no static 'declare var api' signature can correctly type a
-     * custom injection order. This watcher parses the parameter list the
-     * developer actually wrote and (re)registers a matching signature —
-     * generated by monaco_language_client's MONACO_LANGUAGE_CLIENT_DI — under
-     * a stable extra-lib URI, so every parameter is typed by name regardless
-     * of order.
-     */
+    /* AngularJS injects api.controller args by name, not position, so this watcher regenerates the signature from the developer's actual parameter list. */
     var _CLIENT_API_LIB_URI = 'ts:snlib-client-api.d.ts';
 
     /**
@@ -2286,8 +2168,8 @@ Record({
             return null;
         }
         return m[1]
-            .replace(/\\/\\*[\\s\\S]*?\\*\\//g, '') // strip block comments
-            .replace(/\\/\\/[^\\n]*/g, '') // strip line comments
+            .replace(/\\/\\*[\\s\\S]*?\\*\\//g, '')
+            .replace(/\\/\\/[^\\n]*/g, '')
             .split(',')
             .map(function (p) {
                 // Strip default values: (a = 0) → 'a'
@@ -2296,12 +2178,7 @@ Record({
             .filter(Boolean);
     }
 
-    /**
-     * Rebuilds and registers the 'declare var api' extra lib so its controller
-     * signature mirrors the parameter order in the given model. Passing null
-     * registers the default signature. No-ops when the parameter list has not
-     * changed since the last registration.
-     */
+    /** Rebuilds 'declare var api' to mirror model's controller param order; no-ops if unchanged. */
     function _refreshClientApiLib(model) {
         var di = window.MONACO_LANGUAGE_CLIENT_DI;
         if (
@@ -2318,8 +2195,7 @@ Record({
         if (model && !model.isDisposed()) {
             params = _parseControllerParams(model.getValue());
         }
-        // While the assignment is mid-edit / unparseable, keep the last good
-        // signature rather than reverting to the default.
+        // Mid-edit/unparseable: keep the last good signature instead of reverting to default.
         if (!params && _clientDiLastParamsKey !== null) {
             return;
         }
@@ -2824,9 +2700,7 @@ Record({
         }
         var seen = {};
         var names = [];
-        // Only match identifiers that immediately follow the \\\`new\\\` keyword so
-        // that plain JS built-ins referenced elsewhere (String, Date, Set …)
-        // are not mistakenly queued as Script Include candidates.
+        // Matches identifiers only right after 'new' so referenced built-ins (String, Date, Set) aren't queued as SI candidates.
         var re = /\\bnew\\s+([A-Z][a-zA-Z0-9_]*)\\s*\\(/g;
         var m;
         while ((m = re.exec(content)) !== null) {
@@ -2905,11 +2779,7 @@ Record({
     // CSS variable completions
     ///////////////////////////////////////////
 
-    /**
-     * Fetches CSS custom properties from the monaco.plus.css.variables system
-     * property via the Table REST API and caches them for the session.
-     * Safe to call multiple times — only the first call fires the XHR.
-     */
+    /** Fetches and caches CSS custom properties from monaco.plus.css.variables; first call only fires the XHR. */
     function _loadCssVariables() {
         if (_cssVarCache) {
             return;
@@ -2954,11 +2824,7 @@ Record({
         xhr.send();
     }
 
-    /**
-     * Registers a completion provider for CSS and SCSS that suggests CSS custom
-     * properties (--token-name) when the user types inside a var() call.
-     * Safe to call multiple times — only registers once.
-     */
+    /** Suggests CSS custom properties inside a var() call, for CSS/SCSS; registers once. */
     function _registerCssVarCompletions() {
         if (
             _cssVarCompletionRegistered ||
@@ -3021,13 +2887,7 @@ Record({
     // SCSS variable completions
     ///////////////////////////////////////////
 
-    /**
-     * Fetches SCSS variables from the monaco.plus.scss.variables system
-     * property via the Table REST API and caches them for the session.
-     * Returns a Promise that resolves with the vars array.
-     * Safe to call multiple times — only the first call fires the XHR;
-     * concurrent callers share the same in-flight promise.
-     */
+    /** Fetches and caches SCSS variables from monaco.plus.scss.variables; concurrent callers share the in-flight promise. */
     function _loadScssVariables() {
         if (_scssVarCache !== null) {
             return Promise.resolve(_scssVarCache);
@@ -3083,12 +2943,7 @@ Record({
         return _scssVarPromise;
     }
 
-    /**
-     * Registers a completion provider for SCSS and Less that suggests SCSS
-     * variables (e.g. $breakpoint-sm) when the user types the $ character.
-     * Variables are sourced from the monaco.plus.scss.variables sys_property.
-     * Safe to call multiple times — only registers once.
-     */
+    /** Suggests SCSS variables (e.g. $breakpoint-sm) on '$', for SCSS/Less; registers once. */
     function _registerScssVarCompletions() {
         if (
             _scssVarCompletionRegistered ||
@@ -3152,12 +3007,7 @@ Record({
         });
     }
 
-    /**
-     * Registers a hover provider for SCSS and Less that shows the resolved value
-     * of a SCSS variable (e.g. $breakpoint-sm → 480px) when the user hovers over
-     * a variable reference. Variables are sourced from _scssVarCache.
-     * Safe to call multiple times — only registers once.
-     */
+    /** Shows a SCSS variable's resolved value from _scssVarCache on hover; registers once. */
     function _registerScssVarHover() {
         if (_scssVarHoverRegistered || !window.monaco) {
             return;
@@ -3225,22 +3075,8 @@ Record({
     ///////////////////////////////////////////
 
     /**
-     * Registers a dot-completion provider for TypeScript and JavaScript that
-     * provides two kinds of suggestions on trigger character '.':
-     *
-     *   this.        — methods of the PrototypeJS class currently being edited,
-     *                  parsed live from the model content (no server round-trip).
-     *   instance.    — methods of another Script Include, resolved by scanning the
-     *                  model for 'var instance = new ClassName(' and fetching that
-     *                  Script Include's script field via the REST API.
-     */
-    /**
-     * Resolves the Script Include class assigned to an instance property of the
-     * class being edited, e.g. \\\`this.utils = new IncidentUtilsSNC();\\\` →
-     * 'IncidentUtilsSNC'. TypeScript cannot type \\\`this\\\` inside the
-     * PrototypeJS object-literal pattern (Class.create()), so completions,
-     * hover, and signature help resolve \\\`this.<prop>.\\\` through this scan.
-     *
+     * Resolves the Script Include class assigned via \\\`this.prop = new ClassName();\\\`,
+     * since TypeScript can't type \\\`this\\\` inside the Class.create() pattern.
      * @param {string} content  - Full model text.
      * @param {string} propName - Property name after \\\`this.\\\`.
      * @returns {string|null} Class name, or null when no assignment is found.
@@ -3322,6 +3158,7 @@ Record({
         });
     }
 
+    /** Dot-completion provider for TypeScript/JavaScript: this. (live-parsed) and instance. (via REST fetch of the assigned SI). */
     function registerDotCompletions() {
         if (_completionRegistered || !window.monaco) {
             return;
@@ -3390,9 +3227,7 @@ Record({
                     };
                 }
 
-                /* this.prop. — instance property assigned via this.prop = new SI().
-                 * TypeScript types \\\`this\\\` as any inside the Class.create()
-                 * object-literal pattern, so we supply the method completions. */
+                /* this.prop. — TypeScript types 'this' as any inside Class.create(), so we supply completions manually. */
                 var thisPropMatch = beforeCursor.match(
                     /\\bthis\\.(\\w+)\\.(\\w*)$/
                 );
@@ -3456,9 +3291,7 @@ Record({
                 );
                 if (newChainMatch) {
                     var siClassName = newChainMatch[1];
-                    /* Once the DTS is registered TypeScript is the sole provider.
-                     * Returning our suggestions on top of TypeScript's causes
-                     * every method to appear twice on the second trigger. */
+                    /* Once the DTS is registered, TypeScript is the sole provider — avoids duplicate suggestions. */
                     if (_siMethodCache[siClassName]) {
                         return null;
                     }
@@ -3475,8 +3308,7 @@ Record({
                     });
                 }
 
-                /* Multi-segment GlideRecord dot-walk: gr.company. or gr.caller_id.manager.
-                 * ≥2 segments required, so the single-segment case below is unaffected. */
+                /* Multi-segment GlideRecord dot-walk (gr.company., gr.caller_id.manager.); requires ≥2 segments. */
                 var multiSegMatch = beforeCursor.match(
                     /(\\w+)((?:\\.\\w+)+)\\.(\\w*)$/
                 );
@@ -3581,13 +3413,7 @@ Record({
                     };
                 }
 
-                /* ClassName. — ensure the SI DTS is registered so TypeScript's native
-                 * completions surface the static readonly constants. We return null so
-                 * TypeScript is the sole provider (avoids the (property)/(constant)
-                 * duplicate that appeared when we also returned our own suggestions).
-                 *
-                 * Guard: skip if varName has an instance-assignment in this model —
-                 * those are handled below by assignRe as method completions. */
+                /* ClassName. — registers the SI DTS and defers to TypeScript as sole provider; skips names with an instance assignment (handled below). */
                 var instanceAssignRe = new RegExp(
                     '(?:var|let|const)\\\\s+' +
                         varName +
@@ -3673,26 +3499,7 @@ Record({
     // Quick-info hover replacement
     ///////////////////////////////////////////
 
-    /*
-     * ServiceNow's bundled Monaco language features predate the TypeScript
-     * worker it ships (TS 5.x returns JSDoc tag text as an array of display
-     * parts; the bundled renderer expects a string), so the native hover
-     * renders every JSDoc tag as a bare '@ \\u2014' fragment with no name,
-     * type, or description.
-     *
-     * setModeConfiguration({hovers: false}) does not help — SN's build only
-     * reads the mode configuration at language setup, before our scripts run.
-     * Instead we suppress the native hover at the shared worker-client level:
-     * getQuickInfoAtPosition on the client proxy is replaced with a function
-     * returning undefined (the native provider treats that as 'no hover'),
-     * while our replacement provider calls the saved original and renders
-     * displayParts / documentation / tags correctly for both string and
-     * parts-array tag text.
-     *
-     * The worker client is recreated if Monaco recycles an idle worker, so a
-     * keep-alive interval re-applies the patch (and, as a side effect, keeps
-     * the worker from being recycled at all).
-     */
+    /* SN's bundled hover renderer expects string JSDoc tags but TS 5.x returns parts arrays, so native hover shows nothing useful; this suppresses it and re-renders quick info from the worker client, with a keep-alive to survive worker recycling. */
 
     /** Joins a TS displayParts array (or passes a plain string through). */
     function _qiPartsToString(parts) {
@@ -3730,11 +3537,7 @@ Record({
         return label + ' \\u2014 ' + text.replace(/^[-\\u2014]\\s*/, '');
     }
 
-    /**
-     * Replaces getQuickInfoAtPosition on a worker client proxy so the native
-     * hover provider receives no result. The original is kept for our own
-     * provider. Idempotent per client instance.
-     */
+    /** Patches getQuickInfoAtPosition to suppress the native hover; the original is kept for our own provider. Idempotent per client. */
     function _qiEnsurePatched(client) {
         if (!client || client.__weQiPatched) {
             return;
@@ -3836,8 +3639,7 @@ Record({
                         var tagsMd = (info.tags || [])
                             .map(_qiRenderTag)
                             .join('  \\n\\n');
-                        /* Bare 'any' with no docs is noise (e.g. this.utils.* —
-                         * handled by the Script Include hover provider). */
+                        /* Bare 'any' with no docs is noise — this.utils.* is handled by the SI hover provider instead. */
                         if (sig === 'any' && !doc && !tagsMd) {
                             return null;
                         }
@@ -3881,13 +3683,7 @@ Record({
         monaco.languages.registerHoverProvider('typescript', provider);
     }
 
-    /**
-     * Registers a hover provider for TypeScript and JavaScript that shows JSDoc
-     * documentation when the cursor hovers over a method name accessed via:
-     *
-     *   this.methodName      — method in the Script Include currently being edited
-     *   instance.methodName  — method of a Script Include assigned via new
-     */
+    /** Shows JSDoc on hover for this.methodName and instance.methodName (assigned via new). */
     function registerHoverProvider() {
         if (_hoverRegistered || !window.monaco) {
             return;
@@ -3956,9 +3752,7 @@ Record({
                     return buildResult(parseSiMethods(content));
                 }
 
-                /* this.prop.method — instance property assigned via
-                 * this.prop = new SI(). TypeScript sees \\\`this\\\` as any here,
-                 * so the native hover shows nothing useful. */
+                /* this.prop.method — TS types 'this' as any here, so native hover shows nothing useful. */
                 var thisPropHover = preWord.match(/\\bthis\\.(\\w+)\\.\\s*$/);
                 if (thisPropHover) {
                     var thisPropClass = _getThisPropClass(
@@ -4012,8 +3806,7 @@ Record({
                     });
                 }
 
-                /* ClassName.PROP — ensure DTS is registered, defer hover to TypeScript.
-                 * Same instance-assignment guard as the completion provider. */
+                /* ClassName.PROP — registers DTS, defers hover to TypeScript; same instance-assignment guard as completions. */
                 var hoverInstanceRe = new RegExp(
                     '(?:var|let|const)\\\\s+' +
                         varName +
@@ -4069,13 +3862,7 @@ Record({
         monaco.languages.registerHoverProvider('javascript', provider);
     }
 
-    /**
-     * Registers a signature help provider for TypeScript and JavaScript that
-     * shows parameter hints when the cursor is inside a method call on:
-     *
-     *   this.methodName(     — method in the Script Include currently being edited
-     *   instance.methodName( — method of a Script Include assigned via new
-     */
+    /** Shows parameter hints for this.methodName( and instance.methodName( (assigned via new). */
     function registerSignatureHelp() {
         if (_sigHelpRegistered || !window.monaco) {
             return;
@@ -4191,18 +3978,7 @@ Record({
         monaco.languages.registerSignatureHelpProvider('javascript', provider);
     }
 
-    /**
-     * Registers completion providers for TypeScript and JavaScript that suggest
-     * Script Include class names in two contexts:
-     *
-     *   1. After the 'new' keyword (triggered by space/tab): inserts 'ClassName($1)'
-     *      as a snippet. Uses the in-memory cache when available; otherwise issues a
-     *      debounced nameSTARTSWITH query (300 ms) so bursts of keystrokes produce a
-     *      single network request rather than one per character.
-     *   2. While typing any capitalised word (triggered by A–Z): inserts the plain
-     *      class name and filters from the _siNameMap cache populated by earlier
-     *      'new'-provider fetches.
-     */
+    /** Suggests SI class names after 'new' (debounced fetch, snippet) and on any capitalised word (from cache). */
     function registerNewSiCompletions() {
         if (_newSiRegistered || !window.monaco) {
             return;
@@ -4293,10 +4069,7 @@ Record({
             },
         };
 
-        // Provider 2 — capitalised-word completions, triggered by any A–Z character.
-        // Only returns results when the partial word is 2+ chars and the cache has
-        // matching entries, so the widget stays closed for single-char triggers that
-        // have no SI matches.
+        // Only returns results for 2+ char words with matching cache entries, so the widget stays closed otherwise.
         var capitalWordProvider = {
             triggerCharacters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),
             provideCompletionItems: function (model, position) {
@@ -4357,13 +4130,7 @@ Record({
         );
     }
 
-    /**
-     * Registers a completion provider for TypeScript and JavaScript that suggests
-     * GlideRecord field names when the cursor is inside a string argument of a
-     * field-consuming method (getValue, setValue, addQuery, orderBy, etc.).
-     * Triggered on quote characters and '.', supporting dot-walked fields:
-     *   gr.getValue('caller_id.  →  fields from sys_user
-     */
+    /** Suggests GlideRecord field names (dot-walk aware) inside field-consuming method string args. */
     function registerGrFieldStringCompletions() {
         if (_grStringCompletionRegistered || !window.monaco) {
             return;
@@ -4435,14 +4202,7 @@ Record({
         monaco.languages.registerCompletionItemProvider('typescript', provider);
     }
 
-    /**
-     * Registers a hover provider for TypeScript and JavaScript that shows dictionary
-     * metadata (label, type, max_length, mandatory, reference) when hovering over
-     * a field-name string literal inside a GlideRecord method call.
-     * Supports dot-walked strings: hovering on any segment shows info for that
-     * segment on its resolved table, e.g. hovering 'caller_id' vs 'name' in
-     * getValue('caller_id.name') shows info from incident vs sys_user respectively.
-     */
+    /** Shows dictionary metadata on hover for a GlideRecord field-name string, resolving each dot-walked segment's table. */
     function registerGrFieldStringHover() {
         if (_grStringHoverRegistered || !window.monaco) {
             return;
@@ -4575,14 +4335,7 @@ Record({
         monaco.languages.registerHoverProvider('typescript', provider);
     }
 
-    /**
-     * Registers a completion provider for TypeScript and JavaScript that suggests
-     * table names when the cursor is inside the first string argument of a
-     * GlideRecord, GlideRecordSecure, or GlideAggregate constructor.
-     *   new GlideRecord('  →  first 50 tables alphabetically
-     *   new GlideRecord('inc  →  tables starting with 'inc'
-     * Results are fetched asynchronously, 50 at a time, and cached per prefix.
-     */
+    /** Suggests table names (fetched 50 at a time, cached per prefix) in a GlideRecord/GlideAggregate constructor's first arg. */
     function registerGrConstructorCompletions() {
         if (_grConstructorCompletionRegistered || !window.monaco) {
             return;
@@ -4618,14 +4371,7 @@ Record({
         monaco.languages.registerCompletionItemProvider('typescript', provider);
     }
 
-    /**
-     * Registers a completion provider that suggests table or field names when
-     * the cursor is inside a string argument of a Script Include method call,
-     * based on the parameter name declared in the SI's JSDoc:
-     *   \\\`table\\\` / \\\`table_name\\\` / \\\`tableName\\\`  →  table name suggestions
-     *   \\\`field\\\` / \\\`field_name\\\` / \\\`fieldName\\\`  →  field suggestions for the
-     *       table value passed to the sibling table parameter
-     */
+    /** Suggests table/field names in a Script Include call's string arg, based on the SI's JSDoc @param name. */
     function registerSiParamStringCompletions() {
         if (_siParamStringCompletionRegistered || !window.monaco) {
             return;

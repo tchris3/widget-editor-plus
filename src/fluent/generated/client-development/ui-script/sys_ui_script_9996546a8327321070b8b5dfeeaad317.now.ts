@@ -10,39 +10,29 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         global: 'false',
         ignore_in_now_experience: 'false',
         name: 'monaco_language_html',
-        script: `(function () {
+        script: `/**
+ * ============================================================================
+ * UI Script: monaco_language_html
+ * ============================================================================
+ * Purpose: HTML language support for the Body HTML template and Angular
+ * template editors — AngularJS ng-* / ServiceNow SP directive completions,
+ * a custom Monarch tokenizer, formatting, validation, and linked editing.
+ *
+ * Contains:
+ *   - DIRECTIVES table — ng-* / sp-* attribute names, snippets, and hover docs
+ *   - Custom Monarch tokenizer extending Monaco's built-in HTML tokenizer
+ *     ({{ }} interpolation, ng-* / data-* / sp-* attribute highlighting,
+ *     embedded <script> / <style>)
+ *   - HTML document/range formatting provider
+ *   - Mismatched/unclosed tag diagnostics (custom 'LINT_MARKER' validation)
+ *   - Linked editing (renames a tag's matching open/close pair together)
+ *   - window.MONACO_LANGUAGE_HTML.register(monaco) — idempotent entry point
+ * ============================================================================
+ */
+(function () {
     'use strict';
 
-    // -----------------------------------------------------------------------------
-    // AngularJS ng-directive completions + HTML Monarch tokenizer for Monaco.
-    //
-    // Covers every directive in https://docs.angularjs.org/api/ng/directive
-    // plus ServiceNow SP directives (sp-widget, sp-model, sp-log-stream, …).
-    //
-    // Activates on the HTML language ('html') — used by:
-    //   • Body HTML template editor  (pane.field === 'template')
-    //   • Angular template editors   (pane.recordType === 'template')
-    //
-    // The consumer script calls MONACO_LANGUAGE_HTML.register(monaco) once Monaco loads.
-    // The registration function is idempotent — safe to call multiple times.
-    //
-    // Token names referenced by _ensureMonacoThemes in client_script.js:
-    //   attribute.name.ng   — ng-* directive attribute names
-    //   attribute.name.sp   — sp-* ServiceNow SP attribute names
-    //   ng.delimiter        — {{ and }} interpolation delimiters
-    //   ng.expression       — expression content inside {{ }}
-    // -----------------------------------------------------------------------------
-
-    // -------------------------------------------------------------------------
-    // Directive definitions
-    // -------------------------------------------------------------------------
-    // Each entry:
-    //   name        — attribute name as written in HTML
-    //   detail      — one-line summary for the completion list
-    //   snippet     — TabStop snippet inserted on completion (value only, no \\\`=\\\`)
-    //   description — full Markdown documentation for hover / completion detail
-    // -------------------------------------------------------------------------
-
+    // Each entry: { name, detail, snippet (TabStop, no \\\`=\\\`), description (Markdown for hover) }.
     var DIRECTIVES = [
 
         // ---- Bootstrapping --------------------------------------------------
@@ -1451,11 +1441,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
     /* Elements whose inner content must be preserved verbatim by the formatter */
     var PRESERVE_CONTENT = { script: 1, style: 1, pre: 1, textarea: 1 };
 
-    /*
-     * Inline (phrasing) elements.  The formatter must NOT insert newlines
-     * around these because doing so can introduce visible whitespace that
-     * changes rendering.  Text and inline tags are kept on the same line.
-     */
+    /* Inline elements stay on the same line — newlines around them would introduce visible whitespace. */
     var INLINE_ELEMENTS = {
         a: 1, abbr: 1, acronym: 1, b: 1, bdi: 1, bdo: 1, big: 1,
         button: 1, cite: 1, code: 1, data: 1, del: 1, dfn: 1, em: 1,
@@ -1464,15 +1450,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         strong: 1, sub: 1, sup: 1, time: 1, tt: 1, u: 1, var: 1
     };
 
-    // -------------------------------------------------------------------------
-    // Monarch tokenizer — HTML + Angular extensions
-    //
-    // Based on Monaco's built-in HTML tokenizer with:
-    //   1. {{ }} interpolation highlighted in root state AND inside attribute values
-    //   2. ng-* and data-* attribute names highlighted as 'attribute.name.ng'
-    //   3. sp-* attribute names highlighted as 'attribute.name.sp'
-    //   4. Embedded JavaScript (<script>) and CSS (<style>) preserved
-    // -------------------------------------------------------------------------
+    // Extends Monaco's built-in HTML tokenizer with {{ }} interpolation, ng-*/data-*/sp-* attribute highlighting, and embedded <script>/<style>.
     var TOKENIZER = {
         defaultToken: '',
         tokenPostfix: '.html',
@@ -1545,10 +1523,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
             otherTag: [
                 [/\\/?>/, 'delimiter.html', '@pop'],
 
-                // data-* / data-ng-* / ng-* attribute → Angular directive. Its value
-                // is routed through ngAttrEq/ngAttrValDq/ngAttrValSq (below) instead of
-                // the generic attrValDq/attrValSq, so predicate expressions get real
-                // string/number/keyword/operator coloring instead of one flat run.
+                // ng-*/data-ng-* values route through ngAttrEq/ngAttrValDq/ngAttrValSq for real token coloring.
                 [/(?:data-)?ng-[\\w-]+/, { token: 'attribute.name.ng', next: '@ngAttrEq' }],
                 [/data-[\\w-]+/, 'attribute.name.ng'],
                 // sp-* ServiceNow SP attribute
@@ -1579,11 +1554,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 [/'/, { token: 'attribute.value', next: '@pop' }]
             ],
 
-            // ---- ng-*/data-ng-* attribute value entry -----------------------
-            // After the directive name: wait for '=' then a quote before switching
-            // to the expression-aware value states. Anything unexpected (a
-            // boolean-style directive with no '=', e.g. ng-cloak) rematches in
-            // otherTag rather than consuming input meant for the next attribute.
+            // Waits for '=' then a quote before entering expression-aware value states; boolean directives like ng-cloak rematch in otherTag.
             ngAttrEq: [
                 [/=/, 'delimiter', '@ngAttrValStart'],
                 [/[ \\t\\r\\n]+/],
@@ -1596,12 +1567,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 [/./, { token: '@rematch', next: '@pop' }]
             ],
 
-            // ---- ng-*/data-ng-* directive attribute values ------------------
-            // Sub-tokenized like a real expression — strings, numbers, boolean
-            // literals, and operators get their own token names (which the base
-            // vs / vs-dark themes already color sensibly) instead of one flat
-            // attribute.value run. {{ }} inside still behaves the same as it does
-            // in a plain attribute value.
+            // Sub-tokenizes ng-*/data-ng-* values as real expressions instead of one flat attribute.value run.
             ngAttrValDq: [
                 [/\\{\\{/, { token: 'ng.delimiter', next: '@ngExpr' }],
                 [/"/, { token: 'attribute.value', next: '@pop' }],
@@ -1754,13 +1720,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         };
     }
 
-    // -------------------------------------------------------------------------
-    // HTML Validation — mismatched / unclosed tag diagnostics
-    //
-    // Runs on every HTML model content change (debounced).  Walks a tag stack
-    // and reports errors/warnings via monaco.editor.setModelMarkers using the
-    // shared 'LINT_MARKER' owner so the Widget Editor status-bar picks them up.
-    // -------------------------------------------------------------------------
+    // Debounced tag-stack walk reporting mismatched/unclosed tags via monaco.editor.setModelMarkers('LINT_MARKER').
 
     var _htmlValidationEnabled = true;
     var _htmlAutoCloseTagsEnabled = true;
@@ -1791,16 +1751,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         var markers = [];
         var stack = [];
 
-        /*
-         * Regex alternation order (first match wins):
-         *   1. {{ \\u2026 }}  Angular expressions  \\u2192 skip
-         *   2. <!-- \\u2026 --> comments             \\u2192 skip
-         *   3. </tag>       closing tags           \\u2192 capture group 1
-         *   4. <tag \\u2026>    opening tags           \\u2192 capture group 2; self-close = group 4
-         *
-         * Quoted attribute values ("\\u2026" / '\\u2026') are consumed atomically so
-         * that > inside attribute values (e.g. ng-if="x > 0") never breaks the match.
-         */
+        /* Tries {{ }}, then <!-- -->, then closing/opening tags in order; quoted attribute values are consumed atomically so > inside them doesn't break the match. */
         var re = /\\{\\{[\\s\\S]*?\\}\\}|<!--[\\s\\S]*?(?:-->|$)|<\\/([\\w:-]+)\\s*>|<([\\w:-]+)((?:[^"'>]|"[^"]*"|'[^']*')*?)(\\/?)\\s*>/g;
         var match;
 
@@ -1917,8 +1868,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         return s;
     }
 
-    /* Continuation pad is always spaces — tabs only when the indent itself
-       is tabs (i.e. user disabled convert-tabs-to-spaces). */
+    /* Continuation pad uses spaces unless the indent itself is tabs. */
     function _formatTagLine(tok, indent, tab, tabSize) {
         var raw = tok.value;
         var indentStr = _makeIndent(indent, tab);
@@ -1937,8 +1887,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         var firstLine = clean[0];
         var spaceIdx = firstLine.indexOf(' ');
         if (spaceIdx === -1) {
-            /* No attribute on first line — merge the first attr up so the
-               tag name always has at least one attribute beside it. */
+            /* Merges the first attribute up so the tag name always has one beside it. */
             spaceIdx = firstLine.length;
             firstLine = firstLine + ' ' + clean[1];
             clean = [firstLine].concat(clean.slice(2));
@@ -1963,11 +1912,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         var len = text.length;
 
         while (i < len) {
-            /* Track whether whitespace preceded this token (needed to
-               preserve significant spaces between inline elements),
-               whether it contained a newline (content was on a new line),
-               and whether it contained a blank line (2+ newlines — the
-               user intentionally added vertical spacing). */
+            /* Tracks preceding whitespace, newline, and blank-line (2+ newlines) to preserve inline spacing and intentional vertical gaps. */
             var hadSpace = false;
             var newlineCount = 0;
             while (i < len && /[ \\t\\r\\n]/.test(text[i])) {
@@ -2286,23 +2231,12 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         return result;
     }
 
-    // -------------------------------------------------------------------------
-    // Linked Editing — rename matching open/close tag pair in real time
-    //
-    // Registered as a LinkedEditingRangeProvider for 'html'.  Monaco calls this
-    // whenever the cursor enters a tag name and the editor's \`linkedEditing\`
-    // option is enabled; the returned ranges are kept in sync as the user types.
-    //
-    // Strategy: parse tags with a stack.  When a closing tag matches an opener,
-    // remember which one (if either) contains the cursor — that pair is the
-    // target.  Self-closing / void tags have no pair and return null.
-    // -------------------------------------------------------------------------
+    // LinkedEditingRangeProvider for 'html' that pairs the cursor's tag name with its matching opener/closer via a tag stack.
     function _provideHtmlLinkedEditingRanges(model, position, monaco) {
         var text = model.getValue();
         var cursorOffset = model.getOffsetAt(position);
 
-        /* Match (in priority order): {{ expr }}, <!-- comment -->, any tag.
-           Attribute values are consumed atomically so > inside them is safe. */
+        /* Matches {{ expr }}, <!-- comment -->, or any tag; attribute values are consumed atomically so > inside them is safe. */
         var re = /\\{\\{[\\s\\S]*?\\}\\}|<!--[\\s\\S]*?(?:-->|$)|<(\\/?)([\\w:-]+)((?:[^"'>]|"[^"]*"|'[^']*')*?)(\\/?)\\s*>/g;
         var stack = [];
         var target = null;
@@ -2324,8 +2258,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
             var nameEnd = nameStart + name.length;
             var cursorInName = cursorOffset >= nameStart && cursorOffset <= nameEnd;
 
-            /* Skip <script>…</script> / <style>…</style> content — tags inside
-               embedded code are not HTML tags. */
+            /* Skips <script>/<style> content — tags inside embedded code aren't HTML tags. */
             if (!isClosing && !isSelfClose && (lower === 'script' || lower === 'style')) {
                 stack.push({ nameStart: nameStart, nameEnd: nameEnd, tagName: lower, cursorInName: cursorInName });
                 var closePattern = new RegExp('</' + lower + '\\\\s*>', 'i');
@@ -2397,25 +2330,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         // 1. Replace the HTML Monarch tokenizer with our Angular-aware version
         monaco.languages.setMonarchTokensProvider('html', TOKENIZER);
 
-        /*
-         * 1b. Language configuration — brackets, auto-close, and Enter indentation.
-         *
-         * Monaco's built-in HTML language has a lazy loader that calls
-         * setLanguageConfiguration with its own conf when the language is first
-         * used.  If we call setLanguageConfiguration now, the built-in loader
-         * may run later and silently overwrite our rules.
-         *
-         * Fix: trigger the built-in loader, then use setTimeout(0) to push our
-         * setLanguageConfiguration into the next macrotask — after all pending
-         * microtasks (including the loader's internal .then() handlers that
-         * apply the built-in conf) have completed.
-         *
-         * Also disable the built-in HTML language service's formatting provider
-         * (documentFormattingEdits / documentRangeFormattingEdits) so our custom
-         * DocumentFormattingEditProvider is the sole formatter.  The built-in
-         * formatter treats inline elements (span, a, etc.) as "unformatted" and
-         * produces incorrect indentation for them.
-         */
+        /* Applies language config after Monaco's built-in HTML loader (via setTimeout(0), post-microtask) so it isn't overwritten, and disables the built-in formatter since it mis-indents inline elements. */
         if (monaco.languages.html && monaco.languages.html.htmlDefaults) {
             var cfg = monaco.languages.html.htmlDefaults.modeConfiguration;
             monaco.languages.html.htmlDefaults.setModeConfiguration({
@@ -2476,9 +2391,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
             ],
             onEnterRules: [
                 {
-                    /* Between opening and closing tag on the same line:
-                     *   <div>|</div>  →  <div>\\n    |\\n</div>
-                     */
+                    /* Splits an opening/closing tag pair on the same line onto their own indented lines. */
                     beforeText: /(<(?!(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\\b)[\\w:-]+(?:[^"'>]|"[^"]*"|'[^']*')*>)\\s*$/i,
                     afterText:  /^\\s*<\\/[\\w:-]+\\s*>/i,
                     action: {
@@ -2486,9 +2399,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                     }
                 },
                 {
-                    /* After an opening tag (cursor at end of line):
-                     *   <div>|  →  <div>\\n    |
-                     */
+                    /* Indents onto a new line after an opening tag when the cursor is at end of line. */
                     beforeText: /(<(?!(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\\b)[\\w:-]+(?:[^"'>]|"[^"]*"|'[^']*')*>)\\s*$/i,
                     action: {
                         indentAction: monaco.languages.IndentAction.Indent
@@ -2646,10 +2557,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                     endLineNumber: pos.lineNumber,
                     endColumn: pos.column
                 });
-                /*
-                 * Walk backwards from the > to find the opening <tagName.
-                 * Skip if we're inside a closing tag (</...) or comment.
-                 */
+                /* Walks backward from > to find the opening <tagName, skipping closing tags and comments. */
                 var tagMatch = textBefore.match(/<([\\w:-]+)(?:[^"'>]|"[^"]*"|'[^']*')*>$/);
                 if (!tagMatch) {
                     return;
@@ -2684,8 +2592,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 editor.setPosition(pos);
             });
 
-            /* Enter inside an opening tag aligns the new line with the first
-               attribute (column right after the tag name). */
+            /* Enter inside an opening tag aligns the new line with the first attribute column. */
             editor.onKeyDown(function (e) {
                 if (e.keyCode !== monaco.KeyCode.Enter) return;
                 if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
@@ -2723,14 +2630,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
             });
         });
 
-        /*
-         * 6. HTML document formatting (Shift+Alt+F / right-click > Format Document)
-         *
-         * Registered inside the deferred setTimeout(0) block (see 1b) so it
-         * runs AFTER the built-in HTML language service has registered its
-         * own formatter.  Monaco uses the most recently registered provider,
-         * so registering last ensures our custom formatter takes precedence.
-         */
+        // 6. HTML document formatting — registered after the built-in formatter (see 1b) so Monaco's "last registered wins" rule gives it precedence.
         function _registerFormattingProvider(monaco) {
         monaco.languages.registerDocumentFormattingEditProvider('html', {
             provideDocumentFormattingEdits: function (model, options) {
@@ -2746,13 +2646,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         });
         } /* end _registerFormattingProvider */
 
-        /*
-         * 7. Linked editing — when the cursor is inside an HTML tag name and
-         * the editor option \`linkedEditing\` is on, Monaco queries any registered
-         * LinkedEditingRangeProvider for the ranges to keep synchronised.  We
-         * register our own provider because the built-in HTML language service's
-         * provider is either absent from or gated off in ServiceNow's bundle.
-         */
+        // 7. Linked editing — registers our own LinkedEditingRangeProvider since ServiceNow's Monaco bundle lacks/gates off the built-in one.
         function _registerLinkedEditingProvider(monaco) {
             if (!monaco.languages.registerLinkedEditingRangeProvider) { return; }
             monaco.languages.registerLinkedEditingRangeProvider('html', {

@@ -9,17 +9,30 @@ Record({
         global: 'true',
         ignore_in_now_experience: 'false',
         name: 'monaco_plus_bootstrap',
-        script: `/* global ScriptLoader */
+        script: `/**
+ * ============================================================================
+ * UI Script: monaco_plus_bootstrap
+ * ============================================================================
+ * Purpose: Lightweight loader that lazy-loads monaco_plus_core exactly once
+ * per page, and mounts/enhances a Monaco editor on a ServiceNow form field.
+ *
+ * Contains:
+ *   - Blob constructor patch (fixes ServiceNow mangling Monaco worker URLs)
+ *   - User editor-preference loading (via WidgetEditorAjax) and merging into
+ *     monaco.editor.create() options
+ *   - Theme resolution (from user prefs, or auto-detected from page background)
+ *   - ensureCoreLoaded() — lazy-loads monaco_plus_core.jsdbx once
+ *   - upgradeEditor() — mounts Monaco on a form field, tearing down CodeMirror
+ *     or enhancing an already-rendered native Monaco editor as needed
+ *   - Exposes window.SNMonacoPlusBootstrap { init, ensureCoreLoaded,
+ *     upgradeEditor, getUserPrefs, coreUrl }
+ * ============================================================================
+ */
+/* global ScriptLoader */
 (function (global) {
     'use strict';
 
-    // Monaco builds workers by creating a Blob containing importScripts("url"), then calling
-    // new Worker(URL.createObjectURL(blob)). The URL inside the blob lacks
-    // ?sysparm_substitute=false, so ServiceNow performs variable substitution on the worker
-    // JS and produces SyntaxErrors. MonacoEnvironment.getWorkerUrl / getWorker overrides are
-    // ineffective because Monaco captures those functions in closures at bundle-eval time.
-    // Intercepting the Blob constructor here (earliest possible point) fixes the URL before
-    // the blob is sealed.
+    // Patches Blob so worker source gets ?sysparm_substitute=false before ServiceNow can mangle it — MonacoEnvironment.getWorker overrides run too late (Monaco captures them in closures at bundle-eval time).
     if (!global._snBlobWorkerPatchInstalled) {
         global._snBlobWorkerPatchInstalled = true;
         var _OrigBlob = global.Blob;
@@ -231,7 +244,6 @@ Record({
      * @returns {Promise<Object|null>} Promise resolving to the enhancer API or null.
      */
     function init(config) {
-        /* Idempotent; safe on pages that already loaded these styles natively. */
         _ensureMonacoCss();
         _ensureHoverCodeColorFix();
         return ensureCoreLoaded().then(function (api) {
@@ -325,14 +337,7 @@ Record({
     }
 
     /**
-     * Loads the SCSS Monarch tokenizer from Monaco's built-in language registry
-     * and applies it, falling back to the CSS tokenizer when SCSS has no dedicated
-     * loader. Calls done() once tokens are applied (or immediately if neither
-     * loader is available).
-     *
-     * This must run before the editor is created so syntax highlighting is correct
-     * from the first render.
-     *
+     * Loads the SCSS Monarch tokenizer (falling back to CSS) and applies it before editor creation.
      * @param {Function} done - Callback invoked once the language is ready.
      */
     function _ensureScssLanguageReady(done) {
@@ -380,18 +385,9 @@ Record({
     }
 
     /**
-     * Mounts a Monaco Editor over a ServiceNow form field, handling three cases:
-     *
-     *   1. Monaco already rendered on the field (ServiceNow preloaded it):
-     *      skips mounting and calls init() to enhance the existing editor.
-     *
-     *   2. CodeMirror present on the field: tears it down cleanly, then mounts Monaco.
-     *
-     *   3. Neither present: mounts Monaco directly against the textarea value.
-     *
-     * Completions, hover, and IntelliSense are wired up by init() / monaco_plus_core
-     * after the editor is created — nothing language-specific needs to be duplicated here.
-     *
+     * Mounts a Monaco Editor over a ServiceNow form field — enhancing it in place if
+     * Monaco already renders there, tearing down CodeMirror if present, or mounting
+     * fresh against the textarea value otherwise.
      * @param {Object}   config
      * @param {Object}   config.gForm            - The ServiceNow GlideForm (g_form).
      * @param {string}   config.field            - Field name to mount the editor on.
@@ -514,11 +510,7 @@ Record({
                         prefsPromise.then(createEditor);
                     }
 
-                    /*
-                     * SCSS needs its Monarch tokenizer applied before the editor
-                     * is created so syntax highlighting is correct from first render.
-                     * All other languages use Monaco's built-in tokenizer as-is.
-                     */
+                    // SCSS needs its Monarch tokenizer applied before the editor is created for correct first-render highlighting.
                     if (language === 'scss') {
                         _ensureScssLanguageReady(readyWithPrefs);
                     } else {

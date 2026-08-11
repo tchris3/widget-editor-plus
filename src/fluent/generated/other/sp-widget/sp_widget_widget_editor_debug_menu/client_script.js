@@ -5,7 +5,7 @@ api.controller = function ($scope, spUtil) {
         return;
     }
 
-    const LOCAL_PREFS_KEY = 'we_debug_menu_prefs'; // localStorage key for preferences
+    const LOCAL_PREFS_KEY = 'we_debug_menu_prefs';
 
     const DEFAULT_PREFS = {
         // Open with
@@ -37,12 +37,7 @@ api.controller = function ($scope, spUtil) {
         assignConsoleVars: true
     };
 
-    /*
-     * Items shown in the preferences modal, in dropdown order.
-     * type:'section' entries render as non-interactive group headers.
-     * alwaysShow:true disables the toggle (item is always visible).
-     * description renders a note beneath the label.
-     */
+    // Preference modal items, in dropdown order; type:'section' renders a group header.
     c.menuItemDefs = [
         { type: 'section', label: 'Open with' },
         { id: 'openWithEditorPlus', label: 'Widget Editor+' },
@@ -109,14 +104,8 @@ api.controller = function ($scope, spUtil) {
 
     ];
 
-    /*
-     * Load preferences: localStorage -> server -> defaults.
-     * localStorage is checked first so changes made in this browser session are
-     * always used immediately.  sys_user_preference (up to 65 000 chars) serves
-     * as cross-device backup and is used when no local value exists.
-     * When impersonating, user-scoped localStorage key ensures real user's saved
-     * preferences are loaded and saved, not the impersonated user's.
-     */
+    // Preference source order: localStorage, then sys_user_preference, then defaults.
+    // Keyed by realUserId so impersonation doesn't shadow the real user's preferences.
     const userPrefsKey = c.data.realUserId ? (LOCAL_PREFS_KEY + '_' + c.data.realUserId) : LOCAL_PREFS_KEY;
 
     try {
@@ -173,12 +162,7 @@ api.controller = function ($scope, spUtil) {
         c.showPreferencesModal = false;
         c.saving = false;
 
-        /*
-         * Sync to server for cross-device persistence (sys_user_preference supports up to 65 000 chars).
-         * Pass the object directly — do not stringify it here.  SP serialises the
-         * whole payload to JSON itself; passing a pre-stringified value causes
-         * double-encoding which some ServiceNow versions deserialise as null.
-         */
+        // Pass the object directly; SP serializes it to JSON itself, so pre-stringifying double-encodes it.
         $scope.server.get({
             action: 'savePreferences',
             preferences: c.preferences

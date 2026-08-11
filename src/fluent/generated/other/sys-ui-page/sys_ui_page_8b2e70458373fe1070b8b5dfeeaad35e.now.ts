@@ -144,9 +144,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             flex-wrap: wrap;
         }
 
-        /* Save status + action buttons: one cluster that keeps the buttons
-           intact and lets the status text wrap in place first; the whole
-           cluster only drops to row 2 when there's no room even for that. */
+        /* Buttons stay intact; only the whole cluster wraps to row 2. */
         .we-header-actions {
             flex-wrap: nowrap;
             flex: 1 1 12rem;
@@ -353,8 +351,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .select2-drop .select2-search input.select2-active {
             background-color: rgb(var(--now-color_background--tertiary, 237 237 237)) !important;
         }
-        /* Override the inline multi-select search spinner — SN's rule uses !important so we
-           need higher specificity + !important to override the white background. */
+        /* Higher specificity + !important needed to beat SN's own !important spinner background rule. */
         .we-roles-popover .select2-container-multi .select2-choices .select2-search-field input.select2-active {
             background-color: rgb(var(--now-color_background--tertiary, 237 237 237)) !important;
             background-image: none !important;
@@ -1633,8 +1630,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             justify-content: center;
         }
 
-        /* Search/picker modals: anchor to a fixed top position so the input
-           never shifts as results load. Content expands downward. */
+        /* Anchors to fixed top so the input doesn't shift as results load. */
         .we-modal-anchored-top {
             align-items: flex-start;
             padding-top: 12vh;
@@ -1746,8 +1742,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             cursor: default;
         }
 
-        /* Light mode: boost opacity for elements that are heavily dimmed for dark mode.
-           Class applied by JS reading the Polaris --now-color_background--primary variable. */
+        /* Light mode: boosts opacity on elements otherwise dimmed for dark mode. */
         html.we-light .we-field label {
             color: rgba(var(--now-color_text--primary), 0.75) !important;
         }
@@ -1862,9 +1857,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-kbd-mouse-desc {
             color: rgb(var(--now-color_text--secondary, 82 82 82));
         }
-        /* JSDoc sub-highlighting inside block comments — Monaco's built-in JS/TS
-           tokenizer emits the whole /** ... *\/ block as one 'comment.doc' token,
-           so tag/type/name coloring is applied as decorations instead. */
+        /* Decorations paint @tag/{type}/name inside JSDoc since Monaco tokenizes the whole block as one comment.doc token. */
         .monaco-editor.vs .we-jsdoc-tag { color: #0000ff; }
         .monaco-editor.vs .we-jsdoc-type { color: #267f99; }
         .monaco-editor.vs .we-jsdoc-name { color: #001080; }
@@ -3248,10 +3241,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
     clientScript: `(function () {
     'use strict';
 
-    ////////////////////////////////////////////////////////////
-    // Widget Editor+ — client_script.js
-    // AngularJS module for the ServiceNow sp_widget editor UI page.
-    ////////////////////////////////////////////////////////////
+    // Widget Editor+ — client_script.js — AngularJS module for the ServiceNow sp_widget editor UI page.
 
     // Suppress Monaco worker 'Unexpected usage' unhandled rejections (non-fatal).
     window.addEventListener('unhandledrejection', function (e) {
@@ -3286,8 +3276,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
     var DIFF_PAGE_SYS_ID =
         (window.WE_CONFIG && window.WE_CONFIG.diffPageSysId) || '';
 
-    /** Build a navigation URL for a UI page.  Uses sys_id-based nav when the
-     *  page sys_id is known so the URL is stable even if the page is renamed. */
+    /** Builds a UI page nav URL; uses sys_id-based nav when known so it survives page renames. */
     function _diffNavUrl(params) {
         var qs = Object.keys(params)
             .map(function (k) {
@@ -3329,10 +3318,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
     angular
         .module('widgetEditor', [])
 
-        ////////////////////////////////////////////////////////////
-        // Directive: we-splitter-drag
-        // Adds mousedown-drag behaviour to splitter elements.
-        ////////////////////////////////////////////////////////////
+        // Directive: we-splitter-drag — Adds mousedown-drag behaviour to splitter elements.
         .directive('weSplitterDrag', [
             function () {
                 return {
@@ -3357,17 +3343,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        ////////////////////////////////////////////////////////////
-        // Directive: we-pref-draggable
-        // HTML5 drag-and-drop reordering of editors in the User Preferences modal.
-        // Usage: we-pref-draggable="e.key" on each row; a child with draggable="true"
-        // initiates the drag (dragstart bubbles up).
-        ////////////////////////////////////////////////////////////
+        // Directive: we-pref-draggable — HTML5 drag-and-drop reordering of editors in the User Preferences modal.
         .directive('wePrefDraggable', [
             function () {
-                // Synchronous drag-state shared across all row instances.
-                // Must be set in dragstart synchronously — scope.$applyAsync is too late
-                // for the first dragover's e.preventDefault() call.
+                // Shared across row instances; set synchronously in dragstart since scope.$applyAsync is too late for the first dragover's preventDefault().
                 var _activeDragKey = null;
 
                 return {
@@ -3435,10 +3414,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        ////////////////////////////////////////////////////////////
-        // Directive: we-auto-resize
-        // Makes a textarea grow vertically to fit its content.
-        ////////////////////////////////////////////////////////////
+        // Directive: we-auto-resize — Makes a textarea grow vertically to fit its content.
         .directive('weAutoResize', [
             '$timeout',
             function ($timeout) {
@@ -3468,20 +3444,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        ////////////////////////////////////////////////////////////
-        // Directive: we-select2-roles
-        // Initialises a Select2 v3 multi-select on an <input type="hidden"> element.
-        // Select2 v3 (ServiceNow) requires query/createSearchChoice/initSelection on
-        // a hidden input — ajax on <select> is not supported in v3.
-        ////////////////////////////////////////////////////////////
+        // Directive: we-select2-roles — Initialises a Select2 v3 multi-select on an <input type="hidden"> element.
         .directive('weSelect2Roles', [
             '$timeout',
             function ($timeout) {
                 return {
                     restrict: 'A',
-                    // No isolated scope. The directive lives inside ng-if child scopes,
-                    // so we must mutate the rolesList array in-place rather than replacing
-                    // it — replacing would shadow the controller-scope array on the child scope.
+                    // No isolated scope, so rolesList must be mutated in-place — replacing it would shadow the controller-scope array on the ng-if child scope.
                     link: function (scope, el) {
                         $timeout(function () {
                             var $jq =
@@ -3606,12 +3575,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        ////////////////////////////////////////////////////////////
-        // Directive: we-modal-draggable
-        // Enables dragging a modal dialog by its header. Apply to .we-modal-header.
-        // Ignores mousedown on interactive elements (buttons, links, inputs).
-        // Sets transform: translate(dx, dy) on the closest .we-modal ancestor.
-        ////////////////////////////////////////////////////////////
+        // Directive: we-modal-draggable — Enables dragging a modal dialog by its header. Apply to .we-modal-header.
         .directive('weModalDraggable', [
             function () {
                 return {
@@ -3715,11 +3679,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        ////////////////////////////////////////////////////////////
-        // Directive: we-loader
-        // Inline search-box loading indicator using the Now Design System spinner
-        // path. Spins via CSS and fills with the --now-loader_icon--color token.
-        ////////////////////////////////////////////////////////////
+        // Directive: we-loader — Inline search-box loading indicator using the Now Design System spinner
         .directive('weLoader', [
             function () {
                 return {
@@ -3732,11 +3692,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        ////////////////////////////////////////////////////////////
-        // Directive: we-spinner
-        // Renders the circular loading spinner SVG. Colour is inherited via
-        // currentColor, so set a CSS color on any ancestor element.
-        ////////////////////////////////////////////////////////////
+        // Directive: we-spinner — Renders the circular loading spinner SVG; colour is inherited via currentColor.
         .directive('weSpinner', [
             function () {
                 return {
@@ -3753,11 +3709,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        ////////////////////////////////////////////////////////////
-        // Directive: we-tooltip-title
-        // Keeps Bootstrap's data-original-title in sync with an interpolated
-        // expression, preventing double-tooltip (Bootstrap + native title).
-        ////////////////////////////////////////////////////////////
+        // Directive: we-tooltip-title — Keeps Bootstrap's data-original-title in sync with an interpolated attribute value.
         .directive('weTooltipTitle', [
             function () {
                 return {
@@ -3781,12 +3733,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        ////////////////////////////////////////////////////////////
-        // Directive: we-dropdown-auto-pos
-        // Repositions a .we-dropdown-menu or .we-popover so it never escapes
-        // the viewport edges.  Works for both ng-if (runs on link) and ng-show
-        // (watches openDropdown / openCompactSubmenu).
-        ////////////////////////////////////////////////////////////
+        // Directive: we-dropdown-auto-pos — Repositions a .we-dropdown-menu or .we-popover so it never escapes the viewport.
         .directive('weDropdownAutoPos', [
             '$timeout',
             function ($timeout) {
@@ -3796,8 +3743,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         var el = element[0];
 
                         function reposition() {
-                            // Reset any previous inline corrections so the base CSS is
-                            // restored before we re-measure.
+                            // Reset inline corrections so base CSS applies before re-measuring.
                             el.style.left = '';
                             el.style.right = '';
                             el.style.top = '';
@@ -3817,8 +3763,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 el.style.left = 'auto';
                                 el.style.right = '0';
                             }
-                            // Horizontal: fix left-align for already right-aligned menus
-                            // that end up off-screen on the left.
+                            // Horizontal: fixes left-align if a right-aligned menu overflows off-screen left.
                             if (el.getBoundingClientRect().left < 0) {
                                 el.style.left = '0';
                                 el.style.right = 'auto';
@@ -3830,13 +3775,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             }
                         }
 
-                        // Hide → reposition → show, preventing a one-frame flash at the
-                        // default position.  For ng-show: at $watch fire time ng-hide is
-                        // still on the element (Angular hasn't processed ng-show yet), so
-                        // opacity:0 is set now; after $timeout Angular removes ng-hide and
-                        // we reposition before restoring opacity.  For ng-if: the element
-                        // is freshly linked (already visible) so opacity:0 hides it for
-                        // one frame while we measure and reposition.
+                        // Hides, repositions, then shows to avoid a one-frame flash at the default position.
                         function positionThenShow() {
                             el.style.opacity = '0';
                             $timeout(function () {
@@ -3873,13 +3812,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        ////////////////////////////////////////////////////////////
-        // Directive: we-dropdown-fixed-pos
-        // Like we-dropdown-auto-pos but uses position:fixed so the menu
-        // escapes any overflow:hidden ancestor (e.g. .we-pane).
-        // Place on the .we-dropdown-menu element. The trigger button must be
-        // the first .btn child of the parent .we-dropdown element.
-        ////////////////////////////////////////////////////////////
+        // Directive: we-dropdown-fixed-pos — Like we-dropdown-auto-pos but uses position:fixed so the menu escapes clipping ancestors.
         .directive('weDropdownFixedPos', [
             '$timeout',
             function ($timeout) {
@@ -3951,16 +3884,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        ////////////////////////////////////////////////////////////
-        // Directive: we-pane-subheader-fit
-        // Watches the subheader width and sets item.subheaderTypeOverflow
-        // true when the type row doesn't fit inline beside the name row.
-        //
-        // Detection strategy: the name row uses flex:1 so it always fills
-        // remaining space. When the type row takes too much room the name
-        // row is squeezed below a useful minimum. We detect that squeeze
-        // rather than comparing totals (which always ≈ available width).
-        ////////////////////////////////////////////////////////////
+        // Directive: we-pane-subheader-fit — Watches the subheader width and sets item.subheaderTypeOverflow
         .directive('wePaneSubheaderFit', [
             '$timeout',
             function ($timeout) {
@@ -3969,8 +3893,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     link: function (scope, element) {
                         var el = element[0];
                         var ro = null;
-                        // Minimum px the name row needs to be usable:
-                        // "Name" label (~35px) + gap (6px) + input min-width (64px) ≈ 105px.
+                        // Min usable name-row width: label + gap + input min-width ≈ 105px.
                         var MIN_NAME_ROW_W = 100;
 
                         function check() {
@@ -3978,9 +3901,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             var nameRow = el.querySelector('.we-pane-subheader-name-row');
                             if (!typeRow || !nameRow) { return; }
 
-                            // When already in overflow mode the type row is display:none via CSS.
-                            // Temporarily restore it so the browser can re-layout and we can
-                            // measure whether there is now enough room to switch back.
+                            // Temporarily restores display so layout can be re-measured for a switch back.
                             var wasOverflow = !!(scope.item && scope.item.subheaderTypeOverflow);
                             if (wasOverflow) {
                                 typeRow.style.display = 'flex';
@@ -3993,8 +3914,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 typeRow.style.display = '';
                             }
 
-                            // If the name row has been squeezed below the minimum useful
-                            // width, the type row doesn't fit alongside it.
+                            // Name row squeezed below minimum width means the type row doesn't fit.
                             var overflows = nameRowW < MIN_NAME_ROW_W;
 
                             if (scope.item && !!scope.item.subheaderTypeOverflow !== overflows) {
@@ -4019,9 +3939,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        ////////////////////////////////////////////////////////////
         // Controller: WidgetEditorCtrl
-        ////////////////////////////////////////////////////////////
         .controller('WidgetEditorCtrl', [
             '$scope',
             '$http',
@@ -4039,10 +3957,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $injector,
                 $window
             ) {
-                /* Get the AMB client. js_includes_amb.jsx bundles the CometD client but does NOT
-                 * register an Angular ng.amb module — the Angular 'amb' service is only available
-                 * on full form pages (js_includes_ui16_form.jsx). Use the global window.amb.getClient()
-                 * as the primary source; fall back to the Angular injector if somehow available. */
+                // The Angular 'amb' service only exists on full form pages; falls back to window.amb.getClient().
                 var amb = null;
                 try {
                     if ($injector.has('amb')) amb = $injector.get('amb');
@@ -4057,16 +3972,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     } catch (e) {}
                 }
 
-                ////////////////////////////////////////////////////////////
-                // Config
-                ////////////////////////////////////////////////////////////
-                // Read from window.WE_CONFIG (captured in an inline <script> before Angular
-                // bootstraps) rather than re-parsing window.location.search here — ServiceNow's
-                // app shell can rewrite the URL (e.g. via history.replaceState) while Angular's
-                // own bootstrap is deliberately deferred, so a second parse can intermittently
-                // see a stripped URL and read empty values, silently skipping the whole widget
-                // load (and everything that depends on it, e.g. presence) in favor of the
-                // "no widget_id" / new-widget code path.
+                // Reads window.WE_CONFIG (set before Angular bootstraps) instead of re-parsing location.search, since ServiceNow can rewrite the URL first.
                 var _params = new URLSearchParams(window.location.search);
                 var _weConfig = window.WE_CONFIG || {};
                 var SYS_ID = _weConfig.sys_id || _params.get('widget_id') || '';
@@ -4156,9 +4062,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                 );
 
-                ////////////////////////////////////////////////////////////
                 // Scope state
-                ////////////////////////////////////////////////////////////
                 $scope.loading = true;
                 $scope.loadingWidgetName = '';
                 if (SYS_ID) {
@@ -4172,9 +4076,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.widget = {};
                 $scope.isVersionView = !!VERSION_ID;
 
-                ////////////////////////////////////////////////////////////
                 // SN Utils "Edit in VS Code" integration
-                ////////////////////////////////////////////////////////////
                 function checkSnUtilsInstalled() {
                     var installed = (
                         typeof window.snusettings !== 'undefined' ||
@@ -4490,9 +4392,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     ctrlSSaveActiveOnly: true,
                     flashOnEditorOpen: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
                     showOpenInVsCode: true,
-                    // Snapshot of the last-saved editor order and visibility.
-                    // Used by the Preferences dialog so it reflects saved state,
-                    // not any temporary live changes the user has made.
+                    // Last-saved editor order/visibility, so the Preferences dialog reflects saved state, not live changes.
                     editorOrder: [],
                     editorVisibility: {},
                 };
@@ -4546,9 +4446,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 $scope.visibleItems = [];
 
-                ////////////////////////////////////////////////////////////
                 // AJAX helper — GlideAjax → WidgetEditorAjax Script Include
-                ////////////////////////////////////////////////////////////
                 function ajax(action, params) {
                     var deferred = $q.defer();
                     var ga = new GlideAjax(AJAX_SCRIPT);
@@ -4575,9 +4473,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     return deferred.promise;
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Widget picker
-                ////////////////////////////////////////////////////////////
                 function _buildSavePayload() {
                     $scope.coreEditorDefs.forEach(function (def) {
                         if (monacoEditors[def.key]) {
@@ -4616,9 +4512,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     return payload;
                 }
 
-                // Tracks the most recently issued request so a slower, earlier response (e.g. the
-                // unfiltered initial load) can't overwrite a later, filtered one that resolves first —
-                // requests aren't guaranteed to resolve in the order they were sent.
+                // Guards against a stale, slower response overwriting a newer one.
                 var _widgetListRequestId = 0;
                 function loadWidgetList(search) {
                     $scope.pickerLoading = true;
@@ -4800,9 +4694,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Initialisation
-                ////////////////////////////////////////////////////////////
                 function _snapshotEditorPrefs() {
                     $scope.userPrefs.editorOrder = $scope.coreEditorDefs.map(function (d) { return d.key; });
                     $scope.userPrefs.editorVisibility = {};
@@ -4903,12 +4795,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             _loadGoogleFonts();
                         }
                     }
-                    /* ctrlSSaveActiveOnly — with migration from old inverted key */
                     if (p.hasOwnProperty('ctrlSSaveActiveOnly')) {
                         $scope.userPrefs.ctrlSSaveActiveOnly =
                             !!p.ctrlSSaveActiveOnly;
                     } else if (p.hasOwnProperty('ctrlSSaveAll')) {
-                        /* Migrate old preference (inverted semantics) */
+                        // ctrlSSaveAll is inverted relative to ctrlSSaveActiveOnly.
                         $scope.userPrefs.ctrlSSaveActiveOnly = !p.ctrlSSaveAll;
                     }
                     /* Apply HTML toggles to the language module */
@@ -5055,8 +4946,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             );
                             var wo = data.widget.widgetOrigin;
                             if (wo && wo.created_on) {
-                                // SN returns UTC "YYYY-MM-DD HH:MM:SS"; replace space with T so
-                                // Date() parses it as UTC across all browsers.
+                                // SN returns UTC "YYYY-MM-DD HH:MM:SS"; inserting T makes Date() parse it as UTC.
                                 var originDate = new Date(
                                     wo.created_on.replace(' ', 'T') + 'Z'
                                 );
@@ -5275,9 +5165,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Pane management
-                ////////////////////////////////////////////////////////////
                 function getOrCreateCorePaneObj(def) {
                     if (!paneMap[def.key]) {
                         paneMap[def.key] = {
@@ -5369,9 +5257,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     arr.splice(toIdx > fromIdx ? toIdx - 1 : toIdx, 0, removed);
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Monaco editor management — uses GlideEditorMonaco (ServiceNow wrapper)
-                ////////////////////////////////////////////////////////////
 
                 var _monacoThemesDefined = false;
                 var _scssTokenizerSet = false;
@@ -5425,12 +5311,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 }
 
-                // Monaco's built-in JS/TS Monarch tokenizer emits an entire
-                // JSDoc comment block as one 'comment.doc' token — no sub-highlighting
-                // for @tags, {types}, or param/property names the way VS Code's
-                // TextMate jsdoc grammar does. Decorations fill that gap: scan each
-                // JSDoc block for @tag / {type} / name and paint them with the
-                // we-jsdoc-* classes defined in the page <style> block.
+                // Monaco's Monarch tokenizer treats JSDoc blocks as one token; decorations add @tag/{type}/name coloring via we-jsdoc-* classes.
                 var _JSDOC_NAME_TAGS = {
                     param: true,
                     arg: true,
@@ -5513,9 +5394,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     return decos;
                 }
 
-                // Register a lightweight JSON language that uses only a Monarch tokenizer
-                // (main thread, no worker). Avoids the "Unexpected usage" console error
-                // that occurs when Monaco tries to load the JSON language service worker.
+                // Monarch-only JSON language (no worker) avoids Monaco's "Unexpected usage" console error from the JSON language service worker.
                 function _ensureWeJsonLanguage() {
                     if (
                         _weJsonRegistered ||
@@ -5703,17 +5582,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             }
                         );
 
-                        // Create editors one pane per tick instead of all at once, so the
-                        // browser can paint/respond to input between each editor.create()
-                        // call rather than blocking the main thread for their combined cost.
+                        // One pane per tick so the browser can paint/respond between editor.create() calls.
                         function initNextPane(idx) {
                             if (idx >= panesToInit.length) {
                                 $timeout(layoutAllEditors, 20);
                                 $timeout(layoutAllEditors, 500);
                                 $timeout(layoutAllEditors, 900);
-                                // Font metrics can arrive after editor creation and delay proper
-                                // paint. Re-layout once fonts are ready so token colors are
-                                // visible immediately.
+                                // Re-layout once fonts are ready, since late metrics can delay proper paint.
                                 try {
                                     if (
                                         document.fonts &&
@@ -5777,9 +5652,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         : 'we-vs';
                 }
 
-                // Returns the ServiceNow table name under the cursor if it is the first
-                // argument to a table-consuming API (GlideRecord, GlideRecordSecure,
-                // GlideAggregate, GlideQuery, addJoinQuery), otherwise null.
+                // Returns the table name if the cursor is in the first arg of a table-consuming API call, else null.
                 function _getTableNameAtCursor(ed) {
                     var model = ed.getModel();
                     var pos = ed.getPosition();
@@ -5844,9 +5717,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     return null;
                 }
 
-                // Returns the platform version string for ServiceNow docs URLs.
-                // Returns the ServiceNow build name (e.g. "zurich") for docs URLs.
-                // WE_CONFIG.buildName is injected server-side via gs.getBuildName() in html.xml.
+                // Returns the ServiceNow build name (e.g. "zurich") for docs URLs; WE_CONFIG.buildName comes from gs.getBuildName().
                 function _getSnVersion() {
                     if (window.WE_CONFIG && window.WE_CONFIG.buildName) {
                         return window.WE_CONFIG.buildName;
@@ -5868,11 +5739,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     return '';
                 }
 
-                // Returns the ServiceNow class name under/around the cursor, or null.
-                // If the cursor is on an uppercase-starting identifier → that is the class.
-                // If the cursor is on a method/property name, looks for ClassName. on the
-                // left of it on the same line and returns that class name.
-                // Common JavaScript built-ins are excluded to avoid false positives.
                 var _JS_BUILTINS = {
                     Array: 1,
                     Boolean: 1,
@@ -5895,6 +5761,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     WeakSet: 1,
                 };
 
+                // Returns the ServiceNow class name under the cursor, or found to its left for a method/property, excluding _JS_BUILTINS.
                 function _getSnClassAtCursor(ed) {
                     var model = ed.getModel();
                     var pos = ed.getPosition();
@@ -5941,9 +5808,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         : null;
                 }
 
-                ////////////////////////////////////////////////////////////
                 // JS formatting options
-                ////////////////////////////////////////////////////////////
                 function _applyJsFormatOptions() {
                     if (
                         !window.monaco ||
@@ -5968,11 +5833,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 var _jsFormattingProviderRegistered = false;
 
-                // Registers a custom DocumentFormattingEditProvider for JavaScript that
-                // calls the TypeScript worker directly, forwarding our user preferences
-                // (notably insertSpaceBeforeFunctionParenthesis) as format options.
-                // This is more reliable than setFormattingOptions, which was removed in
-                // newer Monaco versions.
+                // Calls the TypeScript worker directly, forwarding user prefs as format options; more reliable than the removed setFormattingOptions.
                 function _registerJsFormattingProvider() {
                     if (_jsFormattingProviderRegistered || !window.monaco) {
                         return;
@@ -6106,9 +5967,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         }
                         var isJs =
                             lang === 'javascript' || lang === 'typescript';
-                        // Track language and server-script flag for per-pane ESLint config routing.
-                        // HTML/SCSS editors are validated by Monaco's built-in language services;
-                        // ESLint is only invoked for JavaScript editors.
+                        // ESLint only runs for JS/TS; HTML/SCSS use Monaco's built-in validators.
                         _lintEditorLangs[pane.key] = lang;
                         _lintEditorIsServer[pane.key] =
                             pane.field === 'script' || isSI;
@@ -6179,11 +6038,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             _registerJsFormattingProvider();
                             _applyJsFormatOptions();
 
-                            // Server script/Script Include and client controller/
-                            // link/provider panes share Monaco's single 'javascript'
-                            // language service, so only one side's GlideRecord/$sp-
-                            // server vs g_form/AngularJS/$sp-client declarations can
-                            // be registered at a time. Swap on focus.
+                            // Server and client panes share one Monaco JS language service; only one side's globals can be registered, so swap on focus.
                             if (isJs) {
                                 var _jsScriptKind =
                                     pane.field === 'script' || isSI
@@ -6243,9 +6098,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         if (!_m) {
                                             return;
                                         }
-                                        // Tokenize the full model on initial/layout passes.
-                                        // Using visible ranges here can be stale before first paint,
-                                        // which leaves JS/TS text uncolored until user interaction.
+                                        // Full-model tokenization avoids leaving JS/TS uncolored before first paint.
                                         var _lastLine = _m.getLineCount();
                                         // Monaco ≥0.32 puts forceTokenization on model.tokenization;
                                         // older builds expose it directly on the model.
@@ -6400,9 +6253,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         _lintNgExpressions(pane.key);
                                     }, 600);
                                 });
-                                // Force a final check on blur (e.g. clicking Save, switching
-                                // panes) so nothing goes unvalidated if focus leaves before the
-                                // debounce above has a chance to fire.
+                                // Forces a final check on blur so nothing goes unvalidated before the debounce fires.
                                 ed.onDidBlurEditorWidget(function () {
                                     clearTimeout(_ngLintTimer);
                                     _lintNgExpressions(pane.key);
@@ -6432,10 +6283,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 initBreakpoints(ed, pane.key, pane);
                             }
 
-                            // "Open table" context menu action — JavaScript panes only.
-                            // Shown when the cursor is inside a string that is the first argument
-                            // to GlideRecord / GlideRecordSecure / GlideAggregate / GlideQuery /
-                            // addJoinQuery.  Opens the table list view in a new tab.
+                            // "Open table": shown when cursor is in a GlideRecord/GlideAggregate/GlideQuery table-name string.
                             if (isJs) {
                                 var _tableCtxKey = ed.createContextKey(
                                     'weIsOnTable',
@@ -6520,8 +6368,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                             }
 
-                            // "Edit Script Include" context menu — shown when cursor is on a known SI name,
-                            // or asynchronously confirmed for any capitalised word not yet in the cache.
+                            // "Edit Script Include": shown on known SI names or confirmed async for capitalised words.
                             if (isJs) {
                                 var _siCtxKey = ed.createContextKey(
                                     'weIsOnScriptInclude',
@@ -6629,14 +6476,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                             }
                         } // end _doCreate
-                        // Fire-and-forget, matching loadServerMonarchDts/loadClientMonarchDts
-                        // below: don't block the editor's first paint on the HTML Monarch
-                        // language bundle loading over the network. monaco.editor.create()
-                        // runs immediately with whatever 'html' tokenizer is registered so
-                        // far (Monaco's built-in one on a cold load); once
-                        // MONACO_LANGUAGE_HTML registers its Angular-aware tokenizer, Monaco
-                        // automatically re-tokenizes existing models — same as how the JS
-                        // panes' DTS/IntelliSense loads in behind an already-visible editor.
+                        // HTML Monarch bundle loads async; editor renders with the built-in tokenizer until it's registered, then re-tokenizes automatically.
                         if (lang === 'html') {
                             loadHtmlMonarchDts();
                         }
@@ -6687,9 +6527,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                 }
 
-                ////////////////////////////////////////////////////////////
                 // ESLint linting — ServiceNow lintWorker + monaco.editor.setModelMarkers
-                ////////////////////////////////////////////////////////////
 
                 function _initLintWorker() {
                     if (_lintWorker || typeof Worker === 'undefined') {
@@ -6839,11 +6677,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 }
 
-                // Returns per-pane ESLint config:
-                //   • server script (field='script'): ES5 unless ES12 mode is on
-                //   • all other JS editors (client_script, link, providers): always ES2021
-                //   • HTML editors: null → skip ESLint (validated by MONACO_LANGUAGE_HTML)
-                //   • SCSS editors: null → skip ESLint (validated by Monaco's built-in CSS service)
+                // Per-pane ESLint config: server script ES5 (ES2021 with ES12 mode), other JS ES2021, HTML/SCSS skipped.
                 function _getEslintConfigForPane(paneKey) {
                     var lang = _lintEditorLangs[paneKey];
                     if (lang !== 'javascript' && lang !== 'typescript') {
@@ -6926,58 +6760,32 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 }
 
-                ////////////////////////////////////////////////////////////
-                // AngularJS expression validation — real syntax checking via
-                // AngularJS's own $parse, not a hand-rolled grammar. $parse compiles
-                // an expression string and throws a SyntaxError on malformed input;
-                // it needs no scope/DOM, so it's cheap to run on every edit.
-                // Catches syntax errors only (unbalanced parens, bad operators, etc.) —
-                // it has no way to know whether foo.bar actually exists on the widget's
-                // controller, since that's a runtime concern, not a parse-time one.
-                ////////////////////////////////////////////////////////////
+                // Validates via AngularJS's own $parse, not a hand-rolled grammar.
 
-                // ngRepeat's "item in collection [as alias] [track by expr]" syntax is
-                // split by this regex inside Angular's own ngRepeat directive *before* the
-                // pieces are handed to $parse — the whole attribute value is not itself
-                // valid expression syntax, so it can't be $parse'd as one string.
-                // NOTE: this field is a JS template literal in the .ts source — template
-                // literal parsing silently strips a backslash from any non-special escape
-                // (\\s becomes plain "s") and turns \\n into a literal newline byte, so every
-                // regex escape below is deliberately doubled to survive that parse and land
-                // as a single, correct backslash in the deployed script.
+                // Mirrors Angular's own ngRepeat split regex, since the full attribute value isn't valid expression syntax for $parse.
+                // Regex escapes are doubled to survive template-literal parsing (\\s → s, \\n → newline byte) and land as one backslash in the deployed script.
                 var NG_REPEAT_REGEXP =
                     /^\\s*([\\s\\S]+?)\\s+in\\s+([\\s\\S]+?)(?:\\s+as\\s+([\\s\\S]+?))?(?:\\s+track\\s+by\\s+([\\s\\S]+?))?\\s*$/d;
 
-                // ngOptions has its own grammar too — "select as label group by
-                // group for value in collection track by trackexpr" — lifted
-                // verbatim (escaping doubled per the note above) from AngularJS's
-                // own ngOptions directive source so the sub-clauses this splits
-                // out match exactly what real Angular accepts.
+                // Mirrors Angular's own ngOptions split regex verbatim (escapes doubled per the note above).
                 var NG_OPTIONS_REGEXP =
                     /^\\s*([\\s\\S]+?)(?:\\s+as\\s+([\\s\\S]+?))?(?:\\s+group\\s+by\\s+([\\s\\S]+?))?(?:\\s+disable\\s+when\\s+([\\s\\S]+?))?\\s+for\\s+(?:([\\$\\w][\\$\\w]*)|(?:\\(\\s*([\\$\\w][\\$\\w]*)\\s*,\\s*([\\$\\w][\\$\\w]*)\\s*\\)))\\s+in\\s+([\\s\\S]+?)(?:\\s+track\\s+by\\s+([\\s\\S]+?))?\\s*$/d;
 
                 // ngPattern accepts a scope expression or a bare regex literal (e.g. /^\\d+$/); validate literal shapes as RegExp, not via $parse.
                 var NG_PATTERN_REGEXP = /^\\/(.*)\\/([a-zA-Z]*)$/;
 
-                // Directives whose attribute value is a plain identifier/string rather
-                // than an Angular expression — $parse'ing these would misfire.
+                // Attributes whose value is a plain identifier/string, not an Angular expression.
                 var NG_NON_EXPRESSION_ATTRS = {
                     'ng-app': true,
                     'ng-controller': true,
                     'ng-non-bindable': true,
-                    // ng-list's value (when given) is a literal delimiter string
-                    // (e.g. ng-list=" | "), not an expression.
+                    // ng-list's value is a literal delimiter string, not an expression.
                     'ng-list': true,
-                    // ng-switch-when compares its value as a raw string (optionally
-                    // comma-separated for multiple matches), never $parse'd.
+                    // ng-switch-when compares its value as a raw (optionally comma-separated) string.
                     'ng-switch-when': true,
                 };
 
-                // Directives whose attribute value is an interpolated string (plain
-                // text with embedded {{ }} expressions), not itself an expression —
-                // e.g. ng-href="?id={{::portal.homepage_dv}}". $parse'ing the whole
-                // value would misfire on the literal text; the {{ }} portions are
-                // already caught separately via interpRe below.
+                // Attributes holding interpolated text (e.g. {{ }} in a URL), not a standalone expression.
                 var NG_INTERPOLATE_ONLY_ATTRS = {
                     'ng-href': true,
                     'ng-src': true,
@@ -7024,20 +6832,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     return _ngParseFn;
                 }
 
-                // Scans raw template text for embedded Angular expressions — {{ }}
-                // interpolations and ng-*/data-ng-* directive attribute values — and
-                // returns each with a character offset into the text for mapping back
-                // onto editor positions.
+                // Scans template text for {{ }} interpolations and ng-*/data-ng-* attribute expressions, with offsets for editor mapping.
                 function _extractNgExpressions(text) {
                     var out = [];
                     var m;
 
-                    // Deliberately excludes newlines from the interpolation/quote bodies below.
-                    // While a quote or "}}" is still unclosed mid-edit, a class that allows
-                    // newlines (e.g. a dot-all style class) will happily search across line breaks and match
-                    // an unrelated "}}" or quote several lines down as if it belonged here —
-                    // producing a garbled, wrong-location expression instead of simply not
-                    // matching yet.
+                    // Excludes newlines so an unclosed quote/}} mid-edit can't greedily match across lines.
                     var interpRe = /\\{\\{([^\\n]*?)\\}\\}/g;
                     while ((m = interpRe.exec(text))) {
                         out.push({
@@ -7104,10 +6904,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                                 continue;
                             }
-                            // Groups 1 (label/select), 2 (select-as label), 3 (group by),
-                            // 4 (disable when), 8 (collection) and 9 (track by) are all
-                            // Angular expressions; 5/6/7 are bare loop variable names, not
-                            // expressions, so they're skipped.
+                            // Groups 1,2,3,4,8,9 are Angular expressions; 5/6/7 are bare loop variable names.
                             [1, 2, 3, 4, 8, 9].forEach(function (g) {
                                 if (optParts[g] === undefined) {
                                     return;
@@ -7206,11 +7003,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     } catch (e) {}
                 }
 
-                ////////////////////////////////////////////////////////////
-                // Monaco plus init — delegates all DTS/diagnostic/provider
-                // setup to SNMonacoPlus. Language context controls which
-                // Monaco language service receives server vs. client DTS.
-                ////////////////////////////////////////////////////////////
+                // Delegates DTS/diagnostic/provider setup to SNMonacoPlus.
                 var _serverPlusInitialized = false;
                 function _initServerMonacoPlus(scope) {
                     var _bs = window.SNMonacoPlusBootstrap;
@@ -7292,12 +7085,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 }
 
-                ////////////////////////////////////////////////////////////
-                // Code actions — JSDoc insertion (JS) and px→rem conversion (SCSS).
-                // Lazy-loads monaco_code_actions.jsdbx on first JS or SCSS editor
-                // creation (also pre-loaded at widget load so the SCSS action is ready
-                // before the first CSS pane opens).
-                ////////////////////////////////////////////////////////////
+                // Lazy-loads monaco_code_actions.jsdbx on first JS or SCSS editor.
                 function loadCodeActions(modelId, isAngular) {
                     var _bs = window.SNMonacoPlusBootstrap;
                     if (!_bs) {
@@ -7319,17 +7107,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Script include intellisense — delegated to SNMonacoPlus core
-                ////////////////////////////////////////////////////////////
                 var _selfSavingFields = {}; // field -> saved value; absorb own-save RW echoes
                 var _serverScriptModels = {}; // model.id -> true for server script editors
 
-                ////////////////////////////////////////////////////////////
-                // Code macro completions — registerCompletionItemProvider for JS editors
-                // Fetches SN code macros server-side and registers them as Monaco snippet
-                // completions, mirroring the monacoIncludes.jsx _initMacros pattern.
-                ////////////////////////////////////////////////////////////
+                // Fetches SN code macros server-side and registers them as Monaco snippet completions.
                 var _macroCompletionRegistered = false;
 
                 function registerMacroCompletions() {
@@ -7423,9 +7205,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Go to Definition — opens Script Include / UI Script record in new tab
-                ////////////////////////////////////////////////////////////
                 var _snProvidersRegistered = false;
                 function registerSnDefinitionProvider() {
                     if (!window.monaco) {
@@ -7498,9 +7278,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     );
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Find References — searches for word usage across SN script tables
-                ////////////////////////////////////////////////////////////
                 var _openSnReferencesModal = null;
                 function registerSnReferenceProvider() {
                     if (!window.monaco) {
@@ -7730,9 +7508,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     };
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Server Breakpoints — gutter decoration + SN debug API
-                ////////////////////////////////////////////////////////////
                 function initBreakpoints(editor, paneKey, pane) {
                     var isSIPane = pane && pane.recordType === 'script_include';
                     if (paneKey !== 'script' && !isSIPane) {
@@ -7937,9 +7713,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Splitter drag
-                ////////////////////////////////////////////////////////////
                 $scope.startSplitterDrag = function (splitterIdx, event) {
                     var items = $scope.visibleItems;
                     var leftPane = items[splitterIdx - 1];
@@ -7984,9 +7758,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     document.addEventListener('mouseup', onUp);
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Save: single field
-                ////////////////////////////////////////////////////////////
                 var _paneIdDebounceMap = {};
                 $scope.onPaneIdChange = function (pane) {
                     pane.idDirty = true;
@@ -8078,9 +7850,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     var currentValue = editor
                         ? editor.getValue()
                         : pane.content || '';
-                    // Only auto-swap when the pane is empty or still holds exactly
-                    // the scaffold we last inserted — anything the user typed over
-                    // it is left alone.
+                    // Auto-swaps only when the pane is empty or still holds the last-inserted scaffold.
                     if (
                         currentValue.trim() !== '' &&
                         currentValue !== pane._scaffoldContent
@@ -8189,9 +7959,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         });
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Save: all (header Save button)
-                ////////////////////////////////////////////////////////////
                 $scope.$watch('widget.name', function (v) {
                     if (v && v.trim()) {
                         $scope.nameInvalid = false;
@@ -8298,8 +8066,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         link: $scope.widget.link || '',
                     };
 
-                    // Mark all script fields as self-saving so the record-watcher echo
-                    // is absorbed and doesn't show "has updated" infobars or re-dirty panes.
+                    // Marks script fields self-saving so the record-watcher echo doesn't re-dirty panes.
                     var _saveAllScriptFields = [
                         'template',
                         'css',
@@ -8462,9 +8229,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         });
                 };
 
-                ////////////////////////////////////////////////////////////
                 // ES12
-                ////////////////////////////////////////////////////////////
                 $scope.saveEs12 = function () {
                     // Defer until the widget record exists (new unsaved widget has no SYS_ID).
                     // For existing widgets the server does an upsert, so no pre-existence check needed.
@@ -8480,12 +8245,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 };
 
-                ////////////////////////////////////////////////////////////
-                // Presence — AMB channel (real-time, no GlideAjax polling)
-                // Mirrors platform snRecordPresence: subscribe to /sp/rp/sp_widget/<id>,
-                // publish own status on connect, receive others' statuses via the channel.
-                ////////////////////////////////////////////////////////////
-
+                // Presence via AMB channel (real-time, no polling), mirroring platform snRecordPresence.
                 var _presenceVisibilityHandler = null;
 
                 function startPresenceSubscription(widgetSysId) {
@@ -8493,8 +8253,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                     var currentUserId =
                         (typeof NOW !== 'undefined' && NOW.user_id) || null;
-                    // Presence map: user_id -> { sys_id, name, initials, avatar }
-                    // Populated by GlideAjax polling; kept current by AMB messages.
+                    // Presence map (user_id -> user info), seeded by polling, kept live via AMB.
                     var presenceMap = {};
 
                     function updatePresenceFromMap() {
@@ -8633,8 +8392,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 function stopPresenceSubscription() {
                     if (presenceChannel) {
-                        // Publish "exited" so other subscribers know we left immediately,
-                        // then unsubscribe (mirrors snRecordPresence.termPresence behaviour).
+                        // Publishes "exited" before unsubscribing, mirroring snRecordPresence.termPresence.
                         try {
                             presenceChannel.publish({
                                 presences: [
@@ -8665,9 +8423,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.presenceUsers = [];
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Per-pane presence (template / provider editors)
-                ////////////////////////////////////////////////////////////
                 var _panePresenceCurrentUserId =
                     (typeof NOW !== 'undefined' && NOW.user_id) || null;
 
@@ -8807,9 +8563,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         .join(', ');
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Extra pane (template/provider) external-change via AMB record watcher
-                ////////////////////////////////////////////////////////////
                 function startPaneRecordWatcher(pane) {
                     if (!amb || !pane.sys_id || pane._rwChannel) {
                         return;
@@ -8881,16 +8635,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     pane._rwChannel = null;
                 }
 
-                ////////////////////////////////////////////////////////////
                 // External-change detection via AMB record watcher
-                ////////////////////////////////////////////////////////////
                 function startRecordWatcher() {
                     if (!amb) {
                         return;
                     }
 
-                    // Use window.amb.getClient().getRecordWatcherChannel() directly —
-                    // equivalent to snRecordWatcher._initWatcher() from ng.amb (not available here).
+                    // Equivalent to snRecordWatcher._initWatcher(), which ng.amb doesn't expose here.
                     try {
                         var rwChannel = amb.getRecordWatcherChannel
                             ? amb.getRecordWatcherChannel(
@@ -8943,8 +8694,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         if (!pane) {
                             return;
                         }
-                        // Absorb echo of our own save: if the saved value matches the RW value,
-                        // this notification is our own update reflecting back — skip the infobar.
+                        // Skips the infobar when the RW notification just echoes our own save.
                         if (
                             _selfSavingFields[field] !== undefined &&
                             _selfSavingFields[field] === serverVal
@@ -9003,9 +8753,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         });
                     }
 
-                    // Same-browser revert (diff page in another tab): do a single fetch to
-                    // confirm the reverted values, then show the banner. Remote-user reverts
-                    // arrive via the AMB record watcher as normal field changes.
+                    // Same-tab revert confirmed via fetch; other-user reverts arrive through the AMB record watcher.
                     window.addEventListener('storage', function (e) {
                         if (e.key !== revertKey || !e.newValue) {
                             return;
@@ -9019,9 +8767,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     return;
                                 }
                                 var w = data.widget;
-                                // Only show the banner if the server values actually changed.
-                                // If the user cancelled the revert dialog, the widget is
-                                // unchanged and we should not show a false "reverted" alert.
+                                // Only show the banner if server values actually changed (skips a cancelled revert).
                                 var changed = FIELDS.some(function (f) {
                                     return (w[f] || '') !== lastServerValues[f];
                                 });
@@ -9037,9 +8783,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     window.location.reload();
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Editor visibility & user preferences
-                ////////////////////////////////////////////////////////////
                 function _clearPaneWidths() {
                     Object.keys(paneMap).forEach(function (k) {
                         paneMap[k].width = null;
@@ -9112,9 +8856,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     ajax('saveUserPrefs', { value: JSON.stringify(prefs) });
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Angular Templates (sp_ng_template)
-                ////////////////////////////////////////////////////////////
                 function focusPaneEditor(pane) {
                     if (!pane || !pane.key) {
                         return;
@@ -9260,9 +9002,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     };
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Angular Providers (sp_angular_provider)
-                ////////////////////////////////////////////////////////////
                 function openExtraPane(pane) {
                     extraPanes.push(pane);
                     buildVisibleItems();
@@ -9323,9 +9063,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }, 300);
                 };
 
-                // Tracks the most recently issued request so a slower, earlier response (e.g. the
-                // unfiltered initial load) can't overwrite a later, filtered one that resolves first —
-                // requests aren't guaranteed to resolve in the order they were sent.
+                // Guards against a stale, slower response overwriting a newer one.
                 var _linkProviderRequestId = 0;
                 function loadLinkProviderResults(search) {
                     $scope.linkProviderSearching = true;
@@ -9407,9 +9145,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     };
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Script Include panes
-                ////////////////////////////////////////////////////////////
                 function makeScriptIncludePaneObj(si) {
                     var key = 'si-' + si.sys_id;
                     return {
@@ -9543,9 +9279,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Dependencies (m2m_sp_widget_dependency)
-                ////////////////////////////////////////////////////////////
                 var _linkDepDebounce = null;
 
                 $scope.openDependency = function (dep) {
@@ -9581,9 +9315,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }, 300);
                 };
 
-                // Tracks the most recently issued request so a slower, earlier response (e.g. the
-                // unfiltered initial load) can't overwrite a later, filtered one that resolves first —
-                // requests aren't guaranteed to resolve in the order they were sent.
+                // Guards against a stale, slower response overwriting a newer one.
                 var _linkDependencyRequestId = 0;
                 function _loadLinkDependencyResults(search) {
                     $scope.linkDependencySearching = true;
@@ -9662,9 +9394,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Related Lists modal
-                ////////////////////////////////////////////////////////////
 
                 function _markFirstLink(columns) {
                     var set = false;
@@ -9763,9 +9493,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     );
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Unlink Provider
-                ////////////////////////////////////////////////////////////
                 $scope.pendingUnlinkProvider = null;
 
                 $scope.unlinkProviderFromDropdown = function (p) {
@@ -9914,9 +9642,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Close extra pane
-                ////////////////////////////////////////////////////////////
                 $scope.pendingClosePane = null;
 
                 $scope.closePane = function (pane) {
@@ -9968,9 +9694,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Versions diff tab
-                ////////////////////////////////////////////////////////////
                 $scope.formatVersionDate = function (snDate, includeSeconds) {
                     if (!snDate) {
                         return '';
@@ -10063,9 +9787,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 });
 
-                // Opens the diff page to compare unsaved changes vs current saved state.
-                // No version_id in the URL — the diff page detects the unsaved opener snap
-                // and shows left = current saved, right = unsaved.
+                // No version_id in the URL — the diff page detects the unsaved opener snap and shows current vs unsaved.
                 $scope.openUnsavedDiff = function () {
                     $scope.openDropdown = null;
                     var wSysId = $scope.widget && $scope.widget.sys_id;
@@ -10151,9 +9873,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     item.externalChange = null;
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Roles
-                ////////////////////////////////////////////////////////////
                 function parseRoles(str) {
                     return (str || '')
                         .split(',')
@@ -10206,9 +9926,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     // Roles are cleared on Save if is_public is true — not immediately
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Dropdown management
-                ////////////////////////////////////////////////////////////
                 $scope.toggleDropdown = function (name) {
                     $scope.openDropdown =
                         $scope.openDropdown === name ? null : name;
@@ -10648,9 +10366,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                 });
 
-                ////////////////////////////////////////////////////////////
                 // Unsaved changes guard
-                ////////////////////////////////////////////////////////////
                 function hasUnsavedChanges() {
                     if (
                         $scope.isNewWidget &&
@@ -10770,8 +10486,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     edWrapper.format($scope.userPrefs.formatTabsToSpaces);
                 };
 
-                // Detect which monospace fonts are available on the user's system using
-                // a canvas width-measurement trick (no DOM insertion required).
+                // Detects available monospace fonts via a canvas width-measurement trick.
                 function _getAvailableMonospaceFonts() {
                     var ua = navigator.userAgent.toLowerCase();
                     var os = 'unknown';
@@ -11116,9 +10831,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }, 150);
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Open on Portal modal
-                ////////////////////////////////////////////////////////////
 
                 function _openOnPortalStorageKey() {
                     return 'we_open_portal_params_' + SYS_ID;
@@ -11151,10 +10864,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     } catch (e) { }
                 };
 
-                // Detects $sp.getParameter('name') calls in the server script — sourced from the
-                // live Monaco editor when the "script" pane is open (so unsaved edits are picked
-                // up), falling back to the last-saved widget.script otherwise. Prefills each
-                // detected name from localStorage so values persist across sessions.
+                // Detects $sp.getParameter('name') calls from the live editor (falling back to saved script).
                 function _detectSpGetParameters() {
                     var script = (monacoEditors.script && monacoEditors.script.getValue()) ||
                         ($scope.widget && $scope.widget.script) || '';
@@ -11168,9 +10878,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             names.push(m[1]);
                         }
                     }
-                    // sys_id (or its common alias "id") identifies the record the page is
-                    // about — always surface it as the first field to fill in, regardless of
-                    // where in the script it was detected. "sys_id" outranks "id" when both appear.
+                    // sys_id/"id" always sorts first regardless of detection order; sys_id outranks id.
                     ['id', 'sys_id'].forEach(function (priorityName) {
                         var idx = names.indexOf(priorityName);
                         if (idx > 0) {
@@ -11276,9 +10984,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Keyboard shortcuts modal
-                ////////////////////////////////////////////////////////////
 
                 $scope.openKeyboardShortcutsModal = function () {
                     $scope.openDropdown = null;
@@ -11302,9 +11008,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.openDropdown = null;
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Option Schema modal
-                ////////////////////////////////////////////////////////////
 
                 $scope.openOptionSchemaModal = function () {
                     $scope.openDropdown = null;
@@ -11462,9 +11166,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                 }
 
-                ////////////////////////////////////////////////////////////
                 // Demo Data modal
-                ////////////////////////////////////////////////////////////
 
                 $scope.openDemoDataModal = function () {
                     $scope.openDropdown = null;
@@ -11604,9 +11306,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 };
 
-                ////////////////////////////////////////////////////////////
                 // XML modal
-                ////////////////////////////////////////////////////////////
 
                 $scope.copyWidgetUrl = function () {
                     $scope.openDropdown = null;
@@ -11723,14 +11423,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                 };
 
-                ////////////////////////////////////////////////////////////
                 // Window resize → re-layout editors
-                ////////////////////////////////////////////////////////////
                 window.addEventListener('resize', layoutAllEditors);
 
-                ////////////////////////////////////////////////////////////
                 // Boot
-                ////////////////////////////////////////////////////////////
                 init();
             },
         ]);

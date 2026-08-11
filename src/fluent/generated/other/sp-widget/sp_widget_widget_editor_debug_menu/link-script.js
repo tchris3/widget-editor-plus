@@ -102,14 +102,7 @@ function link(scope, element, attrs, controller) {
                 .replace(/'/g, '&#039;');
         }
 
-        /**
-         * Assigns value to window[name] so it's available in DevTools.
-         * Direct assignment (not a getter) so DevTools can enumerate properties
-         * and show autocomplete suggestions for window.$scope / window.$rootScope.
-         * Angular scope objects are mutated in-place by the digest cycle, so the
-         * reference stays current without needing to re-evaluate a getter.
-         * Silently ignores failures (e.g. non-writable built-ins).
-         */
+        /** Assigns value to window[name] so it's available in DevTools; ignores non-writable-property failures. */
         function assignConsoleVar(name, value) {
             try {
                 window[name] = value;
@@ -162,7 +155,6 @@ function link(scope, element, attrs, controller) {
     // 5. LoadTimeTracker — widget load-time overlay mode
     ///////////////////////////////////////////
 
-    // Adapted from: https://support.servicenow.com/kb?id=kb_article_view&sysparm_article=KB0744521
     const LoadTimeTracker = (function () {
         let _active = false;
         const _WE_LT = 'data-we-load-times'; // attribute used to tag every injected element
@@ -177,7 +169,6 @@ function link(scope, element, attrs, controller) {
         function activate() {
             _active = true;
 
-            // Style: outline widgets and ensure relative positioning for the overlay bar.
             const style = document.createElement('style');
             style.setAttribute(_WE_LT, '1');
             style.textContent = '[widget="widget"] { outline: 1px dashed rgba(200,0,0,0.5) !important; position: relative !important; }';
@@ -199,7 +190,6 @@ function link(scope, element, attrs, controller) {
                     const widget = s.widget;
                     const uid = (widget.rectangle_id || 'w') + '_' + s.$id;
 
-                    // Overlay bar
                     const bar = document.createElement('div');
                     bar.setAttribute(_WE_LT, '1');
                     bar.style.cssText = [
@@ -210,7 +200,6 @@ function link(scope, element, attrs, controller) {
                         'display:flex;align-items:center;gap:8px;font-family:' + MONOSPACE_FONTS + ';',
                     ].join('');
 
-                    // Widget name → editor link
                     const nameLink = document.createElement('a');
                     nameLink.href = UrlHelpers.getEditorPlusUrl(widget.sys_id);
                     nameLink.target = '_blank';
@@ -218,7 +207,6 @@ function link(scope, element, attrs, controller) {
                     nameLink.style.fontWeight = 'bold';
                     bar.appendChild(nameLink);
 
-                    // Log scope link
                     const logLink = document.createElement('a');
                     logLink.href = 'javascript:void(0)';
                     logLink.textContent = 'Log scope';
@@ -238,7 +226,6 @@ function link(scope, element, attrs, controller) {
                     timeSpan.textContent = '…';
                     bar.appendChild(timeSpan);
 
-                    // Refresh button
                     const refreshBtn = document.createElement('button');
                     refreshBtn.textContent = '⟳';
                     refreshBtn.title = 'Re-measure load time';
@@ -272,7 +259,6 @@ function link(scope, element, attrs, controller) {
                     }
                 }
 
-                // Summary panel
                 const slow = widgetData.filter((e) => e.load_time_ms >= _WE_LT_THRESHOLD);
                 slow.sort((a, b) => b.load_time_ms - a.load_time_ms);
 
@@ -310,7 +296,6 @@ function link(scope, element, attrs, controller) {
 
                 }
 
-                // Dismiss button
                 const closeBtn = document.createElement('button');
                 closeBtn.textContent = '×';
                 closeBtn.title = 'Dismiss';
@@ -346,14 +331,7 @@ function link(scope, element, attrs, controller) {
     // 6. Menu item configuration
     ///////////////////////////////////////////
 
-    /*
-     * Each entry has:
-     *   id         – matches the key in controller.preferences
-     *   label      – text shown in the debug context menu (string or fn returning string)
-     *   fn         – callback invoked by SP's debug menu
-     *   condition  – optional fn returning bool; item hidden when false
-     *   alwaysShow – true means never filtered out by preferences
-     */
+    // id matches controller.preferences; alwaysShow bypasses preference filtering.
     const MENU_ITEM_CONFIGS = [
         {
             id: 'showScopeButtons',
@@ -474,8 +452,7 @@ function link(scope, element, attrs, controller) {
         function getActualWidgetScope(el) {
             if (!el) return null;
             try {
-                // 1. If el is a container directive (e.g. <sp-widget> or element with widget attribute),
-                // look for inner elements with class .ng-scope inside el whose scope belongs to this widget.
+                // Looks for inner .ng-scope elements whose scope belongs to this widget.
                 if (el.querySelectorAll) {
                     const innerScopes = el.querySelectorAll('.ng-scope');
                     for (let i = 0; i < innerScopes.length; i++) {
@@ -520,13 +497,7 @@ function link(scope, element, attrs, controller) {
         }
 
         /**
-         * Walks up from el collecting every [widget] element that has a valid
-         * SP-prefixed sys_id class.  Returns an array (innermost first).
-         *
-         * spWidgetContent sets the directive name as "v" + sys_id (33 chars) and,
-         * when widget.update is true, appends a 5-char UID making it 38 chars.
-         * We handle both by looking for a class starting with "v" whose next 32
-         * chars are a valid lowercase hex sys_id.
+         * Walks up from el collecting every [widget] element with a valid SP sys_id class (innermost first).
          * @param   {Element} el  Starting element.
          * @returns {Array<{el: Element, sysId: string, name: string, widgetName: string}>}
          */
@@ -534,7 +505,7 @@ function link(scope, element, attrs, controller) {
             const results = [];
             while (el && el !== document.body) {
                 if (el.hasAttribute && el.hasAttribute('widget')) {
-                    // Scan all classes — Angular adds ng-scope etc. before the SP sys_id class
+                    // Class is "v" + 32-char sys_id, optionally +5-char UID; scan since Angular adds other classes first.
                     let sysId = null;
                     for (const cls of el.classList) {
                         if (cls.length >= 33 && cls.charAt(0) === 'v' && /^[0-9a-f]{32}/.test(cls.slice(1))) {
@@ -543,8 +514,6 @@ function link(scope, element, attrs, controller) {
                         }
                     }
                     if (sysId) {
-                        // Widget name from Angular scope; instance title from sn-atf-area attribute.
-                        // Display as "Widget Name" or "Widget Name [Instance Title]" when they differ.
                         let widgetName = '';
                         try {
                             const s = getActualWidgetScope(el);
@@ -580,9 +549,7 @@ function link(scope, element, attrs, controller) {
                         }
                     }
                 } catch (_ex) { /* angular not ready or detached node — keep walking */ }
-                // Fallback: SP stamps v{sys_id} as a CSS class on every [widget] element.
-                // Header/footer widgets often lack rectangle.widget.sys_id on their scope
-                // but always have this class.
+                // Fallback: header/footer widgets often lack rectangle.widget.sys_id but always have the v{sys_id} class.
                 if (el.hasAttribute && el.hasAttribute('widget')) {
                     for (const cls of el.classList) {
                         if (cls.length >= 33 && cls[0] === 'v' && /^[0-9a-f]{32}/.test(cls.slice(1))) {
@@ -1538,12 +1505,7 @@ function link(scope, element, attrs, controller) {
     // 10. Pending context-menu state
     ///////////////////////////////////////////
 
-    /*
-     * Captures the widget sys_id on contextmenu, then watches for the debug
-     * overlay (div.dropdown.clearfix[role="contentinfo"]) being appended to
-     * <body> and injects the preferred-editor link.
-     */
-
+    // Captures the widget sys_id on contextmenu, then watches for the debug overlay and injects the preferred-editor link.
     let _pendingWidgetSysId = null;
     let _pendingInstanceSysId = null;
     let _pendingWidgetEl = null;
@@ -1581,13 +1543,7 @@ function link(scope, element, attrs, controller) {
             });
         }
 
-        /**
-         * Closes SP's debug overlay.
-         * SP closes the menu by removing the overlay element from document.body.
-         * We also reset reveal=false on every spWidgetDebug scope (span.context) so
-         * that Angular does not re-add the overlay on the next digest cycle after
-         * we remove it — which would cause a duplicate menu on the next right-click.
-         */
+        /** Closes SP's debug overlay and resets reveal on every spWidgetDebug scope so Angular doesn't re-add it. */
         function closeSpOverlay(menuContainer) {
             try {
                 document.querySelectorAll('span.context').forEach(function (el) {
@@ -1600,12 +1556,7 @@ function link(scope, element, attrs, controller) {
             } catch (_e) { }
         }
 
-        /*
-         * Watches an existing overlay for new <ul class="dropdown-menu"> children.
-         * SP sometimes reuses the overlay element and appends a fresh UL rather than
-         * creating a brand-new overlay, which means bodyObserver never fires.  When
-         * that happens we discard the previously-processed UL and inject into the new one.
-         */
+        // SP sometimes reuses the overlay and appends a fresh UL instead of creating a new one, so bodyObserver never fires; this discards the stale UL and re-injects into the new one.
         function attachOverlayObserver(overlayEl) {
             const overlayObserver = new MutationObserver(function (mutations) {
                 for (let mi = 0; mi < mutations.length; mi++) {
@@ -1613,10 +1564,7 @@ function link(scope, element, attrs, controller) {
                     for (let ni = 0; ni < added.length; ni++) {
                         const node = added[ni];
                         if (node.nodeType === 1 && node.tagName === 'UL' && node.classList.contains('dropdown-menu')) {
-                            /*
-                             * SP added a second UL to the same overlay.  Discard all
-                             * ULs except the newly-added one, then re-inject.
-                             */
+                            // Discards all ULs except the newly-added one, then re-injects.
                             overlayEl.querySelectorAll('ul.dropdown-menu').forEach(function (ul) {
                                 if (ul !== node) {
                                     ul.remove();
@@ -1632,13 +1580,7 @@ function link(scope, element, attrs, controller) {
             overlayObserver.observe(overlayEl, { childList: true });
         }
 
-        /*
-         * Opens a widget in SP's native form modal, mirroring the spWidgetDebug
-         * implementation: fetches the widget-options-config widget via spUtil, then
-         * sets rectangle.debugModal on the spWidgetDebug scope so the SP template
-         * renders the modal.  Also wires up afterClose and the sp.form.record.updated
-         * broadcast so the page reloads on save.
-         */
+        // Mirrors spWidgetDebug: sets rectangle.debugModal on its scope so the SP template renders the modal, and reloads on sp.form.record.updated.
         function openWidgetFormModal(sysId) {
             scope.$applyAsync(function () {
                 spUtil.get('widget-options-config', { table: 'sp_widget', sys_id: sysId }).then(function (widgetData) {
@@ -1811,20 +1753,14 @@ function link(scope, element, attrs, controller) {
             });
         }
 
-        /**
-         * Renders the instance-selection step (shown only when the widget has more
-         * than one active sp_instance). Each row is labeled by the page it's placed
-         * on; picking one moves to the portal-selection step for that page.
-         * table/sysId are only carried through when the chosen instance is the one
-         * that was actually right-clicked — for any other instance we haven't
-         * rendered its widget, so its own sys_id/table can't be known.
-         */
+        /** Renders the instance-selection step when a widget has more than one active sp_instance. */
         function renderInstanceMenu(x, y, instances, portals, currentInstanceSysId, table, sysId) {
             const menu = createShell(x, y, 'This widget appears on multiple pages — select one:');
 
             instances.forEach(function (inst) {
                 const label = inst.pageTitle || inst.pageId || 'Untitled page';
                 addButtonRow(menu, label, function () {
+                    // Only the right-clicked instance's widget was rendered, so only its table/sysId are known.
                     const isCurrent = inst.instanceSysId === currentInstanceSysId;
                     renderPortalMenu(
                         x, y,
@@ -1878,11 +1814,7 @@ function link(scope, element, attrs, controller) {
 
         const EXTERNAL_LINK_ICON = ' <i class="icon-open-document-new-tab text-muted" style="margin-left: 4px"></i>';
 
-        /*
-         * Each entry maps a preference ID to a function that returns true when the
-         * anchor text of a native SP debug menu item matches.  Used by
-         * filterNativeItems() to remove disabled items from the overlay.
-         */
+        // Maps a preference ID to a matcher on native SP debug menu item anchor text, used by filterNativeItems().
         const NATIVE_ITEM_MATCHERS = [
             { id: 'instanceOptions', match: (t) => t === 'Instance Options' },
             { id: 'instanceInPageEditor', match: (t) => t.startsWith('Instance in Page Editor') },
@@ -1895,11 +1827,7 @@ function link(scope, element, attrs, controller) {
             { id: 'logScope', match: (t) => t === 'Log to console: $scope' }
         ];
 
-        /*
-         * Injects _debugContextMenu items from the right-clicked widget (or nearest
-         * ancestor with items) into the standalone overlay's <ul>.
-         * Used for widgets without span.context where SP never creates its own overlay.
-         */
+        // For widgets without span.context, where SP never creates its own overlay.
         function injectWidgetDebugItems(ul, container) {
             if (!_pendingWidgetEl) return;
             try {
@@ -1970,8 +1898,7 @@ function link(scope, element, attrs, controller) {
                 return;
             }
 
-            // Prevent the overlay container from blocking scroll and pointer events
-            // outside the visible menu bounds (it may span the full viewport width).
+            // The overlay container may span the full viewport width; keep pointer events scoped to the visible menu.
             menuContainer.style.pointerEvents = 'none';
             ul.style.pointerEvents = 'auto';
 
@@ -1984,10 +1911,7 @@ function link(scope, element, attrs, controller) {
 
             const prefs = controller.preferences || {};
 
-            // Replace native "Widget in Form Modal" and "Widget in Editor ➚"
-            // Both native items are always removed.  The enabled "Open with" options
-            // (from the four openWith* prefs) are injected in their place, in order.
-            // Form Modal is opened via spUtil — no URL needed.
+            // Both native items are always removed; enabled openWith* prefs are injected in their place, in order.
             let formModalLi = null;
             let nativeEditorLi = null;
             let pageGroupLastLi = null; // last of Instance Options / Instance in Page Editor / Page in Designer — signals the widget is placed via Page Designer (sp_instance-embedded)
@@ -2009,24 +1933,9 @@ function link(scope, element, attrs, controller) {
                 }
             }
 
-            /*
-             * Insertion anchor for "Open with" items.
-             * Prefer the native "Widget in Form Modal" / "Widget in Editor ➚" items.
-             * If they were already removed by a previous injection pass (SP re-used the
-             * same overlay element), find the divider that precedes the console-logging
-             * section — that is the exact position those items occupied.  This keeps
-             * "Show Widget Customizations" and other widget-options items above the
-             * "Open with" group, matching the first-pass layout.
-             */
             let insertionAnchor = formModalLi ?? nativeEditorLi;
             if (!insertionAnchor) {
-                /*
-                 * Walk the list looking for the first console-logging item ("Log to
-                 * console: $scope.data" or "Log to console: $scope").  filterNativeItems
-                 * hasn't run yet, so these are still present regardless of prefs.
-                 * Then walk backwards from that item to the nearest divider and use it
-                 * as the anchor (insert before the divider).
-                 */
+                // If a previous pass already removed the native items, fall back to the divider before the console-logging section (filterNativeItems hasn't run yet, so those items are still present).
                 let firstConsoleLi = null;
                 const children = ul.querySelectorAll('li');
                 for (let i = 0; i < children.length; i++) {
@@ -2085,9 +1994,7 @@ function link(scope, element, attrs, controller) {
             formModalLi?.remove();
             nativeEditorLi?.remove();
 
-            /* Standalone overlays (header/footer widgets) never get SP's native console items.
-             * Inject them here so the assignConsoleVar, filterNativeItems, and $rootScope
-             * passes work the same as for normal widgets. */
+            // Standalone (header/footer) overlays never get SP's native console items, so inject them here for parity.
             const hasNativeScopeItem = Array.from(ul.querySelectorAll('li a')).some(
                 (a) => a.textContent.trim() === 'Log to console: $scope'
             );
@@ -2141,8 +2048,7 @@ function link(scope, element, attrs, controller) {
                 ul.appendChild(scopeLi);
             }
 
-            // Override native SP "Log to console: $scope.data" and "Log to console: $scope" items
-            // to ensure they target the clicked widget's actual inner $scope (not the top-level container scope).
+            // Retargets the native $scope/$scope.data console items to the clicked widget's inner scope, not the container scope.
             const targetWidgetEl = _pendingWidgetEl || (_pendingEmbeddedWidgets.length > 0 ? _pendingEmbeddedWidgets[0].el : null);
             ul.querySelectorAll('li').forEach((li) => {
                 const a = li.querySelector('a');
@@ -2182,8 +2088,7 @@ function link(scope, element, attrs, controller) {
             filterNativeItems(ul, prefs);
             cleanupDividers(ul);
 
-            // Detect the record table/sys_id this widget is scoped to (URL params, falling back
-            // to $scope.data) — used both by "Open <table> record" and "Open page" below.
+            // Used by "Open <table> record" and "Open page" below.
             const recordParams = new URLSearchParams(location.search);
             let recordTable = recordParams.get('table');
             let recordSysId = recordParams.get('sys_id');
@@ -2217,10 +2122,7 @@ function link(scope, element, attrs, controller) {
                 }
             }
 
-            // Inject "Open page" — prompts for an active portal, then opens the current
-            // page on it. Only shown when the native Page group is present, which is SP's
-            // own signal that this widget is placed via Page Designer (sp_instance-embedded);
-            // header/footer widgets and standalone previews never show that group.
+            // Only shown when the native Page group is present, SP's signal that the widget is placed via Page Designer.
             if (prefs.openPageInPortal !== false && pageGroupLastLi && _pendingInstanceSysId) {
                 const openPageLi = document.createElement('li');
                 openPageLi.setAttribute('role', 'menuitem');
@@ -2241,11 +2143,7 @@ function link(scope, element, attrs, controller) {
                 pageGroupLastLi.insertAdjacentElement('afterend', openPageLi);
             }
 
-            // Inject logRootScope after native "Log to console: $scope"
-            // Must run before the rename pass so the anchor text is still the original.
-            // If $scope was hidden by prefs (removed by filterNativeItems), fall back to
-            // inserting after $scope.data so $rootScope stays in the console-logging section
-            // and never sinks below widget-added items.
+            // Runs before the rename pass below, while anchor text is still the original.
             if (prefs.logRootScope !== false) {
                 let logScopeLi = null;
                 let logScopeDataLi = null;
@@ -2279,8 +2177,7 @@ function link(scope, element, attrs, controller) {
                     }
                 });
                 rootScopeLi.appendChild(rootScopeA);
-                // Prefer inserting after $scope; fall back to after $scope.data (when $scope is
-                // hidden by prefs) so $rootScope stays in the console-logging section.
+                // Falls back to $scope.data when $scope is hidden by prefs, keeping $rootScope in the console-logging section.
                 const consoleLi = logScopeLi || logScopeDataLi;
                 if (consoleLi) {
                     ul.insertBefore(rootScopeLi, consoleLi.nextSibling);
@@ -2289,8 +2186,7 @@ function link(scope, element, attrs, controller) {
                 }
             }
 
-            // Relabel $scope / $rootScope items -> "Add to console:" when assignConsoleVars is on
-            // $scope.data is excluded - it is never added to the window object.
+            // $scope.data is excluded — it's never added to the window object.
             if (prefs.assignConsoleVars !== false) {
                 ul.querySelectorAll('li a').forEach((a) => {
                     const text = a.textContent;
@@ -2361,9 +2257,7 @@ function link(scope, element, attrs, controller) {
                 headerLi.appendChild(cogBtn);
             }
 
-            // Inject per-embedded-widget sections.
-            // _pendingEmbeddedWidgets is innermost-first; index 0 is the clicked widget
-            // (already shown in the main header), so the rest are the ancestor widgets.
+            // _pendingEmbeddedWidgets is innermost-first; index 0 (the clicked widget) is already shown in the main header.
             const embeddedWidgets = _pendingEmbeddedWidgets.slice(1);
             if (embeddedWidgets.length > 0) {
                 const showOpen = prefs.openEmbeddedWidget !== false;
@@ -2447,9 +2341,7 @@ function link(scope, element, attrs, controller) {
             // Widen menu to avoid crowding
             ul.style.minWidth = '220px';
 
-            // Close on outside click or Escape.
-            // pointer-events:none on the container means SP's own outside-click
-            // handler never fires, so we replicate it here.
+            // pointer-events:none on the container means SP's own outside-click handler never fires, so this replicates it.
             const closeOnOutsideClick = (e) => {
                 if (!ul.contains(e.target)) {
                     document.removeEventListener('click', closeOnOutsideClick, true);
@@ -2467,8 +2359,7 @@ function link(scope, element, attrs, controller) {
             document.addEventListener('click', closeOnOutsideClick, true);
             document.addEventListener('keydown', closeOnEscape, true);
 
-            // Position near cursor, opening in whichever direction has more space.
-            // rAF ensures SP has finished its own positioning before we override.
+            // rAF ensures SP has finished its own positioning before this overrides it.
             requestAnimationFrame(function () {
                 const pad = 10;
                 const vw = window.innerWidth;
@@ -2487,8 +2378,7 @@ function link(scope, element, attrs, controller) {
                 const spaceBelow = vh - cursorY - pad;
                 const spaceAbove = cursorY - pad;
 
-                // Prefer opening below; flip above only if menu doesn't fit below but fits above,
-                // or if there's more room above.
+                // Opens below unless it doesn't fit but fits above, or there's more room above.
                 let openBelow, constrainedH;
                 if (naturalH <= spaceBelow) {
                     openBelow = true;
@@ -2517,12 +2407,7 @@ function link(scope, element, attrs, controller) {
                     left = Math.max(pad, cursorX - menuW);
                 }
 
-                // Position the ul directly with fixed coords.
-                // SP sets position:absolute + left/top on the ul relative to its container,
-                // and sets width:100% on the container — so moving the container doubles the
-                // offset. Bypassing the container and fixing the ul itself avoids that entirely.
-                // Bootstrap's .dropdown-menu is display:none by default; SP sets display:block
-                // via an Angular binding that our standalone overlay doesn't have.
+                // Fixes the ul directly (not the container) since SP's container is width:100%, which would double the offset if moved. Also sets display:block since our standalone overlay lacks SP's Angular binding for it.
                 ul.style.display = 'block';
                 ul.style.position = 'fixed';
                 ul.style.top = top + 'px';
@@ -2638,10 +2523,7 @@ function link(scope, element, attrs, controller) {
                                     pop: Array.prototype.pop.bind(_widgetItems),
                                     shift: Array.prototype.shift.bind(_widgetItems)
                                 };
-                                /* Compute the merged view: WE+ items + (own or inherited) widget items.
-                                   Some widgets push onto an ancestor widget rather than their own
-                                   _debugContextMenu, so when our own list is empty we walk up the
-                                   scope chain to find an enhanced ancestor's items. */
+                                // Some widgets push onto an ancestor's _debugContextMenu rather than their own, so if ours is empty, walk up the scope chain for an enhanced ancestor's items.
                                 function _getMergedItems() {
                                     const ours = getFilteredMenuItems();
                                     let widgetSpecific = _widgetItems;
@@ -2671,10 +2553,7 @@ function link(scope, element, attrs, controller) {
                                         const val = merged[prop];
                                         return typeof val === 'function' ? val.bind(merged) : val;
                                     },
-                                    /* SP's contextMenu does someArray.concat(_debugContextMenu), and
-                                       Array.prototype.concat checks HasProperty(proxy, k) for each
-                                       index — without this trap that defaults to the empty target
-                                       and every item becomes a hole. */
+                                    // Array.prototype.concat checks HasProperty(proxy, k) per index; without this trap it defaults to the empty target and every item becomes a hole.
                                     has: function (_target, prop) {
                                         if (Object.prototype.hasOwnProperty.call(_MUTATOR_FNS, prop)) return true;
                                         return prop in _getMergedItems();
@@ -2720,17 +2599,7 @@ function link(scope, element, attrs, controller) {
     ///////////////////////////////////////////
 
     document.addEventListener('contextmenu', function (e) {
-        /*
-         * Right-clicking inside an already-open debug menu (e.g. to use the
-         * browser's own "Copy Link Address" on "Open in Widget Editor+" while
-         * impersonating, where a left-click would redirect) must not run our
-         * own menu-teardown logic below, and must not let some other
-         * capture/bubble-phase listener (SP's own overlay-closing handling,
-         * a bootstrap dropdown, etc.) react to the same event first.
-         * stopPropagation() here — before anything else sees the event —
-         * isolates the click so only the browser's native default action
-         * (showing its context menu) proceeds.
-         */
+        // stopPropagation isolates a right-click on an already-open menu item (e.g. "Copy Link Address") from our own teardown logic and other listeners, so only the browser's native context menu proceeds.
         const menuItem = e.target.closest && e.target.closest('[role="contentinfo"].dropdown ul.dropdown-menu, dialog[open] ul.dropdown-menu');
         if (menuItem) {
             e.stopPropagation();
@@ -2746,8 +2615,7 @@ function link(scope, element, attrs, controller) {
         if (!e.ctrlKey) {
             return;
         }
-        // Only clean up stale overlays when SP will actually create a new one
-        // (SP's own guard is ctrlKey && !shiftKey && can_debug).
+        // Only clean up stale overlays when SP will actually create a new one.
         OverlayManager.removeDebugOverlays();
         _pendingWidgetSysId = ScopeResolver.getWidgetSysId(e.target);
         _pendingInstanceSysId = ScopeResolver.getInstanceSysId(e.target);
@@ -2762,8 +2630,7 @@ function link(scope, element, attrs, controller) {
             el = el.parentElement;
         }
 
-        // Header/footer widgets lack SP's span.context so SP never creates a debug
-        // overlay for them. If no overlay appears within 50ms, create our own.
+        // Header/footer widgets lack SP's span.context, so SP never creates a debug overlay for them; create our own if none appears within 50ms.
         if (_pendingWidgetSysId && _pendingWidgetEl && !_pendingWidgetEl.querySelector('span.context')) {
             e.preventDefault(); // suppress browser context menu; SP does this for normal widgets
             setTimeout(function () {
@@ -2787,13 +2654,7 @@ function link(scope, element, attrs, controller) {
         if (!addedOverlays.length) {
             return;
         }
-        /*
-         * Remove any overlays already in the DOM that are NOT part of this batch.
-         * A ghost overlay can linger when closeSpOverlay() removes the overlay but
-         * the subsequent $applyAsync digest causes SP to re-add one before our
-         * $evalAsync reveal=false has run.  Clearing it here ensures only the
-         * freshly-opened overlay survives.
-         */
+        // A ghost overlay can linger if SP re-adds one via digest before our reveal=false $evalAsync runs; this keeps only the freshly-opened overlay.
         document.querySelectorAll('body > [role="contentinfo"].dropdown, dialog[open] [role="contentinfo"].dropdown').forEach((existing) => {
             if (!addedOverlays.includes(existing)) {
                 existing.remove();
