@@ -96,7 +96,6 @@ UiPage({
             font-size: var(--now-global-font-size--md, 14px);
         }
 
-        /* Content wrapper — flex column */
         #diff-content {
             flex: 1;
             display: flex;
@@ -143,8 +142,7 @@ UiPage({
             align-items: center;
         }
 
-        /* Left half wrapper — groups the left select + Revert button so their combined
-           width equals the right select's width (both are flex:1 children of the row). */
+        /* Combined width matches the right select's width (both flex:1). */
         .dc-version-left-half {
             flex: 1;
             min-width: 0;
@@ -271,8 +269,7 @@ UiPage({
             vertical-align: middle;
         }
 
-        /* Textarea rows: top-align the label and value cells so a tall textarea
-           sits next to its label instead of pushing the row's contents off-center. */
+        /* Top-align so a tall textarea doesn't push the row off-center. */
         .sft-row--top td { vertical-align: top; }
 
         .sft-row:last-child td { border-bottom: none; }
@@ -741,8 +738,7 @@ UiPage({
         .monaco-diff-editor .line-delete  { background-color: rgba(191,  41,  41, 0.15) !important; }
         .monaco-diff-editor .char-delete  { background-color: rgba(191,  41,  41, 0.35) !important; }
 
-        /* Monaco hover/tooltip: ServiceNow's bundle may not inject vscode theme vars when the
-           page is rendered inside an iframe, leaving the background transparent. Force it. */
+        /* Monaco's vscode theme vars don't reach the hover widget inside an iframe. */
         .monaco-hover {
             background-color: rgb(var(--now-color_background--secondary, 246 246 246)) !important;
             border-color: rgba(var(--now-color--neutral-0, 0 0 0), 0.2) !important;
@@ -998,8 +994,7 @@ UiPage({
             mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'%3E%3Cpath d='M256 128C256 110.3 241.7 96 224 96C206.3 96 192 110.3 192 128L192 192L128 192C110.3 192 96 206.3 96 224C96 241.7 110.3 256 128 256L224 256C241.7 256 256 241.7 256 224L256 128zM128 384C110.3 384 96 398.3 96 416C96 433.7 110.3 448 128 448L192 448L192 512C192 529.7 206.3 544 224 544C241.7 544 256 529.7 256 512L256 416C256 398.3 241.7 384 224 384L128 384zM448 128C448 110.3 433.7 96 416 96C398.3 96 384 110.3 384 128L384 224C384 241.7 398.3 256 416 256L512 256C529.7 256 544 241.7 544 224C544 206.3 529.7 192 512 192L448 192L448 128zM416 384C398.3 384 384 398.3 384 416L384 512C384 529.7 398.3 544 416 544C433.7 544 448 529.7 448 512L448 448L512 448C529.7 448 544 433.7 544 416C544 398.3 529.7 384 512 384L416 384z'/%3E%3C/svg%3E");
         }
 
-        /* Expanded: da-editor-wrap covers the viewport below the sticky header.
-           top is set via inline style by JS (= dc-header.offsetHeight). */
+        /* top is set via inline style by JS to the sticky header's height. */
         .da-section.da-expanded .da-editor-wrap {
             position: fixed;
             top: 0; /* overridden by inline style */
@@ -1057,8 +1052,7 @@ UiPage({
         }
         button.sft-expand-btn:hover::before { background-color: currentColor; }
 
-        /* String diff editor overlay — fixed below the sticky header.
-           top is set via inline style by JS (= dc-header.offsetHeight). */
+        /* top is set via inline style by JS to the sticky header's height. */
         .sft-string-overlay {
             position: fixed;
             top: 0; /* overridden by inline style */
@@ -1093,8 +1087,7 @@ UiPage({
             opacity: 0.4;
         }
 
-        /* Light mode: boost opacity for elements that are heavily dimmed for dark mode.
-           Class applied by JS reading the Polaris --now-color_background--primary variable. */
+        /* Light mode: boost opacity on elements dimmed for dark mode. */
         html.we-light .dc-meta-sep {
             opacity: 0.6;
         }
@@ -1116,8 +1109,7 @@ UiPage({
         html.we-light .da-no-monaco {
             color: rgba(var(--now-color_text--primary, 29 29 29), 0.7);
         }
-        /* Light mode: flip the background hierarchy — tertiary page backdrop makes
-           sections stand out as white cards, giving clear visual separation. */
+        /* Light mode: tertiary page backdrop makes sections stand out as white cards. */
         html.we-light,
         html.we-light body {
             background: rgb(var(--now-color_background--tertiary, 237 237 237));
@@ -1772,7 +1764,7 @@ UiPage({
                                         <span ng-if="f.counts.added &amp;&amp; f.counts.removed"> </span>
                                         <span class="da-diff-removed" ng-if="f.counts.removed" ng-bind-template="-{{f.counts.removed}}"></span>
                                     </div>
-                                    <!-- Original Expand button under field name/lines changed -->
+                                    <!-- Expand button below field label -->
                                     <button class="btn btn-default sft-expand-btn"
                                             style="margin-top: 0.5rem;"
                                             ng-click="ctrl.toggleExpand(f.scriptIndex, $event)"
@@ -2077,7 +2069,7 @@ UiPage({
                                             <span ng-if="f.counts.added &amp;&amp; f.counts.removed"> </span>
                                             <span class="da-diff-removed" ng-if="f.counts.removed" ng-bind-template="-{{f.counts.removed}}"></span>
                                         </div>
-                                        <!-- Original Expand button under field name/lines changed -->
+                                        <!-- Expand button below field label -->
                                         <button class="btn btn-default sft-expand-btn"
                                                 style="margin-top: 0.5rem;"
                                                 ng-click="ctrl.toggleExtraExpand(f.scriptIndex, $event)"
@@ -2117,9 +2109,7 @@ UiPage({
     clientScript: `(function() {
     'use strict';
 
-    // -----------------------------------------------------------------------------
     // Config
-    // -----------------------------------------------------------------------------
     var SITE_TITLE = (window.WE_DIFF_CONFIG && window.WE_DIFF_CONFIG.siteTitle) || 'ServiceNow';
 
     // Suppress "Unexpected usage" rejections from language service workers
@@ -2160,8 +2150,7 @@ UiPage({
         if (_langServicesSetup || !window.monaco) { return; }
         _langServicesSetup = true;
 
-        // Disable semantic/suggestion diagnostics — semantic squiggles are misleading without
-        // full type context, but syntax errors are kept so devs can spot real issues in a diff.
+        // Disable semantic/suggestion diagnostics; keep syntax errors visible in a diff.
         if (monaco.languages && monaco.languages.typescript) {
             var _noValidation = {
                 noSemanticValidation: true,
@@ -2350,8 +2339,7 @@ UiPage({
         return 'vs-dark';
     }
 
-    // Build a normalized fields map from a version data object or a live record object.
-    // Uses _fieldDefs to know which fields to extract.
+    // Builds a normalized fields map from a version or live record object, per fieldDefs.
     function _buildFields(versionDataOrNull, recordData, fieldDefs) {
         var result = {};
         if (!fieldDefs) { return result; }
@@ -2692,9 +2680,7 @@ UiPage({
 
             var _savedRef = _savedRecordData || _recordData;
 
-            // When showing Unsaved vs Current, the snap only contains the fields the Widget
-            // Editor tracks. Fill the gaps by merging: saved record values as the base,
-            // snap values (from _recordData.values) overlaid on top.
+            // Unsaved vs Current: merges saved record values as the base with snap values overlaid.
             var _unsavedRef = (ctrl.currentIsUnsaved && _savedRecordData)
                 ? { values: (function() {
                         var merged = {};
@@ -3464,7 +3450,6 @@ UiPage({
                 }
             });
 
-            // Load field definitions
             _pending++;
             _ajax('getDiffFieldDefs', { table: tableParam }, function(data) {
                 if (data.success && data.fields && data.fields.length > 0) {
@@ -3557,7 +3542,6 @@ UiPage({
                 });
             }
 
-            // Load all versions
             _pending++;
             _ajax('getVersionsForTable', { table: tableParam, record_id: recordId }, function(data) {
                 if (data.success && data.versions) {
@@ -4440,7 +4424,6 @@ UiPage({
 
 })();
 `,
-    processingScript: `// Server-side logic is handled by the WidgetEditorAjax Script Include (AbstractAjaxProcessor).
-// Client calls are made via GlideAjax from client_script.js.
+    processingScript: `// Server-side logic lives in the WidgetEditorAjax Script Include, called via GlideAjax.
 `,
 })

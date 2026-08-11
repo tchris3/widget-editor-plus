@@ -10,34 +10,29 @@ Registers as window.MONACO_CODE_ACTIONS.`,
         global: 'false',
         ignore_in_now_experience: 'false',
         name: 'monaco_code_actions',
-        script: `(function () {
+        script: `/**
+ * ============================================================================
+ * UI Script: monaco_code_actions
+ * ============================================================================
+ * Purpose: Built-in Monaco code actions (lightbulb quick-fixes) for
+ * JavaScript/TypeScript and SCSS. Also establishes the
+ * window.MONACO_CUSTOM_CODE_ACTIONS extension registry that
+ * monaco_custom_code_actions.jsdbx hooks into for user-added actions.
+ *
+ * Contains:
+ *   - AngularJS/ServiceNow DI token → TypeScript type map (ANGULAR_TYPES)
+ *   - "Add JSDoc comment" code action for JS/TS (with AngularJS DI-aware
+ *     parameter typing on editors marked via markAngular())
+ *   - "Convert Npx → Nrem" code action for SCSS
+ *   - window.MONACO_CUSTOM_CODE_ACTIONS registry + register(language,
+ *     provider, options) — the hook monaco_custom_code_actions.jsdbx uses
+ *   - window.MONACO_CODE_ACTIONS.register(monaco, config) — entry point
+ * ============================================================================
+ */
+(function () {
     'use strict';
 
-    // -----------------------------------------------------------------------------
-    // Monaco code actions (JavaScript + SCSS).
-    //
-    // JavaScript — "Add JSDoc comment"
-    //   Offers to insert a JSDoc block above any function declaration near the cursor.
-    //   For client-controller and Angular-provider editors (marked via markAngular),
-    //   parameters matching known AngularJS / ServiceNow DI tokens are automatically
-    //   typed against the interfaces declared in monaco_language_client:
-    //     $scope → angular.IScope,  spUtil → SpUtil,  snRecordWatcher → SnRecordWatcher, …
-    //
-    // SCSS — "Convert Npx → Nrem"
-    //   Offers per-match px → rem conversion on the current line.
-    //   The rem base (default 16) is read at action-invocation time via config.getRemBase().
-    //
-    // Exposed as:
-    //   window.MONACO_CODE_ACTIONS.register(monaco, config)   — call once after Monaco is ready
-    //     config.getRemBase()  — optional function returning the current rem base value
-    //   window.MONACO_CODE_ACTIONS.markAngular(modelId)       — call per Angular-aware JS editor
-    // -----------------------------------------------------------------------------
-
-    // AngularJS / ServiceNow DI token → TypeScript type name.
-    // Only applied in editors marked as Angular-aware (client_script / provider panes).
-    // Kept in sync with the declarations in monaco_language_client; when that
-    // script is loaded, its MONACO_LANGUAGE_CLIENT_DI.types map takes precedence
-    // (single source of truth — see _diTypes()).
+    // AngularJS/SN DI token → TypeScript type name; monaco_language_client's DI map takes precedence when loaded (see _diTypes()).
     var ANGULAR_TYPES = {
         $scope: 'angular.IScope',
         $rootScope: 'angular.IRootScopeService',
@@ -81,8 +76,7 @@ Registers as window.MONACO_CODE_ACTIONS.`,
         );
     }
 
-    // Matches @param with no type, an empty {}, or a placeholder {*} / {any},
-    // followed by the parameter name. Does NOT match a real type annotation.
+    // Matches @param with no type, an empty {}, or a placeholder {*}/{any}; never a real type annotation.
     var RE_UNTYPED_PARAM = /@param\\s+(?:\\{\\s*(?:\\*|any)?\\s*\\}\\s+)?([\\w$]+)/;
     var RE_NG_TYPE_PARAM = /@param\\s+\\{\\s*ng\\.([\\w$.]+)\\s*\\}(\\s+\\$\\w+)/;
 
@@ -145,9 +139,7 @@ Registers as window.MONACO_CODE_ACTIONS.`,
         return edits;
     }
 
-    // Patterns to recognise a function declaration line.
-    // Each entry: { re, nameGroup (1-based or null for anonymous), paramsGroup (1-based) }
-    // Group 1 is always leading whitespace (used for JSDoc indentation).
+    // Each entry: { re, nameGroup (1-based or null for anonymous), paramsGroup (1-based) }; group 1 is leading whitespace.
     var FUNC_PATTERNS = [
         // Named function declaration: function foo(...)  /  async function foo(...)
         {
@@ -478,11 +470,7 @@ Registers as window.MONACO_CODE_ACTIONS.`,
             _customCodeActionsUrl = config.customCodeActionsUrl;
         }
 
-        // ---------------------------------------------------------------------
-        // JavaScript / TypeScript — Add JSDoc comment
-        // Registered for both: 'javascript' (client editors) and
-        // 'typescript' (server script editor).
-        // ---------------------------------------------------------------------
+        // Registered for 'javascript' (client editors) and 'typescript' (server script editor).
         var _jsDocProvider = {
             provideCodeActions: function (model, range) {
                 var lineNumber = range.startLineNumber;

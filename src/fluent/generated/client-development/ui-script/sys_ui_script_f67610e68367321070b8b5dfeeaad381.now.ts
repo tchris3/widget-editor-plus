@@ -10,38 +10,33 @@ Registers as window.MONACO_LANGUAGE_SERVER_DTS.`,
         global: 'false',
         ignore_in_now_experience: 'false',
         name: 'monaco_language_server',
-        script: `(function () {
+        script: `/**
+ * ============================================================================
+ * UI Script: monaco_language_server
+ * ============================================================================
+ * Purpose: Ambient TypeScript declarations supplementing ServiceNow's own
+ * server-side completions endpoint, for server script / Script Include
+ * editors using the 'javascript'/'typescript' Monaco languages.
+ *
+ * Contains:
+ *   - GlideRecordGenerated method augmentations, shared by GlideRecord and
+ *     GlideRecordSecure through TypeScript's declaration hierarchy
+ *   - GlideRecordSecure interface (merges with the runtime-patched class
+ *     declaration applied by loadSnTypeDefinitions() in client_script.js)
+ *   - $sp Service Portal server API interface
+ *   - window.MONACO_LANGUAGE_SERVER_DTS — the declaration string, injected
+ *     via loadServerMonarchDts() in monaco_plus_core
+ * ============================================================================
+ */
+(function () {
     'use strict';
-
-    // Exposes TypeScript ambient declarations for ServiceNow server-side APIs that
-    // are not covered by ServiceNow's own completions endpoint:
-    //   • GlideRecordSecure — ACL-enforcing variant of GlideRecord
-    //   • $sp              — Service Portal widget server-script API
-    //
-    // Augments GlideRecordGenerated (the root base in the SN DTS hierarchy) so
-    // that extra methods flow through to both GlideRecord instances and
-    // GlideRecordSecure. An interface declaration for GlideRecordSecure merges
-    // with SN's bare class declaration, adding GlideRecordGenerated methods via
-    // TypeScript declaration merging without any stripping of the SN DTS.
-    //
-    // The consumer script calls loadServerMonarchDts() which injects this string
-    // into Monaco via typescriptDefaults.addExtraLib('ts:snlib-server-monarch.d.ts').
-    // Monaco's TypeScript language service then provides completions, hover docs,
-    // and parameter hints in the server script and script include editors.
 
     window.MONACO_LANGUAGE_SERVER_DTS = \`
 // -----------------------------------------------------------------------------
 // ServiceNow Server-Side API Supplement
 // -----------------------------------------------------------------------------
 
-// ---- GlideRecord / GlideRecordSecure method additions -----------------------
-// Augments GlideRecordGenerated — the concrete base that the SN completions DTS
-// uses as the root of the GlideRecord hierarchy:
-// GlideRecord<T extends keyof Tables> extends GlideRecordGenerated
-// Because GlideRecord<T> (the obfuscated generic used as the instance type of
-// the GlideRecord constructor var) inherits from GlideRecordGenerated, adding
-// methods here makes them visible on BOTH GlideRecord instances and on
-// GlideRecordSecure (which extends GlideRecordGenerated directly below).
+// Augments GlideRecordGenerated, the SN completions DTS's GlideRecord hierarchy root, so methods reach both GlideRecord and GlideRecordSecure.
 // @see https://www.servicenow.com/docs/r/yokohama/api-reference/server-api-reference/c_GlideRecordAPI.html
 
 interface GlideRecordGenerated {
@@ -743,19 +738,7 @@ interface GlideRecordGenerated {
     setDynamicAttributeValues(dynamicAttributeField: string, values: GlideDynamicAttributeStore): void;
 }
 
-// ---- GlideRecordSecure ------------------------------------------------------
-// The SN completions DTS declares GlideRecordSecure as:
-//   declare class GlideRecordSecure extends GlideRecord { ... }
-// where GlideRecord is not independently constructable in that DTS.  This causes
-// TS2351 "not constructable" on every 'new GlideRecordSecure(...)' expression,
-// making the TypeScript worker return null completions for the instance.
-//
-// loadSnTypeDefinitions() in client_script.js patches that declaration at
-// runtime, replacing it with:
-//   declare class GlideRecordSecure extends GlideRecordGenerated { constructor; ... }
-// The interface below then merges with the patched class via TypeScript declaration
-// merging, adding GlideRecordSecure-specific JSDoc to the enableSecurityFeature
-// and disableSecurityFeature methods.
+// Patched at runtime by loadSnTypeDefinitions() in client_script.js to extend GlideRecordGenerated instead of the non-constructable GlideRecord.
 /**
  * ACL-enforcing variant of {@link GlideRecord}.
  * Performs the same operations as GlideRecord but enforces all read, write,

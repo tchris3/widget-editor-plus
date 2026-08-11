@@ -126,7 +126,6 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         var sysClassName = gr.getValue('sys_class_name') || 'sp_widget';
         var isHeaderFooter = sysClassName === 'sp_header_footer';
 
-        // sys_policy + servicenow
         var sysPolicy = gr.getValue('sys_policy') || '';
         var sysPolicyDisplay = sysPolicy
             ? gr.getDisplayValue('sys_policy')
@@ -169,10 +168,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 : '';
         }
 
-        // Update set mismatch — only flag if widget's update set is still in progress.
-        // A revert creates a new sys_update_version marking the revert action, whose
-        // reverted_from points at the version actually reverted to; follow that chain
-        // to the version whose update set the widget's current content really reflects.
+        // Only flag if the update set is still in progress; follows the reverted_from chain to the version whose update set the content actually reflects.
         var widgetUpdateSetId = '';
         var widgetUpdateSetName = '';
         var updateSetMismatch = false;
@@ -605,7 +601,6 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             });
         }
 
-        // Get ordered field names from sys_ui_element for the Default view
         var fieldNames = [];
         var ueGr = new GlideRecordSecure('sys_ui_element');
         ueGr.addQuery('sys_ui_section.name', table);
@@ -627,8 +622,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             });
         }
 
-        // Get dictionary metadata across the full table hierarchy so inherited
-        // fields (e.g. active from sys_metadata) get the correct type/renderAs.
+        // Queries the full table hierarchy so inherited fields (e.g. active from sys_metadata) get the correct type/renderAs.
         var _fdHierArr = [];
         try {
             if (typeof TableUtils !== 'undefined') {
@@ -645,8 +639,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         } catch (_fdErr) {
             _fdHierArr = [table];
         }
-        // Query each level of the hierarchy separately (leaf first) so leaf-table
-        // definitions always take precedence over parent-table definitions.
+        // Queries each hierarchy level separately (leaf first) so leaf-table definitions take precedence.
         var dictMap = {};
         for (var _fdI = 0; _fdI < _fdHierArr.length; _fdI++) {
             var dictGr = new GlideRecord('sys_dictionary');
@@ -685,7 +678,6 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             'json',
         ];
 
-        // Helper: build a single field-def object from a name + dict entry.
         var _buildDef = function (fname, dict) {
             var fieldType = dict.type || 'string';
             var maxLen = dict.max_length || 0;
@@ -738,7 +730,6 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             };
         };
 
-        // Build ordered field defs for the Default-view layout fields.
         var fieldDefs = [];
         for (var i = 0; i < fieldNames.length; i++) {
             var fname = fieldNames[i];
@@ -898,8 +889,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             });
         }
 
-        // Collect all field values via sys_dictionary — query the full table
-        // hierarchy so inherited fields (e.g. sys_scope from sys_metadata) are included.
+        // Queries the full table hierarchy via sys_dictionary so inherited fields (e.g. sys_scope) are included.
         var values = {};
         var displayValues = {};
         // Convert the GlideTableHierarchy/TableUtils list to a plain JS array of strings
@@ -1266,9 +1256,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
 
         var parsed = this._parseVersionPayloadAll(gr.getValue('payload'));
 
-        // Enrich display_values for choice fields — the XML payload stores choice
-        // fields as raw integer values without a display_value attribute.
-        // Use a temp GlideRecord to resolve choice labels via the schema.
+        // Choice fields in the XML payload are raw integers with no display_value; resolve labels via a temp GlideRecord.
         var versionName = gr.getValue('name') || '';
         var lastUnder = versionName.lastIndexOf('_');
         var tableName = lastUnder > 0 ? versionName.substring(0, lastUnder) : '';
@@ -1323,17 +1311,12 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         try {
             var xmlDoc = new XMLDocument2();
             xmlDoc.parseXML(payload);
-            // Extract the table element name from the raw payload string using a regex.
-            // XMLDocument2 does not reliably support absolute XPaths or attribute predicates,
-            // but // (descendant-or-self) is proven to work for getFirstNode.
-            // The payload structure is always: <record_update ...><tableName action="...">
+            // XMLDocument2 only reliably supports descendant-or-self ("//") node lookups, not absolute XPaths or attribute predicates, so the table name is extracted from the payload with a regex instead.
             var tableNameMatch = payload.match(/<([a-z_][a-z0-9_]*)\s[^>]*action=/i);
             var tableName = tableNameMatch ? tableNameMatch[1] : '';
             if (!tableName) {
                 return { fields: fields, display_values: displayValues };
             }
-            // Locate the table element then walk its direct children via getChildNodeIterator.
-            // getNodeIterator('//tableName/*') does not work in ServiceNow XMLDocument2.
             var tableEl = xmlDoc.getFirstNode('//' + tableName);
             if (!tableEl) {
                 return { fields: fields, display_values: displayValues };
@@ -1406,10 +1389,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
 
         var currentUser = gs.getUserID();
 
-        // Build map of channel-prefix → display label.
-        // /sn/rp/... = Platform record presence — used by sp_widget.do and widget_editor.do
-        //              (via snRecordPresence.initPresence)
-        // /sp/rp/... = SP record presence — fallback path if snRecordPresence unavailable
+        // /sn/rp/ is platform record presence; /sp/rp/ is the SP fallback.
         var channelLabels = {};
         channelLabels['/sn/rp/sp_widget/' + sysId] = 'Widget';
         channelLabels['/sp/rp/sp_widget/' + sysId] = 'Widget';
@@ -2618,9 +2598,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         if (fieldNames.length === 0) {
             return [];
         }
-        // Initialize a GlideRecord to access field metadata; labels resolve through the
-        // inheritance chain via getLabel() on the GlideElement (e.g. sys_updated_on is
-        // defined on sys_metadata, not on the specific table, but still resolves correctly).
+        // grProbe.getLabel() resolves labels through the inheritance chain (e.g. sys_updated_on from sys_metadata).
         var grProbe = new GlideRecordSecure(table);
         grProbe.initialize();
         var cols = [];
@@ -3179,14 +3157,8 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     },
 
     /**
-     * Returns additional sp_widget field names configured in the system property
-     * monaco.plus.widget.fields. Supports comma/newline/semicolon-separated values.
-     * @returns {Array.<string>} Sanitised field element names, preserving order.
-     */
-    /**
      * Returns the set of sys_ui_related_list_entry.related_list values configured to
      * be hidden via the system property monaco.plus.widget.related_list_exclusions.
-     * Supports comma-separated values.
      * @returns {Object.<string, boolean>} Map of excluded related_list identifiers.
      */
     _getRelatedListExclusions: function () {
@@ -3202,6 +3174,11 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         return out;
     },
 
+    /**
+     * Returns additional sp_widget field names configured in the system property
+     * monaco.plus.widget.fields.
+     * @returns {Array.<string>} Sanitised field element names, preserving order.
+     */
     _getConfiguredAdditionalWidgetFields: function () {
         var raw = gs.getProperty(this.ADDITIONAL_WIDGET_FIELDS_PROPERTY, '') || '';
         var tokens = raw.split(/[\n,;]+/);
