@@ -363,53 +363,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         /* XML modal */
         .we-xml-editor { height: 32.5rem; border: 1px solid rgba(var(--now-color--neutral-0), 0.1); overflow: hidden; }
 
-        /* Link provider modal list */
-        .we-link-list { 
-            height: min(25rem, 75vh);
-            overflow-y: auto;
-            border-width: 1px;
-            border-style: solid;
-            border-color: rgb(var(--now-form-field--border-color, var(--now-color_border--primary, var(--now-color--neutral-7))));
-            border-radius: var(--now-form-field--border-radius);
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-            padding: 2px;
-        }
-        .we-link-item {
-            position: relative;
-            padding: 0.5rem 0.75rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            border-radius: var(--now-form-field--border-radius);
-            transition: background-color 0.12s ease;
-        }
-        .we-link-item > span:first-child {
-            flex: 1 1 auto;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .we-link-item .we-picker-action-btn { margin-left: auto; }
-        .we-link-item:hover { background: rgb(var(--now-dropdown-list_search--background-color--hover)); }
-        .we-link-item + .we-link-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0.75rem;
-            right: 0.75rem;
-            height: 1px;
-            background: rgba(var(--now-color--neutral-0), 0.08);
-            pointer-events: none;
-            transition: opacity 0.12s ease;
-        }
-        .we-link-item:hover::before,
-        .we-link-item:hover + .we-link-item::before {
-            opacity: 0;
-        }
-        .we-link-id { color: rgb(var(--now-color_text--secondary)); }
+        /* Modal lists follow unified .we-picker-list design system */
 
 
         /* User Preferences modal drag-and-drop */
@@ -1255,24 +1209,50 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-modal {
             background: rgb(var(--now-color_background--secondary));
-            border: 1px solid rgba(var(--now-color--neutral-0), 0.1);
-            border-radius: var(--now-modal--border-radius);
+            border: 1px solid rgba(var(--now-color--neutral-0), 0.12);
+            border-radius: 12px;
             width: 22.5rem;
             max-width: 90vw;
             max-height: 90vh;
             display: flex;
             flex-direction: column;
             color: rgb(var(--now-color_text--primary));
-            box-shadow: 0 12px 48px rgba(0,0,0,0.7);
+            box-shadow: 0 24px 64px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+        .we-modal--picker {
+            width: min(38rem, 95vw);
+            height: min(34rem, 80vh);
+        }
+        .we-modal--portal {
+            width: min(32rem, 95vw);
+            height: min(34rem, 80vh);
+        }
+        .we-modal--picker .we-modal-body,
+        .we-modal--portal .we-modal-body {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .we-modal--picker .we-picker-list,
+        .we-modal--portal .we-picker-list {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            max-height: none !important;
         }
         .we-modal-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.75rem 1rem;
+            padding: 0.875rem 1.25rem;
             border-bottom: 1px solid rgba(var(--now-color--neutral-0), 0.08);
+            background: rgb(var(--now-color_background--secondary));
             font-size: var(--now-font-size--lg);
             font-weight: 600;
+            color: rgb(var(--now-color_text--primary));
             flex-shrink: 0;
         }
         /* Horizon Design System Modal Close Button */
@@ -1387,34 +1367,74 @@ Features version history, side-by-side diff comparison, related lists, and user 
             color: rgba(var(--now-color_text--primary), 0.75);
             margin-top: 0.25rem;
         }
-        .we-modal-option { padding: 0.1875rem 0; }
-        .we-modal-option label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; line-height: 1.25 !important }
-        .we-modal-option-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; }
-        .we-modal-option-label { color: rgb(var(--now-color_text--secondary)); flex: 0 0 11rem; }
-        .we-pref-select { height: 1.625rem; padding: 0 0.5rem; flex: 1; }
-        .we-pref-number {padding: 0 0.25rem; width: 2.875rem;
-            border: none; border-radius: 0; text-align: center;
-            -moz-appearance: textfield; }
-        .we-pref-number::-webkit-outer-spin-button,
-        .we-pref-number::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .we-pref-number:focus { outline: none; }
+        /* User Preferences modal options and spin input */
+        .we-modal-option {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.25rem 0;
+            min-height: 2.25rem;
+        }
+        .we-modal-option label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            line-height: 1.25 !important;
+            margin-bottom: 0;
+        }
+        .we-modal-option-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.25rem 0;
+        }
+        .we-modal-option-label {
+            color: rgb(var(--now-color_text--secondary));
+            flex: 0 0 11rem;
+            font-size: var(--now-font-size--sm, 0.875rem);
+            margin-bottom: 0;
+        }
+        .we-pref-select {
+            flex: 1;
+            min-width: 0;
+        }
         .we-spin-wrap {
             display: inline-flex;
             align-items: stretch;
-            height: 1.625rem;
-            border: 1px solid rgba(var(--now-color--neutral-0), 0.18);
-            border-radius: var(--now-form-field--border-radius);
+            height: 32px;
+            border: 1px solid RGB(var(--now-form-field--border-color, var(--now-color_border--primary, var(--now-color--neutral-7, 174, 179, 186))));
+            border-radius: var(--now-form-field--border-radius, 4px);
+            background-color: RGB(var(--now-form-field--background-color, var(--now-color_background--primary)));
             overflow: hidden;
         }
+        .we-pref-number {
+            padding: 0 0.25rem;
+            width: 2.875rem;
+            border: none;
+            border-radius: 0;
+            text-align: center;
+            background: transparent;
+            color: RGB(var(--now-form-field--color, var(--now-color_text--primary)));
+            font-size: var(--now-font-size--md, 0.875rem);
+            -moz-appearance: textfield;
+        }
+        .we-pref-number::-webkit-outer-spin-button,
+        .we-pref-number::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .we-pref-number:focus {
+            outline: none;
+        }
         button.we-spin-btn {
-            width: 1.625rem;
+            width: 1.875rem;
             min-height: auto;
             max-height: none;
             flex-shrink: 0;
-            background-color: rgba(var(--now-color_background--primary, var(--now-color--neutral-0)));
-            border-color: rgb(var(--now-button--secondary--border-color, var(--now-color--neutral-7)));
-            border-width: var(--now-button--secondary--border-width, var(--now-button--border-width, var(--now-actionable--border-width, 1px)));
-            color: rgb(var(--now-button--secondary--color, var(--now-color--neutral-18)));
+            background-color: transparent;
+            border: none;
+            color: RGB(var(--now-button--secondary--color, var(--now-color--neutral-18)));
             cursor: pointer;
             font-size: 1em;
             line-height: 1;
@@ -1422,22 +1442,16 @@ Features version history, side-by-side diff comparison, related lists, and user 
             align-items: center;
             justify-content: center;
             user-select: none;
-            transition: background 0.1s;
         }
         .we-spin-btn:hover {
-            background-color: rgba(var(--now-button--secondary--background-color--hover, var(--now-color--neutral-3)), var(--now-button--secondary--background-color-alpha--hover, var(--now-button--secondary--background-color-alpha, 1)));
-            border-color: rgb(var(--now-button--secondary--border-color--hover, var(--now-button--secondary--border-color, var(--now-color--neutral-7))));
-            box-shadow: 0 2px 4px 0 RGBA(56, 56, 56, .25);
-            color: rgb(var(--now-button--secondary--color--hover, var(--now-color--secondary-2)));
-         }
-        .we-spin-btn:active { 
-            background-color: rgba(var(--now-button--secondary--background-color--active, var(--now-color--neutral-5)), var(--now-button--secondary--background-color-alpha--active, var(--now-button--secondary--background-color-alpha, 1)));
-            border-color: rgb(var(--now-button--secondary--border-color--active, var(--now-button--secondary--border-color, var(--now-color--neutral-7))));
-            box-shadow: none;
-            color: rgb(var(--now-button--secondary--color--active, var(--now-color--secondary-3)));
+            background-color: rgba(var(--now-button--secondary--background-color--hover, var(--now-color--neutral-3)), 0.15);
         }
-        .we-spin-dec { border-right: 1px solid rgba(var(--now-color--neutral-0), 0.12); }
-        .we-spin-inc { border-left:  1px solid rgba(var(--now-color--neutral-0), 0.12); }
+        .we-spin-dec {
+            border-right: 1px solid rgba(var(--now-color--neutral-0), 0.12) !important;
+        }
+        .we-spin-inc {
+            border-left: 1px solid rgba(var(--now-color--neutral-0), 0.12) !important;
+        }
         .we-modal-section { margin-top: 0.875rem; display: flex; flex-direction: column; gap: 0.75rem; }
         .we-pref-hint { margin: 0.25rem 0 0 0; font-size: var(--now-font-size--sm); color: rgba(var(--now-color_text--secondary), 0.8); line-height: 1.4; }
         .we-pref-link { font-size: var(--now-font-size--sm); color: rgb(var(--now-color--primary-1)); text-decoration: none; }
@@ -1662,7 +1676,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             min-width: 0;
         }
         .we-picker-title {
-            font-size: 1.0625rem;
+            font-size: var(--now-font-size--lg);
             font-weight: 600;
             color: rgb(var(--now-color_text--primary));
             white-space: nowrap;
@@ -1746,59 +1760,39 @@ Features version history, side-by-side diff comparison, related lists, and user 
             align-items: center;
             margin-bottom: 0.75rem;
             flex-shrink: 0;
+            width: 100%;
+        }
+        .we-picker-search-input {
+            padding-right: 2.25rem !important;
+        }
+        .we-picker-search-wrap:has(.we-picker-search-clear) .we-picker-search-input {
+            padding-right: 3.75rem !important;
         }
         .we-picker-search-icon {
             position: absolute;
-            left: 0.75rem;
+            right: 0.75rem;
             top: 50%;
             transform: translateY(-50%);
             width: 1rem;
             height: 1rem;
-            font-size: 0.875rem;
+            font-size: 1rem;
             line-height: 1;
-            color: rgba(var(--now-color_text--primary), 0.45);
+            color: RGB(var(--now-actionable_icon--color, var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126))));
             pointer-events: none;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 2;
         }
-        .we-picker-search-icon .icon-search {
+        .we-picker-search-icon .icon-search,
+        .we-picker-search-icon i {
             line-height: 1;
-            font-size: 0.875rem;
+            font-size: 1rem;
             display: inline-block;
-        }
-        .we-picker-search-input,
-        input.we-picker-search-input.form-control {
-            width: 100%;
-            height: 2.25rem;
-            line-height: 2.25rem;
-            margin: 0 !important;
-            padding: 0 2.25rem 0 2.25rem;
-            background: rgb(var(--now-color_background--primary));
-            border: 1px solid rgba(var(--now-color--neutral-0), 0.15);
-            border-radius: var(--now-form-field--border-radius, 4px);
-            font-size: var(--now-font-size--sm, 0.875rem);
-            color: rgb(var(--now-color_text--primary));
-            outline: none;
-            box-shadow: none !important;
-            -webkit-box-shadow: none !important;
-            transition: border-color 0.15s ease, box-shadow 0.15s ease;
-            box-sizing: border-box;
-        }
-        .we-picker-search-input:focus,
-        input.we-picker-search-input.form-control:focus {
-            border-color: rgb(var(--now-color--primary-2, 0 118 204));
-            box-shadow: 0 0 0 2px rgba(var(--now-color--primary-1, 0 118 204), 0.25) !important;
-            -webkit-box-shadow: 0 0 0 2px rgba(var(--now-color--primary-1, 0 118 204), 0.25) !important;
-        }
-        .we-picker-search-input::placeholder {
-            color: rgba(var(--now-color_text--primary), 0.45);
-            line-height: normal;
         }
         .we-picker-search-clear {
             position: absolute;
-            right: 0.625rem;
+            right: 2.125rem;
             top: 50%;
             transform: translateY(-50%);
             display: inline-flex;
@@ -1807,8 +1801,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
             width: 1.25rem;
             height: 1.25rem;
             border-radius: 999px;
-            color: rgba(var(--now-color_text--primary), 0.45);
-            background: rgba(var(--now-color--neutral-0), 0.08);
+            color: RGB(var(--now-actionable_icon--color, var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126))));
+            background: rgba(var(--now-color--neutral-0, 0, 0, 0), 0.08);
             cursor: pointer;
             font-size: 0.875rem;
             line-height: 1;
@@ -1816,12 +1810,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
             z-index: 2;
         }
         .we-picker-search-clear:hover {
-            color: rgb(var(--now-color_text--primary));
-            background: rgba(var(--now-color--neutral-0), 0.18);
+            color: RGB(var(--now-color_text--primary, 29, 34, 36));
+            background: rgba(var(--now-color--neutral-0, 0, 0, 0), 0.16);
         }
         .we-picker-search-spinner {
             position: absolute;
-            right: 0.625rem;
+            right: 0.75rem;
             top: 50%;
             transform: translateY(-50%);
             display: flex;
@@ -1897,26 +1891,24 @@ Features version history, side-by-side diff comparison, related lists, and user 
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 3rem 1rem;
+            padding: 2.5rem 1rem;
             text-align: center;
-            color: rgba(var(--now-color_text--primary), 0.5);
-            gap: 0.5rem;
+            font-size: var(--now-font-size--md, 0.9375rem);
+            color: RGB(var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126)));
+            line-height: 1.5;
             flex: 1;
         }
         .we-picker-empty-icon {
-            font-size: 2rem;
-            line-height: 1;
-            color: rgba(var(--now-color_text--primary), 0.25);
-            margin-bottom: 0.25rem;
+            display: none;
         }
         .we-picker-empty-title {
-            font-weight: 500;
-            font-size: var(--now-font-size--sm, 0.875rem);
-            color: rgba(var(--now-color_text--primary), 0.7);
+            font-weight: normal;
+            font-size: var(--now-font-size--md, 0.9375rem);
+            color: RGB(var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126)));
         }
         .we-picker-empty-sub {
-            font-size: 0.75rem;
-            color: rgba(var(--now-color_text--primary), 0.45);
+            font-size: var(--now-font-size--md, 0.9375rem);
+            color: RGB(var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126)));
         }
 
         /* List item row */
@@ -1980,10 +1972,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
             background: rgba(var(--now-color--primary-1, 0 118 204), 0.15);
             color: rgb(var(--now-color--primary-2, 0 118 204));
         }
+        .we-picker-item-icon i,
         .we-picker-item-icon .icon-script,
+        .we-picker-item-icon .icon-document,
+        .we-picker-item-icon .icon-article,
+        .we-picker-item-icon .icon-globe,
         .we-picker-item-icon .icon-date-time {
             font-size: 1rem;
             line-height: 1;
+            display: inline-block;
         }
         .we-picker-item-content {
             display: flex;
@@ -1993,7 +1990,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             flex: 1;
         }
         .we-picker-item-name {
-            font-size: var(--now-font-size--sm, 0.875rem);
+            font-size: var(--now-font-size--md, 0.9375rem);
             font-weight: 500;
             color: rgb(var(--now-color_text--primary));
             white-space: nowrap;
@@ -2003,7 +2000,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-picker-item-id {
             font-family: var(--now-font-family--code, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
-            font-size: 0.75rem;
+            font-size: var(--now-font-size--sm, 0.8125rem);
             color: rgba(var(--now-color_text--primary), 0.5);
             white-space: nowrap;
             overflow: hidden;
@@ -3113,7 +3110,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <div class="we-pref-col">
                             <div class="we-modal-section">
                                 <div class="we-modal-section-title">Formatting</div>
-                                <div class="we-modal-option">
+                                <div class="we-modal-option we-modal-option-row">
                                     <label class="we-modal-option-label" for="sel-auto-closing-brackets" we-tooltip-title="Controls whether typing an opening bracket automatically appends a closing bracket.">Auto-closing brackets</label>
                                     <select id="sel-auto-closing-brackets" class="form-control we-pref-select" ng-model="userPrefsEdit.autoClosingBrackets">
                                         <option value="languageDefined">Language defined</option>
@@ -3122,7 +3119,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <option value="never">Never</option>
                                     </select>
                                 </div>
-                                <div class="we-modal-option">
+                                <div class="we-modal-option we-modal-option-row">
                                     <label class="we-modal-option-label" for="sel-auto-closing-quotes" we-tooltip-title="Controls whether typing a quote character automatically appends its closing counterpart.">Auto-closing quotes</label>
                                     <select id="sel-auto-closing-quotes" class="form-control we-pref-select" ng-model="userPrefsEdit.autoClosingQuotes">
                                         <option value="languageDefined">Language defined</option>
@@ -3131,7 +3128,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <option value="never">Never</option>
                                     </select>
                                 </div>
-                                <div class="we-modal-option">
+                                <div class="we-modal-option we-modal-option-row">
                                     <label class="we-modal-option-label" for="sel-auto-surround" we-tooltip-title="Defines the behaviour when you have text selected and type a quoting or bracketing character.">Auto-surround</label>
                                     <select id="sel-auto-surround" class="form-control we-pref-select" ng-model="userPrefsEdit.autoSurround">
                                         <option value="languageDefined">Language defined</option>
@@ -3242,30 +3239,43 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
         <!-- Link Dependency Modal -->
         <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showLinkDependencyModal" we-dialog-cancel="cancelLinkDependencyModal()" ng-click="cancelLinkDependencyModal()">
-            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:37.5rem;max-width:92vw">
+            <div class="we-modal we-modal--picker" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Link dependency</span>
                     <button type="button" class="we-modal-close-btn" ng-click="cancelLinkDependencyModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
-                <div class="we-modal-body" style="padding-bottom:0.5rem">
-                    <div class="we-picker-search-wrap" style="margin-bottom:0.75rem">
-                        <i class="icon-search we-picker-search-icon" aria-hidden="true"></i>
-                        <input class="form-control we-picker-search-input" type="text" ng-model="linkDependency.search" ng-change="onLinkDependencySearch()" placeholder="Search by name" />
+                <div class="we-modal-body" style="padding:1rem 1.25rem 1.25rem 1.25rem;display:flex;flex-direction:column;min-height:0;overflow:hidden">
+                    <div class="we-picker-search-wrap">
+                        <input class="form-control we-picker-search-input" type="text" ng-model="linkDependency.search" ng-change="onLinkDependencySearch()" ng-keydown="onLinkDepSearchKeydown($event)" placeholder="Search by name" autofocus="autofocus" />
+                        <span class="we-picker-search-clear" ng-if="linkDependency.search &amp;&amp; !linkDependencySearching" ng-click="clearLinkDepSearch()" role="button" title="Clear search">×</span>
                         <span class="we-picker-search-spinner" ng-if="linkDependencySearching"><we-loader></we-loader></span>
+                        <i class="icon-search we-picker-search-icon" aria-hidden="true" ng-if="!linkDependencySearching"></i>
                     </div>
-                    <div class="we-link-list">
-                        <div ng-if="!linkDependencySearching &amp;&amp; linkDependencyResults.length === 0" class="we-link-empty">No dependencies found</div>
-                        <div class="we-link-item" ng-repeat="dep in linkDependencyResults" ng-click="selectLinkDependency(dep)">
-                            <span ng-bind="dep.name"></span>
-                            <a class="we-picker-action-btn" ng-href="/nav_to.do?uri=sp_dependency.do%3Fsys_id={{dep.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open dependency in platform">
-                                <i class="icon-open-document-new-tab" aria-hidden="true"></i>
-                            </a>
+                    <div class="we-picker-section-header">
+                        <span class="we-picker-section-title">
+                            <span ng-if="linkDependencyActiveSearch">Search Results</span>
+                            <span ng-if="!linkDependencyActiveSearch">All Dependencies</span>
+                            <span class="we-picker-count-badge" ng-if="linkDependencyResults.length" ng-bind="linkDependencyResults.length"></span>
+                        </span>
+                    </div>
+                    <div class="we-picker-list">
+                        <div class="we-picker-empty" ng-if="!linkDependencySearching &amp;&amp; linkDependencyResults.length === 0">
+                            <span class="we-picker-empty-title">No dependencies found</span>
+                        </div>
+                        <div class="we-picker-item" ng-repeat="dep in linkDependencyResults" ng-click="selectLinkDependency(dep)" ng-keydown="onLinkDepItemKeydown($event, dep)" tabindex="0" role="button">
+                            <span class="we-picker-item-icon" aria-hidden="true">
+                                <i class="icon-script" aria-hidden="true"></i>
+                            </span>
+                            <div class="we-picker-item-content">
+                                <span class="we-picker-item-name" ng-bind="dep.name"></span>
+                            </div>
+                            <div class="we-picker-item-actions">
+                                <a class="we-picker-action-btn" ng-href="/nav_to.do?uri=sp_dependency.do%3Fsys_id={{dep.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open dependency in platform">
+                                    <i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="we-modal-footer">
-                    <div class="we-spacer"></div>
-                    <button class="btn btn-default we-btn we-btn-secondary" ng-click="cancelLinkDependencyModal()">Cancel</button>
                 </div>
             </div>
         </dialog>
@@ -3286,69 +3296,104 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
         <!-- Link Existing Provider Modal -->
         <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showLinkProviderModal" we-dialog-cancel="cancelLinkProviderModal()" ng-click="cancelLinkProviderModal()">
-            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:37.5rem;max-width:92vw">
+            <div class="we-modal we-modal--picker" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Link existing provider</span>
                     <button type="button" class="we-modal-close-btn" ng-click="cancelLinkProviderModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
-                <div class="we-modal-body" style="padding-bottom:0.5rem">
-                    <div class="we-picker-search-wrap" style="margin-bottom:0.75rem">
-                        <i class="icon-search we-picker-search-icon" aria-hidden="true"></i>
-                        <input class="form-control we-picker-search-input" type="text" ng-model="linkProvider.search" ng-change="onLinkProviderSearch()" placeholder="Search by name" />
+                <div class="we-modal-body" style="padding:1rem 1.25rem 1.25rem 1.25rem;display:flex;flex-direction:column;min-height:0;overflow:hidden">
+                    <div class="we-picker-search-wrap">
+                        <input class="form-control we-picker-search-input" type="text" ng-model="linkProvider.search" ng-change="onLinkProviderSearch()" ng-keydown="onLinkProviderSearchKeydown($event)" placeholder="Search by name" autofocus="autofocus" />
+                        <span class="we-picker-search-clear" ng-if="linkProvider.search &amp;&amp; !linkProviderSearching" ng-click="clearLinkProviderSearch()" role="button" title="Clear search">×</span>
                         <span class="we-picker-search-spinner" ng-if="linkProviderSearching"><we-loader></we-loader></span>
+                        <i class="icon-search we-picker-search-icon" aria-hidden="true" ng-if="!linkProviderSearching"></i>
                     </div>
-                    <div class="we-link-list">
-                        <div ng-if="!linkProviderSearching &amp;&amp; linkProviderResults.length === 0" class="we-link-empty">No providers found</div>
-                        <div class="we-link-item" ng-repeat="p in linkProviderResults" ng-click="selectLinkProvider(p)">
-                            <span class="we-link-id" ng-bind="p.name"></span>
-                            <a class="we-picker-action-btn" ng-href="/nav_to.do?uri=sp_angular_provider.do%3Fsys_id={{p.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open provider in platform">
-                                <i class="icon-open-document-new-tab" aria-hidden="true"></i>
-                            </a>
+                    <div class="we-picker-section-header">
+                        <span class="we-picker-section-title">
+                            <span ng-if="linkProviderActiveSearch">Search Results</span>
+                            <span ng-if="!linkProviderActiveSearch">All Providers</span>
+                            <span class="we-picker-count-badge" ng-if="linkProviderResults.length" ng-bind="linkProviderResults.length"></span>
+                        </span>
+                    </div>
+                    <div class="we-picker-list">
+                        <div class="we-picker-empty" ng-if="!linkProviderSearching &amp;&amp; linkProviderResults.length === 0">
+                            <span class="we-picker-empty-title">No providers found</span>
+                        </div>
+                        <div class="we-picker-item" ng-repeat="p in linkProviderResults" ng-click="selectLinkProvider(p)" ng-keydown="onLinkProviderItemKeydown($event, p)" tabindex="0" role="button">
+                            <span class="we-picker-item-icon" aria-hidden="true">
+                                <i class="icon-script" aria-hidden="true"></i>
+                            </span>
+                            <div class="we-picker-item-content">
+                                <span class="we-picker-item-name" ng-bind="p.name"></span>
+                            </div>
+                            <div class="we-picker-item-actions">
+                                <a class="we-picker-action-btn" ng-href="/nav_to.do?uri=sp_angular_provider.do%3Fsys_id={{p.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open provider in platform">
+                                    <i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="we-modal-footer">
-                    <div class="we-spacer"></div>
-                    <button class="btn btn-default we-btn we-btn-secondary" ng-click="cancelLinkProviderModal()">Cancel</button>
                 </div>
             </div>
         </dialog>
 
         <!-- Open on Portal Modal -->
         <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showOpenOnPortalModal" we-dialog-cancel="closeOpenOnPortalModal()" ng-click="closeOpenOnPortalModal()">
-            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:28rem;max-width:92vw">
+            <div class="we-modal we-modal--portal" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span ng-if="openOnPortalStep === 'params'">URL parameters</span>
                     <span ng-if="openOnPortalStep === 'instance'">Select a page</span>
                     <span ng-if="openOnPortalStep === 'portal'">Select a portal</span>
                     <button type="button" class="we-modal-close-btn" ng-click="closeOpenOnPortalModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
-                <div class="we-modal-body" style="padding:0;gap:0">
-                    <div ng-if="openOnPortalLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
+                <div class="we-modal-body" style="padding:1rem 1.25rem 1.25rem 1.25rem;display:flex;flex-direction:column;min-height:0;overflow:hidden">
+                    <div ng-if="openOnPortalLoading" style="padding:2.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
                         <we-spinner></we-spinner>
                         Loading…
                     </div>
                     <div ng-if="openOnPortalError &amp;&amp; !openOnPortalLoading" style="padding:1rem;color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)))" ng-bind="openOnPortalError"></div>
-                    <div style="padding:1rem;display:flex;flex-direction:column;gap:0.75rem" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'params'">
+
+                    <!-- Params Step -->
+                    <div style="display:flex;flex-direction:column;gap:0.75rem" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'params'">
                         <div ng-repeat="p in openOnPortalParams">
                             <label class="we-pane-meta-label" ng-attr-for="'oop-param-' + $index" ng-bind="p.name"></label>
                             <input class="form-control" type="text" ng-attr-id="'oop-param-' + $index" ng-model="p.value" ng-change="saveOpenOnPortalParams()" />
                         </div>
                     </div>
-                    <div class="we-link-list" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'instance'">
-                        <div ng-if="openOnPortalInstances.length === 0" class="we-link-empty">This widget isn't placed on any active page.</div>
-                        <div class="we-link-item" ng-repeat="inst in openOnPortalInstances" ng-click="selectOpenOnPortalInstance(inst)">
-                            <span class="we-link-id" ng-bind="inst.pageTitle || inst.pageId"></span>
+
+                    <!-- Instance (Page Selection) Step -->
+                    <div class="we-picker-list" style="max-height:min(24rem, 55vh)" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'instance'">
+                        <div ng-if="openOnPortalInstances.length === 0" class="we-picker-empty">
+                            <span class="we-picker-empty-title">No pages found</span>
+                        </div>
+                        <div class="we-picker-item" ng-repeat="inst in openOnPortalInstances" ng-click="selectOpenOnPortalInstance(inst)" ng-keydown="onOpenPortalInstanceKeydown($event, inst)" tabindex="0" role="button">
+                            <span class="we-picker-item-icon" aria-hidden="true">
+                                <i class="icon-article" aria-hidden="true"></i>
+                            </span>
+                            <div class="we-picker-item-content">
+                                <span class="we-picker-item-name" ng-bind="inst.pageTitle || inst.pageId"></span>
+                                <span class="we-picker-item-id" ng-bind="inst.pageId"></span>
+                            </div>
                         </div>
                     </div>
-                    <div class="we-link-list" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'portal'">
-                        <div ng-if="openOnPortalPortals.length === 0" class="we-link-empty">No active portals found.</div>
-                        <div class="we-link-item" ng-repeat="portal in openOnPortalPortals" ng-click="selectOpenOnPortalPortal(portal)">
-                            <span class="we-link-id" ng-bind="portal.title"></span>
+
+                    <!-- Portal Step -->
+                    <div class="we-picker-list" style="max-height:min(24rem, 55vh)" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'portal'">
+                        <div ng-if="openOnPortalPortals.length === 0" class="we-picker-empty">
+                            <span class="we-picker-empty-title">No active portals found</span>
+                        </div>
+                        <div class="we-picker-item" ng-repeat="portal in openOnPortalPortals" ng-click="selectOpenOnPortalPortal(portal)" ng-keydown="onOpenPortalPortalKeydown($event, portal)" tabindex="0" role="button">
+                            <span class="we-picker-item-icon" aria-hidden="true">
+                                <i class="icon-globe" aria-hidden="true"></i>
+                            </span>
+                            <div class="we-picker-item-content">
+                                <span class="we-picker-item-name" ng-bind="portal.title"></span>
+                                <span class="we-picker-item-id" ng-bind="'/' + portal.url_suffix"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="we-modal-footer">
+                <div class="we-modal-footer" ng-if="openOnPortalStep === 'params' || openOnPortalCanGoBack()">
                     <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalStep === 'params' &amp;&amp; openOnPortalParams.length" ng-click="resetOpenOnPortalParams()" style="margin-right:auto">Reset</button>
                     <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalCanGoBack()" ng-click="openOnPortalBack()">Back</button>
                     <button class="btn btn-default we-btn we-btn-secondary" ng-click="closeOpenOnPortalModal()">Cancel</button>
@@ -3546,28 +3591,26 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <div class="we-picker-col-main">
                         <!-- Search Bar -->
                         <div class="we-picker-search-wrap">
-                            <i class="icon-search we-picker-search-icon" aria-hidden="true"></i>
                             <input class="form-control we-picker-search-input" type="text" ng-model="picker.search"
                                 ng-change="onPickerSearch()" ng-keydown="onPickerSearchKeydown($event)" placeholder="Search by name or ID" autofocus="autofocus" />
                             <span class="we-picker-search-clear" ng-if="picker.search &amp;&amp; !pickerLoading" ng-click="clearPickerSearch()" role="button" title="Clear search">×</span>
                             <span class="we-picker-search-spinner" ng-if="pickerLoading"><we-loader></we-loader></span>
+                            <i class="icon-search we-picker-search-icon" aria-hidden="true" ng-if="!pickerLoading"></i>
                         </div>
 
                         <!-- Section Header -->
                         <div class="we-picker-section-header">
                             <span class="we-picker-section-title">
-                                <span ng-if="picker.search">Search Results</span>
-                                <span ng-if="!picker.search">All Widgets</span>
-                                <span class="we-picker-count-badge" ng-if="!pickerLoading &amp;&amp; pickerWidgets.length" ng-bind="pickerWidgets.length"></span>
+                                <span ng-if="pickerActiveSearch">Search Results</span>
+                                <span ng-if="!pickerActiveSearch">All Widgets</span>
+                                <span class="we-picker-count-badge" ng-if="pickerWidgets.length" ng-bind="pickerWidgets.length"></span>
                             </span>
                         </div>
 
                         <!-- Results List -->
                         <div class="we-picker-list">
                             <div class="we-picker-empty" ng-if="!pickerLoading &amp;&amp; pickerWidgets.length === 0">
-                                <i class="icon-search we-picker-empty-icon" aria-hidden="true"></i>
                                 <span class="we-picker-empty-title">No widgets found</span>
-                                <span class="we-picker-empty-sub">Try searching by a different name or ID</span>
                             </div>
                             <div class="we-picker-item" ng-repeat="w in pickerWidgets" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
                                 <span class="we-picker-item-icon" aria-hidden="true">
@@ -3701,7 +3744,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 </div>
                 <div class="we-modal-body we-kbd-sections">
 
-                    <!-- Mouse & scroll shortcuts -->
+                    <!-- Mouse and scroll shortcuts -->
                     <div>
                         <div class="we-modal-section-title" style="margin-bottom:0.625rem">Mouse &amp; scroll</div>
                         <div class="we-kbd-mouse-list">
@@ -5200,20 +5243,22 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             if (requestId !== _widgetListRequestId) {
                                 return;
                             }
+                            $scope.pickerActiveSearch = search;
                             $scope.pickerWidgets =
                                 d.success && d.widgets
-                                    ? d.widgets.map(function (w) {
-                                          w.widgetEditorUrl =
-                                              buildWidgetEditorUrl(w.sys_id);
-                                          return w;
-                                      })
-                                    : [];
+                                        ? d.widgets.map(function (w) {
+                                              w.widgetEditorUrl =
+                                                  buildWidgetEditorUrl(w.sys_id);
+                                              return w;
+                                          })
+                                        : [];
                             $scope.pickerLoading = false;
                         },
                         function () {
                             if (requestId !== _widgetListRequestId) {
                                 return;
                             }
+                            $scope.pickerActiveSearch = search;
                             $scope.pickerWidgets = [];
                             $scope.pickerLoading = false;
                         }
@@ -5317,6 +5362,139 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             }
                         }
                     }
+                };
+
+                function _handleListSearchKeydown(event, itemSelector, onEnterFirst) {
+                    var key = event && event.key;
+                    var keyCode = event && event.keyCode;
+                    if (key === 'ArrowDown' || keyCode === 40) {
+                        event.preventDefault();
+                        var firstItem = document.querySelector(itemSelector);
+                        if (firstItem && firstItem.focus) {
+                            firstItem.focus();
+                            if (typeof firstItem.scrollIntoView === 'function') {
+                                firstItem.scrollIntoView({ block: 'nearest' });
+                            }
+                        }
+                    } else if (key === 'ArrowUp' || keyCode === 38) {
+                        event.preventDefault();
+                        var allItems = document.querySelectorAll(itemSelector);
+                        if (allItems && allItems.length) {
+                            var lastItem = allItems[allItems.length - 1];
+                            if (lastItem && lastItem.focus) {
+                                lastItem.focus();
+                                if (typeof lastItem.scrollIntoView === 'function') {
+                                    lastItem.scrollIntoView({ block: 'nearest' });
+                                }
+                            }
+                        }
+                    } else if (key === 'Enter' || keyCode === 13) {
+                        if (typeof onEnterFirst === 'function') {
+                            event.preventDefault();
+                            onEnterFirst();
+                        }
+                    }
+                }
+
+                function _handleListItemKeydown(event, onSelect) {
+                    var key = event && event.key;
+                    var keyCode = event && event.keyCode;
+
+                    if (
+                        key === 'Enter' ||
+                        keyCode === 13 ||
+                        key === ' ' ||
+                        key === 'Spacebar' ||
+                        keyCode === 32
+                    ) {
+                        if (event.target && event.target.closest && event.target.closest('.we-picker-action-btn')) {
+                            return;
+                        }
+                        event.preventDefault();
+                        if (typeof onSelect === 'function') {
+                            onSelect();
+                        }
+                        return;
+                    }
+
+                    if (key === 'ArrowDown' || keyCode === 40) {
+                        event.preventDefault();
+                        var el = event.currentTarget;
+                        var list = el && el.parentElement;
+                        if (!list) return;
+                        var items = list.querySelectorAll('.we-picker-item');
+                        if (!items || !items.length) return;
+                        var idx = Array.prototype.indexOf.call(items, el);
+                        var nextIdx = (idx >= 0 && idx < items.length - 1) ? (idx + 1) : 0;
+                        var nextItem = items[nextIdx];
+                        if (nextItem && nextItem.focus) {
+                            nextItem.focus();
+                            if (typeof nextItem.scrollIntoView === 'function') {
+                                nextItem.scrollIntoView({ block: 'nearest' });
+                            }
+                        }
+                    } else if (key === 'ArrowUp' || keyCode === 38) {
+                        event.preventDefault();
+                        var el = event.currentTarget;
+                        var list = el && el.parentElement;
+                        if (!list) return;
+                        var items = list.querySelectorAll('.we-picker-item');
+                        if (!items || !items.length) return;
+                        var idx = Array.prototype.indexOf.call(items, el);
+                        var prevIdx = (idx > 0) ? (idx - 1) : (items.length - 1);
+                        var prevItem = items[prevIdx];
+                        if (prevItem && prevItem.focus) {
+                            prevItem.focus();
+                            if (typeof prevItem.scrollIntoView === 'function') {
+                                prevItem.scrollIntoView({ block: 'nearest' });
+                            }
+                        }
+                    }
+                }
+
+                $scope.clearLinkDepSearch = function () {
+                    $scope.linkDependency.search = '';
+                    $scope.onLinkDependencySearch();
+                };
+                $scope.onLinkDepSearchKeydown = function (event) {
+                    _handleListSearchKeydown(event, '[we-modal-dialog="showLinkDependencyModal"] .we-picker-item', function () {
+                        if ($scope.linkDependencyResults && $scope.linkDependencyResults.length > 0) {
+                            $scope.selectLinkDependency($scope.linkDependencyResults[0]);
+                        }
+                    });
+                };
+                $scope.onLinkDepItemKeydown = function (event, dep) {
+                    _handleListItemKeydown(event, function () {
+                        $scope.selectLinkDependency(dep);
+                    });
+                };
+
+                $scope.clearLinkProviderSearch = function () {
+                    $scope.linkProvider.search = '';
+                    $scope.onLinkProviderSearch();
+                };
+                $scope.onLinkProviderSearchKeydown = function (event) {
+                    _handleListSearchKeydown(event, '[we-modal-dialog="showLinkProviderModal"] .we-picker-item', function () {
+                        if ($scope.linkProviderResults && $scope.linkProviderResults.length > 0) {
+                            $scope.selectLinkProvider($scope.linkProviderResults[0]);
+                        }
+                    });
+                };
+                $scope.onLinkProviderItemKeydown = function (event, p) {
+                    _handleListItemKeydown(event, function () {
+                        $scope.selectLinkProvider(p);
+                    });
+                };
+
+                $scope.onOpenPortalInstanceKeydown = function (event, inst) {
+                    _handleListItemKeydown(event, function () {
+                        $scope.selectOpenOnPortalInstance(inst);
+                    });
+                };
+                $scope.onOpenPortalPortalKeydown = function (event, portal) {
+                    _handleListItemKeydown(event, function () {
+                        $scope.selectOpenOnPortalPortal(portal);
+                    });
                 };
 
                 function buildWidgetEditorUrl(widgetSysId) {
@@ -9835,6 +10013,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.openLinkProviderModal = function () {
                     $scope.openDropdown = null;
                     $scope.linkProvider.search = '';
+                    $scope.linkProviderActiveSearch = '';
                     $scope.linkProviderResults = [];
                     $scope.showLinkProviderModal = true;
                     loadLinkProviderResults('');
@@ -9860,6 +10039,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             return;
                         }
                         $scope.linkProviderSearching = false;
+                        $scope.linkProviderActiveSearch = search;
                         if (d.success) {
                             $scope.linkProviderResults = d.providers;
                         }
@@ -10085,6 +10265,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.openLinkDependencyModal = function () {
                     $scope.openDropdown = null;
                     $scope.linkDependency.search = '';
+                    $scope.linkDependencyActiveSearch = '';
                     $scope.linkDependencyResults = [];
                     $scope.showLinkDependencyModal = true;
                     _loadLinkDependencyResults('');
@@ -10112,6 +10293,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             return;
                         }
                         $scope.linkDependencySearching = false;
+                        $scope.linkDependencyActiveSearch = search;
                         if (d.success) {
                             $scope.linkDependencyResults = d.dependencies;
                         }
