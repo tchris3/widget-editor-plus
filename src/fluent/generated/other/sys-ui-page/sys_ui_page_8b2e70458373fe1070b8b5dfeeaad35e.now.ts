@@ -2000,7 +2000,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-picker-item-id {
             font-family: var(--now-font-family--code, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
-            font-size: var(--now-font-size--md, 0.8125rem);
+            font-size: var(--now-font-size--xs, 0.8125rem);
             color: rgba(var(--now-color_text--primary), 0.5);
             white-space: nowrap;
             overflow: hidden;
