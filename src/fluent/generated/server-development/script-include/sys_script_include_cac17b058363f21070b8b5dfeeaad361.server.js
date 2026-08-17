@@ -2114,7 +2114,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 providers.push({
                     sys_id: pSysId,
                     name: gr.getValue('name'),
-                    type: gr.getValue('type') || '',
+                    type: gr.getDisplayValue('type') || gr.getValue('type') || '',
                     script: gr.getValue('script') || '',
                 });
             }
@@ -3389,6 +3389,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         var instances = [];
 
         if (sysId) {
+            var seenPageIds = {};
             var grInstances = new GlideRecordSecure('sp_instance');
             grInstances.addQuery('sp_widget', sysId);
             grInstances.addQuery('active', true);
@@ -3396,7 +3397,8 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             grInstances.query();
             while (grInstances.next()) {
                 var page = this._resolvePageForInstance(grInstances);
-                if (page) {
+                if (page && page.id && !seenPageIds[page.id]) {
+                    seenPageIds[page.id] = true;
                     instances.push({
                         instanceSysId: grInstances.getValue('sys_id'),
                         pageId: page.id,

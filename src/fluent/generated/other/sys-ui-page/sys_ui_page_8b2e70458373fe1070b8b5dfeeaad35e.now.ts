@@ -945,7 +945,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
 
         .we-pane-meta-label {
-            font-size: var(--now-font-size--xs);
+            font-size: var(--now-font-size--md);
             color: rgb(var(--now-color_text--tertiary));
             white-space: nowrap;
             margin: 0;
@@ -1360,7 +1360,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-modal-header a,
         .we-modal-header [role="button"] { cursor: pointer; user-select: auto; }
         .we-modal-section-title {
-            font-size: var(--now-font-size--sm);
+            font-size: var(--now-font-size--md);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.07em;
@@ -1392,7 +1392,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-modal-option-label {
             color: rgb(var(--now-color_text--secondary));
             flex: 0 0 11rem;
-            font-size: var(--now-font-size--sm, 0.875rem);
+            font-size: var(--now-font-size--md, 0.875rem);
             margin-bottom: 0;
         }
         .we-pref-select {
@@ -1454,7 +1454,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-modal-section { margin-top: 0.875rem; display: flex; flex-direction: column; gap: 0.75rem; }
         .we-pref-hint { margin: 0.25rem 0 0 0; font-size: var(--now-font-size--sm); color: rgba(var(--now-color_text--secondary), 0.8); line-height: 1.4; }
-        .we-pref-link { font-size: var(--now-font-size--sm); color: rgb(var(--now-color--primary-1)); text-decoration: none; }
+        .we-pref-link { font-size: var(--now-font-size--md); color: rgb(var(--now-color--primary-1)); text-decoration: none; }
         .we-pref-link:hover { text-decoration: underline; }
        
         .we-modal-footer {
@@ -1717,7 +1717,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             gap: 0.375rem;
             height: 1.875rem;
             padding: 0 0.75rem;
-            font-size: var(--now-font-size--sm, 0.8125rem);
+            font-size: var(--now-font-size--md, 0.8125rem);
             font-weight: 500;
             border-radius: 6px;
         }
@@ -2000,7 +2000,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-picker-item-id {
             font-family: var(--now-font-family--code, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
-            font-size: var(--now-font-size--sm, 0.8125rem);
+            font-size: var(--now-font-size--md, 0.8125rem);
             color: rgba(var(--now-color_text--primary), 0.5);
             white-space: nowrap;
             overflow: hidden;
@@ -2325,7 +2325,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-kbd-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: var(--now-font-size--sm);
+            font-size: var(--now-font-size--md);
         }
         .we-kbd-table th {
             text-align: left;
@@ -2368,7 +2368,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             display: flex;
             flex-direction: column;
             gap: 0.4375rem;
-            font-size: var(--now-font-size--sm);
+            font-size: var(--now-font-size--md);
         }
         .we-kbd-mouse-item {
             display: flex;
@@ -3050,7 +3050,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <input type="number" class="we-pref-number" id="pref-font-size" ng-model="userPrefsEdit.fontSize" min="8" max="32" step="1" />
                                         <button type="button" class="we-spin-btn we-spin-inc" ng-click="userPrefsEdit.fontSize = userPrefsEdit.fontSize &lt; 32 ? userPrefsEdit.fontSize + 1 : 32" aria-label="Increase font size">+</button>
                                     </div>
-                                    <span style="font-size:var(--now-font-size--sm);color:rgb(var(--now-color_text--secondary))">px</span>
+                                    <span style="font-size:var(--now-font-size--md);color:rgb(var(--now-color_text--secondary))">px</span>
                                 </div>
                                 <div class="we-modal-option we-modal-option-row">
                                     <label class="we-modal-option-label" for="pref-font-family">Font family</label>
@@ -3227,7 +3227,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <input type="number" class="we-pref-number" id="pref-tab-size" ng-model="userPrefsEdit.tabSize" min="1" max="8" step="1" />
                                         <button type="button" class="we-spin-btn we-spin-inc" ng-click="userPrefsEdit.tabSize = userPrefsEdit.tabSize &lt; 8 ? userPrefsEdit.tabSize + 1 : 8" aria-label="Increase tab size">+</button>
                                     </div>
-                                    <span style="font-size:var(--now-font-size--sm);color:rgb(var(--now-color_text--secondary))">spaces</span>
+                                    <span style="font-size:var(--now-font-size--md);color:rgb(var(--now-color_text--secondary))">spaces</span>
                                 </div>
                                 <div class="we-modal-option we-modal-option-row">
                                     <label class="we-modal-option-label" for="pref-rem-base" we-tooltip-title="Sets the base pixel value for 1rem units (CSS/SCSS Code Action).">1rem conversion</label>
@@ -3236,7 +3236,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <input type="number" class="we-pref-number" id="pref-rem-base" ng-model="userPrefsEdit.remBase" min="1" max="100" step="1" />
                                         <button type="button" class="we-spin-btn we-spin-inc" ng-click="userPrefsEdit.remBase = userPrefsEdit.remBase &lt; 100 ? userPrefsEdit.remBase + 1 : 100" aria-label="Increase 1rem base">+</button>
                                     </div>
-                                    <span style="font-size:var(--now-font-size--sm);color:rgb(var(--now-color_text--secondary))">px</span>
+                                    <span style="font-size:var(--now-font-size--md);color:rgb(var(--now-color_text--secondary))">px</span>
                                 </div>
                             </div>
                         </div>
@@ -3338,6 +3338,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             </span>
                             <div class="we-picker-item-content">
                                 <span class="we-picker-item-name" ng-bind-html="p.name | weHighlight:linkProviderActiveSearch"></span>
+                                <span class="we-picker-item-id" ng-if="p.type" ng-bind="formatProviderType(p.type)"></span>
                             </div>
                             <div class="we-picker-item-actions">
                                 <a class="we-picker-action-btn" ng-href="/nav_to.do?uri=sp_angular_provider.do%3Fsys_id={{p.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open provider in platform">
@@ -3381,7 +3382,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         </div>
                         <div class="we-picker-item" ng-repeat="inst in openOnPortalInstances" ng-click="selectOpenOnPortalInstance(inst)" ng-keydown="onOpenPortalInstanceKeydown($event, inst)" tabindex="0" role="button">
                             <span class="we-picker-item-icon" aria-hidden="true">
-                                <i class="icon-article" aria-hidden="true"></i>
+                                <i class="icon-document-all-generic" aria-hidden="true"></i>
                             </span>
                             <div class="we-picker-item-content">
                                 <span class="we-picker-item-name" ng-bind="inst.pageTitle || inst.pageId"></span>
@@ -3397,7 +3398,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         </div>
                         <div class="we-picker-item" ng-repeat="portal in openOnPortalPortals" ng-click="selectOpenOnPortalPortal(portal)" ng-keydown="onOpenPortalPortalKeydown($event, portal)" tabindex="0" role="button">
                             <span class="we-picker-item-icon" aria-hidden="true">
-                                <i class="icon-globe" aria-hidden="true"></i>
+                                <i class="icon-layout" aria-hidden="true"></i>
                             </span>
                             <div class="we-picker-item-content">
                                 <span class="we-picker-item-name" ng-bind="portal.title"></span>
@@ -10074,6 +10075,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }, 300);
                 };
 
+                $scope.formatProviderType = function (type) {
+                    if (!type) {
+                        return '';
+                    }
+                    return type.charAt(0).toUpperCase() + type.slice(1);
+                };
+
                 // Guards against a stale, slower response overwriting a newer one.
                 var _linkProviderRequestId = 0;
                 function loadLinkProviderResults(search) {
@@ -11927,7 +11935,16 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.openOnPortalError = data.error || 'Failed to load pages/portals';
                             return;
                         }
-                        $scope.openOnPortalInstances = data.instances || [];
+                        var rawInstances = data.instances || [];
+                        var seenPages = {};
+                        var uniqueInstances = [];
+                        rawInstances.forEach(function (inst) {
+                            if (inst && inst.pageId && !seenPages[inst.pageId]) {
+                                seenPages[inst.pageId] = true;
+                                uniqueInstances.push(inst);
+                            }
+                        });
+                        $scope.openOnPortalInstances = uniqueInstances;
                         $scope.openOnPortalPortals = data.portals || [];
                         $scope.openOnPortalStep = $scope.openOnPortalInstances.length > 1 ? 'instance' : 'portal';
                     }, function () {
