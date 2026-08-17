@@ -1828,30 +1828,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
             gap: 0.625rem;
             margin-left: auto;
         }
-        .we-picker-history-toggle {
-            all: unset;
-            box-sizing: border-box;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 1.875rem;
-            height: 1.875rem;
-            border-radius: 6px;
-            border: 1px solid rgba(var(--now-color--neutral-0), 0.15);
-            color: rgba(var(--now-color_text--primary), 0.75);
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.12s ease;
-        }
-        .we-picker-history-toggle:hover {
-            background: rgba(var(--now-color--neutral-0), 0.08);
-            color: rgb(var(--now-color_text--primary));
-        }
-        .we-picker-history-toggle--active {
-            color: rgb(var(--now-color--primary-2, 0 118 204));
-            border-color: rgba(var(--now-color--primary-1, 0 118 204), 0.4);
-            background: rgba(var(--now-color--primary-1, 0 118 204), 0.12);
-        }
         .we-picker-btn-new {
             display: inline-flex;
             align-items: center;
@@ -3561,8 +3537,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </div>
                     <div class="we-picker-section-header">
                         <span class="we-picker-section-title">
-                            <span ng-if="linkDependencyActiveSearch">Search Results</span>
-                            <span ng-if="!linkDependencyActiveSearch">All Dependencies</span>
+                            <span>Dependencies</span>
                             <span class="we-picker-count-badge" ng-if="linkDependencyResults.length" ng-bind="linkDependencyResults.length"></span>
                         </span>
                     </div>
@@ -3618,8 +3593,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </div>
                     <div class="we-picker-section-header">
                         <span class="we-picker-section-title">
-                            <span ng-if="linkProviderActiveSearch">Search Results</span>
-                            <span ng-if="!linkProviderActiveSearch">All Providers</span>
+                            <span>Providers</span>
                             <span class="we-picker-count-badge" ng-if="linkProviderResults.length" ng-bind="linkProviderResults.length"></span>
                         </span>
                     </div>
@@ -3884,7 +3858,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <span class="we-picker-title">Open a Widget</span>
                     </div>
                     <div class="we-picker-title-actions">
-                        <button type="button" class="btn btn-default we-picker-history-toggle" ng-if="userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.recentWidgets.length" ng-click="toggleRecentWidgetsPane()" ng-class="{'we-picker-history-toggle--active': userPrefs.showOpenHistory}" aria-pressed="{{!!userPrefs.showOpenHistory}}" we-tooltip-title="{{userPrefs.showOpenHistory ? 'Hide recently opened widgets' : 'Show recently opened widgets'}}" aria-label="History">
+                        <button type="button" class="btn btn-default" ng-if="userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.recentWidgets.length" ng-click="toggleRecentWidgetsPane()" aria-pressed="{{!!userPrefs.showOpenHistory}}" we-tooltip-title="{{userPrefs.showOpenHistory ? 'Hide recently opened widgets' : 'Show recently opened widgets'}}" aria-label="History">
                             <i class="icon-history" aria-hidden="true"></i>
                         </button>
                         <button type="button" class="btn btn-primary we-picker-btn-new" ng-click="newWidget()">
@@ -3910,8 +3884,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <!-- Section Header -->
                         <div class="we-picker-section-header">
                             <span class="we-picker-section-title">
-                                <span ng-if="pickerActiveSearch">Search Results</span>
-                                <span ng-if="!pickerActiveSearch">All Widgets</span>
+                                <span>Widgets</span>
                                 <span class="we-picker-count-badge" ng-if="pickerWidgets.length" ng-bind="pickerWidgets.length"></span>
                             </span>
                         </div>
@@ -3926,7 +3899,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     <i class="icon-script" aria-hidden="true"></i>
                                 </span>
                                 <div class="we-picker-item-content">
-                                    <span class="we-picker-item-name" ng-bind-html="w.name | weHighlight:pickerActiveSearch"></span>
+                                    <span class="we-picker-item-name" ng-bind-html="(w.name || '&lt; no name &gt;') | weHighlight:pickerActiveSearch"></span>
                                     <span class="we-picker-item-id" ng-bind-html="w.id | weHighlight:pickerActiveSearch"></span>
                                 </div>
                                 <div class="we-picker-item-actions">
@@ -3953,7 +3926,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     <i class="icon-history" aria-hidden="true"></i>
                                 </span>
                                 <div class="we-picker-item-content">
-                                    <span class="we-picker-item-name" ng-bind="w.name"></span>
+                                    <span class="we-picker-item-name" ng-bind="w.name || '&lt; no name &gt;'"></span>
                                     <span class="we-picker-item-id" ng-bind="w.id"></span>
                                 </div>
                                 <div class="we-picker-item-actions">
