@@ -85,44 +85,193 @@ Features version history, side-by-side diff comparison, related lists, and user 
             height: 99vh;
         }
 
-        /* Generic alert bars */
-        .we-alert-bar {
-            padding: 0.625rem 0.875rem;
+        /* Alert Status Pills Ribbon */
+        .we-alert-pills-row {
             display: flex;
-            justify-content: space-between;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.375rem 0.5rem;
+            padding: 0.3125rem 0.75rem;
+            background: rgb(var(--now-color_background--secondary, var(--now-color_background--tertiary)));
+            border-bottom: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.08);
+            flex-shrink: 0;
+            min-height: 2rem;
+        }
+
+        .we-alert-pill-wrapper {
+            position: relative;
+            display: inline-flex;
+        }
+
+        .we-alert-pill,
+        button.we-alert-pill,
+        .btn.we-alert-pill,
+        button:not(.btn).we-alert-pill {
+            all: unset;
+            box-sizing: border-box;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.3125rem !important;
+            height: 1.5rem !important;
+            padding: 0 0.625rem !important;
+            border-radius: 9999px !important;
+            font-size: var(--now-font-size--sm, 0.8125rem) !important;
+            font-weight: 500 !important;
+            line-height: 1 !important;
+            cursor: pointer !important;
+            user-select: none !important;
+            white-space: nowrap !important;
+            text-shadow: none !important;
+            box-shadow: none !important;
+            background-color: RGB(var(--now-alert--info--background-color, var(--now-color_alert--info-0, 224, 242, 254))) !important;
+            border: 1px solid RGB(var(--now-alert--info--border-color, var(--now-color_alert--info-1, 56, 189, 248))) !important;
+            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+            transition: all 0.15s ease !important;
+        }
+        .we-alert-pill:hover,
+        .we-alert-pill.active,
+        button.we-alert-pill:hover,
+        button.we-alert-pill.active {
+            filter: brightness(0.95) !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+        }
+        .we-alert-pill:focus-visible,
+        button.we-alert-pill:focus-visible,
+        .btn.we-alert-pill:focus-visible,
+        button:not(.btn).we-alert-pill:focus-visible {
+            outline: 2px solid rgb(var(--now-focus-ring--color, var(--now-color_focus--primary, var(--now-color--primary-2, 30, 133, 203)))) !important;
+            outline-offset: 2px !important;
+        }
+        .we-alert-pill:focus:not(:focus-visible),
+        button.we-alert-pill:focus:not(:focus-visible),
+        .btn.we-alert-pill:focus:not(:focus-visible),
+        button:not(.btn).we-alert-pill:focus:not(:focus-visible) {
+            outline: none !important;
+        }
+
+        .we-alert-pill i,
+        .we-alert-pill [class^="icon-"],
+        .we-alert-pill [class*=" icon-"] {
+            font-size: 0.8125rem !important;
+            line-height: 1 !important;
+            display: inline-block !important;
+            flex-shrink: 0 !important;
+            color: inherit !important;
+        }
+
+        .we-alert-pill--critical,
+        button.we-alert-pill--critical,
+        .btn.we-alert-pill--critical {
+            background-color: RGB(var(--now-alert--critical--background-color, var(--now-color_alert--critical-0, 255, 235, 235))) !important;
+            border-color: RGB(var(--now-alert--critical--border-color, var(--now-color_alert--critical-1, 230, 80, 80))) !important;
+            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+        }
+        .we-alert-pill--critical i,
+        .we-alert-pill--critical [class^="icon-"],
+        .we-alert-pill--critical [class*=" icon-"] {
+            color: RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 168, 30, 30))) !important;
+        }
+
+        .we-alert-pill--warning,
+        button.we-alert-pill--warning,
+        .btn.we-alert-pill--warning {
+            background-color: RGB(var(--now-alert--warning--background-color, var(--now-color_alert--warning-0, 254, 243, 199))) !important;
+            border-color: RGB(var(--now-alert--warning--border-color, var(--now-color_alert--warning-1, 245, 158, 11))) !important;
+            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+        }
+        .we-alert-pill--warning i,
+        .we-alert-pill--warning [class^="icon-"],
+        .we-alert-pill--warning [class*=" icon-"] {
+            color: RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 146, 64, 14))) !important;
+        }
+
+        .we-alert-pill--info,
+        button.we-alert-pill--info,
+        .btn.we-alert-pill--info {
+            background-color: RGB(var(--now-alert--info--background-color, var(--now-color_alert--info-0, 224, 242, 254))) !important;
+            border-color: RGB(var(--now-alert--info--border-color, var(--now-color_alert--info-1, 56, 189, 248))) !important;
+            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+        }
+        .we-alert-pill--info i,
+        .we-alert-pill--info [class^="icon-"],
+        .we-alert-pill--info [class*=" icon-"] {
+            color: RGB(var(--now-alert--info--color, var(--now-color_alert--info-3, 3, 105, 161))) !important;
+        }
+
+        /* Popover Card */
+        .we-alert-popover {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            z-index: 1000;
+            min-width: 17rem;
+            max-width: 22rem;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            color: rgb(var(--now-color_text--primary, 22, 27, 28));
+            border: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.15);
+            border-radius: var(--now-form-field--border-radius, 6px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.1);
+            padding: 0.875rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            font-size: var(--now-font-size--sm, 0.8125rem);
+            line-height: 1.45;
+        }
+
+        /* Popover Arrow / Caret */
+        .we-alert-popover::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 1rem;
+            width: 10px;
+            height: 10px;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            border-left: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.15);
+            border-top: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.15);
+            transform: rotate(45deg);
+        }
+
+        /* Right-aligned popover for header actions */
+        .we-alert-pill-wrapper--right .we-alert-popover {
+            left: auto;
+            right: 0;
+        }
+        .we-alert-pill-wrapper--right .we-alert-popover::before {
+            left: auto;
+            right: 1.5rem;
+        }
+
+        .we-alert-popover-title {
+            font-weight: 600;
+            font-size: var(--now-font-size--md, 0.875rem);
+            color: rgb(var(--now-color_text--primary));
+            display: flex;
             align-items: center;
             gap: 0.375rem;
-            flex-shrink: 0;
-            border-bottom: var(--now-alert--border-width, var(--now-messaging--border-width)) solid;
-            background: rgb(var(--now-alert--info--background-color, var(--now-color_alert--info-0)));
-            border-color: rgb(var(--now-alert--info--border-color, var(--now-color_alert--info-1)));
-            color: rgb(var(--now-color_text--secondary));
         }
 
-        .we-alert-bar strong { color: inherit; }
-        .we-alert-bar--critical {
-            background: rgb(var(--now-alert--critical--background-color));
-            border-color: rgb(var(--now-alert--critical--border-color));
-            color: rgb(var(--now-color_text--secondary));
-        }
-        .we-alert-bar--warning {
-            background: rgb(var(--now-alert--warning--background-color));
-            border-color: rgb(var(--now-alert--warning--border-color, var(--now-color_alert--warning-1)));
-            color: rgb(var(--now-color_text--secondary));
+        .we-alert-popover-body {
+            display: block;
+            color: rgb(var(--now-color_text--secondary, 107, 115, 126));
+            font-size: var(--now-font-size--sm, 0.8125rem);
+            line-height: 1.45;
+            word-break: normal;
+            overflow-wrap: break-word;
         }
 
-        .we-alert-bar-link {
-            color: inherit;
-            text-decoration: underline;
-            cursor: pointer;
-            margin-left: 0.25rem;
+        .we-alert-popover-body strong {
+            color: rgb(var(--now-color_text--primary));
         }
-        .we-alert-bar-link:hover { text-decoration: none; }
 
-        /* Version banner */
-        .we-version-banner {
-            padding: 0.625rem 0.75rem;
-            text-align: center;
+        .we-alert-popover-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.375rem;
+            margin-top: 0.25rem;
         }
 
         /* Header */
@@ -363,33 +512,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         /* XML modal */
         .we-xml-editor { height: 32.5rem; border: 1px solid rgba(var(--now-color--neutral-0), 0.1); overflow: hidden; }
 
-        /* Link provider modal list */
-        .we-link-list { 
-            height: min(25rem, 75vh);
-            overflow-y: auto;
-            border-width: 1px;
-            border-style: solid;
-            border-color: rgb(var(--now-form-field--border-color, var(--now-color_border--primary, var(--now-color--neutral-7))));
-            border-top-left-radius: var(--now-form-field--border-radius);
-            border-bottom-left-radius: var(--now-form-field--border-radius);
-        }
-        .we-link-item {
-            padding: 0.5rem 0.75rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-        }
-        .we-link-item > span:first-child {
-            flex: 1 1 auto;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .we-link-item .we-dropdown-ext-link { margin-left: auto; }
-        .we-link-item:hover { background: rgb(var(--now-dropdown-list_search--background-color--hover)); }
-        .we-link-item + .we-link-item { border-top: 1px solid rgba(var(--now-color--neutral-0), 0.08); }
-        .we-link-id { color: rgb(var(--now-color_text--secondary)); }
+        /* Modal lists follow unified .we-picker-list design system */
 
 
         /* User Preferences modal drag-and-drop */
@@ -650,8 +773,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'%3E%3Cpath d='M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z'/%3E%3C/svg%3E");
         }
         .we-dropdown-ext-link:hover { background-color: rgb(var(--now-color_text--primary)); }
-        .we-dropdown-item:hover .we-dropdown-ext-link,
-        .we-link-item:hover .we-dropdown-ext-link { display: block; }
+        .we-dropdown-item:hover .we-dropdown-ext-link { display: block; }
 
         /* Version ext-link: always occupies space so the row columns don't shift on hover */
         .we-dropdown-ext-link--reserved { display: block !important; visibility: hidden; }
@@ -971,7 +1093,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
 
         .we-pane-meta-label {
-            font-size: var(--now-font-size--xs);
+            font-size: var(--now-font-size--md);
             color: rgb(var(--now-color_text--tertiary));
             white-space: nowrap;
             margin: 0;
@@ -1210,38 +1332,137 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-modal-overlay {
             position: fixed;
             inset: 0;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            max-height: 100vh;
+            margin: 0;
+            padding: 0;
+            border: none;
             background: rgba(0,0,0,0.7);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 980;
+            box-sizing: border-box;
         }
         .we-modal {
             background: rgb(var(--now-color_background--secondary));
-            border: 1px solid rgba(var(--now-color--neutral-0), 0.1);
-            border-radius: var(--now-modal--border-radius);
+            border: 1px solid rgba(var(--now-color--neutral-0), 0.12);
+            border-radius: 12px;
             width: 22.5rem;
             max-width: 90vw;
             max-height: 90vh;
             display: flex;
             flex-direction: column;
             color: rgb(var(--now-color_text--primary));
-            box-shadow: 0 12px 48px rgba(0,0,0,0.7);
+            box-shadow: 0 24px 64px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+        .we-modal--picker {
+            width: min(38rem, 95vw);
+            height: min(34rem, 80vh);
+        }
+        .we-modal--portal {
+            width: min(32rem, 95vw);
+            height: min(34rem, 80vh);
+        }
+        .we-modal--picker .we-modal-body,
+        .we-modal--portal .we-modal-body {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .we-modal--picker .we-picker-list,
+        .we-modal--portal .we-picker-list {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            max-height: none !important;
         }
         .we-modal-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.75rem 1rem;
+            padding: 0.875rem 1.25rem;
             border-bottom: 1px solid rgba(var(--now-color--neutral-0), 0.08);
+            background: rgb(var(--now-color_background--secondary));
             font-size: var(--now-font-size--lg);
             font-weight: 600;
+            color: rgb(var(--now-color_text--primary));
             flex-shrink: 0;
         }
-        .we-modal-close { cursor: pointer; font-size: var(--now-font-size--lg); color: rgba(var(--now-color_text--primary), 0.45); line-height: 1; align-self: flex-start; }
-        .we-modal-close:hover { color: rgb(var(--now-button--secondary--color--hover)); }
-        .close { font-size: 1.5rem; transform: scale(1); transition: transform 0.15s ease; }
-        .close:hover { background: none; transform: scale(1.2); }
+        /* Horizon Design System Modal Close Button */
+        .we-modal-close-btn {
+            all: unset;
+            box-sizing: border-box;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 2.25rem !important;
+            height: 2.25rem !important;
+            min-width: 2.25rem !important;
+            min-height: 2.25rem !important;
+            max-width: 2.25rem !important;
+            max-height: 2.25rem !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            cursor: pointer !important;
+            color: rgb(var(--now-actionable_icon--tertiary_bare--color, var(--now-color_icon--secondary, var(--now-color_text--secondary, 126, 133, 146)))) !important;
+            background-color: transparent !important;
+            border: none !important;
+            border-width: 0 !important;
+            border-style: none !important;
+            border-radius: var(--now-button--border-radius, var(--now-form-field--border-radius, 4px)) !important;
+            outline: none !important;
+            box-shadow: none !important;
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+            -webkit-appearance: none;
+            appearance: none;
+            flex-shrink: 0 !important;
+        }
+        .we-modal-close-btn svg {
+            display: block !important;
+            width: 1.375rem !important;
+            height: 1.375rem !important;
+            min-width: 1.375rem !important;
+            min-height: 1.375rem !important;
+            max-width: 1.375rem !important;
+            max-height: 1.375rem !important;
+            pointer-events: none !important;
+            flex-shrink: 0 !important;
+        }
+        .we-modal-close-btn:focus:not(:focus-visible):not(:hover) {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            background-color: transparent !important;
+        }
+        .we-modal-close-btn:hover,
+        .we-modal-close-btn:focus:hover,
+        .we-modal-close-btn:focus:not(:focus-visible):hover {
+            background-color: rgba(var(--now-button-iconic--bare_tertiary--background-color--hover, var(--now-actionable--tertiary_bare--background-color--hover, var(--now-actionable--tertiary--background-color--hover, var(--now-color_background--secondary-actionable, var(--now-color--neutral-15, 44, 53, 55))))), var(--now-button-iconic--bare_tertiary--background-color-alpha--hover, var(--now-actionable--background-color-alpha--hover, var(--now-opacity--least, 0.1)))) !important;
+            color: rgb(var(--now-button-iconic--bare_tertiary--color--hover, var(--now-actionable_icon--tertiary_bare--color--hover, var(--now-actionable_icon--tertiary--color--hover, var(--now-color_text--primary, var(--now-color_text--secondary, 44, 53, 55)))))) !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            text-decoration: none !important;
+        }
+        .we-modal-close-btn:active {
+            background-color: rgba(var(--now-button-iconic--bare_tertiary--background-color--active, var(--now-actionable--tertiary_bare--background-color--active, var(--now-color_background--secondary-actionable, var(--now-color--neutral-15, 44, 53, 55)))), 0.16) !important;
+            border: none !important;
+        }
+        .we-modal-close-btn:focus-visible {
+            outline: 2px solid rgb(var(--now-focus-ring--color, var(--now-color_focus--primary, var(--now-color--primary-2, 30, 133, 203)))) !important;
+            outline-offset: 2px !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: rgb(var(--now-button-iconic--bare_tertiary--color--hover, var(--now-color_text--primary, 44, 53, 55))) !important;
+        }
         .we-modal-body { padding: 1rem; overflow-y: auto; flex: 1 1 auto; }
         .we-modal-pref .we-modal-body { display: flex; flex-direction: column; gap: 1.25rem; }
 
@@ -1257,9 +1478,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 to   { transform: scale(0.95) translateY(-2rem); }
             }
 
-            /* Play on DOM insertion (ng-if becoming true) */
+            /* Play on DOM insertion / open */
+            dialog.we-modal-backdrop[open],
             .we-modal-overlay { animation: we-overlay-in 0.18s ease both; }
             /* backwards: holds 'from' at t=0 (no flash), releases after end (drag works) */
+            dialog.we-modal-backdrop[open] > .we-modal,
+            dialog.we-modal-backdrop[open] > .we-modal-box,
+            dialog.we-modal-backdrop[open] > .we-picker-box,
             .we-modal-overlay > .we-modal { animation: we-modal-in 0.22s ease backwards; }
 
             /* Play when JS adds the leaving class before ng-if removes the element */
@@ -1276,41 +1501,81 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-modal-header a,
         .we-modal-header [role="button"] { cursor: pointer; user-select: auto; }
         .we-modal-section-title {
-            font-size: var(--now-font-size--sm);
+            font-size: var(--now-font-size--md);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.07em;
             color: rgba(var(--now-color_text--primary), 0.75);
             margin-top: 0.25rem;
         }
-        .we-modal-option { padding: 0.1875rem 0; }
-        .we-modal-option label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; line-height: 1.25 !important }
-        .we-modal-option-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; }
-        .we-modal-option-label { color: rgb(var(--now-color_text--secondary)); flex: 0 0 11rem; }
-        .we-pref-select { height: 1.625rem; padding: 0 0.5rem; flex: 1; }
-        .we-pref-number {padding: 0 0.25rem; width: 2.875rem;
-            border: none; border-radius: 0; text-align: center;
-            -moz-appearance: textfield; }
-        .we-pref-number::-webkit-outer-spin-button,
-        .we-pref-number::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .we-pref-number:focus { outline: none; }
+        /* User Preferences modal options and spin input */
+        .we-modal-option {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.25rem 0;
+            min-height: 2.25rem;
+        }
+        .we-modal-option label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            line-height: 1.25 !important;
+            margin-bottom: 0;
+        }
+        .we-modal-option-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.25rem 0;
+        }
+        .we-modal-option-label {
+            color: rgb(var(--now-color_text--secondary));
+            flex: 0 0 11rem;
+            font-size: var(--now-font-size--md, 0.875rem);
+            margin-bottom: 0;
+        }
+        .we-pref-select {
+            flex: 1;
+            min-width: 0;
+        }
         .we-spin-wrap {
             display: inline-flex;
             align-items: stretch;
-            height: 1.625rem;
-            border: 1px solid rgba(var(--now-color--neutral-0), 0.18);
-            border-radius: var(--now-form-field--border-radius);
+            height: 32px;
+            border: 1px solid RGB(var(--now-form-field--border-color, var(--now-color_border--primary, var(--now-color--neutral-7, 174, 179, 186))));
+            border-radius: var(--now-form-field--border-radius, 4px);
+            background-color: RGB(var(--now-form-field--background-color, var(--now-color_background--primary)));
             overflow: hidden;
         }
+        .we-pref-number {
+            padding: 0 0.25rem;
+            width: 2.875rem;
+            border: none;
+            border-radius: 0;
+            text-align: center;
+            background: transparent;
+            color: RGB(var(--now-form-field--color, var(--now-color_text--primary)));
+            font-size: var(--now-font-size--md, 0.875rem);
+            -moz-appearance: textfield;
+        }
+        .we-pref-number::-webkit-outer-spin-button,
+        .we-pref-number::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .we-pref-number:focus {
+            outline: none;
+        }
         button.we-spin-btn {
-            width: 1.625rem;
+            width: 1.875rem;
             min-height: auto;
             max-height: none;
             flex-shrink: 0;
-            background-color: rgba(var(--now-color_background--primary, var(--now-color--neutral-0)));
-            border-color: rgb(var(--now-button--secondary--border-color, var(--now-color--neutral-7)));
-            border-width: var(--now-button--secondary--border-width, var(--now-button--border-width, var(--now-actionable--border-width, 1px)));
-            color: rgb(var(--now-button--secondary--color, var(--now-color--neutral-18)));
+            background-color: transparent;
+            border: none;
+            color: RGB(var(--now-button--secondary--color, var(--now-color--neutral-18)));
             cursor: pointer;
             font-size: 1em;
             line-height: 1;
@@ -1318,25 +1583,19 @@ Features version history, side-by-side diff comparison, related lists, and user 
             align-items: center;
             justify-content: center;
             user-select: none;
-            transition: background 0.1s;
         }
         .we-spin-btn:hover {
-            background-color: rgba(var(--now-button--secondary--background-color--hover, var(--now-color--neutral-3)), var(--now-button--secondary--background-color-alpha--hover, var(--now-button--secondary--background-color-alpha, 1)));
-            border-color: rgb(var(--now-button--secondary--border-color--hover, var(--now-button--secondary--border-color, var(--now-color--neutral-7))));
-            box-shadow: 0 2px 4px 0 RGBA(56, 56, 56, .25);
-            color: rgb(var(--now-button--secondary--color--hover, var(--now-color--secondary-2)));
-         }
-        .we-spin-btn:active { 
-            background-color: rgba(var(--now-button--secondary--background-color--active, var(--now-color--neutral-5)), var(--now-button--secondary--background-color-alpha--active, var(--now-button--secondary--background-color-alpha, 1)));
-            border-color: rgb(var(--now-button--secondary--border-color--active, var(--now-button--secondary--border-color, var(--now-color--neutral-7))));
-            box-shadow: none;
-            color: rgb(var(--now-button--secondary--color--active, var(--now-color--secondary-3)));
+            background-color: rgba(var(--now-button--secondary--background-color--hover, var(--now-color--neutral-3)), 0.15);
         }
-        .we-spin-dec { border-right: 1px solid rgba(var(--now-color--neutral-0), 0.12); }
-        .we-spin-inc { border-left:  1px solid rgba(var(--now-color--neutral-0), 0.12); }
+        .we-spin-dec {
+            border-right: 1px solid rgba(var(--now-color--neutral-0), 0.12) !important;
+        }
+        .we-spin-inc {
+            border-left: 1px solid rgba(var(--now-color--neutral-0), 0.12) !important;
+        }
         .we-modal-section { margin-top: 0.875rem; display: flex; flex-direction: column; gap: 0.75rem; }
         .we-pref-hint { margin: 0.25rem 0 0 0; font-size: var(--now-font-size--sm); color: rgba(var(--now-color_text--secondary), 0.8); line-height: 1.4; }
-        .we-pref-link { font-size: var(--now-font-size--sm); color: rgb(var(--now-color--primary-1)); text-decoration: none; }
+        .we-pref-link { font-size: var(--now-font-size--md); color: rgb(var(--now-color--primary-1)); text-decoration: none; }
         .we-pref-link:hover { text-decoration: underline; }
        
         .we-modal-footer {
@@ -1526,43 +1785,428 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-picker-box {
             background: rgb(var(--now-color_background--secondary));
-            border: 1px solid rgba(var(--now-color--neutral-0), 0.1);
-            border-radius: var(--now-modal--border-radius);
-            width: min(35rem, 95vw);
-            height: min(40rem, 75vh);
+            border: 1px solid rgba(var(--now-color--neutral-0), 0.12);
+            border-radius: 12px;
+            width: min(40rem, 95vw);
+            height: min(38rem, 80vh);
             display: flex;
             flex-direction: column;
-            box-shadow: 0 16px 48px rgba(0,0,0,0.75);
-        }
-
-        .we-picker-body {
-            display: flex;
-            flex-direction: column;
-            padding: 1rem 1rem 1.5rem 1rem;
-            gap: 1rem;
-            flex: 1;
+            box-shadow: 0 24px 64px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
             overflow: hidden;
+            transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .we-picker-box--split {
+            width: min(56rem, 95vw);
         }
 
-        .we-picker-body .we-link-list {
-            height: auto;
-            flex: 1;
-        }
-
+        /* Top Header Row */
         .we-picker-title-row {
             display: flex;
             align-items: center;
-            justify-content: flex-start;
-            padding: 0.625rem 0.75rem 0.625rem 1rem;
+            justify-content: space-between;
+            padding: 0.875rem 1.25rem;
             border-bottom: 1px solid rgba(var(--now-color--neutral-0), 0.08);
+            background: rgb(var(--now-color_background--secondary));
             flex-shrink: 0;
             gap: 1rem;
+        }
+        .we-picker-title-left {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            min-width: 0;
         }
         .we-picker-title {
             font-size: var(--now-font-size--lg);
             font-weight: 600;
             color: rgb(var(--now-color_text--primary));
+            white-space: nowrap;
         }
+        .we-picker-title-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            margin-left: auto;
+        }
+        .we-picker-btn-new {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            height: 1.875rem;
+            padding: 0 0.75rem;
+            font-size: var(--now-font-size--md, 0.875rem);
+            font-weight: 500;
+            border-radius: 6px;
+        }
+        .we-picker-close-btn {
+            margin-left: 0.25rem;
+        }
+
+        /* Multi-column Body */
+        .we-picker-columns {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .we-picker-col-main {
+            flex: 1.35;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem 1.25rem 0.75rem 1.25rem;
+            overflow: hidden;
+        }
+        .we-picker-columns--split .we-picker-col-main {
+            border-right: 1px solid rgba(var(--now-color--neutral-0), 0.08);
+        }
+        .we-picker-col-recent {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem 1.25rem 0.75rem 1.25rem;
+            background: rgba(var(--now-color_background--tertiary), 0.3);
+            overflow: hidden;
+        }
+
+        /* Search input bar */
+        .we-picker-search-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            flex-shrink: 0;
+            width: 100%;
+        }
+        .we-picker-search-input {
+            padding-right: 2.25rem !important;
+        }
+        .we-picker-search-wrap:has(.we-picker-search-clear) .we-picker-search-input {
+            padding-right: 3.75rem !important;
+        }
+        .we-picker-search-icon {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 1rem;
+            height: 1rem;
+            font-size: 1rem;
+            line-height: 1;
+            color: RGB(var(--now-actionable_icon--color, var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126))));
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+        .we-picker-search-icon .icon-search,
+        .we-picker-search-icon i {
+            line-height: 1;
+            font-size: 1rem;
+            display: inline-block;
+        }
+        .we-picker-search-clear {
+            position: absolute;
+            right: 2.125rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 999px;
+            color: RGB(var(--now-actionable_icon--color, var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126))));
+            background: rgba(var(--now-color--neutral-0, 0, 0, 0), 0.08);
+            cursor: pointer;
+            font-size: 0.875rem;
+            line-height: 1;
+            transition: all 0.12s ease;
+            z-index: 2;
+        }
+        .we-picker-search-clear:hover {
+            color: RGB(var(--now-color_text--primary, 29, 34, 36));
+            background: rgba(var(--now-color--neutral-0, 0, 0, 0), 0.16);
+        }
+        .we-picker-search-spinner {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Column subheaders */
+        .we-picker-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.25rem 0.25rem 0.5rem 0.25rem;
+            flex-shrink: 0;
+        }
+        .we-picker-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: rgba(var(--now-color_text--primary), 0.55);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+        .we-picker-count-badge {
+            font-size: 0.6875rem;
+            font-weight: 500;
+            color: rgba(var(--now-color_text--primary), 0.5);
+            background: rgba(var(--now-color--neutral-0), 0.08);
+            padding: 0.0625rem 0.375rem;
+            border-radius: 999px;
+        }
+        .we-picker-clear-link {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: rgba(var(--now-color_text--primary), 0.55);
+            cursor: pointer;
+            transition: color 0.12s ease;
+            text-decoration: none;
+        }
+        .we-picker-clear-link:hover {
+            color: rgb(var(--now-color--negative, 217, 49, 49));
+            text-decoration: underline;
+        }
+
+        /* Scrollable list */
+        .we-picker-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.1875rem;
+            padding-right: 0.25rem;
+        }
+        .we-picker-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .we-picker-list::-webkit-scrollbar-thumb {
+            background: rgba(var(--now-color--neutral-0), 0.15);
+            border-radius: 4px;
+        }
+        .we-picker-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(var(--now-color--neutral-0), 0.25);
+        }
+
+        /* Empty state */
+        .we-picker-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2.5rem 1rem;
+            text-align: center;
+            font-size: var(--now-font-size--md, 0.875rem);
+            color: RGB(var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126)));
+            line-height: 1.5;
+            flex: 1;
+        }
+        .we-picker-empty-icon {
+            display: none;
+        }
+        .we-picker-empty-title {
+            font-weight: normal;
+            font-size: var(--now-font-size--md, 0.875rem);
+            color: RGB(var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126)));
+        }
+        .we-picker-empty-sub {
+            font-size: var(--now-font-size--md, 0.875rem);
+            color: RGB(var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126)));
+        }
+
+        /* List item row */
+        .we-picker-item {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.5rem 0.625rem;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+            background: transparent;
+            border: 1px solid transparent;
+            transition: background-color 0.12s ease, border-color 0.12s ease;
+            position: relative;
+        }
+        .we-picker-item + .we-picker-item {
+            border-top: none !important;
+        }
+        .we-picker-item + .we-picker-item::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: 0.75rem;
+            right: 0.75rem;
+            height: 1px;
+            background: rgba(var(--now-color--neutral-0), 0.08);
+            pointer-events: none;
+            transition: opacity 0.12s ease;
+        }
+        .we-picker-item:hover::before,
+        .we-picker-item:focus::before,
+        .we-picker-item:hover + .we-picker-item::before,
+        .we-picker-item:focus + .we-picker-item::before {
+            opacity: 0;
+        }
+        .we-picker-item:hover {
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.08);
+        }
+        .we-picker-item:focus,
+        .we-picker-item:focus-visible {
+            outline: none;
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.12);
+            border-color: rgba(var(--now-color--primary-1, 0 118 204), 0.4);
+            box-shadow: 0 0 0 1px rgba(var(--now-color--primary-1, 0 118 204), 0.25);
+        }
+        .we-picker-item-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.875rem;
+            height: 1.875rem;
+            border-radius: 6px;
+            background: rgba(var(--now-color--neutral-0), 0.06);
+            color: rgba(var(--now-color_text--primary), 0.6);
+            flex-shrink: 0;
+            font-size: 1rem;
+            transition: all 0.12s ease;
+        }
+        .we-picker-item:hover .we-picker-item-icon {
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.15);
+            color: rgb(var(--now-color--primary-2, 0 118 204));
+        }
+        .we-picker-item-icon i,
+        .we-picker-item-icon .icon-script,
+        .we-picker-item-icon .icon-document,
+        .we-picker-item-icon .icon-article,
+        .we-picker-item-icon .icon-globe,
+        .we-picker-item-icon .icon-history {
+            font-size: 1rem;
+            line-height: 1;
+            display: inline-block;
+        }
+        .we-picker-item-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem;
+            min-width: 0;
+            flex: 1;
+        }
+        .we-picker-item-name {
+            font-size: var(--now-font-size--md, 0.875rem);
+            font-weight: 500;
+            color: rgb(var(--now-color_text--primary));
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.25;
+        }
+        .we-picker-item-id {
+            font-family: var(--now-font-family--code, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+            font-size: var(--now-font-size--xs, 0.625rem);
+            color: rgba(var(--now-color_text--primary), 0.5);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+
+        /* Search match highlighting using ServiceNow CSS variables */
+        .we-picker-item mark {
+            background-color: rgba(var(--now-color--primary-1, 0, 118, 204), 0.22);
+            color: rgb(var(--now-color_text--primary));
+            font-weight: 600;
+            padding: 0 0.125rem;
+            border-radius: var(--now-form-field--border-radius, 2px);
+        }
+        .we-picker-item-id mark {
+            color: rgb(var(--now-color_text--primary));
+            background-color: rgba(var(--now-color--primary-1, 0, 118, 204), 0.28);
+        }
+
+        /* Action Buttons Cluster (Ext Link, Remove) — 100% Identical */
+        .we-picker-item-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+        .we-picker-action-btn,
+        button.we-picker-action-btn,
+        a.we-picker-action-btn {
+            all: unset;
+            box-sizing: border-box;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 1.625rem !important;
+            height: 1.625rem !important;
+            min-width: 1.625rem !important;
+            min-height: 1.625rem !important;
+            max-width: 1.625rem !important;
+            max-height: 1.625rem !important;
+            border-radius: 4px !important;
+            color: rgba(var(--now-color_text--primary), 0.45) !important;
+            background: transparent !important;
+            cursor: pointer !important;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+            text-decoration: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            font-size: 0.875rem !important;
+            line-height: 1 !important;
+            flex-shrink: 0 !important;
+        }
+        .we-picker-action-btn i,
+        button.we-picker-action-btn i,
+        a.we-picker-action-btn i {
+            font-size: 0.875rem !important;
+            line-height: 1 !important;
+            color: inherit !important;
+            display: inline-block !important;
+        }
+        .we-picker-item:hover .we-picker-action-btn,
+        .we-picker-item:focus-within .we-picker-action-btn {
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        .we-picker-action-btn:hover,
+        button.we-picker-action-btn:hover,
+        a.we-picker-action-btn:hover {
+            background: rgba(var(--now-color--neutral-0, 0, 0, 0), 0.12) !important;
+            color: rgb(var(--now-color_text--primary)) !important;
+            text-decoration: none !important;
+        }
+        .we-picker-action-btn:focus-visible,
+        button.we-picker-action-btn:focus-visible,
+        a.we-picker-action-btn:focus-visible {
+            opacity: 1 !important;
+            visibility: visible !important;
+            outline: 2px solid rgb(var(--now-focus-ring--color, var(--now-color_focus--primary, var(--now-color--primary-2, 30, 133, 203)))) !important;
+            outline-offset: 1px !important;
+        }
+
+        /* Search wrap compatibility for other modals */
         .we-picker-search {
             margin-top: -0.5rem;
             flex-shrink: 0;
@@ -1573,7 +2217,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
             position: relative;
             flex-shrink: 0;
         }
-        .we-picker-body .we-search-wrap { margin-top: -0.5rem; }
         .we-search-wrap .we-picker-search { margin-top: 0; padding-right: 2.25rem; }
         .we-search-loader {
             position: absolute;
@@ -1584,53 +2227,52 @@ Features version history, side-by-side diff comparison, related lists, and user 
             align-items: center;
             pointer-events: none;
         }
-        .we-picker-list { overflow-y: auto; flex: 1; }
         .we-link-empty { padding: 0.5rem 1rem; color: rgba(var(--now-color_text--primary), 0.65); }
-        .we-picker-item {
-            cursor: pointer;
-            display: flex;
-            align-items: baseline;
-            gap: 0.625rem;
-        }
-        .we-picker-item:focus {
-            outline: 2px solid rgba(var(--now-color--primary-2), 0.65);
-            outline-offset: -2px;
-        }
-        .we-picker-item:focus:not(:focus-visible) {
-            outline: none;
-        }
 
-        .we-picker-item .we-dropdown-ext-link {
-            margin-left: auto;
-            display: block;
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            transition: opacity 0.12s ease;
+        @media (max-width: 640px) {
+            .we-picker-columns--split {
+                flex-direction: column;
+            }
+            .we-picker-columns--split .we-picker-col-main {
+                border-right: none;
+                border-bottom: 1px solid rgba(var(--now-color--neutral-0), 0.08);
+            }
         }
-
-        .we-picker-item:hover .we-dropdown-ext-link,
-        .we-picker-item:focus-within .we-dropdown-ext-link {
-            opacity: 1;
-            visibility: visible;
-            pointer-events: auto;
-        }
-		
-        .we-picker-item-name { color: rgb(var(--now-color_text--primary)); }
-        .we-picker-item-id { color: rgb(var(--now-color_text--tertiary)); font-size: var(--now-font-size--sm); }
 
         /* Modal overlay */
+        dialog.we-modal-backdrop,
         .we-modal-backdrop {
             position: fixed;
             inset: 0;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            max-height: 100vh;
+            margin: 0;
+            padding: 0;
+            border: none;
             background: rgba(0, 0, 0, 0.6);
             z-index: 970;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-sizing: border-box;
+            overflow: visible;
+        }
+        dialog.we-modal-backdrop:not([open]) {
+            display: none;
+        }
+        dialog.we-modal-backdrop::backdrop {
+            background: rgba(0, 0, 0, 0.6);
+        }
+        dialog .tooltip {
+            z-index: 10005;
         }
 
         /* Anchors to fixed top so the input doesn't shift as results load. */
+        dialog.we-modal-anchored-top,
         .we-modal-anchored-top {
             align-items: flex-start;
             padding-top: 12vh;
@@ -1671,28 +2313,37 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
         /* Unsaved warning */
         .we-unsaved-warning {
-            color: rgb(var(--we-unsaved-color));
-            display: inline-flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0.375rem;
+            display: flex;
+            flex-direction: column;
+            color: rgb(var(--now-color_text--tertiary, 114 114 114));
             font-size: 0.75rem;
-            line-height: 1;
+            line-height: 1.2;
+            margin-right: 0.5rem;
+            text-align: right;
+            text-underline-offset: 3px;
             flex: 1 1 6rem;
-            min-width: min-content;
+            min-width: 6rem;
         }
-        .we-unsaved-compare { white-space: nowrap; }
+        .we-unsaved-compare {
+            white-space: nowrap;
+        }
         .we-unsaved-diff-btn {
             padding: 0;
-            color: rgb(var(--we-unsaved-color));
+            color: inherit;
             font-size: inherit;
             text-decoration: underline;
+            text-decoration-style: dotted;
             border: none;
             background: none;
             cursor: pointer;
             height: auto;
+            vertical-align: baseline;
+            line-height: inherit;
         }
-        .we-unsaved-diff-btn:hover { color: rgba(var(--we-unsaved-color), 0.8); }
+        .we-unsaved-diff-btn:hover {
+            opacity: 0.75;
+            color: inherit;
+        }
 
         /* No write access label */
         .we-no-write-access {
@@ -1720,11 +2371,17 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
         /* Save error (header) */
         .we-save-error {
-            color: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)));
-            font-size: 0.75rem;
-            line-height: 1.2;
-            flex: 1 1 6rem;
-            min-width: 6rem;
+            color: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));
+            font-size: var(--now-font-size--sm, 0.8125rem);
+            font-weight: 500;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 18rem;
+            display: inline-flex;
+            align-items: center;
+            margin-right: 0.5rem;
             cursor: default;
         }
 
@@ -1800,7 +2457,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-kbd-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: var(--now-font-size--sm);
+            font-size: var(--now-font-size--md);
         }
         .we-kbd-table th {
             text-align: left;
@@ -1843,7 +2500,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             display: flex;
             flex-direction: column;
             gap: 0.4375rem;
-            font-size: var(--now-font-size--sm);
+            font-size: var(--now-font-size--md);
         }
         .we-kbd-mouse-item {
             display: flex;
@@ -1986,53 +2643,176 @@ Features version history, side-by-side diff comparison, related lists, and user 
             </div>
 
 
-            <!-- Write permission error banner -->
-            <div class="we-alert-bar we-alert-bar--critical" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; hasWritePermissionError() &amp;&amp; !permissionAlertDismissed">
-                <span><strong>Error:</strong>&nbsp;Unable to save widget (write permission denied).</span>
-                <span class="close" ng-click="dismissPermissionAlert()" aria-label="Dismiss">×</span>
-            </div>
+            <!-- Top Status Pills Alert Ribbon -->
+            <div class="we-alert-pills-row" ng-if="hasAnyAlerts()">
 
-            <!-- No write access info bar -->
-            <div class="we-alert-bar we-alert-bar--critical" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; !canWriteWidget &amp;&amp; !widgetSysPolicy">
-                <span ng-if="!widget.scope_mismatch">No write access to this widget.</span>
-                <span ng-if="widget.scope_mismatch">
-                    Different application scope —&nbsp;<strong ng-bind="widget.application"></strong>.
-                    <a class="we-alert-bar-link" ng-click="switchToWidgetScope()" style="margin-left: 0.3125rem;">Switch scope and reload</a>
-                </span>
-            </div>
+                <!-- ==================== 1. CRITICAL PILLS ==================== -->
 
-            <!-- Version read-only banner -->
-            <div class="we-version-banner we-alert-bar we-alert-bar--warning" ng-if="isVersionView">
-                <span ng-bind-template="Viewing version from {{versionInfo.sys_created_on}} by {{versionInfo.sys_created_by}}"></span><span ng-if="versionInfo.update_set_name" ng-bind-template=" — {{versionInfo.update_set_name}}"></span> — Read Only
-            </div>
+                <!-- No write access / Scope mismatch pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; !canWriteWidget &amp;&amp; !widgetSysPolicy" we-close-on-outside-click="openDropdown" close-key="'alert-readonly'" ng-mouseenter="onAlertPillEnter('alert-readonly')" ng-mouseleave="onAlertPillLeave('alert-readonly')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-readonly'}" ng-focus="onAlertPillFocus('alert-readonly')" ng-keydown="onAlertPillKeydown($event, 'alert-readonly')" ng-click="toggleDropdown('alert-readonly'); $event.stopPropagation()" aria-label="Read-only access details" aria-expanded="{{openDropdown === 'alert-readonly'}}">
+                        <i class="icon-locked" aria-hidden="true" ng-if="!widget.scope_mismatch"></i>
+                        <i class="icon-error-circle" aria-hidden="true" ng-if="widget.scope_mismatch"></i>
+                        <span ng-if="!widget.scope_mismatch">Read-Only</span>
+                        <span ng-if="widget.scope_mismatch">Scope Mismatch</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-readonly'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-readonly')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-locked" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true" ng-if="!widget.scope_mismatch"></i>
+                            <i class="icon-error-circle" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true" ng-if="widget.scope_mismatch"></i>
+                            <span ng-if="!widget.scope_mismatch">Read-Only Widget</span>
+                            <span ng-if="widget.scope_mismatch">Scope Mismatch</span>
+                        </div>
+                        <div class="we-alert-popover-body" ng-if="!widget.scope_mismatch">
+                            You do not have write access to edit this widget.
+                        </div>
+                        <div class="we-alert-popover-body" ng-if="widget.scope_mismatch">
+                            This widget belongs to application scope&nbsp;<strong>{{widget.application}}</strong>. Switch to this scope to make changes.
+                        </div>
+                        <div class="we-alert-popover-actions" ng-if="widget.scope_mismatch">
+                            <button type="button" class="btn btn-primary btn-sm" ng-click="switchToWidgetScope(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-readonly', true)">Switch scope and reload</button>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- Widget reverted notification -->
-            <div class="we-version-banner we-alert-bar we-alert-bar--warning" ng-if="widgetReverted">
-                This widget has been reverted to a previous version.
-                <a class="we-alert-bar-link" ng-click="reloadPage()">Reload</a>
-            </div>
+                <!-- sys_policy read-only/protected pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; widgetSysPolicy" we-close-on-outside-click="openDropdown" close-key="'alert-syspolicy'" ng-mouseenter="onAlertPillEnter('alert-syspolicy')" ng-mouseleave="onAlertPillLeave('alert-syspolicy')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-syspolicy'}" ng-focus="onAlertPillFocus('alert-syspolicy')" ng-keydown="onAlertPillKeydown($event, 'alert-syspolicy')" ng-click="toggleDropdown('alert-syspolicy'); $event.stopPropagation()" aria-label="Policy details" aria-expanded="{{openDropdown === 'alert-syspolicy'}}">
+                        <i class="icon-locked" aria-hidden="true"></i>
+                        <span>{{widgetSysPolicyDisplay || 'Protected'}}</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-syspolicy'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-syspolicy')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-locked" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true"></i>
+                            <span>Protected Policy</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-if="widget.name"><strong>{{widget.name}}</strong>&nbsp;is {{widgetSysPolicyDisplay | lowercase}} and cannot be edited.</span>
+                            <span ng-if="!widget.name">This widget is {{widgetSysPolicyDisplay | lowercase}} and cannot be edited.</span>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- sys_policy read-only/protected bar -->
-            <div class="we-alert-bar we-alert-bar--critical" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; widgetSysPolicy">
-                <span>{{widget.name}} is {{widgetSysPolicyDisplay | lowercase}} and cannot be edited.</span>
-            </div>
+                <!-- Widget volatility High risk pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; widgetVolatilityLevel === 'High'" we-close-on-outside-click="openDropdown" close-key="'alert-volatility-high'" ng-mouseenter="onAlertPillEnter('alert-volatility-high')" ng-mouseleave="onAlertPillLeave('alert-volatility-high')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-volatility-high'}" ng-focus="onAlertPillFocus('alert-volatility-high')" ng-keydown="onAlertPillKeydown($event, 'alert-volatility-high')" ng-click="toggleDropdown('alert-volatility-high'); $event.stopPropagation()" aria-label="High volatility risk details" aria-expanded="{{openDropdown === 'alert-volatility-high'}}">
+                        <i class="icon-error-circle" aria-hidden="true"></i>
+                        <span>{{widgetVolatilityDisplay}} Risk</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-volatility-high'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-volatility-high')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-error-circle" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true"></i>
+                            <span>{{widgetVolatilityDisplay}} Risk File</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-if="widget.name"><strong>{{widget.name}}</strong>&nbsp;is a high risk file that might get updated again in later releases. Do not alter this file unless necessary.</span>
+                            <span ng-if="!widget.name">This widget is a high risk file that might get updated again in later releases. Do not alter this file unless necessary.</span>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- ServiceNow widget bar -->
-            <div class="we-alert-bar we-alert-bar--warning" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; widgetIsServiceNow &amp;&amp; !snAlertDismissed">
-                <span><strong>Warning:</strong>&nbsp;<i>{{widget.name}}</i>&nbsp;is a ServiceNow widget — <a class="we-alert-bar-link" ng-click="cloneWidget()">Clone widget</a></span>
-                <span class="close" ng-click="dismissSnAlert()" aria-label="Dismiss">×</span>
-            </div>
+                <!-- ==================== 2. WARNING PILLS ==================== -->
 
-            <!-- Update set mismatch bar -->
-            <div class="we-alert-bar" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; updateSetMismatch &amp;&amp; !updateSetAlertDismissed">
-                <span><strong>Notice:</strong>&nbsp;<i>{{widget.name}}</i>&nbsp;is currently being edited in the update set:&nbsp;<a class="we-alert-bar-link" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{widgetUpdateSetId}}" target="_blank"><strong>{{widgetUpdateSetName}}</strong><span class="icon-open-document-new-tab" style="display: inline-block; margin-left: 4px;"></span></a></span>
-                <span class="close" ng-click="dismissUpdateSetAlert()" aria-label="Dismiss">×</span>
-            </div>
+                <!-- Widget volatility Moderate/Low risk pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; widgetVolatilityLevel &amp;&amp; widgetVolatilityLevel !== 'High'" we-close-on-outside-click="openDropdown" close-key="'alert-volatility-mod'" ng-mouseenter="onAlertPillEnter('alert-volatility-mod')" ng-mouseleave="onAlertPillLeave('alert-volatility-mod')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-volatility-mod'}" ng-focus="onAlertPillFocus('alert-volatility-mod')" ng-keydown="onAlertPillKeydown($event, 'alert-volatility-mod')" ng-click="toggleDropdown('alert-volatility-mod'); $event.stopPropagation()" aria-label="Volatility risk details" aria-expanded="{{openDropdown === 'alert-volatility-mod'}}">
+                        <i class="icon-alert-triangle" aria-hidden="true"></i>
+                        <span>{{widgetVolatilityDisplay}} Risk</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-volatility-mod'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-volatility-mod')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-alert-triangle" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                            <span>{{widgetVolatilityDisplay}} Risk File</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-if="widget.name"><strong>{{widget.name}}</strong>&nbsp;is a {{widgetVolatilityDisplay | lowercase}} risk file that might get updated again in later releases. Do not alter this file unless necessary.</span>
+                            <span ng-if="!widget.name">This widget is a {{widgetVolatilityDisplay | lowercase}} risk file that might get updated again in later releases. Do not alter this file unless necessary.</span>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- Widget volatility risk bar -->
-            <div class="we-alert-bar" ng-class="widgetVolatilityLevel === 'High' ? 'we-alert-bar--critical' : 'we-alert-bar--warning'" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; widgetVolatilityLevel &amp;&amp; !volatilityAlertDismissed">
-                <span><strong>Warning:</strong>&nbsp;<i>{{widget.name}}</i>&nbsp;is a&nbsp;<strong>{{widgetVolatilityDisplay}} Risk</strong>&nbsp;file that might get updated again in later releases. Do not alter this file unless necessary.</span>
-                <span class="close" ng-click="dismissVolatilityAlert()" aria-label="Dismiss">×</span>
+                <!-- ServiceNow widget pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; widgetIsServiceNow" we-close-on-outside-click="openDropdown" close-key="'alert-sn'" ng-mouseenter="onAlertPillEnter('alert-sn')" ng-mouseleave="onAlertPillLeave('alert-sn')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-sn'}" ng-focus="onAlertPillFocus('alert-sn')" ng-keydown="onAlertPillKeydown($event, 'alert-sn')" ng-click="toggleDropdown('alert-sn'); $event.stopPropagation()" aria-label="ServiceNow widget details" aria-expanded="{{openDropdown === 'alert-sn'}}">
+                        <i class="icon-star" aria-hidden="true"></i>
+                        <span>ServiceNow Widget</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-sn'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-sn')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-star" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                            <span>ServiceNow Widget</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-if="widget.name"><strong>{{widget.name}}</strong>&nbsp;is an out-of-the-box ServiceNow widget. Changes may be overwritten during future platform upgrades.</span>
+                            <span ng-if="!widget.name">This widget is an out-of-the-box ServiceNow widget. Changes may be overwritten during future platform upgrades.</span>
+                        </div>
+                        <div class="we-alert-popover-actions">
+                            <button type="button" class="btn btn-primary btn-sm" ng-click="cloneWidget(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-sn', true)">Clone widget</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Version read-only pill -->
+                <div class="we-alert-pill-wrapper" ng-if="isVersionView" we-close-on-outside-click="openDropdown" close-key="'alert-version'" ng-mouseenter="onAlertPillEnter('alert-version')" ng-mouseleave="onAlertPillLeave('alert-version')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-version'}" ng-focus="onAlertPillFocus('alert-version')" ng-keydown="onAlertPillKeydown($event, 'alert-version')" ng-click="toggleDropdown('alert-version'); $event.stopPropagation()" aria-label="Version history details" aria-expanded="{{openDropdown === 'alert-version'}}">
+                        <i class="icon-history" aria-hidden="true"></i>
+                        <span>Version History</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-version'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-version')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-history" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                            <span>Viewing Previous Version</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            Viewing version from&nbsp;<strong>{{versionInfo.sys_created_on}}</strong>&nbsp;by&nbsp;<strong>{{versionInfo.sys_created_by}}</strong><span ng-if="versionInfo.update_set_name">&nbsp;({{versionInfo.update_set_name}})</span>. This view is read-only.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Widget reverted notification pill -->
+                <div class="we-alert-pill-wrapper" ng-if="widgetReverted" we-close-on-outside-click="openDropdown" close-key="'alert-reverted'" ng-mouseenter="onAlertPillEnter('alert-reverted')" ng-mouseleave="onAlertPillLeave('alert-reverted')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-reverted'}" ng-focus="onAlertPillFocus('alert-reverted')" ng-keydown="onAlertPillKeydown($event, 'alert-reverted')" ng-click="toggleDropdown('alert-reverted'); $event.stopPropagation()" aria-label="Reverted version details" aria-expanded="{{openDropdown === 'alert-reverted'}}">
+                        <i class="icon-history" aria-hidden="true"></i>
+                        <span>Widget Reverted</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-reverted'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-reverted')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-history" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                            <span>Widget Reverted</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            This widget has been reverted to a previous version. Reload the page to reflect latest state.
+                        </div>
+                        <div class="we-alert-popover-actions">
+                            <button type="button" class="btn btn-primary btn-sm" ng-click="reloadPage(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-reverted', true)">Reload</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Different Update Set pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; updateSetMismatch &amp;&amp; !updateSetAlertDismissed" we-close-on-outside-click="openDropdown" close-key="'alert-updateset'" ng-mouseenter="onAlertPillEnter('alert-updateset')" ng-mouseleave="onAlertPillLeave('alert-updateset')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-updateset'}" ng-focus="onAlertPillFocus('alert-updateset')" ng-keydown="onAlertPillKeydown($event, 'alert-updateset')" ng-click="toggleDropdown('alert-updateset'); $event.stopPropagation()" aria-label="Different update set details" aria-expanded="{{openDropdown === 'alert-updateset'}}">
+                        <i class="icon-user-selected" aria-hidden="true"></i>
+                        <span>Different Update Set</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-updateset'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-updateset')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class=" icon-user-selected" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                            <span>Different Update Set</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-if="widget.name"><strong>{{widget.name}}</strong>&nbsp;is currently being edited in update set&nbsp;<strong>{{widgetUpdateSetName}}</strong>.</span>
+                            <span ng-if="!widget.name">This widget is currently being edited in update set&nbsp;<strong>{{widgetUpdateSetName}}</strong>.</span>
+                        </div>
+                        <div class="we-alert-popover-actions">
+                            <button type="button" class="btn btn-default btn-sm" ng-click="dismissUpdateSetAlert(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-updateset', false)">Dismiss</button>
+                            <a class="btn btn-primary btn-sm" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{widgetUpdateSetId}}" target="_blank" ng-click="openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-updateset', true)">
+                                Open Update Set&nbsp;<i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!--  Header -->
@@ -2315,12 +3095,28 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 <div class="we-header-group we-header-actions">
                     <!-- Unsaved warning -->
                     <span class="we-unsaved-warning" ng-if="!isVersionView &amp;&amp; hasUnsavedChanges()">
-                        Unsaved changes
+                        <span>Unsaved changes</span>
                         <span class="we-unsaved-compare" ng-if="!isNewWidget">(<button class="btn btn-link we-unsaved-diff-btn" ng-click="openUnsavedDiff()" title="Compare unsaved changes with current saved version">Compare</button>)</span>
                     </span>
 
-                    <!-- Save error -->
-                    <span class="we-save-error" ng-if="!isVersionView &amp;&amp; saveError" title="{{saveError}}" ng-bind="saveError"></span>
+                    <!-- Save error pill -->
+                    <div class="we-alert-pill-wrapper we-alert-pill-wrapper--right" ng-if="!isVersionView &amp;&amp; hasSaveError()" we-close-on-outside-click="openDropdown" close-key="'alert-save-error'" ng-mouseenter="onAlertPillEnter('alert-save-error')" ng-mouseleave="onAlertPillLeave('alert-save-error')" style="margin-right: 0.375rem;">
+                        <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-save-error'}" ng-focus="onAlertPillFocus('alert-save-error')" ng-keydown="onAlertPillKeydown($event, 'alert-save-error')" ng-click="toggleDropdown('alert-save-error'); $event.stopPropagation()" aria-label="Save error details" aria-expanded="{{openDropdown === 'alert-save-error'}}">
+                            <i class="icon-error-circle" aria-hidden="true"></i>
+                            <span>Save Error</span>
+                        </button>
+                        <div class="we-alert-popover" ng-if="openDropdown === 'alert-save-error'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-save-error')" ng-click="$event.stopPropagation()" role="dialog">
+                            <div class="we-alert-popover-title">
+                                <i class="icon-error-circle" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true"></i>                                <span>Save Error</span>
+                            </div>
+                            <div class="we-alert-popover-body">
+                                {{getSaveErrorMessage()}}
+                            </div>
+                            <div class="we-alert-popover-actions">
+                                <button type="button" class="btn btn-default btn-sm" ng-click="dismissSaveError(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-save-error', true)">Dismiss</button>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Presence -->
                     <div class="we-presence" ng-if="presenceUsers.length">
@@ -2476,11 +3272,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
         </div><!-- /app -->
 
         <!-- User Preferences Modal -->
-        <div class="we-modal-overlay" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showUserPrefsModal" ng-click="cancelUserPrefsModal()">
+        <dialog class="we-modal-backdrop" we-modal-dialog="showUserPrefsModal" we-dialog-cancel="cancelUserPrefsModal()" ng-click="cancelUserPrefsModal()">
             <div class="we-modal we-modal-pref" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>User Preferences</span>
-                    <span class="close" ng-click="cancelUserPrefsModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="cancelUserPrefsModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body">
                     <div class="we-pref-columns">
@@ -2525,7 +3321,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <input type="number" class="we-pref-number" id="pref-font-size" ng-model="userPrefsEdit.fontSize" min="8" max="32" step="1" />
                                         <button type="button" class="we-spin-btn we-spin-inc" ng-click="userPrefsEdit.fontSize = userPrefsEdit.fontSize &lt; 32 ? userPrefsEdit.fontSize + 1 : 32" aria-label="Increase font size">+</button>
                                     </div>
-                                    <span style="font-size:var(--now-font-size--sm);color:rgb(var(--now-color_text--secondary))">px</span>
+                                    <span style="font-size:var(--now-font-size--md);color:rgb(var(--now-color_text--secondary))">px</span>
                                 </div>
                                 <div class="we-modal-option we-modal-option-row">
                                     <label class="we-modal-option-label" for="pref-font-family">Font family</label>
@@ -2569,6 +3365,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <label class="checkbox-label" for="chk-flash-on-open" we-tooltip-title="Briefly highlights an editor pane when it is opened or brought into focus.">Show visual indication when editor is opened</label>
                                     </span>
                                 </div>
+                                <div class="we-modal-option">
+                                    <span class="input-group-checkbox">
+                                        <input type="checkbox" class="checkbox" id="chk-show-open-history" ng-model="userPrefsEdit.showRecentlyOpenedWidgets" />
+                                        <label class="checkbox-label" for="chk-show-open-history" we-tooltip-title="Displays the recent widget history pane when opening a widget.">Show recently opened widgets</label>
+                                    </span>
+                                </div>
                                 <div class="we-modal-option" ng-if="hasSnUtils">
                                     <span class="input-group-checkbox">
                                         <input type="checkbox" class="checkbox" id="chk-show-open-in-vscode" ng-model="userPrefsEdit.showOpenInVsCode" />
@@ -2592,7 +3394,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <div class="we-pref-col">
                             <div class="we-modal-section">
                                 <div class="we-modal-section-title">Formatting</div>
-                                <div class="we-modal-option">
+                                <div class="we-modal-option we-modal-option-row">
                                     <label class="we-modal-option-label" for="sel-auto-closing-brackets" we-tooltip-title="Controls whether typing an opening bracket automatically appends a closing bracket.">Auto-closing brackets</label>
                                     <select id="sel-auto-closing-brackets" class="form-control we-pref-select" ng-model="userPrefsEdit.autoClosingBrackets">
                                         <option value="languageDefined">Language defined</option>
@@ -2601,7 +3403,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <option value="never">Never</option>
                                     </select>
                                 </div>
-                                <div class="we-modal-option">
+                                <div class="we-modal-option we-modal-option-row">
                                     <label class="we-modal-option-label" for="sel-auto-closing-quotes" we-tooltip-title="Controls whether typing a quote character automatically appends its closing counterpart.">Auto-closing quotes</label>
                                     <select id="sel-auto-closing-quotes" class="form-control we-pref-select" ng-model="userPrefsEdit.autoClosingQuotes">
                                         <option value="languageDefined">Language defined</option>
@@ -2610,7 +3412,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <option value="never">Never</option>
                                     </select>
                                 </div>
-                                <div class="we-modal-option">
+                                <div class="we-modal-option we-modal-option-row">
                                     <label class="we-modal-option-label" for="sel-auto-surround" we-tooltip-title="Defines the behaviour when you have text selected and type a quoting or bracketing character.">Auto-surround</label>
                                     <select id="sel-auto-surround" class="form-control we-pref-select" ng-model="userPrefsEdit.autoSurround">
                                         <option value="languageDefined">Language defined</option>
@@ -2696,7 +3498,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <input type="number" class="we-pref-number" id="pref-tab-size" ng-model="userPrefsEdit.tabSize" min="1" max="8" step="1" />
                                         <button type="button" class="we-spin-btn we-spin-inc" ng-click="userPrefsEdit.tabSize = userPrefsEdit.tabSize &lt; 8 ? userPrefsEdit.tabSize + 1 : 8" aria-label="Increase tab size">+</button>
                                     </div>
-                                    <span style="font-size:var(--now-font-size--sm);color:rgb(var(--now-color_text--secondary))">spaces</span>
+                                    <span style="font-size:var(--now-font-size--md);color:rgb(var(--now-color_text--secondary))">spaces</span>
                                 </div>
                                 <div class="we-modal-option we-modal-option-row">
                                     <label class="we-modal-option-label" for="pref-rem-base" we-tooltip-title="Sets the base pixel value for 1rem units (CSS/SCSS Code Action).">1rem conversion</label>
@@ -2705,7 +3507,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <input type="number" class="we-pref-number" id="pref-rem-base" ng-model="userPrefsEdit.remBase" min="1" max="100" step="1" />
                                         <button type="button" class="we-spin-btn we-spin-inc" ng-click="userPrefsEdit.remBase = userPrefsEdit.remBase &lt; 100 ? userPrefsEdit.remBase + 1 : 100" aria-label="Increase 1rem base">+</button>
                                     </div>
-                                    <span style="font-size:var(--now-font-size--sm);color:rgb(var(--now-color_text--secondary))">px</span>
+                                    <span style="font-size:var(--now-font-size--md);color:rgb(var(--now-color_text--secondary))">px</span>
                                 </div>
                             </div>
                         </div>
@@ -2717,129 +3519,178 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-primary" ng-click="saveUserPrefsModal()">Save</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Link Dependency Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showLinkDependencyModal" ng-click="cancelLinkDependencyModal()">
-            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:37.5rem">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showLinkDependencyModal" we-dialog-cancel="cancelLinkDependencyModal()" ng-click="cancelLinkDependencyModal()">
+            <div class="we-modal we-modal--picker" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Link dependency</span>
-                    <span class="close" ng-click="cancelLinkDependencyModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="cancelLinkDependencyModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
-                <div class="we-modal-body" style="padding-bottom:0.5rem">
-                    <div class="we-search-wrap" style="margin-bottom:1rem; margin-top: -0.5rem;">
-                        <input class="form-control we-picker-search" type="text" ng-model="linkDependency.search" ng-change="onLinkDependencySearch()" placeholder="Search by name" />
-                        <span class="we-search-loader" ng-if="linkDependencySearching"><we-loader></we-loader></span>
+                <div class="we-modal-body" style="padding:1rem 1.25rem 1.25rem 1.25rem;display:flex;flex-direction:column;min-height:0;overflow:hidden">
+                    <div class="we-picker-search-wrap">
+                        <input class="form-control we-picker-search-input" type="text" ng-model="linkDependency.search" ng-change="onLinkDependencySearch()" ng-keydown="onLinkDepSearchKeydown($event)" placeholder="Search by name" autofocus="autofocus" />
+                        <span class="we-picker-search-clear" ng-if="linkDependency.search &amp;&amp; !linkDependencySearching" ng-click="clearLinkDepSearch()" role="button" title="Clear search">×</span>
+                        <span class="we-picker-search-spinner" ng-if="linkDependencySearching"><we-loader></we-loader></span>
+                        <i class="icon-search we-picker-search-icon" aria-hidden="true" ng-if="!linkDependencySearching"></i>
                     </div>
-                    <div class="we-link-list">
-                        <div ng-if="!linkDependencySearching &amp;&amp; linkDependencyResults.length === 0" class="we-link-empty">No dependencies found</div>
-                        <div class="we-link-item" ng-repeat="dep in linkDependencyResults" ng-click="selectLinkDependency(dep)">
-                            <span ng-bind="dep.name"></span>
-                            <a class="we-dropdown-ext-link" href="/nav_to.do?uri=sp_dependency.do%3Fsys_id={{dep.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open dependency in platform"></a>
+                    <div class="we-picker-section-header">
+                        <span class="we-picker-section-title">
+                            <span>Dependencies</span>
+                            <span class="we-picker-count-badge" ng-if="linkDependencyResults.length" ng-bind="linkDependencyResults.length"></span>
+                        </span>
+                    </div>
+                    <div class="we-picker-list">
+                        <div class="we-picker-empty" ng-if="!linkDependencySearching &amp;&amp; linkDependencyResults.length === 0">
+                            <span class="we-picker-empty-title">No dependencies found</span>
+                        </div>
+                        <div class="we-picker-item" ng-repeat="dep in linkDependencyResults" ng-click="selectLinkDependency(dep)" ng-keydown="onLinkDepItemKeydown($event, dep)" tabindex="0" role="button">
+                            <span class="we-picker-item-icon" aria-hidden="true">
+                                <i class="icon-script" aria-hidden="true"></i>
+                            </span>
+                            <div class="we-picker-item-content">
+                                <span class="we-picker-item-name" ng-bind-html="dep.name | weHighlight:linkDependencyActiveSearch"></span>
+                            </div>
+                            <div class="we-picker-item-actions">
+                                <a class="we-picker-action-btn" ng-href="/nav_to.do?uri=sp_dependency.do%3Fsys_id={{dep.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open dependency in platform">
+                                    <i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="we-modal-footer">
-                    <div class="we-spacer"></div>
-                    <button class="btn btn-default we-btn we-btn-secondary" ng-click="cancelLinkDependencyModal()">Cancel</button>
-                </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Unlink dependency confirmation -->
-        <div class="we-modal-backdrop" ng-show="pendingUnlinkDependency">
-            <div class="we-modal" ng-click="$event.stopPropagation()">
-                <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
-                    <span class="we-modal-title">Unlink dependency</span>
-                </div>
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingUnlinkDependency" we-dialog-cancel="cancelUnlinkDependency()" ng-click="cancelUnlinkDependency()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
+                <div class="we-modal-title">Unlink Dependency</div>
                 <div class="we-modal-body">
-                    <p>Unlink&nbsp;<strong ng-bind="pendingUnlinkDependency &amp;&amp; pendingUnlinkDependency.name"></strong>&nbsp;from this widget?</p>
-                    <p>The dependency record itself will not be deleted.</p>
+                    <p>Unlink&nbsp;<strong ng-bind="pendingUnlinkDependency &amp;&amp; pendingUnlinkDependency.name"></strong>&nbsp;from this widget? The dependency record will not be deleted.</p>
                 </div>
-                <div class="we-modal-footer">
-                    <button class="btn btn-danger we-btn" ng-click="confirmUnlinkDependency()">Unlink</button>
-                    <button class="btn btn-default we-btn we-btn-secondary" ng-click="cancelUnlinkDependency()">Cancel</button>
+                <div class="we-modal-actions">
+                    <button class="btn btn-danger" ng-click="confirmUnlinkDependency()">Unlink</button>
+                    <button class="btn btn-default" ng-click="cancelUnlinkDependency()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Link Existing Provider Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showLinkProviderModal" ng-click="cancelLinkProviderModal()">
-            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:37.5rem">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showLinkProviderModal" we-dialog-cancel="cancelLinkProviderModal()" ng-click="cancelLinkProviderModal()">
+            <div class="we-modal we-modal--picker" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Link existing provider</span>
-                    <span class="close" ng-click="cancelLinkProviderModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="cancelLinkProviderModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
-                <div class="we-modal-body" style="padding-bottom:0.5rem">
-                    <div class="we-search-wrap" style="margin-bottom:1rem; margin-top: -0.5rem;">
-                        <input class="form-control we-picker-search" type="text" ng-model="linkProvider.search" ng-change="onLinkProviderSearch()" placeholder="Search by name" />
-                        <span class="we-search-loader" ng-if="linkProviderSearching"><we-loader></we-loader></span>
+                <div class="we-modal-body" style="padding:1rem 1.25rem 1.25rem 1.25rem;display:flex;flex-direction:column;min-height:0;overflow:hidden">
+                    <div class="we-picker-search-wrap">
+                        <input class="form-control we-picker-search-input" type="text" ng-model="linkProvider.search" ng-change="onLinkProviderSearch()" ng-keydown="onLinkProviderSearchKeydown($event)" placeholder="Search by name" autofocus="autofocus" />
+                        <span class="we-picker-search-clear" ng-if="linkProvider.search &amp;&amp; !linkProviderSearching" ng-click="clearLinkProviderSearch()" role="button" title="Clear search">×</span>
+                        <span class="we-picker-search-spinner" ng-if="linkProviderSearching"><we-loader></we-loader></span>
+                        <i class="icon-search we-picker-search-icon" aria-hidden="true" ng-if="!linkProviderSearching"></i>
                     </div>
-                    <div class="we-link-list">
-                        <div ng-if="!linkProviderSearching &amp;&amp; linkProviderResults.length === 0" class="we-link-empty">No providers found</div>
-                        <div class="we-link-item" ng-repeat="p in linkProviderResults" ng-click="selectLinkProvider(p)">
-                            <span class="we-link-id" ng-bind="p.name"></span>
-                            <a class="we-dropdown-ext-link" href="/nav_to.do?uri=sp_angular_provider.do%3Fsys_id={{p.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open provider in platform"></a>
+                    <div class="we-picker-section-header">
+                        <span class="we-picker-section-title">
+                            <span>Providers</span>
+                            <span class="we-picker-count-badge" ng-if="linkProviderResults.length" ng-bind="linkProviderResults.length"></span>
+                        </span>
+                    </div>
+                    <div class="we-picker-list">
+                        <div class="we-picker-empty" ng-if="!linkProviderSearching &amp;&amp; linkProviderResults.length === 0">
+                            <span class="we-picker-empty-title">No providers found</span>
+                        </div>
+                        <div class="we-picker-item" ng-repeat="p in linkProviderResults" ng-click="selectLinkProvider(p)" ng-keydown="onLinkProviderItemKeydown($event, p)" tabindex="0" role="button">
+                            <span class="we-picker-item-icon" aria-hidden="true">
+                                <i class="icon-script" aria-hidden="true"></i>
+                            </span>
+                            <div class="we-picker-item-content">
+                                <span class="we-picker-item-name" ng-bind-html="p.name | weHighlight:linkProviderActiveSearch"></span>
+                                <span class="we-picker-item-id" ng-if="p.type" ng-bind="formatProviderType(p.type)"></span>
+                            </div>
+                            <div class="we-picker-item-actions">
+                                <a class="we-picker-action-btn" ng-href="/nav_to.do?uri=sp_angular_provider.do%3Fsys_id={{p.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open provider in platform">
+                                    <i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="we-modal-footer">
-                    <div class="we-spacer"></div>
-                    <button class="btn btn-default we-btn we-btn-secondary" ng-click="cancelLinkProviderModal()">Cancel</button>
-                </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Open on Portal Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showOpenOnPortalModal" ng-click="closeOpenOnPortalModal()">
-            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:26rem">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showOpenOnPortalModal" we-dialog-cancel="closeOpenOnPortalModal()" ng-click="closeOpenOnPortalModal()">
+            <div class="we-modal we-modal--portal" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span ng-if="openOnPortalStep === 'params'">URL parameters</span>
                     <span ng-if="openOnPortalStep === 'instance'">Select a page</span>
                     <span ng-if="openOnPortalStep === 'portal'">Select a portal</span>
-                    <span class="close" ng-click="closeOpenOnPortalModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeOpenOnPortalModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
-                <div class="we-modal-body" style="padding:0;gap:0">
-                    <div ng-if="openOnPortalLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
+                <div class="we-modal-body" style="padding:1rem 1.25rem 1.25rem 1.25rem;display:flex;flex-direction:column;min-height:0;overflow:hidden">
+                    <div ng-if="openOnPortalLoading" style="padding:2.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
                         <we-spinner></we-spinner>
                         Loading…
                     </div>
                     <div ng-if="openOnPortalError &amp;&amp; !openOnPortalLoading" style="padding:1rem;color:rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)))" ng-bind="openOnPortalError"></div>
-                    <div style="padding:1rem;display:flex;flex-direction:column;gap:0.75rem" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'params'">
+
+                    <!-- Params Step -->
+                    <div style="display:flex;flex-direction:column;gap:0.75rem" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'params'">
                         <div ng-repeat="p in openOnPortalParams">
                             <label class="we-pane-meta-label" ng-attr-for="'oop-param-' + $index" ng-bind="p.name"></label>
                             <input class="form-control" type="text" ng-attr-id="'oop-param-' + $index" ng-model="p.value" ng-change="saveOpenOnPortalParams()" />
                         </div>
                     </div>
-                    <div class="we-link-list" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'instance'">
-                        <div ng-if="openOnPortalInstances.length === 0" class="we-link-empty">This widget isn't placed on any active page.</div>
-                        <div class="we-link-item" ng-repeat="inst in openOnPortalInstances" ng-click="selectOpenOnPortalInstance(inst)">
-                            <span class="we-link-id" ng-bind="inst.pageTitle || inst.pageId"></span>
+
+                    <!-- Instance (Page Selection) Step -->
+                    <div class="we-picker-list" style="max-height:min(24rem, 55vh)" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'instance'">
+                        <div ng-if="openOnPortalInstances.length === 0" class="we-picker-empty">
+                            <span class="we-picker-empty-title">No pages found</span>
+                        </div>
+                        <div class="we-picker-item" ng-repeat="inst in openOnPortalInstances" ng-click="selectOpenOnPortalInstance(inst)" ng-keydown="onOpenPortalInstanceKeydown($event, inst)" tabindex="0" role="button">
+                            <span class="we-picker-item-icon" aria-hidden="true">
+                                <i class="icon-document-all-generic" aria-hidden="true"></i>
+                            </span>
+                            <div class="we-picker-item-content">
+                                <span class="we-picker-item-name" ng-bind="inst.pageTitle || inst.pageId"></span>
+                                <span class="we-picker-item-id" ng-bind="inst.pageId"></span>
+                            </div>
                         </div>
                     </div>
-                    <div class="we-link-list" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'portal'">
-                        <div ng-if="openOnPortalPortals.length === 0" class="we-link-empty">No active portals found.</div>
-                        <div class="we-link-item" ng-repeat="portal in openOnPortalPortals" ng-click="selectOpenOnPortalPortal(portal)">
-                            <span class="we-link-id" ng-bind="portal.title"></span>
+
+                    <!-- Portal Step -->
+                    <div class="we-picker-list" style="max-height:min(24rem, 55vh)" ng-if="!openOnPortalLoading &amp;&amp; !openOnPortalError &amp;&amp; openOnPortalStep === 'portal'">
+                        <div ng-if="openOnPortalPortals.length === 0" class="we-picker-empty">
+                            <span class="we-picker-empty-title">No active portals found</span>
+                        </div>
+                        <div class="we-picker-item" ng-repeat="portal in openOnPortalPortals" ng-click="selectOpenOnPortalPortal(portal)" ng-keydown="onOpenPortalPortalKeydown($event, portal)" tabindex="0" role="button">
+                            <span class="we-picker-item-icon" aria-hidden="true">
+                                <i class="icon-layout" aria-hidden="true"></i>
+                            </span>
+                            <div class="we-picker-item-content">
+                                <span class="we-picker-item-name" ng-bind="portal.title"></span>
+                                <span class="we-picker-item-id" ng-bind="'/' + portal.url_suffix"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="we-modal-footer">
-                    <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalStep === 'params' &amp;&amp; openOnPortalParams.length" ng-click="resetOpenOnPortalParams()">Reset</button>
-                    <div class="we-spacer"></div>
+                <div class="we-modal-footer" ng-if="openOnPortalStep === 'params' || openOnPortalCanGoBack()">
+                    <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalStep === 'params' &amp;&amp; openOnPortalParams.length" ng-click="resetOpenOnPortalParams()" style="margin-right:auto">Reset</button>
                     <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalCanGoBack()" ng-click="openOnPortalBack()">Back</button>
                     <button class="btn btn-default we-btn we-btn-secondary" ng-click="closeOpenOnPortalModal()">Cancel</button>
                     <button class="btn btn-primary we-btn" ng-if="openOnPortalStep === 'params'" ng-click="openOnPortalParamsNext()">Next</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Option Schema Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showOptionSchemaModal" ng-click="closeOptionSchemaModal()">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showOptionSchemaModal" we-dialog-cancel="closeOptionSchemaModal()" ng-click="closeOptionSchemaModal()">
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:45rem;max-width:95vw">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Option schema</span>
-                    <span class="close" ng-click="closeOptionSchemaModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeOptionSchemaModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body" style="padding:0;gap:0">
                     <div ng-if="optionSchemaLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
@@ -2860,14 +3711,14 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Demo Data Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showDemoDataModal" ng-click="closeDemoDataModal()">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showDemoDataModal" we-dialog-cancel="closeDemoDataModal()" ng-click="closeDemoDataModal()">
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:45rem;max-width:95vw">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Demo data</span>
-                    <span class="close" ng-click="closeDemoDataModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeDemoDataModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body" style="padding:0;gap:0">
                     <div ng-if="demoDataLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
@@ -2888,14 +3739,14 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- XML Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showXmlModal" ng-click="closeXmlModal()">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showXmlModal" we-dialog-cancel="closeXmlModal()" ng-click="closeXmlModal()">
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:56.25rem;max-width:95vw">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Widget XML</span>
-                    <span class="close" ng-click="closeXmlModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeXmlModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body" style="padding:0;gap:0">
                     <div ng-if="xmlLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
@@ -2910,27 +3761,27 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-primary" ng-click="closeXmlModal()" style="margin-left:auto">Close</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Version Diff Modal -->
-        <div class="we-modal-overlay" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="versionDiffModal.open" ng-click="closeVersionDiffModal()">
+        <dialog class="we-modal-backdrop" we-modal-dialog="versionDiffModal.open" we-dialog-cancel="closeVersionDiffModal()" ng-click="closeVersionDiffModal()">
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:98vw;max-width:112.5rem;height:95vh;display:flex;flex-direction:column">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span ng-if="!versionDiffModal.expandedField">Compare versions</span>
                     <span ng-if="versionDiffModal.expandedField" ng-bind-template="Compare versions — {{versionDiffModal.expandedField}}"></span>
-                    <button class="btn btn-default" ng-if="!versionDiffModal.isUnsaved" ng-click="openVersionDiffInNewTab()" style="margin-left:auto;margin-right:0.875rem">Open in new tab <span class="we-ext-icon" style="margin-left: 0.5rem" aria-hidden="true"></span></button>
-                    <span class="close" ng-click="closeVersionDiffModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button class="btn btn-default" ng-if="!versionDiffModal.isUnsaved" ng-click="openVersionDiffInNewTab()" style="margin-left:auto;margin-right:0.875rem">Open in new tab <i class="icon-open-document-new-tab" style="margin-left: 0.375rem" aria-hidden="true"></i></button>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeVersionDiffModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <iframe class="we-diff-iframe" ng-src="{{versionDiffModal.url}}" style="flex:1;border:none;width:100%"></iframe>
             </div>
-        </div>
+        </dialog>
 
         <!-- Related Lists Modal -->
-        <div class="we-modal-overlay" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="relatedModal.open" ng-click="closeRelatedModal()">
+        <dialog class="we-modal-backdrop" we-modal-dialog="relatedModal.open" we-dialog-cancel="closeRelatedModal()" ng-click="closeRelatedModal()">
             <div class="we-modal we-related-modal" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span ng-bind-template="Related Lists — {{widget.name}}"></span>
-                    <span class="close" ng-click="closeRelatedModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeRelatedModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0">
                 <div class="we-related-loading-overlay" ng-if="relatedModal.loading">
@@ -2996,37 +3847,106 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Widget picker modal -->
-        <div class="we-modal-backdrop we-modal-anchored-top" ng-show="showWidgetPickerModal || showPicker" ng-click="!showPicker &amp;&amp; closeWidgetPickerModal()">
-            <div class="we-picker-box" ng-click="$event.stopPropagation()" style="width:40rem">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showWidgetPickerModal || showPicker" we-dialog-cancel="!showPicker &amp;&amp; closeWidgetPickerModal()" ng-click="!showPicker &amp;&amp; closeWidgetPickerModal()">
+            <div class="we-picker-box" ng-click="$event.stopPropagation()" ng-class="{'we-picker-box--split': userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.showOpenHistory &amp;&amp; userPrefs.recentWidgets.length}">
+                <!-- Header -->
                 <div class="we-picker-title-row">
-                    <span class="we-picker-title">Open a Widget</span>
-                    <button class="btn btn-default" ng-click="newWidget()" style="margin-left: auto;">+ New Widget</button>
-                    <span class="close" ng-if="!showPicker" ng-click="closeWidgetPickerModal()" aria-label="Close" role="button" tabindex="0">×</span>
-                </div>
-                <div class="we-picker-body">
-                    <div class="we-search-wrap">
-                        <input class="form-control we-picker-search" type="text" ng-model="picker.search"
-                            ng-change="onPickerSearch()" placeholder="Search by name or ID" />
-                        <span class="we-search-loader" ng-if="pickerLoading"><we-loader></we-loader></span>
+                    <div class="we-picker-title-left">
+                        <span class="we-picker-title">Open a Widget</span>
                     </div>
-                    <div class="we-link-list">
-                        <div class="we-link-empty" ng-if="!pickerLoading &amp;&amp; pickerWidgets.length === 0">No widgets found</div>
-                        <div class="we-picker-item we-link-item" ng-repeat="w in pickerWidgets" ng-click="openWidget(w)" ng-keydown="onWidgetPickerItemKeydown($event, w)" tabindex="0" role="button">
-                            <span class="we-picker-item-name" ng-bind="w.name"></span>
-                            <span class="we-picker-item-id" ng-bind="w.id"></span>
-                            <a class="we-dropdown-ext-link" ng-href="{{w.widgetEditorUrl}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in Widget Editor+" aria-label="Open widget in Widget Editor+"></a>
+                    <div class="we-picker-title-actions">
+                        <button type="button" class="btn btn-default" ng-if="userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.recentWidgets.length" ng-click="toggleRecentWidgetsPane()" aria-pressed="{{!!userPrefs.showOpenHistory}}" we-tooltip-title="{{userPrefs.showOpenHistory ? 'Hide recently opened widgets' : 'Show recently opened widgets'}}" aria-label="History">
+                            <i class="icon-history" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="btn btn-primary we-picker-btn-new" ng-click="newWidget()">
+                            <span>+ New Widget</span>
+                        </button>
+                        <button type="button" class="we-modal-close-btn we-picker-close-btn" ng-if="!showPicker" ng-click="closeWidgetPickerModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+                    </div>
+                </div>
+
+                <!-- Columns Layout -->
+                <div class="we-picker-columns" ng-class="{'we-picker-columns--split': userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.showOpenHistory &amp;&amp; userPrefs.recentWidgets.length}">
+                    <!-- Main Search Column -->
+                    <div class="we-picker-col-main">
+                        <!-- Search Bar -->
+                        <div class="we-picker-search-wrap">
+                            <input class="form-control we-picker-search-input" type="text" ng-model="picker.search"
+                                ng-change="onPickerSearch()" ng-keydown="onPickerSearchKeydown($event)" placeholder="Search by name or ID" autofocus="autofocus" />
+                            <span class="we-picker-search-clear" ng-if="picker.search &amp;&amp; !pickerLoading" ng-click="clearPickerSearch()" role="button" title="Clear search">×</span>
+                            <span class="we-picker-search-spinner" ng-if="pickerLoading"><we-loader></we-loader></span>
+                            <i class="icon-search we-picker-search-icon" aria-hidden="true" ng-if="!pickerLoading"></i>
+                        </div>
+
+                        <!-- Section Header -->
+                        <div class="we-picker-section-header">
+                            <span class="we-picker-section-title">
+                                <span>Widgets</span>
+                                <span class="we-picker-count-badge" ng-if="pickerWidgets.length" ng-bind="pickerWidgets.length"></span>
+                            </span>
+                        </div>
+
+                        <!-- Results List -->
+                        <div class="we-picker-list">
+                            <div class="we-picker-empty" ng-if="!pickerLoading &amp;&amp; pickerWidgets.length === 0">
+                                <span class="we-picker-empty-title">No widgets found</span>
+                            </div>
+                            <div class="we-picker-item" ng-repeat="w in pickerWidgets" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
+                                <span class="we-picker-item-icon" aria-hidden="true">
+                                    <i class="icon-script" aria-hidden="true"></i>
+                                </span>
+                                <div class="we-picker-item-content">
+                                    <span class="we-picker-item-name" ng-bind-html="(w.name || '&lt; no name &gt;') | weHighlight:pickerActiveSearch"></span>
+                                    <span class="we-picker-item-id" ng-bind-html="w.id | weHighlight:pickerActiveSearch"></span>
+                                </div>
+                                <div class="we-picker-item-actions">
+                                    <a class="we-picker-action-btn" ng-href="{{w.widgetEditorUrl}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in new tab" aria-label="Open widget in new tab">
+                                        <i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Widgets Column -->
+                    <div class="we-picker-col-recent" ng-if="userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.showOpenHistory &amp;&amp; userPrefs.recentWidgets.length">
+                        <div class="we-picker-section-header">
+                            <span class="we-picker-section-title">
+                                <span>Recent</span>
+                                <span class="we-picker-count-badge" ng-bind="userPrefs.recentWidgets.length"></span>
+                            </span>
+                            <a class="we-picker-clear-link" ng-click="clearWidgetHistory()" role="button" tabindex="0" title="Clear all recent widget history">Clear history</a>
+                        </div>
+                        <div class="we-picker-list">
+                            <div class="we-picker-item" ng-repeat="w in userPrefs.recentWidgets | limitTo:10 track by w.sys_id" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
+                                <span class="we-picker-item-icon" aria-hidden="true">
+                                    <i class="icon-history" aria-hidden="true"></i>
+                                </span>
+                                <div class="we-picker-item-content">
+                                    <span class="we-picker-item-name" ng-bind="w.name || '&lt; no name &gt;'"></span>
+                                    <span class="we-picker-item-id" ng-bind="w.id"></span>
+                                </div>
+                                <div class="we-picker-item-actions">
+                                    <a class="we-picker-action-btn" ng-href="{{recentWidgetUrl(w)}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in new tab" aria-label="Open widget in new tab">
+                                        <i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                                    </a>
+                                    <button type="button" class="we-picker-action-btn" ng-click="$event.stopPropagation(); removeRecentWidget(w)" title="Remove from history" aria-label="Remove widget from history">
+                                        <i class="icon-cross" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Delete template/provider confirmation -->
-        <div class="we-modal-backdrop" ng-show="pendingDeletePane">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingDeletePane" we-dialog-cancel="cancelDeletePane()" ng-click="cancelDeletePane()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title" ng-bind="(pendingDeletePane &amp;&amp; pendingDeletePane.recordType === 'template') ? 'Delete Template' : 'Delete Provider'"></div>
                 <div class="we-modal-body">
                     <p>Are you sure you want to delete&nbsp;<strong ng-bind="pendingDeletePane &amp;&amp; pendingDeletePane.recordId"></strong>? This cannot be undone.</p>
@@ -3036,11 +3956,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelDeletePane()" ng-disabled="pendingDeletePane &amp;&amp; pendingDeletePane.deleting">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Unlink provider confirmation -->
-        <div class="we-modal-backdrop" ng-show="pendingUnlinkProvider">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingUnlinkProvider" we-dialog-cancel="cancelUnlinkProvider()" ng-click="cancelUnlinkProvider()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title">Unlink Provider</div>
                 <div class="we-modal-body">
                     <p>Unlink&nbsp;<strong ng-bind="pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.name"></strong>&nbsp;from this widget? The provider record will not be deleted.</p>
@@ -3050,11 +3970,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelUnlinkProvider()" ng-disabled="pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.unlinking">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Close template/provider with unsaved changes -->
-        <div class="we-modal-backdrop" ng-show="pendingClosePane">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingClosePane" we-dialog-cancel="cancelClosePane()" ng-click="cancelClosePane()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title">Unsaved Changes</div>
                 <div class="we-modal-body">
                     <p><strong ng-bind="pendingClosePane.recordId || pendingClosePane.label"></strong>&nbsp;has unsaved changes.</p>
@@ -3065,11 +3985,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelClosePane()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Unsaved changes confirmation — open existing widget -->
-        <div class="we-modal-backdrop" ng-show="pendingWidgetNav">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingWidgetNav" we-dialog-cancel="cancelWidgetNav()" ng-click="cancelWidgetNav()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title">Unsaved Changes</div>
                 <div class="we-modal-body">
                     <p>You have unsaved changes. What would you like to do before opening&nbsp;<strong ng-bind="pendingWidgetNav.name"></strong>?</p>
@@ -3080,11 +4000,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelWidgetNav()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Unsaved changes confirmation — new widget -->
-        <div class="we-modal-backdrop" ng-show="pendingNewWidget">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingNewWidget" we-dialog-cancel="cancelNewWidget()" ng-click="cancelNewWidget()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title">Unsaved Changes</div>
                 <div class="we-modal-body">
                     <p>You have unsaved changes. What would you like to do?</p>
@@ -3095,18 +4015,18 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelNewWidget()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Keyboard shortcuts modal -->
-        <div class="we-modal-overlay" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showKeyboardShortcutsModal" ng-click="closeKeyboardShortcutsModal()">
+        <dialog class="we-modal-backdrop" we-modal-dialog="showKeyboardShortcutsModal" we-dialog-cancel="closeKeyboardShortcutsModal()" ng-click="closeKeyboardShortcutsModal()">
             <div class="we-modal we-modal-kbd" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Keyboard shortcuts</span>
-                    <span class="close" ng-click="closeKeyboardShortcutsModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeKeyboardShortcutsModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body we-kbd-sections">
 
-                    <!-- Mouse & scroll shortcuts -->
+                    <!-- Mouse and scroll shortcuts -->
                     <div>
                         <div class="we-modal-section-title" style="margin-bottom:0.625rem">Mouse &amp; scroll</div>
                         <div class="we-kbd-mouse-list">
@@ -3220,11 +4140,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-primary" ng-click="closeKeyboardShortcutsModal()">Close</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Reload confirmation after revert -->
-        <div class="we-modal-backdrop" ng-show="showReloadConfirm">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="showReloadConfirm" we-dialog-cancel="cancelReloadWidget()" ng-click="cancelReloadWidget()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title">Reload Widget</div>
                 <div class="we-modal-body">
                     <p>Reloading will replace your unsaved changes with the reverted version. Continue?</p>
@@ -3234,7 +4154,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelReloadWidget()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
     </main>
     <g:requires output="true" />
 </j:jelly>`,
@@ -3317,6 +4237,51 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
     angular
         .module('widgetEditor', [])
+
+        // Filter: weHighlight — Wraps matching search query in native <mark> tags without custom CSS overrides.
+        .filter('weHighlight', [
+            '$sce',
+            function ($sce) {
+                function escapeRegex(s) {
+                    return s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+                }
+                function escapeHtml(s) {
+                    if (!s) {
+                        return '';
+                    }
+                    return String(s)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                }
+                return function (text, query) {
+                    if (text === null || typeof text === 'undefined') {
+                        return '';
+                    }
+                    var str = String(text);
+                    if (!query || typeof query !== 'string' || !query.trim()) {
+                        return $sce.trustAsHtml(escapeHtml(str));
+                    }
+                    var q = query.trim();
+                    var regex = new RegExp(escapeRegex(q), 'gi');
+                    var out = '';
+                    var lastIndex = 0;
+                    var match;
+                    while ((match = regex.exec(str)) !== null) {
+                        out += escapeHtml(str.slice(lastIndex, match.index));
+                        out += '<mark>' + escapeHtml(match[0]) + '</mark>';
+                        lastIndex = match.index + match[0].length;
+                        if (match[0].length === 0) {
+                            regex.lastIndex++;
+                        }
+                    }
+                    out += escapeHtml(str.slice(lastIndex));
+                    return $sce.trustAsHtml(out);
+                };
+            },
+        ])
 
         // Directive: we-splitter-drag — Adds mousedown-drag behaviour to splitter elements.
         .directive('weSplitterDrag', [
@@ -3679,6 +4644,74 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
+        // Directive: we-modal-dialog — Manages HTML5 <dialog> modal state, rendering in top-layer and making rest of page inert
+        .directive('weModalDialog', [
+            function () {
+                // Ensure Bootstrap tooltips for elements inside any <dialog> are placed inside that <dialog> in the Top Layer
+                if (window.jQuery && !window._weDialogTooltipHookInstalled) {
+                    window._weDialogTooltipHookInstalled = true;
+                    window.jQuery(document).on('show.bs.tooltip.weDialog', function (e) {
+                        var target = e.target;
+                        var dlg = target && target.closest && target.closest('dialog');
+                        if (dlg) {
+                            var tip = window.jQuery(target).data('bs.tooltip');
+                            if (tip) {
+                                tip.options.container = dlg;
+                            }
+                        }
+                    }).on('inserted.bs.tooltip.weDialog', function (e) {
+                        var target = e.target;
+                        var dlg = target && target.closest && target.closest('dialog');
+                        if (dlg) {
+                            var tip = window.jQuery(target).data('bs.tooltip');
+                            if (tip && tip.$tip && tip.$tip[0] && tip.$tip[0].parentElement !== dlg) {
+                                dlg.appendChild(tip.$tip[0]);
+                            }
+                        }
+                    });
+                }
+
+                return {
+                    restrict: 'A',
+                    link: function (scope, element, attrs) {
+                        var dialog = element[0];
+                        if (!dialog || typeof dialog.showModal !== 'function') {
+                            return;
+                        }
+
+                        scope.$watch(attrs.weModalDialog, function (val) {
+                            if (val) {
+                                if (!dialog.open) {
+                                    try {
+                                        dialog.showModal();
+                                    } catch (e) {
+                                        dialog.setAttribute('open', '');
+                                    }
+                                }
+                            } else {
+                                if (dialog.open) {
+                                    try {
+                                        dialog.close();
+                                    } catch (e) {
+                                        dialog.removeAttribute('open');
+                                    }
+                                }
+                            }
+                        });
+
+                        element.on('cancel', function (e) {
+                            if (attrs.weDialogCancel) {
+                                e.preventDefault();
+                                scope.$apply(function () {
+                                    scope.$eval(attrs.weDialogCancel);
+                                });
+                            }
+                        });
+                    },
+                };
+            },
+        ])
+
         // Directive: we-loader — Inline search-box loading indicator using the Now Design System spinner
         .directive('weLoader', [
             function () {
@@ -3715,13 +4748,24 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 return {
                     restrict: 'A',
                     link: function (scope, element, attrs) {
-                        var modal = element[0].closest('.we-modal');
+                        var container =
+                            element[0].closest('dialog') ||
+                            element[0].closest('.we-modal') ||
+                            'body';
                         element.tooltip({
-                            container: modal || 'body',
+                            container: container,
                             placement: 'bottom',
                         });
                         attrs.$observe('weTooltipTitle', function (val) {
-                            element.attr('data-original-title', val || '');
+                            var text = val || '';
+                            element.attr('data-original-title', text);
+                            var tip = element.data('bs.tooltip');
+                            if (tip) {
+                                tip.options.title = text;
+                                if (tip.$tip && tip.$tip.is(':visible')) {
+                                    tip.$tip.find('.tooltip-inner').text(text);
+                                }
+                            }
                         });
                         scope.$on('$destroy', function () {
                             try {
@@ -4392,6 +5436,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     ctrlSSaveActiveOnly: true,
                     flashOnEditorOpen: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
                     showOpenInVsCode: true,
+                    showRecentlyOpenedWidgets: true,
+                    showOpenHistory: true,
+                    recentWidgets: [],
                     // Last-saved editor order/visibility, so the Preferences dialog reflects saved state, not live changes.
                     editorOrder: [],
                     editorVisibility: {},
@@ -4460,14 +5507,39 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         });
                     }
                     ga.getXML(function (response) {
+                        if (!response || !response.responseXML || !response.responseXML.documentElement) {
+                            deferred.resolve({
+                                success: false,
+                                error: 'No response from server. Check permissions or network connection.',
+                            });
+                            return;
+                        }
                         var answer =
                             response.responseXML.documentElement.getAttribute(
                                 'answer'
                             );
+                        if (answer == null || answer === '') {
+                            deferred.resolve({
+                                success: false,
+                                error: 'Write permission denied. You lack the required role (sp_admin) or permission to perform this action.',
+                            });
+                            return;
+                        }
                         try {
-                            deferred.resolve(JSON.parse(answer));
+                            var parsed = JSON.parse(answer);
+                            if (!parsed || typeof parsed !== 'object') {
+                                deferred.resolve({
+                                    success: false,
+                                    error: 'Invalid response from server.',
+                                });
+                            } else {
+                                deferred.resolve(parsed);
+                            }
                         } catch (e) {
-                            deferred.reject(e);
+                            deferred.resolve({
+                                success: false,
+                                error: 'Failed to process server response (' + (e.message || 'Parse error') + ')',
+                            });
                         }
                     });
                     return deferred.promise;
@@ -4522,20 +5594,22 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             if (requestId !== _widgetListRequestId) {
                                 return;
                             }
+                            $scope.pickerActiveSearch = search;
                             $scope.pickerWidgets =
                                 d.success && d.widgets
-                                    ? d.widgets.map(function (w) {
-                                          w.widgetEditorUrl =
-                                              buildWidgetEditorUrl(w.sys_id);
-                                          return w;
-                                      })
-                                    : [];
+                                        ? d.widgets.map(function (w) {
+                                              w.widgetEditorUrl =
+                                                  buildWidgetEditorUrl(w.sys_id);
+                                              return w;
+                                          })
+                                        : [];
                             $scope.pickerLoading = false;
                         },
                         function () {
                             if (requestId !== _widgetListRequestId) {
                                 return;
                             }
+                            $scope.pickerActiveSearch = search;
                             $scope.pickerWidgets = [];
                             $scope.pickerLoading = false;
                         }
@@ -4550,30 +5624,82 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }, 250);
                 };
 
-                function buildWidgetEditorUrl(widgetSysId) {
-                    return (
-                        window.location.pathname +
-                        '?sys_id=' +
-                        window.WE_CONFIG.widgetPageSysId +
-                        '&widget_id=' +
-                        encodeURIComponent(widgetSysId)
-                    );
-                }
+                $scope.clearPickerSearch = function () {
+                    $scope.picker.search = '';
+                    $scope.onPickerSearch();
+                };
 
-                function navigateToWidget(w) {
-                    window.location.href = buildWidgetEditorUrl(w.sys_id);
-                }
-
-                $scope.openWidget = function (w) {
-                    $scope.showWidgetPickerModal = false;
-                    if (hasUnsavedChanges()) {
-                        $scope.pendingWidgetNav = w;
-                    } else {
-                        navigateToWidget(w);
+                $scope.onPickerSearchKeydown = function (event) {
+                    var key = event && event.key;
+                    var keyCode = event && event.keyCode;
+                    if (key === 'ArrowDown' || keyCode === 40) {
+                        event.preventDefault();
+                        var firstItem = document.querySelector('.we-picker-col-main .we-picker-item');
+                        if (firstItem && firstItem.focus) {
+                            firstItem.focus();
+                            if (typeof firstItem.scrollIntoView === 'function') {
+                                firstItem.scrollIntoView({ block: 'nearest' });
+                            }
+                        }
+                    } else if (key === 'ArrowUp' || keyCode === 38) {
+                        event.preventDefault();
+                        var allItems = document.querySelectorAll('.we-picker-col-main .we-picker-item');
+                        if (allItems && allItems.length) {
+                            var lastItem = allItems[allItems.length - 1];
+                            if (lastItem && lastItem.focus) {
+                                lastItem.focus();
+                                if (typeof lastItem.scrollIntoView === 'function') {
+                                    lastItem.scrollIntoView({ block: 'nearest' });
+                                }
+                            }
+                        }
+                    } else if (key === 'Enter' || keyCode === 13) {
+                        if ($scope.pickerWidgets && $scope.pickerWidgets.length > 0) {
+                            event.preventDefault();
+                            $scope.openWidget($scope.pickerWidgets[0]);
+                        }
                     }
                 };
 
-                $scope.onWidgetPickerItemKeydown = function (event, w) {
+                $scope.onPickerItemKeydown = function (event, w) {
+                    _handleListItemKeydown(event, function () {
+                        $scope.openWidget(w);
+                    });
+                };
+
+                function _handleListSearchKeydown(event, itemSelector, onEnterFirst) {
+                    var key = event && event.key;
+                    var keyCode = event && event.keyCode;
+                    if (key === 'ArrowDown' || keyCode === 40) {
+                        event.preventDefault();
+                        var firstItem = document.querySelector(itemSelector);
+                        if (firstItem && firstItem.focus) {
+                            firstItem.focus();
+                            if (typeof firstItem.scrollIntoView === 'function') {
+                                firstItem.scrollIntoView({ block: 'nearest' });
+                            }
+                        }
+                    } else if (key === 'ArrowUp' || keyCode === 38) {
+                        event.preventDefault();
+                        var allItems = document.querySelectorAll(itemSelector);
+                        if (allItems && allItems.length) {
+                            var lastItem = allItems[allItems.length - 1];
+                            if (lastItem && lastItem.focus) {
+                                lastItem.focus();
+                                if (typeof lastItem.scrollIntoView === 'function') {
+                                    lastItem.scrollIntoView({ block: 'nearest' });
+                                }
+                            }
+                        }
+                    } else if (key === 'Enter' || keyCode === 13) {
+                        if (typeof onEnterFirst === 'function') {
+                            event.preventDefault();
+                            onEnterFirst();
+                        }
+                    }
+                }
+
+                function _handleListItemKeydown(event, onSelect) {
                     var key = event && event.key;
                     var keyCode = event && event.keyCode;
 
@@ -4584,44 +5710,155 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         key === 'Spacebar' ||
                         keyCode === 32
                     ) {
+                        if (event.target && event.target.closest && event.target.closest('.we-picker-action-btn')) {
+                            return;
+                        }
                         event.preventDefault();
-                        $scope.openWidget(w);
+                        if (typeof onSelect === 'function') {
+                            onSelect();
+                        }
                         return;
                     }
 
-                    if (
-                        key !== 'ArrowDown' &&
-                        key !== 'ArrowUp' &&
-                        keyCode !== 38 &&
-                        keyCode !== 40
-                    ) {
-                        return;
+                    if (key === 'ArrowDown' || keyCode === 40) {
+                        event.preventDefault();
+                        var el = event.currentTarget;
+                        var list = el && el.parentElement;
+                        if (!list) return;
+                        var items = list.querySelectorAll('.we-picker-item');
+                        if (!items || !items.length) return;
+                        var idx = Array.prototype.indexOf.call(items, el);
+                        var nextIdx = (idx >= 0 && idx < items.length - 1) ? (idx + 1) : 0;
+                        var nextItem = items[nextIdx];
+                        if (nextItem && nextItem.focus) {
+                            nextItem.focus();
+                            if (typeof nextItem.scrollIntoView === 'function') {
+                                nextItem.scrollIntoView({ block: 'nearest' });
+                            }
+                        }
+                    } else if (key === 'ArrowUp' || keyCode === 38) {
+                        event.preventDefault();
+                        var el = event.currentTarget;
+                        var list = el && el.parentElement;
+                        if (!list) return;
+                        var items = list.querySelectorAll('.we-picker-item');
+                        if (!items || !items.length) return;
+                        var idx = Array.prototype.indexOf.call(items, el);
+                        var prevIdx = (idx > 0) ? (idx - 1) : (items.length - 1);
+                        var prevItem = items[prevIdx];
+                        if (prevItem && prevItem.focus) {
+                            prevItem.focus();
+                            if (typeof prevItem.scrollIntoView === 'function') {
+                                prevItem.scrollIntoView({ block: 'nearest' });
+                            }
+                        }
                     }
+                }
 
-                    event.preventDefault();
-                    var el = event.currentTarget;
-                    var parent = el && el.parentElement;
-                    if (!parent) {
-                        return;
-                    }
+                $scope.clearLinkDepSearch = function () {
+                    $scope.linkDependency.search = '';
+                    $scope.onLinkDependencySearch();
+                };
+                $scope.onLinkDepSearchKeydown = function (event) {
+                    _handleListSearchKeydown(event, '[we-modal-dialog="showLinkDependencyModal"] .we-picker-item', function () {
+                        if ($scope.linkDependencyResults && $scope.linkDependencyResults.length > 0) {
+                            $scope.selectLinkDependency($scope.linkDependencyResults[0]);
+                        }
+                    });
+                };
+                $scope.onLinkDepItemKeydown = function (event, dep) {
+                    _handleListItemKeydown(event, function () {
+                        $scope.selectLinkDependency(dep);
+                    });
+                };
 
-                    var items = parent.querySelectorAll('.we-picker-item');
-                    if (!items || !items.length) {
-                        return;
-                    }
+                $scope.clearLinkProviderSearch = function () {
+                    $scope.linkProvider.search = '';
+                    $scope.onLinkProviderSearch();
+                };
+                $scope.onLinkProviderSearchKeydown = function (event) {
+                    _handleListSearchKeydown(event, '[we-modal-dialog="showLinkProviderModal"] .we-picker-item', function () {
+                        if ($scope.linkProviderResults && $scope.linkProviderResults.length > 0) {
+                            $scope.selectLinkProvider($scope.linkProviderResults[0]);
+                        }
+                    });
+                };
+                $scope.onLinkProviderItemKeydown = function (event, p) {
+                    _handleListItemKeydown(event, function () {
+                        $scope.selectLinkProvider(p);
+                    });
+                };
 
-                    var idx = Array.prototype.indexOf.call(items, el);
-                    if (idx < 0) {
-                        return;
-                    }
+                $scope.onOpenPortalInstanceKeydown = function (event, inst) {
+                    _handleListItemKeydown(event, function () {
+                        $scope.selectOpenOnPortalInstance(inst);
+                    });
+                };
+                $scope.onOpenPortalPortalKeydown = function (event, portal) {
+                    _handleListItemKeydown(event, function () {
+                        $scope.selectOpenOnPortalPortal(portal);
+                    });
+                };
 
-                    var nextIdx =
-                        key === 'ArrowDown' || keyCode === 40
-                            ? Math.min(idx + 1, items.length - 1)
-                            : Math.max(idx - 1, 0);
+                function buildWidgetEditorUrl(widgetSysId) {
+                    return (
+                        window.location.pathname +
+                        '?sys_id=' +
+                        window.WE_CONFIG.widgetPageSysId +
+                        '&widget_id=' +
+                        encodeURIComponent(widgetSysId)
+                    );
+                }
 
-                    if (nextIdx !== idx && items[nextIdx] && items[nextIdx].focus) {
-                        items[nextIdx].focus();
+                function _mergeRecentWidget(list, w) {
+                    var entry = { sys_id: w.sys_id, name: w.name, id: w.id };
+                    var merged = (list || []).filter(function (r) {
+                        return r.sys_id !== entry.sys_id;
+                    });
+                    merged.unshift(entry);
+                    return merged.slice(0, 10);
+                }
+
+                $scope.clearWidgetHistory = function () {
+                    $scope.userPrefs.recentWidgets = [];
+                    saveUserPrefs();
+                };
+
+                $scope.removeRecentWidget = function (w) {
+                    $scope.userPrefs.recentWidgets = $scope.userPrefs.recentWidgets.filter(
+                        function (r) {
+                            return r.sys_id !== w.sys_id;
+                        }
+                    );
+                    saveUserPrefs();
+                };
+
+                $scope.toggleRecentWidgetsPane = function () {
+                    $scope.userPrefs.showOpenHistory = !$scope.userPrefs.showOpenHistory;
+                    saveUserPrefs();
+                };
+
+                function navigateToWidget(w) {
+                    var recentWidgets = _mergeRecentWidget(
+                        $scope.userPrefs.recentWidgets,
+                        w
+                    );
+                    var go = function () {
+                        window.location.href = buildWidgetEditorUrl(w.sys_id);
+                    };
+                    saveUserPrefs({ recentWidgets: recentWidgets }).then(go, go);
+                }
+
+                $scope.recentWidgetUrl = function (w) {
+                    return buildWidgetEditorUrl(w.sys_id);
+                };
+
+                $scope.openWidget = function (w) {
+                    $scope.showWidgetPickerModal = false;
+                    if (hasUnsavedChanges()) {
+                        $scope.pendingWidgetNav = w;
+                    } else {
+                        navigateToWidget(w);
                     }
                 };
 
@@ -4762,6 +5999,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         'linkedEditing',
                         'flashOnEditorOpen',
                         'showOpenInVsCode',
+                        'showRecentlyOpenedWidgets',
+                        'showOpenHistory',
                     ].forEach(function (k) {
                         if (p.hasOwnProperty(k)) {
                             $scope.userPrefs[k] = !!p[k];
@@ -4794,6 +6033,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         if ($scope.userPrefs.fontFamily) {
                             _loadGoogleFonts();
                         }
+                    }
+                    if (p.hasOwnProperty('recentWidgets') && Array.isArray(p.recentWidgets)) {
+                        $scope.userPrefs.recentWidgets = p.recentWidgets;
                     }
                     if (p.hasOwnProperty('ctrlSSaveActiveOnly')) {
                         $scope.userPrefs.ctrlSSaveActiveOnly =
@@ -4983,17 +6225,57 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.dismissUpdateSetAlert = function () {
                                 $scope.updateSetAlertDismissed = true;
                             };
-                            $scope.dismissPermissionAlert = function () {
-                                $scope.permissionAlertDismissed = true;
-                            };
-                            $scope.hasWritePermissionError = function () {
-                                if ($scope.saveError && ($scope.saveError.indexOf('permission') !== -1 || $scope.saveError.indexOf('write access') !== -1)) {
+                            $scope.hasSaveError = function () {
+                                if ($scope.saveError) {
                                     return true;
                                 }
-                                var hasPaneError = ($scope.visibleItems || []).some(function (item) {
-                                    return item.type === 'pane' && item.saveError && (item.saveError.indexOf('permission') !== -1 || item.saveError.indexOf('write access') !== -1);
+                                return ($scope.visibleItems || []).some(function (item) {
+                                    return item.type === 'pane' && !!item.saveError;
                                 });
-                                return hasPaneError;
+                            };
+                            $scope.getSaveErrorMessage = function () {
+                                if ($scope.saveError) {
+                                    return $scope.saveError;
+                                }
+                                var paneWithErr = ($scope.visibleItems || []).find(function (item) {
+                                    return item.type === 'pane' && item.saveError;
+                                });
+                                if (paneWithErr && paneWithErr.saveError) {
+                                    return (paneWithErr.title ? (paneWithErr.title + ': ') : '') + paneWithErr.saveError;
+                                }
+                                return 'Save failed. Check permissions or network connection.';
+                            };
+                            $scope.dismissSaveError = function () {
+                                $scope.saveError = null;
+                                ($scope.visibleItems || []).forEach(function (item) {
+                                    if (item.type === 'pane') {
+                                        item.saveError = null;
+                                    }
+                                });
+                            };
+                            $scope.hasAnyAlerts = function () {
+                                if ($scope.loading || $scope.loadError || $scope.showPicker) {
+                                    return false;
+                                }
+                                if ($scope.isVersionView || $scope.widgetReverted) {
+                                    return true;
+                                }
+                                if (!$scope.canWriteWidget && !$scope.widgetSysPolicy) {
+                                    return true;
+                                }
+                                if ($scope.widgetSysPolicy) {
+                                    return true;
+                                }
+                                if ($scope.widgetIsServiceNow) {
+                                    return true;
+                                }
+                                if ($scope.updateSetMismatch && !$scope.updateSetAlertDismissed) {
+                                    return true;
+                                }
+                                if ($scope.widgetVolatilityLevel) {
+                                    return true;
+                                }
+                                return false;
                             };
                             $scope.updateSetMismatch =
                                 !!data.widget.update_set_mismatch;
@@ -7327,15 +8609,14 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         if (_refOverlay) {
                             return;
                         }
-                        _refOverlay = document.createElement('div');
+                        _refOverlay = document.createElement('dialog');
                         _refOverlay.id = 'we-ref-panel';
-                        _refOverlay.className = 'we-modal-overlay';
-                        _refOverlay.style.display = 'none';
+                        _refOverlay.className = 'we-modal-backdrop';
                         _refOverlay.innerHTML =
-                            '<div class="we-modal we-ref-modal">' +
+                            '<div class="we-modal we-ref-modal" style="width:40rem;max-width:92vw">' +
                             '<div class="we-modal-header">' +
                             '<span id="we-ref-title"></span>' +
-                            '<span class="we-modal-close" id="we-ref-close">×</span>' +
+                            '<button type="button" class="we-modal-close-btn" id="we-ref-close" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>' +
                             '</div>' +
                             '<div id="we-ref-body" class="we-modal-body we-ref-body"></div>' +
                             '</div>';
@@ -7346,19 +8627,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         document
                             .getElementById('we-ref-close')
                             .addEventListener('click', function () {
-                                _refOverlay.style.display = 'none';
+                                if (_refOverlay.open) {
+                                    _refOverlay.close();
+                                }
                             });
                         _refOverlay.addEventListener('click', function (e) {
                             if (e.target === _refOverlay) {
-                                _refOverlay.style.display = 'none';
+                                if (_refOverlay.open) {
+                                    _refOverlay.close();
+                                }
                             }
                         });
-                        document.addEventListener('keydown', function (e) {
-                            if (
-                                e.key === 'Escape' &&
-                                _refOverlay.style.display !== 'none'
-                            ) {
-                                _refOverlay.style.display = 'none';
+                        _refOverlay.addEventListener('cancel', function () {
+                            if (_refOverlay.open) {
+                                _refOverlay.close();
                             }
                         });
                     }
@@ -7381,10 +8663,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             return;
                         }
                         _refBody.textContent = '';
-                        var div = document.createElement('div');
-                        div.className = 'we-ref-searching';
-                        div.textContent = 'Searching...';
-                        _refBody.appendChild(div);
+                        var wrap = document.createElement('div');
+                        wrap.className = 'we-ref-loading';
+                        var spin = document.createElement('span');
+                        spin.className = 'we-ref-spinner';
+                        wrap.appendChild(spin);
+                        wrap.appendChild(
+                            document.createTextNode('Searching records…')
+                        );
+                        _refBody.appendChild(wrap);
                     }
 
                     function _renderRefNone(name) {
@@ -7454,7 +8741,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         _ensureRefModal();
                         _renderRefTitle(name);
                         _renderRefSearching();
-                        _refOverlay.style.display = 'flex';
+                        if (!_refOverlay.open) {
+                            try {
+                                _refOverlay.showModal();
+                            } catch (e) {
+                                _refOverlay.setAttribute('open', '');
+                            }
+                        }
 
                         var pending = refTables.length;
                         var results = [];
@@ -8815,7 +10108,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     applyVisibility();
                 };
 
-                function saveUserPrefs() {
+                function saveUserPrefs(overrides) {
                     _snapshotEditorPrefs();
                     var prefs = {};
                     $scope.coreEditorDefs.forEach(function (d) {
@@ -8852,10 +10145,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.userPrefs.flashOnEditorOpen;
                     prefs.showOpenInVsCode =
                         $scope.userPrefs.showOpenInVsCode;
+                    prefs.showRecentlyOpenedWidgets =
+                        $scope.userPrefs.showRecentlyOpenedWidgets !== false;
+                    prefs.showOpenHistory =
+                        $scope.userPrefs.showOpenHistory;
+                    prefs.recentWidgets = $scope.userPrefs.recentWidgets;
                     prefs.order = $scope.coreEditorDefs.map(function (d) {
                         return d.key;
                     });
-                    ajax('saveUserPrefs', { value: JSON.stringify(prefs) });
+                    if (overrides) {
+                        Object.keys(overrides).forEach(function (k) {
+                            prefs[k] = overrides[k];
+                        });
+                    }
+                    return ajax('saveUserPrefs', { value: JSON.stringify(prefs) });
                 }
 
                 // Angular Templates (sp_ng_template)
@@ -9053,6 +10356,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.openLinkProviderModal = function () {
                     $scope.openDropdown = null;
                     $scope.linkProvider.search = '';
+                    $scope.linkProviderActiveSearch = '';
                     $scope.linkProviderResults = [];
                     $scope.showLinkProviderModal = true;
                     loadLinkProviderResults('');
@@ -9063,6 +10367,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     _linkProviderDebounce = $timeout(function () {
                         loadLinkProviderResults($scope.linkProvider.search);
                     }, 300);
+                };
+
+                $scope.formatProviderType = function (type) {
+                    if (!type) {
+                        return '';
+                    }
+                    return type.charAt(0).toUpperCase() + type.slice(1);
                 };
 
                 // Guards against a stale, slower response overwriting a newer one.
@@ -9078,6 +10389,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             return;
                         }
                         $scope.linkProviderSearching = false;
+                        $scope.linkProviderActiveSearch = search;
                         if (d.success) {
                             $scope.linkProviderResults = d.providers;
                         }
@@ -9303,6 +10615,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.openLinkDependencyModal = function () {
                     $scope.openDropdown = null;
                     $scope.linkDependency.search = '';
+                    $scope.linkDependencyActiveSearch = '';
                     $scope.linkDependencyResults = [];
                     $scope.showLinkDependencyModal = true;
                     _loadLinkDependencyResults('');
@@ -9330,6 +10643,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             return;
                         }
                         $scope.linkDependencySearching = false;
+                        $scope.linkDependencyActiveSearch = search;
                         if (d.success) {
                             $scope.linkDependencyResults = d.dependencies;
                         }
@@ -9926,6 +11240,114 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 $scope.onPublicChange = function () {
                     // Roles are cleared on Save if is_public is true — not immediately
+                };
+
+                // Alert Status Pills Hover & Keyboard Management
+                var alertHoverTimer = null;
+                $scope.onAlertPillEnter = function (key) {
+                    if (alertHoverTimer) {
+                        $timeout.cancel(alertHoverTimer);
+                    }
+                    alertHoverTimer = $timeout(function () {
+                        $scope.openDropdown = key;
+                    }, 280);
+                };
+                $scope.onAlertPillLeave = function (key) {
+                    if (alertHoverTimer) {
+                        $timeout.cancel(alertHoverTimer);
+                        alertHoverTimer = null;
+                    }
+                    alertHoverTimer = $timeout(function () {
+                        if ($scope.openDropdown === key) {
+                            $scope.openDropdown = null;
+                        }
+                    }, 180);
+                };
+                $scope.onAlertPopoverEnter = function () {
+                    if (alertHoverTimer) {
+                        $timeout.cancel(alertHoverTimer);
+                        alertHoverTimer = null;
+                    }
+                };
+                $scope.onAlertPopoverLeave = function (key) {
+                    if (alertHoverTimer) {
+                        $timeout.cancel(alertHoverTimer);
+                    }
+                    alertHoverTimer = $timeout(function () {
+                        if ($scope.openDropdown === key) {
+                            $scope.openDropdown = null;
+                        }
+                    }, 120);
+                };
+                $scope.onAlertPillFocus = function (key) {
+                    if (alertHoverTimer) {
+                        $timeout.cancel(alertHoverTimer);
+                        alertHoverTimer = null;
+                    }
+                    $scope.openDropdown = key;
+                };
+                $scope.onAlertPillKeydown = function ($event, key) {
+                    if ($event.keyCode === 27) {
+                        $event.preventDefault();
+                        $event.stopPropagation();
+                        $scope.openDropdown = null;
+                    } else if ($event.keyCode === 13 || $event.keyCode === 32) {
+                        $event.preventDefault();
+                        $event.stopPropagation();
+                        $scope.toggleDropdown(key);
+                    } else if ($event.keyCode === 9 && !$event.shiftKey) {
+                        var currentBtn = $event.currentTarget;
+                        var wrapper = currentBtn.closest ? currentBtn.closest('.we-alert-pill-wrapper') : null;
+                        if (wrapper) {
+                            var firstAction = wrapper.querySelector('.we-alert-popover-actions button, .we-alert-popover-actions a');
+                            if (firstAction) {
+                                $event.preventDefault();
+                                $event.stopPropagation();
+                                $scope.openDropdown = key;
+                                $timeout(function () {
+                                    firstAction.focus();
+                                }, 0);
+                            }
+                        }
+                    }
+                };
+                $scope.onAlertActionKeydown = function ($event, key, isLast) {
+                    if ($event.keyCode === 27) {
+                        $event.preventDefault();
+                        $event.stopPropagation();
+                        $scope.openDropdown = null;
+                        var wrapper = $event.currentTarget.closest ? $event.currentTarget.closest('.we-alert-pill-wrapper') : null;
+                        if (wrapper) {
+                            var pillBtn = wrapper.querySelector('.we-alert-pill');
+                            if (pillBtn) { pillBtn.focus(); }
+                        }
+                    } else if ($event.keyCode === 9 && !$event.shiftKey && isLast) {
+                        var currentWrapper = $event.currentTarget.closest ? $event.currentTarget.closest('.we-alert-pill-wrapper') : null;
+                        $scope.openDropdown = null;
+                        if (currentWrapper && currentWrapper.parentElement) {
+                            var allWrappers = Array.prototype.slice.call(currentWrapper.parentElement.querySelectorAll('.we-alert-pill-wrapper'));
+                            var idx = allWrappers.indexOf(currentWrapper);
+                            if (idx >= 0 && idx < allWrappers.length - 1) {
+                                var nextPill = allWrappers[idx + 1].querySelector('.we-alert-pill');
+                                if (nextPill) {
+                                    $event.preventDefault();
+                                    $event.stopPropagation();
+                                    nextPill.focus();
+                                }
+                            }
+                        }
+                    } else if ($event.keyCode === 9 && $event.shiftKey) {
+                        var wrapperEl = $event.currentTarget.closest ? $event.currentTarget.closest('.we-alert-pill-wrapper') : null;
+                        if (wrapperEl) {
+                            var actions = wrapperEl.querySelectorAll('.we-alert-popover-actions button, .we-alert-popover-actions a');
+                            if (actions.length > 0 && actions[0] === $event.currentTarget) {
+                                $event.preventDefault();
+                                $event.stopPropagation();
+                                var pill = wrapperEl.querySelector('.we-alert-pill');
+                                if (pill) { pill.focus(); }
+                            }
+                        }
+                    }
                 };
 
                 // Dropdown management
@@ -10629,6 +12051,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.userPrefs.flashOnEditorOpen,
                         showOpenInVsCode:
                             $scope.userPrefs.showOpenInVsCode !== false,
+                        showRecentlyOpenedWidgets:
+                            $scope.userPrefs.showRecentlyOpenedWidgets !== false,
+                        showOpenHistory:
+                            $scope.userPrefs.showOpenHistory !== false,
                         availableFonts: _getAvailableMonospaceFonts(),
                         googleFonts: _GOOGLE_FONTS,
                     };
@@ -10697,6 +12123,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         !!$scope.userPrefsEdit.flashOnEditorOpen;
                     $scope.userPrefs.showOpenInVsCode =
                         !!$scope.userPrefsEdit.showOpenInVsCode;
+                    $scope.userPrefs.showRecentlyOpenedWidgets =
+                        $scope.userPrefsEdit.showRecentlyOpenedWidgets !== false;
+                    $scope.userPrefs.showOpenHistory =
+                        $scope.userPrefsEdit.showOpenHistory !== false;
                     var ts = parseInt($scope.userPrefsEdit.tabSize, 10);
                     if (ts >= 1 && ts <= 8) {
                         $scope.userPrefs.tabSize = ts;
@@ -10818,6 +12248,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.userPrefsEdit.ctrlSSaveActiveOnly = true;
                     $scope.userPrefsEdit.flashOnEditorOpen = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                     $scope.userPrefsEdit.showOpenInVsCode = true;
+                    $scope.userPrefsEdit.showRecentlyOpenedWidgets = true;
+                    $scope.userPrefsEdit.showOpenHistory = true;
                 };
 
                 /* Trigger the modal leave animation, then invoke the close callback after it
