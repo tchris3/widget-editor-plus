@@ -234,6 +234,16 @@ Features version history, side-by-side diff comparison, related lists, and user 
             transform: rotate(45deg);
         }
 
+        /* Right-aligned popover for header actions */
+        .we-alert-pill-wrapper--right .we-alert-popover {
+            left: auto;
+            right: 0;
+        }
+        .we-alert-pill-wrapper--right .we-alert-popover::before {
+            left: auto;
+            right: 1.5rem;
+        }
+
         .we-alert-popover-title {
             font-weight: 600;
             font-size: var(--now-font-size--md, 0.875rem);
@@ -2327,28 +2337,37 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
         /* Unsaved warning */
         .we-unsaved-warning {
-            color: rgb(var(--we-unsaved-color));
-            display: inline-flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0.375rem;
+            display: flex;
+            flex-direction: column;
+            color: rgb(var(--now-color_text--tertiary, 114 114 114));
             font-size: 0.75rem;
-            line-height: 1;
+            line-height: 1.2;
+            margin-right: 0.5rem;
+            text-align: right;
+            text-underline-offset: 3px;
             flex: 1 1 6rem;
-            min-width: min-content;
+            min-width: 6rem;
         }
-        .we-unsaved-compare { white-space: nowrap; }
+        .we-unsaved-compare {
+            white-space: nowrap;
+        }
         .we-unsaved-diff-btn {
             padding: 0;
-            color: rgb(var(--we-unsaved-color));
+            color: inherit;
             font-size: inherit;
             text-decoration: underline;
+            text-decoration-style: dotted;
             border: none;
             background: none;
             cursor: pointer;
             height: auto;
+            vertical-align: baseline;
+            line-height: inherit;
         }
-        .we-unsaved-diff-btn:hover { color: rgba(var(--we-unsaved-color), 0.8); }
+        .we-unsaved-diff-btn:hover {
+            opacity: 0.75;
+            color: inherit;
+        }
 
         /* No write access label */
         .we-no-write-access {
@@ -2376,11 +2395,17 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
         /* Save error (header) */
         .we-save-error {
-            color: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)));
-            font-size: 0.75rem;
-            line-height: 1.2;
-            flex: 1 1 6rem;
-            min-width: 6rem;
+            color: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));
+            font-size: var(--now-font-size--sm, 0.8125rem);
+            font-weight: 500;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 18rem;
+            display: inline-flex;
+            align-items: center;
+            margin-right: 0.5rem;
             cursor: default;
         }
 
@@ -2646,26 +2671,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
             <div class="we-alert-pills-row" ng-if="hasAnyAlerts()">
 
                 <!-- ==================== 1. CRITICAL PILLS ==================== -->
-
-                <!-- Write permission error pill -->
-                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; hasWritePermissionError() &amp;&amp; !permissionAlertDismissed" we-close-on-outside-click="openDropdown" close-key="'alert-permission'" ng-mouseenter="onAlertPillEnter('alert-permission')" ng-mouseleave="onAlertPillLeave('alert-permission')">
-                    <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-permission'}" ng-focus="onAlertPillFocus('alert-permission')" ng-keydown="onAlertPillKeydown($event, 'alert-permission')" ng-click="toggleDropdown('alert-permission'); $event.stopPropagation()" aria-label="Save error details" aria-expanded="{{openDropdown === 'alert-permission'}}">
-                        <i class="icon-cross-circle" aria-hidden="true"></i>
-                        <span>Save Error</span>
-                    </button>
-                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-permission'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-permission')" ng-click="$event.stopPropagation()" role="dialog">
-                        <div class="we-alert-popover-title">
-                            <i class="icon-cross-circle" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true"></i>
-                            <span>Unable to Save Widget</span>
-                        </div>
-                        <div class="we-alert-popover-body">
-                            Write permission was denied while trying to save changes to this widget.
-                        </div>
-                        <div class="we-alert-popover-actions">
-                            <button type="button" class="btn btn-default btn-sm" ng-click="dismissPermissionAlert(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-permission', true)">Dismiss</button>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- No write access / Scope mismatch pill -->
                 <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; !canWriteWidget &amp;&amp; !widgetSysPolicy" we-close-on-outside-click="openDropdown" close-key="'alert-readonly'" ng-mouseenter="onAlertPillEnter('alert-readonly')" ng-mouseleave="onAlertPillLeave('alert-readonly')">
@@ -3114,12 +3119,28 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 <div class="we-header-group we-header-actions">
                     <!-- Unsaved warning -->
                     <span class="we-unsaved-warning" ng-if="!isVersionView &amp;&amp; hasUnsavedChanges()">
-                        Unsaved changes
+                        <span>Unsaved changes</span>
                         <span class="we-unsaved-compare" ng-if="!isNewWidget">(<button class="btn btn-link we-unsaved-diff-btn" ng-click="openUnsavedDiff()" title="Compare unsaved changes with current saved version">Compare</button>)</span>
                     </span>
 
-                    <!-- Save error -->
-                    <span class="we-save-error" ng-if="!isVersionView &amp;&amp; saveError" title="{{saveError}}" ng-bind="saveError"></span>
+                    <!-- Save error pill -->
+                    <div class="we-alert-pill-wrapper we-alert-pill-wrapper--right" ng-if="!isVersionView &amp;&amp; hasSaveError()" we-close-on-outside-click="openDropdown" close-key="'alert-save-error'" ng-mouseenter="onAlertPillEnter('alert-save-error')" ng-mouseleave="onAlertPillLeave('alert-save-error')" style="margin-right: 0.375rem;">
+                        <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-save-error'}" ng-focus="onAlertPillFocus('alert-save-error')" ng-keydown="onAlertPillKeydown($event, 'alert-save-error')" ng-click="toggleDropdown('alert-save-error'); $event.stopPropagation()" aria-label="Save error details" aria-expanded="{{openDropdown === 'alert-save-error'}}">
+                            <i class="icon-error-circle" aria-hidden="true"></i>
+                            <span>Save Error</span>
+                        </button>
+                        <div class="we-alert-popover" ng-if="openDropdown === 'alert-save-error'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-save-error')" ng-click="$event.stopPropagation()" role="dialog">
+                            <div class="we-alert-popover-title">
+                                <i class="icon-error-circle" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true"></i>                                <span>Save Error</span>
+                            </div>
+                            <div class="we-alert-popover-body">
+                                {{getSaveErrorMessage()}}
+                            </div>
+                            <div class="we-alert-popover-actions">
+                                <button type="button" class="btn btn-default btn-sm" ng-click="dismissSaveError(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-save-error', true)">Dismiss</button>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Presence -->
                     <div class="we-presence" ng-if="presenceUsers.length">
@@ -5513,14 +5534,39 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         });
                     }
                     ga.getXML(function (response) {
+                        if (!response || !response.responseXML || !response.responseXML.documentElement) {
+                            deferred.resolve({
+                                success: false,
+                                error: 'No response from server. Check permissions or network connection.',
+                            });
+                            return;
+                        }
                         var answer =
                             response.responseXML.documentElement.getAttribute(
                                 'answer'
                             );
+                        if (answer == null || answer === '') {
+                            deferred.resolve({
+                                success: false,
+                                error: 'Write permission denied. You lack the required role (sp_admin) or permission to perform this action.',
+                            });
+                            return;
+                        }
                         try {
-                            deferred.resolve(JSON.parse(answer));
+                            var parsed = JSON.parse(answer);
+                            if (!parsed || typeof parsed !== 'object') {
+                                deferred.resolve({
+                                    success: false,
+                                    error: 'Invalid response from server.',
+                                });
+                            } else {
+                                deferred.resolve(parsed);
+                            }
                         } catch (e) {
-                            deferred.reject(e);
+                            deferred.resolve({
+                                success: false,
+                                error: 'Failed to process server response (' + (e.message || 'Parse error') + ')',
+                            });
                         }
                     });
                     return deferred.promise;
@@ -6206,26 +6252,39 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.dismissUpdateSetAlert = function () {
                                 $scope.updateSetAlertDismissed = true;
                             };
-                            $scope.dismissPermissionAlert = function () {
-                                $scope.permissionAlertDismissed = true;
-                            };
-                            $scope.hasWritePermissionError = function () {
-                                if ($scope.saveError && ($scope.saveError.indexOf('permission') !== -1 || $scope.saveError.indexOf('write access') !== -1)) {
+                            $scope.hasSaveError = function () {
+                                if ($scope.saveError) {
                                     return true;
                                 }
-                                var hasPaneError = ($scope.visibleItems || []).some(function (item) {
-                                    return item.type === 'pane' && item.saveError && (item.saveError.indexOf('permission') !== -1 || item.saveError.indexOf('write access') !== -1);
+                                return ($scope.visibleItems || []).some(function (item) {
+                                    return item.type === 'pane' && !!item.saveError;
                                 });
-                                return hasPaneError;
+                            };
+                            $scope.getSaveErrorMessage = function () {
+                                if ($scope.saveError) {
+                                    return $scope.saveError;
+                                }
+                                var paneWithErr = ($scope.visibleItems || []).find(function (item) {
+                                    return item.type === 'pane' && item.saveError;
+                                });
+                                if (paneWithErr && paneWithErr.saveError) {
+                                    return (paneWithErr.title ? (paneWithErr.title + ': ') : '') + paneWithErr.saveError;
+                                }
+                                return 'Save failed. Check permissions or network connection.';
+                            };
+                            $scope.dismissSaveError = function () {
+                                $scope.saveError = null;
+                                ($scope.visibleItems || []).forEach(function (item) {
+                                    if (item.type === 'pane') {
+                                        item.saveError = null;
+                                    }
+                                });
                             };
                             $scope.hasAnyAlerts = function () {
                                 if ($scope.loading || $scope.loadError || $scope.showPicker) {
                                     return false;
                                 }
                                 if ($scope.isVersionView || $scope.widgetReverted) {
-                                    return true;
-                                }
-                                if ($scope.hasWritePermissionError() && !$scope.permissionAlertDismissed) {
                                     return true;
                                 }
                                 if (!$scope.canWriteWidget && !$scope.widgetSysPolicy) {

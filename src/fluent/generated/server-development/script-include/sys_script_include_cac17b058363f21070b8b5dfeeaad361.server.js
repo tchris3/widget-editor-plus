@@ -327,88 +327,107 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
      *   sys_mod_count: string, update_set_sys_id: string|null, update_set_name: string|null}} Return value.
      */
     saveWidget: function () {
-        var sysId = this.getParameter('sys_id');
-        var data;
-
         try {
-            data = JSON.parse(this.getParameter('data') || '{}');
-        } catch (e) {
-            // Invalid JSON
-            return this._answer({
-                success: false,
-                error: 'Invalid JSON',
-            });
-        }
+            var sysId = this.getParameter('sys_id');
+            var data;
 
-        var gr = new GlideRecordSecure('sp_widget');
-        var isNew = !sysId;
-        if (isNew) {
-            gr.initialize();
-        } else {
-            if (!gr.get(sysId)) {
+            try {
+                data = JSON.parse(this.getParameter('data') || '{}');
+            } catch (e) {
+                // Invalid JSON
                 return this._answer({
                     success: false,
-                    error: 'Widget not found',
+                    error: 'Invalid JSON payload',
                 });
             }
-            if (gr.getValue('servicenow') == '1') {
-                return this._answer({
-                    success: false,
-                    error: 'Write permission denied',
-                });
-            }
-        }
 
-        var allowed = this._getAllowedWidgetFields();
-        for (var i = 0; i < allowed.length; i++) {
-            var f = allowed[i];
-            if (data[f] !== undefined) {
-                this._setWidgetFieldValue(gr, f, data[f]);
-            }
-        }
-
-        var resultId;
-        if (isNew) {
-            resultId = gr.insert();
-            if (!resultId) {
-                return this._answer({
-                    success: false,
-                    error: 'Failed to create widget. Check write permissions.',
-                });
-            }
-            resultId = resultId + '';
-        } else {
-            if (!gr.update()) {
-                return this._answer({
-                    success: false,
-                    error: 'Save failed. You may not have write access to this record.',
-                });
-            }
-            resultId = sysId;
-        }
-        // Re-read after update so the returned sys_updated_on reflects what the DB committed
-        // (AJAX processor context may suppress auto-sys-field updates until commit).
-        gr.get(resultId);
-        var updateSetSysId = null;
-        var updateSetName = null;
-        try {
-            var usId = new global.GlideUpdateSet().get();
-            if (usId) {
-                var usGr = new GlideRecordSecure('sys_update_set');
-                if (usGr.get(usId)) {
-                    updateSetSysId = usGr.getUniqueValue();
-                    updateSetName = usGr.getValue('name');
+            var gr = new GlideRecordSecure('sp_widget');
+            var isNew = !sysId;
+            if (isNew) {
+                gr.initialize();
+                if (!gr.canCreate()) {
+                    return this._answer({
+                        success: false,
+                        error: 'Write permission denied. You do not have permission to create widgets.',
+                    });
+                }
+            } else {
+                if (!gr.get(sysId)) {
+                    return this._answer({
+                        success: false,
+                        error: 'Widget not found or you lack read access.',
+                    });
+                }
+                if (gr.getValue('servicenow') == '1') {
+                    return this._answer({
+                        success: false,
+                        error: 'Write permission denied. Out-of-the-box ServiceNow widgets cannot be edited.',
+                    });
+                }
+                if (!gr.canWrite()) {
+                    return this._answer({
+                        success: false,
+                        error: 'Write permission denied. You lack the required role (sp_admin) to edit widgets.',
+                    });
                 }
             }
-        } catch (e) {}
-        return this._answer({
-            success: true,
-            sys_id: resultId,
-            sys_updated_on: gr.getValue('sys_updated_on') || '',
-            sys_mod_count: gr.getValue('sys_mod_count') || '',
-            update_set_sys_id: updateSetSysId,
-            update_set_name: updateSetName,
-        });
+
+            var allowed = this._getAllowedWidgetFields();
+            for (var i = 0; i < allowed.length; i++) {
+                var f = allowed[i];
+                if (data[f] !== undefined) {
+                    this._setWidgetFieldValue(gr, f, data[f]);
+                }
+            }
+
+            var resultId;
+            if (isNew) {
+                resultId = gr.insert();
+                if (!resultId) {
+                    return this._answer({
+                        success: false,
+                        error: 'Failed to create widget. Write permission denied.',
+                    });
+                }
+                resultId = resultId + '';
+            } else {
+                if (!gr.update()) {
+                    return this._answer({
+                        success: false,
+                        error: 'Save failed. Write permission denied. You may lack the sp_admin role.',
+                    });
+                }
+                resultId = sysId;
+            }
+            // Re-read after update so the returned sys_updated_on reflects what the DB committed
+            // (AJAX processor context may suppress auto-sys-field updates until commit).
+            gr.get(resultId);
+            var updateSetSysId = null;
+            var updateSetName = null;
+            try {
+                var usId = new global.GlideUpdateSet().get();
+                if (usId) {
+                    var usGr = new GlideRecordSecure('sys_update_set');
+                    if (usGr.get(usId)) {
+                        updateSetSysId = usGr.getUniqueValue();
+                        updateSetName = usGr.getValue('name');
+                    }
+                }
+            } catch (e) {}
+            return this._answer({
+                success: true,
+                sys_id: resultId,
+                sys_updated_on: gr.getValue('sys_updated_on') || '',
+                sys_mod_count: gr.getValue('sys_mod_count') || '',
+                update_set_sys_id: updateSetSysId,
+                update_set_name: updateSetName,
+            });
+        } catch (ex) {
+            return this._answer({
+                success: false,
+                error: 'Save failed: ' + (ex.message || 'Server error occurred'),
+            });
+        }
     },
 
     /**
@@ -418,57 +437,71 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
      * @returns {{success: boolean, sys_updated_on: string, sys_mod_count: string}} Return value.
      */
     saveField: function () {
-        var sysId = this.getParameter('sys_id');
-        var field = String(this.getParameter('field'));
-        var value = this.getParameter('value');
-        if (!sysId || !field) {
-            return this._answer({
-                success: false,
-                error: 'Missing params',
-            });
-        }
+        try {
+            var sysId = this.getParameter('sys_id');
+            var field = String(this.getParameter('field'));
+            var value = this.getParameter('value');
+            if (!sysId || !field) {
+                return this._answer({
+                    success: false,
+                    error: 'Missing required parameters',
+                });
+            }
 
-        var allowed = this._getAllowedWidgetFields();
-        if (allowed.indexOf(field) === -1) {
-            return this._answer({
-                success: false,
-                error: 'Field not allowed: ' + field,
-            });
-        }
+            var allowed = this._getAllowedWidgetFields();
+            if (allowed.indexOf(field) === -1) {
+                return this._answer({
+                    success: false,
+                    error: 'Field not allowed: ' + field,
+                });
+            }
 
-        var gr = new GlideRecordSecure('sp_widget');
-        if (!gr.get(sysId)) {
-            return this._answer({
-                success: false,
-                error: 'Widget not found',
-            });
-        }
+            var gr = new GlideRecordSecure('sp_widget');
+            if (!gr.get(sysId)) {
+                return this._answer({
+                    success: false,
+                    error: 'Widget not found or you lack read access.',
+                });
+            }
 
-        if (gr.getValue('servicenow') == '1') {
-            return this._answer({
-                success: false,
-                error: 'Write permission denied',
-            });
-        }
+            if (gr.getValue('servicenow') == '1') {
+                return this._answer({
+                    success: false,
+                    error: 'Write permission denied. Out-of-the-box ServiceNow widgets cannot be edited.',
+                });
+            }
 
-        this._setWidgetFieldValue(gr, field, value);
-        gr.setValue(
-            'sys_mod_count',
-            parseInt(gr.getValue('sys_mod_count') || '0', 10) + 1
-        );
-        if (!gr.update()) {
+            if (!gr.canWrite()) {
+                return this._answer({
+                    success: false,
+                    error: 'Write permission denied. You lack the required role (sp_admin) to edit widgets.',
+                });
+            }
+
+            this._setWidgetFieldValue(gr, field, value);
+            gr.setValue(
+                'sys_mod_count',
+                parseInt(gr.getValue('sys_mod_count') || '0', 10) + 1
+            );
+            if (!gr.update()) {
+                return this._answer({
+                    success: false,
+                    error: 'Save failed. Write permission denied. You may lack the sp_admin role.',
+                });
+            }
+            // Re-read so returned sys_updated_on reflects the committed value.
+            gr.get(sysId);
+            return this._answer({
+                success: true,
+                sys_updated_on: gr.getValue('sys_updated_on') || '',
+                sys_mod_count: gr.getValue('sys_mod_count') || '',
+            });
+        } catch (ex) {
             return this._answer({
                 success: false,
-                error: 'Save failed. You may not have write access to this record.',
+                error: 'Save failed: ' + (ex.message || 'Server error occurred'),
             });
         }
-        // Re-read so returned sys_updated_on reflects the committed value.
-        gr.get(sysId);
-        return this._answer({
-            success: true,
-            sys_updated_on: gr.getValue('sys_updated_on') || '',
-            sys_mod_count: gr.getValue('sys_mod_count') || '',
-        });
     },
 
     ////////////////////////////////////////////////////////////
