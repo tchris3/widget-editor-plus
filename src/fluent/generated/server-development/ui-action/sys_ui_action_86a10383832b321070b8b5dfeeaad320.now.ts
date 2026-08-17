@@ -37,19 +37,35 @@ UiAction({
         return;
     }
 
-    var versionName = gr.getValue('name');
-    if (!versionName) { return; }
+    // The version name is only "<table>_<32-hex-sys_id>" for tables keyed by
+    // sys_id. Composite-keyed tables (e.g. sys_dictionary) name versions
+    // "<table>_<element>" instead, so the target record is read from the
+    // update payload XML rather than parsed out of the name.
+    var target = _weParseVersionTarget(gr.getValue('payload'));
+    if (!target) { return; }
 
-    // Version name format: <table>_<32-hex-sys_id>
-    var match = versionName.match(/^(.+)_([0-9a-f]{32})$/i);
-    if (!match) { return; }
-
-    var params = 'table='     + encodeURIComponent(match[1]) +
-                 '&record_id=' + encodeURIComponent(match[2]) +
+    var params = 'table='     + encodeURIComponent(target.table) +
+                 '&record_id=' + encodeURIComponent(target.sysId) +
                  '&version_1=' + encodeURIComponent(versionSysId) +
                  '&da_source=list';
 
     g_navigation.open('ui_page.do?sys_id=51ec3d258363b61070b8b5dfeeaad36b&' + params, '_blank');
+}
+
+function _weParseVersionTarget(payload) {
+    if (!payload) { return null; }
+    var doc = new DOMParser().parseFromString(payload, 'text/xml');
+    var recordEl = doc.documentElement && doc.documentElement.firstElementChild;
+    if (!recordEl) { return null; }
+    var sysId = '';
+    for (var i = 0; i < recordEl.children.length; i++) {
+        if (recordEl.children[i].tagName === 'sys_id') {
+            sysId = recordEl.children[i].textContent;
+            break;
+        }
+    }
+    if (!sysId) { return null; }
+    return { table: recordEl.tagName, sysId: sysId };
 }
 `,
     showUpdate: true,
