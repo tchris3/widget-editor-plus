@@ -1717,7 +1717,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             gap: 0.375rem;
             height: 1.875rem;
             padding: 0 0.75rem;
-            font-size: var(--now-font-size--md, 0.8125rem);
+            font-size: var(--now-font-size--md, 0.875rem);
             font-weight: 500;
             border-radius: 6px;
         }
@@ -1893,7 +1893,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             justify-content: center;
             padding: 2.5rem 1rem;
             text-align: center;
-            font-size: var(--now-font-size--md, 0.9375rem);
+            font-size: var(--now-font-size--md, 0.875rem);
             color: RGB(var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126)));
             line-height: 1.5;
             flex: 1;
@@ -1903,11 +1903,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-picker-empty-title {
             font-weight: normal;
-            font-size: var(--now-font-size--md, 0.9375rem);
+            font-size: var(--now-font-size--md, 0.875rem);
             color: RGB(var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126)));
         }
         .we-picker-empty-sub {
-            font-size: var(--now-font-size--md, 0.9375rem);
+            font-size: var(--now-font-size--md, 0.875rem);
             color: RGB(var(--now-color_text--secondary, var(--now-color--neutral-11, 107, 115, 126)));
         }
 
@@ -1990,7 +1990,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             flex: 1;
         }
         .we-picker-item-name {
-            font-size: var(--now-font-size--md, 0.9375rem);
+            font-size: var(--now-font-size--md, 0.875rem);
             font-weight: 500;
             color: rgb(var(--now-color_text--primary));
             white-space: nowrap;
@@ -2000,7 +2000,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-picker-item-id {
             font-family: var(--now-font-family--code, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
-            font-size: var(--now-font-size--xs, 0.8125rem);
+            font-size: var(--now-font-size--xs, 0.625rem);
             color: rgba(var(--now-color_text--primary), 0.5);
             white-space: nowrap;
             overflow: hidden;
