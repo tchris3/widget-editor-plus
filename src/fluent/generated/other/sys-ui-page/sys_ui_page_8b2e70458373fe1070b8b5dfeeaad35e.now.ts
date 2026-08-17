@@ -1207,14 +1207,31 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-related-table-container { background: rgb(var(--now-color_background--primary)); height: 100%; }
 
         /* User Preferences modal */
+        dialog.we-modal-overlay,
         .we-modal-overlay {
             position: fixed;
             inset: 0;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            max-height: 100vh;
+            margin: 0;
+            padding: 0;
+            border: none;
             background: rgba(0,0,0,0.7);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 980;
+            box-sizing: border-box;
+        }
+        dialog.we-modal-overlay:not([open]) {
+            display: none;
+        }
+        dialog.we-modal-overlay::backdrop {
+            background: rgba(0,0,0,0.7);
         }
         .we-modal {
             background: rgb(var(--now-color_background--secondary));
@@ -1526,43 +1543,445 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-picker-box {
             background: rgb(var(--now-color_background--secondary));
-            border: 1px solid rgba(var(--now-color--neutral-0), 0.1);
-            border-radius: var(--now-modal--border-radius);
-            width: min(35rem, 95vw);
-            height: min(40rem, 75vh);
+            border: 1px solid rgba(var(--now-color--neutral-0), 0.12);
+            border-radius: 12px;
+            width: min(40rem, 95vw);
+            height: min(38rem, 80vh);
             display: flex;
             flex-direction: column;
-            box-shadow: 0 16px 48px rgba(0,0,0,0.75);
-        }
-
-        .we-picker-body {
-            display: flex;
-            flex-direction: column;
-            padding: 1rem 1rem 1.5rem 1rem;
-            gap: 1rem;
-            flex: 1;
+            box-shadow: 0 24px 64px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
             overflow: hidden;
+            transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .we-picker-box--split {
+            width: min(56rem, 95vw);
         }
 
-        .we-picker-body .we-link-list {
-            height: auto;
-            flex: 1;
-        }
-
+        /* Top Header Row */
         .we-picker-title-row {
             display: flex;
             align-items: center;
-            justify-content: flex-start;
-            padding: 0.625rem 0.75rem 0.625rem 1rem;
+            justify-content: space-between;
+            padding: 0.875rem 1.25rem;
             border-bottom: 1px solid rgba(var(--now-color--neutral-0), 0.08);
+            background: rgb(var(--now-color_background--secondary));
             flex-shrink: 0;
             gap: 1rem;
         }
+        .we-picker-title-left {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            min-width: 0;
+        }
         .we-picker-title {
-            font-size: var(--now-font-size--lg);
+            font-size: 1.0625rem;
             font-weight: 600;
             color: rgb(var(--now-color_text--primary));
+            white-space: nowrap;
         }
+        .we-picker-title-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            margin-left: auto;
+        }
+        .we-picker-history-toggle {
+            all: unset;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.875rem;
+            height: 1.875rem;
+            border-radius: 6px;
+            border: 1px solid rgba(var(--now-color--neutral-0), 0.15);
+            color: rgba(var(--now-color_text--primary), 0.75);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.12s ease;
+        }
+        .we-picker-history-toggle:hover {
+            background: rgba(var(--now-color--neutral-0), 0.08);
+            color: rgb(var(--now-color_text--primary));
+        }
+        .we-picker-history-toggle--active {
+            color: rgb(var(--now-color--primary-2, 0 118 204));
+            border-color: rgba(var(--now-color--primary-1, 0 118 204), 0.4);
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.12);
+        }
+        .we-picker-btn-new {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            height: 1.875rem;
+            padding: 0 0.75rem;
+            font-size: var(--now-font-size--sm, 0.8125rem);
+            font-weight: 500;
+            border-radius: 6px;
+        }
+        .we-picker-close-btn {
+            font-size: 1.5rem;
+            line-height: 1;
+            padding: 0 0.25rem;
+            color: rgba(var(--now-color_text--primary), 0.5);
+            cursor: pointer;
+            border-radius: 4px;
+            margin-left: 0.25rem;
+            opacity: 0.7;
+            transition: all 0.12s ease;
+        }
+        .we-picker-close-btn:hover {
+            opacity: 1;
+            color: rgb(var(--now-color_text--primary));
+        }
+
+        /* Multi-column Body */
+        .we-picker-columns {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .we-picker-col-main {
+            flex: 1.35;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem 1.25rem 0.75rem 1.25rem;
+            overflow: hidden;
+        }
+        .we-picker-columns--split .we-picker-col-main {
+            border-right: 1px solid rgba(var(--now-color--neutral-0), 0.08);
+        }
+        .we-picker-col-recent {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem 1.25rem 0.75rem 1.25rem;
+            background: rgba(var(--now-color_background--tertiary), 0.3);
+            overflow: hidden;
+        }
+
+        /* Search input bar */
+        .we-picker-search-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            flex-shrink: 0;
+        }
+        .we-picker-search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 1rem;
+            height: 1rem;
+            font-size: 0.875rem;
+            line-height: 1;
+            color: rgba(var(--now-color_text--primary), 0.45);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+        .we-picker-search-icon .icon-search {
+            line-height: 1;
+            font-size: 0.875rem;
+            display: inline-block;
+        }
+        .we-picker-search-input,
+        input.we-picker-search-input.form-control {
+            width: 100%;
+            height: 2.25rem;
+            line-height: 2.25rem;
+            margin: 0 !important;
+            padding: 0 2.25rem 0 2.25rem;
+            background: rgb(var(--now-color_background--primary));
+            border: 1px solid rgba(var(--now-color--neutral-0), 0.15);
+            border-radius: var(--now-form-field--border-radius, 4px);
+            font-size: var(--now-font-size--sm, 0.875rem);
+            color: rgb(var(--now-color_text--primary));
+            outline: none;
+            box-shadow: none !important;
+            -webkit-box-shadow: none !important;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            box-sizing: border-box;
+        }
+        .we-picker-search-input:focus,
+        input.we-picker-search-input.form-control:focus {
+            border-color: rgb(var(--now-color--primary-2, 0 118 204));
+            box-shadow: 0 0 0 2px rgba(var(--now-color--primary-1, 0 118 204), 0.25) !important;
+            -webkit-box-shadow: 0 0 0 2px rgba(var(--now-color--primary-1, 0 118 204), 0.25) !important;
+        }
+        .we-picker-search-input::placeholder {
+            color: rgba(var(--now-color_text--primary), 0.45);
+            line-height: normal;
+        }
+        .we-picker-search-clear {
+            position: absolute;
+            right: 0.625rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 999px;
+            color: rgba(var(--now-color_text--primary), 0.45);
+            background: rgba(var(--now-color--neutral-0), 0.08);
+            cursor: pointer;
+            font-size: 0.875rem;
+            line-height: 1;
+            transition: all 0.12s ease;
+            z-index: 2;
+        }
+        .we-picker-search-clear:hover {
+            color: rgb(var(--now-color_text--primary));
+            background: rgba(var(--now-color--neutral-0), 0.18);
+        }
+        .we-picker-search-spinner {
+            position: absolute;
+            right: 0.625rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Column subheaders */
+        .we-picker-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.25rem 0.25rem 0.5rem 0.25rem;
+            flex-shrink: 0;
+        }
+        .we-picker-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: rgba(var(--now-color_text--primary), 0.55);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+        .we-picker-count-badge {
+            font-size: 0.6875rem;
+            font-weight: 500;
+            color: rgba(var(--now-color_text--primary), 0.5);
+            background: rgba(var(--now-color--neutral-0), 0.08);
+            padding: 0.0625rem 0.375rem;
+            border-radius: 999px;
+        }
+        .we-picker-clear-link {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: rgba(var(--now-color_text--primary), 0.55);
+            cursor: pointer;
+            transition: color 0.12s ease;
+            text-decoration: none;
+        }
+        .we-picker-clear-link:hover {
+            color: rgb(var(--now-color--negative, 217, 49, 49));
+            text-decoration: underline;
+        }
+
+        /* Scrollable list */
+        .we-picker-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.1875rem;
+            padding-right: 0.25rem;
+        }
+        .we-picker-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .we-picker-list::-webkit-scrollbar-thumb {
+            background: rgba(var(--now-color--neutral-0), 0.15);
+            border-radius: 4px;
+        }
+        .we-picker-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(var(--now-color--neutral-0), 0.25);
+        }
+
+        /* Empty state */
+        .we-picker-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 1rem;
+            text-align: center;
+            color: rgba(var(--now-color_text--primary), 0.5);
+            gap: 0.5rem;
+            flex: 1;
+        }
+        .we-picker-empty-icon {
+            font-size: 2rem;
+            line-height: 1;
+            color: rgba(var(--now-color_text--primary), 0.25);
+            margin-bottom: 0.25rem;
+        }
+        .we-picker-empty-title {
+            font-weight: 500;
+            font-size: var(--now-font-size--sm, 0.875rem);
+            color: rgba(var(--now-color_text--primary), 0.7);
+        }
+        .we-picker-empty-sub {
+            font-size: 0.75rem;
+            color: rgba(var(--now-color_text--primary), 0.45);
+        }
+
+        /* List item row */
+        .we-picker-item {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.5rem 0.625rem;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+            background: transparent;
+            border: 1px solid transparent;
+            transition: background-color 0.12s ease, border-color 0.12s ease;
+            position: relative;
+        }
+        .we-picker-item + .we-picker-item {
+            border-top: none !important;
+        }
+        .we-picker-item + .we-picker-item::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: 0.75rem;
+            right: 0.75rem;
+            height: 1px;
+            background: rgba(var(--now-color--neutral-0), 0.08);
+            pointer-events: none;
+            transition: opacity 0.12s ease;
+        }
+        .we-picker-item:hover::before,
+        .we-picker-item:focus::before,
+        .we-picker-item:hover + .we-picker-item::before,
+        .we-picker-item:focus + .we-picker-item::before {
+            opacity: 0;
+        }
+        .we-picker-item:hover {
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.08);
+        }
+        .we-picker-item:focus,
+        .we-picker-item:focus-visible {
+            outline: none;
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.12);
+            border-color: rgba(var(--now-color--primary-1, 0 118 204), 0.4);
+            box-shadow: 0 0 0 1px rgba(var(--now-color--primary-1, 0 118 204), 0.25);
+        }
+        .we-picker-item-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.875rem;
+            height: 1.875rem;
+            border-radius: 6px;
+            background: rgba(var(--now-color--neutral-0), 0.06);
+            color: rgba(var(--now-color_text--primary), 0.6);
+            flex-shrink: 0;
+            font-size: 1rem;
+            transition: all 0.12s ease;
+        }
+        .we-picker-item:hover .we-picker-item-icon {
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.15);
+            color: rgb(var(--now-color--primary-2, 0 118 204));
+        }
+        .we-picker-item-icon .icon-script,
+        .we-picker-item-icon .icon-date-time {
+            font-size: 1rem;
+            line-height: 1;
+        }
+        .we-picker-item-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem;
+            min-width: 0;
+            flex: 1;
+        }
+        .we-picker-item-name {
+            font-size: var(--now-font-size--sm, 0.875rem);
+            font-weight: 500;
+            color: rgb(var(--now-color_text--primary));
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.25;
+        }
+        .we-picker-item-id {
+            font-family: var(--now-font-family--code, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+            font-size: 0.75rem;
+            color: rgba(var(--now-color_text--primary), 0.5);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+
+        /* Action Buttons Cluster (Ext Link, Remove) — 100% Identical */
+        .we-picker-item-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+        .we-picker-action-btn,
+        button.we-picker-action-btn,
+        a.we-picker-action-btn {
+            all: unset;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.625rem;
+            height: 1.625rem;
+            border-radius: 4px;
+            color: rgba(var(--now-color_text--primary), 0.45) !important;
+            background: transparent !important;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+            text-decoration: none;
+            padding: 0;
+            border: none;
+            outline: none;
+            box-shadow: none;
+            font-size: 0.875rem;
+            line-height: 1;
+        }
+        .we-picker-item:hover .we-picker-action-btn,
+        .we-picker-item:focus-within .we-picker-action-btn {
+            opacity: 1;
+            visibility: visible;
+        }
+        .we-picker-action-btn:hover,
+        button.we-picker-action-btn:hover,
+        a.we-picker-action-btn:hover {
+            background: rgba(var(--now-color--neutral-0), 0.12) !important;
+            color: rgb(var(--now-color_text--primary)) !important;
+        }
+
+        /* Search wrap compatibility for other modals */
         .we-picker-search {
             margin-top: -0.5rem;
             flex-shrink: 0;
@@ -1573,7 +1992,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
             position: relative;
             flex-shrink: 0;
         }
-        .we-picker-body .we-search-wrap { margin-top: -0.5rem; }
         .we-search-wrap .we-picker-search { margin-top: 0; padding-right: 2.25rem; }
         .we-search-loader {
             position: absolute;
@@ -1584,53 +2002,52 @@ Features version history, side-by-side diff comparison, related lists, and user 
             align-items: center;
             pointer-events: none;
         }
-        .we-picker-list { overflow-y: auto; flex: 1; }
         .we-link-empty { padding: 0.5rem 1rem; color: rgba(var(--now-color_text--primary), 0.65); }
-        .we-picker-item {
-            cursor: pointer;
-            display: flex;
-            align-items: baseline;
-            gap: 0.625rem;
-        }
-        .we-picker-item:focus {
-            outline: 2px solid rgba(var(--now-color--primary-2), 0.65);
-            outline-offset: -2px;
-        }
-        .we-picker-item:focus:not(:focus-visible) {
-            outline: none;
-        }
 
-        .we-picker-item .we-dropdown-ext-link {
-            margin-left: auto;
-            display: block;
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            transition: opacity 0.12s ease;
+        @media (max-width: 640px) {
+            .we-picker-columns--split {
+                flex-direction: column;
+            }
+            .we-picker-columns--split .we-picker-col-main {
+                border-right: none;
+                border-bottom: 1px solid rgba(var(--now-color--neutral-0), 0.08);
+            }
         }
-
-        .we-picker-item:hover .we-dropdown-ext-link,
-        .we-picker-item:focus-within .we-dropdown-ext-link {
-            opacity: 1;
-            visibility: visible;
-            pointer-events: auto;
-        }
-		
-        .we-picker-item-name { color: rgb(var(--now-color_text--primary)); }
-        .we-picker-item-id { color: rgb(var(--now-color_text--tertiary)); font-size: var(--now-font-size--sm); }
 
         /* Modal overlay */
+        dialog.we-modal-backdrop,
         .we-modal-backdrop {
             position: fixed;
             inset: 0;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            max-height: 100vh;
+            margin: 0;
+            padding: 0;
+            border: none;
             background: rgba(0, 0, 0, 0.6);
             z-index: 970;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-sizing: border-box;
+            overflow: visible;
+        }
+        dialog.we-modal-backdrop:not([open]) {
+            display: none;
+        }
+        dialog.we-modal-backdrop::backdrop {
+            background: rgba(0, 0, 0, 0.6);
+        }
+        dialog .tooltip {
+            z-index: 10005;
         }
 
         /* Anchors to fixed top so the input doesn't shift as results load. */
+        dialog.we-modal-anchored-top,
         .we-modal-anchored-top {
             align-items: flex-start;
             padding-top: 12vh;
@@ -2569,6 +2986,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <label class="checkbox-label" for="chk-flash-on-open" we-tooltip-title="Briefly highlights an editor pane when it is opened or brought into focus.">Show visual indication when editor is opened</label>
                                     </span>
                                 </div>
+                                <div class="we-modal-option">
+                                    <span class="input-group-checkbox">
+                                        <input type="checkbox" class="checkbox" id="chk-show-open-history" ng-model="userPrefsEdit.showRecentlyOpenedWidgets" />
+                                        <label class="checkbox-label" for="chk-show-open-history" we-tooltip-title="Displays the recent widget history pane when opening a widget.">Show recently opened widgets</label>
+                                    </span>
+                                </div>
                                 <div class="we-modal-option" ng-if="hasSnUtils">
                                     <span class="input-group-checkbox">
                                         <input type="checkbox" class="checkbox" id="chk-show-open-in-vscode" ng-model="userPrefsEdit.showOpenInVsCode" />
@@ -2747,7 +3170,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         </div>
 
         <!-- Unlink dependency confirmation -->
-        <div class="we-modal-backdrop" ng-show="pendingUnlinkDependency">
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingUnlinkDependency" we-dialog-cancel="cancelUnlinkDependency()" ng-click="cancelUnlinkDependency()">
             <div class="we-modal" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span class="we-modal-title">Unlink dependency</span>
@@ -2761,7 +3184,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default we-btn we-btn-secondary" ng-click="cancelUnlinkDependency()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Link Existing Provider Modal -->
         <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showLinkProviderModal" ng-click="cancelLinkProviderModal()">
@@ -2999,34 +3422,106 @@ Features version history, side-by-side diff comparison, related lists, and user 
         </div>
 
         <!-- Widget picker modal -->
-        <div class="we-modal-backdrop we-modal-anchored-top" ng-show="showWidgetPickerModal || showPicker" ng-click="!showPicker &amp;&amp; closeWidgetPickerModal()">
-            <div class="we-picker-box" ng-click="$event.stopPropagation()" style="width:40rem">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showWidgetPickerModal || showPicker" we-dialog-cancel="!showPicker &amp;&amp; closeWidgetPickerModal()" ng-click="!showPicker &amp;&amp; closeWidgetPickerModal()">
+            <div class="we-picker-box" ng-click="$event.stopPropagation()" ng-class="{'we-picker-box--split': userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.showOpenHistory &amp;&amp; userPrefs.recentWidgets.length}">
+                <!-- Header -->
                 <div class="we-picker-title-row">
-                    <span class="we-picker-title">Open a Widget</span>
-                    <button class="btn btn-default" ng-click="newWidget()" style="margin-left: auto;">+ New Widget</button>
-                    <span class="close" ng-if="!showPicker" ng-click="closeWidgetPickerModal()" aria-label="Close" role="button" tabindex="0">×</span>
-                </div>
-                <div class="we-picker-body">
-                    <div class="we-search-wrap">
-                        <input class="form-control we-picker-search" type="text" ng-model="picker.search"
-                            ng-change="onPickerSearch()" placeholder="Search by name or ID" />
-                        <span class="we-search-loader" ng-if="pickerLoading"><we-loader></we-loader></span>
+                    <div class="we-picker-title-left">
+                        <span class="we-picker-title">Open a Widget</span>
                     </div>
-                    <div class="we-link-list">
-                        <div class="we-link-empty" ng-if="!pickerLoading &amp;&amp; pickerWidgets.length === 0">No widgets found</div>
-                        <div class="we-picker-item we-link-item" ng-repeat="w in pickerWidgets" ng-click="openWidget(w)" ng-keydown="onWidgetPickerItemKeydown($event, w)" tabindex="0" role="button">
-                            <span class="we-picker-item-name" ng-bind="w.name"></span>
-                            <span class="we-picker-item-id" ng-bind="w.id"></span>
-                            <a class="we-dropdown-ext-link" ng-href="{{w.widgetEditorUrl}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in Widget Editor+" aria-label="Open widget in Widget Editor+"></a>
+                    <div class="we-picker-title-actions">
+                        <button type="button" class="btn btn-default we-picker-history-toggle" ng-if="userPrefs.showRecentlyOpenedWidgets !== false" ng-click="toggleRecentWidgetsPane()" ng-class="{'we-picker-history-toggle--active': userPrefs.showOpenHistory}" aria-pressed="{{!!userPrefs.showOpenHistory}}" we-tooltip-title="{{userPrefs.showOpenHistory ? 'Hide recently opened widgets' : 'Show recently opened widgets'}}" aria-label="History">
+                            <i class="icon-date-time" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="btn btn-primary we-picker-btn-new" ng-click="newWidget()">
+                            <span>+ New Widget</span>
+                        </button>
+                        <span class="close we-picker-close-btn" ng-if="!showPicker" ng-click="closeWidgetPickerModal()" aria-label="Close" role="button" tabindex="0" title="Close">×</span>
+                    </div>
+                </div>
+
+                <!-- Columns Layout -->
+                <div class="we-picker-columns" ng-class="{'we-picker-columns--split': userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.showOpenHistory &amp;&amp; userPrefs.recentWidgets.length}">
+                    <!-- Main Search Column -->
+                    <div class="we-picker-col-main">
+                        <!-- Search Bar -->
+                        <div class="we-picker-search-wrap">
+                            <i class="icon-search we-picker-search-icon" aria-hidden="true"></i>
+                            <input class="form-control we-picker-search-input" type="text" ng-model="picker.search"
+                                ng-change="onPickerSearch()" ng-keydown="onPickerSearchKeydown($event)" placeholder="Search by name or ID" autofocus="autofocus" />
+                            <span class="we-picker-search-clear" ng-if="picker.search &amp;&amp; !pickerLoading" ng-click="clearPickerSearch()" role="button" title="Clear search">×</span>
+                            <span class="we-picker-search-spinner" ng-if="pickerLoading"><we-loader></we-loader></span>
+                        </div>
+
+                        <!-- Section Header -->
+                        <div class="we-picker-section-header">
+                            <span class="we-picker-section-title">
+                                <span ng-if="picker.search">Search Results</span>
+                                <span ng-if="!picker.search">All Widgets</span>
+                                <span class="we-picker-count-badge" ng-if="!pickerLoading &amp;&amp; pickerWidgets.length" ng-bind="pickerWidgets.length"></span>
+                            </span>
+                        </div>
+
+                        <!-- Results List -->
+                        <div class="we-picker-list">
+                            <div class="we-picker-empty" ng-if="!pickerLoading &amp;&amp; pickerWidgets.length === 0">
+                                <i class="icon-search we-picker-empty-icon" aria-hidden="true"></i>
+                                <span class="we-picker-empty-title">No widgets found</span>
+                                <span class="we-picker-empty-sub">Try searching by a different name or ID</span>
+                            </div>
+                            <div class="we-picker-item" ng-repeat="w in pickerWidgets" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
+                                <span class="we-picker-item-icon" aria-hidden="true">
+                                    <i class="icon-script" aria-hidden="true"></i>
+                                </span>
+                                <div class="we-picker-item-content">
+                                    <span class="we-picker-item-name" ng-bind="w.name"></span>
+                                    <span class="we-picker-item-id" ng-bind="w.id"></span>
+                                </div>
+                                <div class="we-picker-item-actions">
+                                    <a class="we-picker-action-btn" ng-href="{{w.widgetEditorUrl}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in new tab" aria-label="Open widget in new tab">
+                                        <i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Widgets Column -->
+                    <div class="we-picker-col-recent" ng-if="userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.showOpenHistory &amp;&amp; userPrefs.recentWidgets.length">
+                        <div class="we-picker-section-header">
+                            <span class="we-picker-section-title">
+                                <span>Recent</span>
+                                <span class="we-picker-count-badge" ng-bind="userPrefs.recentWidgets.length"></span>
+                            </span>
+                            <a class="we-picker-clear-link" ng-click="clearWidgetHistory()" role="button" tabindex="0" title="Clear all recent widget history">Clear history</a>
+                        </div>
+                        <div class="we-picker-list">
+                            <div class="we-picker-item" ng-repeat="w in userPrefs.recentWidgets | limitTo:10 track by w.sys_id" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
+                                <span class="we-picker-item-icon" aria-hidden="true">
+                                    <i class="icon-date-time" aria-hidden="true"></i>
+                                </span>
+                                <div class="we-picker-item-content">
+                                    <span class="we-picker-item-name" ng-bind="w.name"></span>
+                                    <span class="we-picker-item-id" ng-bind="w.id"></span>
+                                </div>
+                                <div class="we-picker-item-actions">
+                                    <a class="we-picker-action-btn" ng-href="{{recentWidgetUrl(w)}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in new tab" aria-label="Open widget in new tab">
+                                        <i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                                    </a>
+                                    <button type="button" class="we-picker-action-btn" ng-click="$event.stopPropagation(); removeRecentWidget(w)" title="Remove from history" aria-label="Remove widget from history">
+                                        <i class="icon-cross" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Delete template/provider confirmation -->
-        <div class="we-modal-backdrop" ng-show="pendingDeletePane">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingDeletePane" we-dialog-cancel="cancelDeletePane()" ng-click="cancelDeletePane()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title" ng-bind="(pendingDeletePane &amp;&amp; pendingDeletePane.recordType === 'template') ? 'Delete Template' : 'Delete Provider'"></div>
                 <div class="we-modal-body">
                     <p>Are you sure you want to delete&nbsp;<strong ng-bind="pendingDeletePane &amp;&amp; pendingDeletePane.recordId"></strong>? This cannot be undone.</p>
@@ -3036,11 +3531,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelDeletePane()" ng-disabled="pendingDeletePane &amp;&amp; pendingDeletePane.deleting">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Unlink provider confirmation -->
-        <div class="we-modal-backdrop" ng-show="pendingUnlinkProvider">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingUnlinkProvider" we-dialog-cancel="cancelUnlinkProvider()" ng-click="cancelUnlinkProvider()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title">Unlink Provider</div>
                 <div class="we-modal-body">
                     <p>Unlink&nbsp;<strong ng-bind="pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.name"></strong>&nbsp;from this widget? The provider record will not be deleted.</p>
@@ -3050,11 +3545,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelUnlinkProvider()" ng-disabled="pendingUnlinkProvider &amp;&amp; pendingUnlinkProvider.unlinking">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Close template/provider with unsaved changes -->
-        <div class="we-modal-backdrop" ng-show="pendingClosePane">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingClosePane" we-dialog-cancel="cancelClosePane()" ng-click="cancelClosePane()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title">Unsaved Changes</div>
                 <div class="we-modal-body">
                     <p><strong ng-bind="pendingClosePane.recordId || pendingClosePane.label"></strong>&nbsp;has unsaved changes.</p>
@@ -3065,11 +3560,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelClosePane()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Unsaved changes confirmation — open existing widget -->
-        <div class="we-modal-backdrop" ng-show="pendingWidgetNav">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingWidgetNav" we-dialog-cancel="cancelWidgetNav()" ng-click="cancelWidgetNav()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title">Unsaved Changes</div>
                 <div class="we-modal-body">
                     <p>You have unsaved changes. What would you like to do before opening&nbsp;<strong ng-bind="pendingWidgetNav.name"></strong>?</p>
@@ -3080,11 +3575,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelWidgetNav()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Unsaved changes confirmation — new widget -->
-        <div class="we-modal-backdrop" ng-show="pendingNewWidget">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="pendingNewWidget" we-dialog-cancel="cancelNewWidget()" ng-click="cancelNewWidget()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title">Unsaved Changes</div>
                 <div class="we-modal-body">
                     <p>You have unsaved changes. What would you like to do?</p>
@@ -3095,7 +3590,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelNewWidget()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Keyboard shortcuts modal -->
         <div class="we-modal-overlay" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showKeyboardShortcutsModal" ng-click="closeKeyboardShortcutsModal()">
@@ -3223,8 +3718,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
         </div>
 
         <!-- Reload confirmation after revert -->
-        <div class="we-modal-backdrop" ng-show="showReloadConfirm">
-            <div class="we-modal-box" style="width:25rem">
+        <dialog class="we-modal-backdrop" we-modal-dialog="showReloadConfirm" we-dialog-cancel="cancelReloadWidget()" ng-click="cancelReloadWidget()">
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
                 <div class="we-modal-title">Reload Widget</div>
                 <div class="we-modal-body">
                     <p>Reloading will replace your unsaved changes with the reverted version. Continue?</p>
@@ -3234,7 +3729,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="cancelReloadWidget()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
     </main>
     <g:requires output="true" />
 </j:jelly>`,
@@ -3679,6 +4174,74 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
+        // Directive: we-modal-dialog — Manages HTML5 <dialog> modal state, rendering in top-layer and making rest of page inert
+        .directive('weModalDialog', [
+            function () {
+                // Ensure Bootstrap tooltips for elements inside any <dialog> are placed inside that <dialog> in the Top Layer
+                if (window.jQuery && !window._weDialogTooltipHookInstalled) {
+                    window._weDialogTooltipHookInstalled = true;
+                    window.jQuery(document).on('show.bs.tooltip.weDialog', function (e) {
+                        var target = e.target;
+                        var dlg = target && target.closest && target.closest('dialog');
+                        if (dlg) {
+                            var tip = window.jQuery(target).data('bs.tooltip');
+                            if (tip) {
+                                tip.options.container = dlg;
+                            }
+                        }
+                    }).on('inserted.bs.tooltip.weDialog', function (e) {
+                        var target = e.target;
+                        var dlg = target && target.closest && target.closest('dialog');
+                        if (dlg) {
+                            var tip = window.jQuery(target).data('bs.tooltip');
+                            if (tip && tip.$tip && tip.$tip[0] && tip.$tip[0].parentElement !== dlg) {
+                                dlg.appendChild(tip.$tip[0]);
+                            }
+                        }
+                    });
+                }
+
+                return {
+                    restrict: 'A',
+                    link: function (scope, element, attrs) {
+                        var dialog = element[0];
+                        if (!dialog || typeof dialog.showModal !== 'function') {
+                            return;
+                        }
+
+                        scope.$watch(attrs.weModalDialog, function (val) {
+                            if (val) {
+                                if (!dialog.open) {
+                                    try {
+                                        dialog.showModal();
+                                    } catch (e) {
+                                        dialog.setAttribute('open', '');
+                                    }
+                                }
+                            } else {
+                                if (dialog.open) {
+                                    try {
+                                        dialog.close();
+                                    } catch (e) {
+                                        dialog.removeAttribute('open');
+                                    }
+                                }
+                            }
+                        });
+
+                        element.on('cancel', function (e) {
+                            if (attrs.weDialogCancel) {
+                                e.preventDefault();
+                                scope.$apply(function () {
+                                    scope.$eval(attrs.weDialogCancel);
+                                });
+                            }
+                        });
+                    },
+                };
+            },
+        ])
+
         // Directive: we-loader — Inline search-box loading indicator using the Now Design System spinner
         .directive('weLoader', [
             function () {
@@ -3715,13 +4278,25 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 return {
                     restrict: 'A',
                     link: function (scope, element, attrs) {
-                        var modal = element[0].closest('.we-modal');
+                        var container =
+                            element[0].closest('dialog') ||
+                            element[0].closest('.we-modal') ||
+                            'body';
                         element.tooltip({
-                            container: modal || 'body',
+                            container: container,
                             placement: 'bottom',
                         });
                         attrs.$observe('weTooltipTitle', function (val) {
-                            element.attr('data-original-title', val || '');
+                            var text = val || '';
+                            element.attr('data-original-title', text);
+                            element.attr('title', text);
+                            var tip = element.data('bs.tooltip');
+                            if (tip) {
+                                tip.options.title = text;
+                                if (tip.$tip && tip.$tip.is(':visible')) {
+                                    tip.$tip.find('.tooltip-inner').text(text);
+                                }
+                            }
                         });
                         scope.$on('$destroy', function () {
                             try {
@@ -4392,6 +4967,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     ctrlSSaveActiveOnly: true,
                     flashOnEditorOpen: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
                     showOpenInVsCode: true,
+                    showRecentlyOpenedWidgets: true,
+                    showOpenHistory: true,
+                    recentWidgets: [],
                     // Last-saved editor order/visibility, so the Preferences dialog reflects saved state, not live changes.
                     editorOrder: [],
                     editorVisibility: {},
@@ -4550,30 +5128,44 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }, 250);
                 };
 
-                function buildWidgetEditorUrl(widgetSysId) {
-                    return (
-                        window.location.pathname +
-                        '?sys_id=' +
-                        window.WE_CONFIG.widgetPageSysId +
-                        '&widget_id=' +
-                        encodeURIComponent(widgetSysId)
-                    );
-                }
+                $scope.clearPickerSearch = function () {
+                    $scope.picker.search = '';
+                    $scope.onPickerSearch();
+                };
 
-                function navigateToWidget(w) {
-                    window.location.href = buildWidgetEditorUrl(w.sys_id);
-                }
-
-                $scope.openWidget = function (w) {
-                    $scope.showWidgetPickerModal = false;
-                    if (hasUnsavedChanges()) {
-                        $scope.pendingWidgetNav = w;
-                    } else {
-                        navigateToWidget(w);
+                $scope.onPickerSearchKeydown = function (event) {
+                    var key = event && event.key;
+                    var keyCode = event && event.keyCode;
+                    if (key === 'ArrowDown' || keyCode === 40) {
+                        event.preventDefault();
+                        var firstItem = document.querySelector('.we-picker-col-main .we-picker-item');
+                        if (firstItem && firstItem.focus) {
+                            firstItem.focus();
+                            if (typeof firstItem.scrollIntoView === 'function') {
+                                firstItem.scrollIntoView({ block: 'nearest' });
+                            }
+                        }
+                    } else if (key === 'ArrowUp' || keyCode === 38) {
+                        event.preventDefault();
+                        var allItems = document.querySelectorAll('.we-picker-col-main .we-picker-item');
+                        if (allItems && allItems.length) {
+                            var lastItem = allItems[allItems.length - 1];
+                            if (lastItem && lastItem.focus) {
+                                lastItem.focus();
+                                if (typeof lastItem.scrollIntoView === 'function') {
+                                    lastItem.scrollIntoView({ block: 'nearest' });
+                                }
+                            }
+                        }
+                    } else if (key === 'Enter' || keyCode === 13) {
+                        if ($scope.pickerWidgets && $scope.pickerWidgets.length > 0) {
+                            event.preventDefault();
+                            $scope.openWidget($scope.pickerWidgets[0]);
+                        }
                     }
                 };
 
-                $scope.onWidgetPickerItemKeydown = function (event, w) {
+                $scope.onPickerItemKeydown = function (event, w) {
                     var key = event && event.key;
                     var keyCode = event && event.keyCode;
 
@@ -4584,44 +5176,108 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         key === 'Spacebar' ||
                         keyCode === 32
                     ) {
+                        if (event.target && event.target.closest && event.target.closest('.we-picker-action-btn')) {
+                            return;
+                        }
                         event.preventDefault();
                         $scope.openWidget(w);
                         return;
                     }
 
-                    if (
-                        key !== 'ArrowDown' &&
-                        key !== 'ArrowUp' &&
-                        keyCode !== 38 &&
-                        keyCode !== 40
-                    ) {
-                        return;
+                    if (key === 'ArrowDown' || keyCode === 40) {
+                        event.preventDefault();
+                        var el = event.currentTarget;
+                        var list = el && el.parentElement;
+                        if (!list) return;
+                        var items = list.querySelectorAll('.we-picker-item');
+                        if (!items || !items.length) return;
+                        var idx = Array.prototype.indexOf.call(items, el);
+                        var nextIdx = (idx >= 0 && idx < items.length - 1) ? (idx + 1) : 0;
+                        var nextItem = items[nextIdx];
+                        if (nextItem && nextItem.focus) {
+                            nextItem.focus();
+                            if (typeof nextItem.scrollIntoView === 'function') {
+                                nextItem.scrollIntoView({ block: 'nearest' });
+                            }
+                        }
+                    } else if (key === 'ArrowUp' || keyCode === 38) {
+                        event.preventDefault();
+                        var el = event.currentTarget;
+                        var list = el && el.parentElement;
+                        if (!list) return;
+                        var items = list.querySelectorAll('.we-picker-item');
+                        if (!items || !items.length) return;
+                        var idx = Array.prototype.indexOf.call(items, el);
+                        var prevIdx = (idx > 0) ? (idx - 1) : (items.length - 1);
+                        var prevItem = items[prevIdx];
+                        if (prevItem && prevItem.focus) {
+                            prevItem.focus();
+                            if (typeof prevItem.scrollIntoView === 'function') {
+                                prevItem.scrollIntoView({ block: 'nearest' });
+                            }
+                        }
                     }
+                };
 
-                    event.preventDefault();
-                    var el = event.currentTarget;
-                    var parent = el && el.parentElement;
-                    if (!parent) {
-                        return;
-                    }
+                function buildWidgetEditorUrl(widgetSysId) {
+                    return (
+                        window.location.pathname +
+                        '?sys_id=' +
+                        window.WE_CONFIG.widgetPageSysId +
+                        '&widget_id=' +
+                        encodeURIComponent(widgetSysId)
+                    );
+                }
 
-                    var items = parent.querySelectorAll('.we-picker-item');
-                    if (!items || !items.length) {
-                        return;
-                    }
+                function _mergeRecentWidget(list, w) {
+                    var entry = { sys_id: w.sys_id, name: w.name, id: w.id };
+                    var merged = (list || []).filter(function (r) {
+                        return r.sys_id !== entry.sys_id;
+                    });
+                    merged.unshift(entry);
+                    return merged.slice(0, 10);
+                }
 
-                    var idx = Array.prototype.indexOf.call(items, el);
-                    if (idx < 0) {
-                        return;
-                    }
+                $scope.clearWidgetHistory = function () {
+                    $scope.userPrefs.recentWidgets = [];
+                    saveUserPrefs();
+                };
 
-                    var nextIdx =
-                        key === 'ArrowDown' || keyCode === 40
-                            ? Math.min(idx + 1, items.length - 1)
-                            : Math.max(idx - 1, 0);
+                $scope.removeRecentWidget = function (w) {
+                    $scope.userPrefs.recentWidgets = $scope.userPrefs.recentWidgets.filter(
+                        function (r) {
+                            return r.sys_id !== w.sys_id;
+                        }
+                    );
+                    saveUserPrefs();
+                };
 
-                    if (nextIdx !== idx && items[nextIdx] && items[nextIdx].focus) {
-                        items[nextIdx].focus();
+                $scope.toggleRecentWidgetsPane = function () {
+                    $scope.userPrefs.showOpenHistory = !$scope.userPrefs.showOpenHistory;
+                    saveUserPrefs();
+                };
+
+                function navigateToWidget(w) {
+                    var recentWidgets = _mergeRecentWidget(
+                        $scope.userPrefs.recentWidgets,
+                        w
+                    );
+                    var go = function () {
+                        window.location.href = buildWidgetEditorUrl(w.sys_id);
+                    };
+                    saveUserPrefs({ recentWidgets: recentWidgets }).then(go, go);
+                }
+
+                $scope.recentWidgetUrl = function (w) {
+                    return buildWidgetEditorUrl(w.sys_id);
+                };
+
+                $scope.openWidget = function (w) {
+                    $scope.showWidgetPickerModal = false;
+                    if (hasUnsavedChanges()) {
+                        $scope.pendingWidgetNav = w;
+                    } else {
+                        navigateToWidget(w);
                     }
                 };
 
@@ -4762,6 +5418,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         'linkedEditing',
                         'flashOnEditorOpen',
                         'showOpenInVsCode',
+                        'showRecentlyOpenedWidgets',
+                        'showOpenHistory',
                     ].forEach(function (k) {
                         if (p.hasOwnProperty(k)) {
                             $scope.userPrefs[k] = !!p[k];
@@ -4794,6 +5452,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         if ($scope.userPrefs.fontFamily) {
                             _loadGoogleFonts();
                         }
+                    }
+                    if (p.hasOwnProperty('recentWidgets') && Array.isArray(p.recentWidgets)) {
+                        $scope.userPrefs.recentWidgets = p.recentWidgets;
                     }
                     if (p.hasOwnProperty('ctrlSSaveActiveOnly')) {
                         $scope.userPrefs.ctrlSSaveActiveOnly =
@@ -8815,7 +9476,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     applyVisibility();
                 };
 
-                function saveUserPrefs() {
+                function saveUserPrefs(overrides) {
                     _snapshotEditorPrefs();
                     var prefs = {};
                     $scope.coreEditorDefs.forEach(function (d) {
@@ -8852,10 +9513,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.userPrefs.flashOnEditorOpen;
                     prefs.showOpenInVsCode =
                         $scope.userPrefs.showOpenInVsCode;
+                    prefs.showRecentlyOpenedWidgets =
+                        $scope.userPrefs.showRecentlyOpenedWidgets !== false;
+                    prefs.showOpenHistory =
+                        $scope.userPrefs.showOpenHistory;
+                    prefs.recentWidgets = $scope.userPrefs.recentWidgets;
                     prefs.order = $scope.coreEditorDefs.map(function (d) {
                         return d.key;
                     });
-                    ajax('saveUserPrefs', { value: JSON.stringify(prefs) });
+                    if (overrides) {
+                        Object.keys(overrides).forEach(function (k) {
+                            prefs[k] = overrides[k];
+                        });
+                    }
+                    return ajax('saveUserPrefs', { value: JSON.stringify(prefs) });
                 }
 
                 // Angular Templates (sp_ng_template)
@@ -10629,6 +11300,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.userPrefs.flashOnEditorOpen,
                         showOpenInVsCode:
                             $scope.userPrefs.showOpenInVsCode !== false,
+                        showRecentlyOpenedWidgets:
+                            $scope.userPrefs.showRecentlyOpenedWidgets !== false,
+                        showOpenHistory:
+                            $scope.userPrefs.showOpenHistory !== false,
                         availableFonts: _getAvailableMonospaceFonts(),
                         googleFonts: _GOOGLE_FONTS,
                     };
@@ -10697,6 +11372,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         !!$scope.userPrefsEdit.flashOnEditorOpen;
                     $scope.userPrefs.showOpenInVsCode =
                         !!$scope.userPrefsEdit.showOpenInVsCode;
+                    $scope.userPrefs.showRecentlyOpenedWidgets =
+                        $scope.userPrefsEdit.showRecentlyOpenedWidgets !== false;
+                    $scope.userPrefs.showOpenHistory =
+                        $scope.userPrefsEdit.showOpenHistory !== false;
                     var ts = parseInt($scope.userPrefsEdit.tabSize, 10);
                     if (ts >= 1 && ts <= 8) {
                         $scope.userPrefs.tabSize = ts;
@@ -10818,6 +11497,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.userPrefsEdit.ctrlSSaveActiveOnly = true;
                     $scope.userPrefsEdit.flashOnEditorOpen = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                     $scope.userPrefsEdit.showOpenInVsCode = true;
+                    $scope.userPrefsEdit.showRecentlyOpenedWidgets = true;
+                    $scope.userPrefsEdit.showOpenHistory = true;
                 };
 
                 /* Trigger the modal leave animation, then invoke the close callback after it
