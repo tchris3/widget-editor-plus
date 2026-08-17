@@ -370,14 +370,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
             border-width: 1px;
             border-style: solid;
             border-color: rgb(var(--now-form-field--border-color, var(--now-color_border--primary, var(--now-color--neutral-7))));
-            border-top-left-radius: var(--now-form-field--border-radius);
-            border-bottom-left-radius: var(--now-form-field--border-radius);
+            border-radius: var(--now-form-field--border-radius);
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            padding: 2px;
         }
         .we-link-item {
+            position: relative;
             padding: 0.5rem 0.75rem;
             cursor: pointer;
             display: flex;
             align-items: center;
+            border-radius: var(--now-form-field--border-radius);
+            transition: background-color 0.12s ease;
         }
         .we-link-item > span:first-child {
             flex: 1 1 auto;
@@ -386,9 +392,23 @@ Features version history, side-by-side diff comparison, related lists, and user 
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .we-link-item .we-dropdown-ext-link { margin-left: auto; }
+        .we-link-item .we-picker-action-btn { margin-left: auto; }
         .we-link-item:hover { background: rgb(var(--now-dropdown-list_search--background-color--hover)); }
-        .we-link-item + .we-link-item { border-top: 1px solid rgba(var(--now-color--neutral-0), 0.08); }
+        .we-link-item + .we-link-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0.75rem;
+            right: 0.75rem;
+            height: 1px;
+            background: rgba(var(--now-color--neutral-0), 0.08);
+            pointer-events: none;
+            transition: opacity 0.12s ease;
+        }
+        .we-link-item:hover::before,
+        .we-link-item:hover + .we-link-item::before {
+            opacity: 0;
+        }
         .we-link-id { color: rgb(var(--now-color_text--secondary)); }
 
 
@@ -1255,10 +1275,73 @@ Features version history, side-by-side diff comparison, related lists, and user 
             font-weight: 600;
             flex-shrink: 0;
         }
-        .we-modal-close { cursor: pointer; font-size: var(--now-font-size--lg); color: rgba(var(--now-color_text--primary), 0.45); line-height: 1; align-self: flex-start; }
-        .we-modal-close:hover { color: rgb(var(--now-button--secondary--color--hover)); }
-        .close { font-size: 1.5rem; transform: scale(1); transition: transform 0.15s ease; }
-        .close:hover { background: none; transform: scale(1.2); }
+        /* Horizon Design System Modal Close Button */
+        .we-modal-close-btn {
+            all: unset;
+            box-sizing: border-box;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 2.25rem !important;
+            height: 2.25rem !important;
+            min-width: 2.25rem !important;
+            min-height: 2.25rem !important;
+            max-width: 2.25rem !important;
+            max-height: 2.25rem !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            cursor: pointer !important;
+            color: rgb(var(--now-actionable_icon--tertiary_bare--color, var(--now-color_icon--secondary, var(--now-color_text--secondary, 126, 133, 146)))) !important;
+            background-color: transparent !important;
+            border: none !important;
+            border-width: 0 !important;
+            border-style: none !important;
+            border-radius: var(--now-button--border-radius, var(--now-form-field--border-radius, 4px)) !important;
+            outline: none !important;
+            box-shadow: none !important;
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+            -webkit-appearance: none;
+            appearance: none;
+            flex-shrink: 0 !important;
+        }
+        .we-modal-close-btn svg {
+            display: block !important;
+            width: 1.375rem !important;
+            height: 1.375rem !important;
+            min-width: 1.375rem !important;
+            min-height: 1.375rem !important;
+            max-width: 1.375rem !important;
+            max-height: 1.375rem !important;
+            pointer-events: none !important;
+            flex-shrink: 0 !important;
+        }
+        .we-modal-close-btn:focus:not(:focus-visible):not(:hover) {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            background-color: transparent !important;
+        }
+        .we-modal-close-btn:hover,
+        .we-modal-close-btn:focus:hover,
+        .we-modal-close-btn:focus:not(:focus-visible):hover {
+            background-color: rgba(var(--now-button-iconic--bare_tertiary--background-color--hover, var(--now-actionable--tertiary_bare--background-color--hover, var(--now-actionable--tertiary--background-color--hover, var(--now-color_background--secondary-actionable, var(--now-color--neutral-15, 44, 53, 55))))), var(--now-button-iconic--bare_tertiary--background-color-alpha--hover, var(--now-actionable--background-color-alpha--hover, var(--now-opacity--least, 0.1)))) !important;
+            color: rgb(var(--now-button-iconic--bare_tertiary--color--hover, var(--now-actionable_icon--tertiary_bare--color--hover, var(--now-actionable_icon--tertiary--color--hover, var(--now-color_text--primary, var(--now-color_text--secondary, 44, 53, 55)))))) !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            text-decoration: none !important;
+        }
+        .we-modal-close-btn:active {
+            background-color: rgba(var(--now-button-iconic--bare_tertiary--background-color--active, var(--now-actionable--tertiary_bare--background-color--active, var(--now-color_background--secondary-actionable, var(--now-color--neutral-15, 44, 53, 55)))), 0.16) !important;
+            border: none !important;
+        }
+        .we-modal-close-btn:focus-visible {
+            outline: 2px solid rgb(var(--now-focus-ring--color, var(--now-color_focus--primary, var(--now-color--primary-2, 30, 133, 203)))) !important;
+            outline-offset: 2px !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: rgb(var(--now-button-iconic--bare_tertiary--color--hover, var(--now-color_text--primary, 44, 53, 55))) !important;
+        }
         .we-modal-body { padding: 1rem; overflow-y: auto; flex: 1 1 auto; }
         .we-modal-pref .we-modal-body { display: flex; flex-direction: column; gap: 1.25rem; }
 
@@ -1274,9 +1357,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 to   { transform: scale(0.95) translateY(-2rem); }
             }
 
-            /* Play on DOM insertion (ng-if becoming true) */
+            /* Play on DOM insertion / open */
+            dialog.we-modal-backdrop[open],
             .we-modal-overlay { animation: we-overlay-in 0.18s ease both; }
             /* backwards: holds 'from' at t=0 (no flash), releases after end (drag works) */
+            dialog.we-modal-backdrop[open] > .we-modal,
+            dialog.we-modal-backdrop[open] > .we-modal-box,
+            dialog.we-modal-backdrop[open] > .we-picker-box,
             .we-modal-overlay > .we-modal { animation: we-modal-in 0.22s ease backwards; }
 
             /* Play when JS adds the leaving class before ng-if removes the element */
@@ -1621,19 +1708,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             border-radius: 6px;
         }
         .we-picker-close-btn {
-            font-size: 1.5rem;
-            line-height: 1;
-            padding: 0 0.25rem;
-            color: rgba(var(--now-color_text--primary), 0.5);
-            cursor: pointer;
-            border-radius: 4px;
             margin-left: 0.25rem;
-            opacity: 0.7;
-            transition: all 0.12s ease;
-        }
-        .we-picker-close-btn:hover {
-            opacity: 1;
-            color: rgb(var(--now-color_text--primary));
         }
 
         /* Multi-column Body */
@@ -1949,36 +2024,59 @@ Features version history, side-by-side diff comparison, related lists, and user 
         a.we-picker-action-btn {
             all: unset;
             box-sizing: border-box;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 1.625rem;
-            height: 1.625rem;
-            border-radius: 4px;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 1.625rem !important;
+            height: 1.625rem !important;
+            min-width: 1.625rem !important;
+            min-height: 1.625rem !important;
+            max-width: 1.625rem !important;
+            max-height: 1.625rem !important;
+            border-radius: 4px !important;
             color: rgba(var(--now-color_text--primary), 0.45) !important;
             background: transparent !important;
-            cursor: pointer;
+            cursor: pointer !important;
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.12s ease, background-color 0.12s ease, color 0.12s ease;
-            text-decoration: none;
-            padding: 0;
-            border: none;
-            outline: none;
-            box-shadow: none;
-            font-size: 0.875rem;
-            line-height: 1;
+            text-decoration: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            font-size: 0.875rem !important;
+            line-height: 1 !important;
+            flex-shrink: 0 !important;
+        }
+        .we-picker-action-btn i,
+        button.we-picker-action-btn i,
+        a.we-picker-action-btn i {
+            font-size: 0.875rem !important;
+            line-height: 1 !important;
+            color: inherit !important;
+            display: inline-block !important;
         }
         .we-picker-item:hover .we-picker-action-btn,
         .we-picker-item:focus-within .we-picker-action-btn {
-            opacity: 1;
-            visibility: visible;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
         .we-picker-action-btn:hover,
         button.we-picker-action-btn:hover,
         a.we-picker-action-btn:hover {
-            background: rgba(var(--now-color--neutral-0), 0.12) !important;
+            background: rgba(var(--now-color--neutral-0, 0, 0, 0), 0.12) !important;
             color: rgb(var(--now-color_text--primary)) !important;
+            text-decoration: none !important;
+        }
+        .we-picker-action-btn:focus-visible,
+        button.we-picker-action-btn:focus-visible,
+        a.we-picker-action-btn:focus-visible {
+            opacity: 1 !important;
+            visibility: visible !important;
+            outline: 2px solid rgb(var(--now-focus-ring--color, var(--now-color_focus--primary, var(--now-color--primary-2, 30, 133, 203)))) !important;
+            outline-offset: 1px !important;
         }
 
         /* Search wrap compatibility for other modals */
@@ -2893,11 +2991,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
         </div><!-- /app -->
 
         <!-- User Preferences Modal -->
-        <div class="we-modal-overlay" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showUserPrefsModal" ng-click="cancelUserPrefsModal()">
+        <dialog class="we-modal-backdrop" we-modal-dialog="showUserPrefsModal" we-dialog-cancel="cancelUserPrefsModal()" ng-click="cancelUserPrefsModal()">
             <div class="we-modal we-modal-pref" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>User Preferences</span>
-                    <span class="close" ng-click="cancelUserPrefsModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="cancelUserPrefsModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body">
                     <div class="we-pref-columns">
@@ -3140,25 +3238,28 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-primary" ng-click="saveUserPrefsModal()">Save</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Link Dependency Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showLinkDependencyModal" ng-click="cancelLinkDependencyModal()">
-            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:37.5rem">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showLinkDependencyModal" we-dialog-cancel="cancelLinkDependencyModal()" ng-click="cancelLinkDependencyModal()">
+            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:37.5rem;max-width:92vw">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Link dependency</span>
-                    <span class="close" ng-click="cancelLinkDependencyModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="cancelLinkDependencyModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body" style="padding-bottom:0.5rem">
-                    <div class="we-search-wrap" style="margin-bottom:1rem; margin-top: -0.5rem;">
-                        <input class="form-control we-picker-search" type="text" ng-model="linkDependency.search" ng-change="onLinkDependencySearch()" placeholder="Search by name" />
-                        <span class="we-search-loader" ng-if="linkDependencySearching"><we-loader></we-loader></span>
+                    <div class="we-picker-search-wrap" style="margin-bottom:0.75rem">
+                        <i class="icon-search we-picker-search-icon" aria-hidden="true"></i>
+                        <input class="form-control we-picker-search-input" type="text" ng-model="linkDependency.search" ng-change="onLinkDependencySearch()" placeholder="Search by name" />
+                        <span class="we-picker-search-spinner" ng-if="linkDependencySearching"><we-loader></we-loader></span>
                     </div>
                     <div class="we-link-list">
                         <div ng-if="!linkDependencySearching &amp;&amp; linkDependencyResults.length === 0" class="we-link-empty">No dependencies found</div>
                         <div class="we-link-item" ng-repeat="dep in linkDependencyResults" ng-click="selectLinkDependency(dep)">
                             <span ng-bind="dep.name"></span>
-                            <a class="we-dropdown-ext-link" href="/nav_to.do?uri=sp_dependency.do%3Fsys_id={{dep.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open dependency in platform"></a>
+                            <a class="we-picker-action-btn" ng-href="/nav_to.do?uri=sp_dependency.do%3Fsys_id={{dep.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open dependency in platform">
+                                <i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -3167,42 +3268,42 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default we-btn we-btn-secondary" ng-click="cancelLinkDependencyModal()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Unlink dependency confirmation -->
         <dialog class="we-modal-backdrop" we-modal-dialog="pendingUnlinkDependency" we-dialog-cancel="cancelUnlinkDependency()" ng-click="cancelUnlinkDependency()">
-            <div class="we-modal" ng-click="$event.stopPropagation()">
-                <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
-                    <span class="we-modal-title">Unlink dependency</span>
-                </div>
+            <div class="we-modal-box" style="width:25rem" ng-click="$event.stopPropagation()">
+                <div class="we-modal-title">Unlink Dependency</div>
                 <div class="we-modal-body">
-                    <p>Unlink&nbsp;<strong ng-bind="pendingUnlinkDependency &amp;&amp; pendingUnlinkDependency.name"></strong>&nbsp;from this widget?</p>
-                    <p>The dependency record itself will not be deleted.</p>
+                    <p>Unlink&nbsp;<strong ng-bind="pendingUnlinkDependency &amp;&amp; pendingUnlinkDependency.name"></strong>&nbsp;from this widget? The dependency record will not be deleted.</p>
                 </div>
-                <div class="we-modal-footer">
-                    <button class="btn btn-danger we-btn" ng-click="confirmUnlinkDependency()">Unlink</button>
-                    <button class="btn btn-default we-btn we-btn-secondary" ng-click="cancelUnlinkDependency()">Cancel</button>
+                <div class="we-modal-actions">
+                    <button class="btn btn-danger" ng-click="confirmUnlinkDependency()">Unlink</button>
+                    <button class="btn btn-default" ng-click="cancelUnlinkDependency()">Cancel</button>
                 </div>
             </div>
         </dialog>
 
         <!-- Link Existing Provider Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showLinkProviderModal" ng-click="cancelLinkProviderModal()">
-            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:37.5rem">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showLinkProviderModal" we-dialog-cancel="cancelLinkProviderModal()" ng-click="cancelLinkProviderModal()">
+            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:37.5rem;max-width:92vw">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Link existing provider</span>
-                    <span class="close" ng-click="cancelLinkProviderModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="cancelLinkProviderModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body" style="padding-bottom:0.5rem">
-                    <div class="we-search-wrap" style="margin-bottom:1rem; margin-top: -0.5rem;">
-                        <input class="form-control we-picker-search" type="text" ng-model="linkProvider.search" ng-change="onLinkProviderSearch()" placeholder="Search by name" />
-                        <span class="we-search-loader" ng-if="linkProviderSearching"><we-loader></we-loader></span>
+                    <div class="we-picker-search-wrap" style="margin-bottom:0.75rem">
+                        <i class="icon-search we-picker-search-icon" aria-hidden="true"></i>
+                        <input class="form-control we-picker-search-input" type="text" ng-model="linkProvider.search" ng-change="onLinkProviderSearch()" placeholder="Search by name" />
+                        <span class="we-picker-search-spinner" ng-if="linkProviderSearching"><we-loader></we-loader></span>
                     </div>
                     <div class="we-link-list">
                         <div ng-if="!linkProviderSearching &amp;&amp; linkProviderResults.length === 0" class="we-link-empty">No providers found</div>
                         <div class="we-link-item" ng-repeat="p in linkProviderResults" ng-click="selectLinkProvider(p)">
                             <span class="we-link-id" ng-bind="p.name"></span>
-                            <a class="we-dropdown-ext-link" href="/nav_to.do?uri=sp_angular_provider.do%3Fsys_id={{p.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open provider in platform"></a>
+                            <a class="we-picker-action-btn" ng-href="/nav_to.do?uri=sp_angular_provider.do%3Fsys_id={{p.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open provider in platform">
+                                <i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -3211,16 +3312,16 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default we-btn we-btn-secondary" ng-click="cancelLinkProviderModal()">Cancel</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Open on Portal Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showOpenOnPortalModal" ng-click="closeOpenOnPortalModal()">
-            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:26rem">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showOpenOnPortalModal" we-dialog-cancel="closeOpenOnPortalModal()" ng-click="closeOpenOnPortalModal()">
+            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:28rem;max-width:92vw">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span ng-if="openOnPortalStep === 'params'">URL parameters</span>
                     <span ng-if="openOnPortalStep === 'instance'">Select a page</span>
                     <span ng-if="openOnPortalStep === 'portal'">Select a portal</span>
-                    <span class="close" ng-click="closeOpenOnPortalModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeOpenOnPortalModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body" style="padding:0;gap:0">
                     <div ng-if="openOnPortalLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
@@ -3248,21 +3349,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </div>
                 </div>
                 <div class="we-modal-footer">
-                    <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalStep === 'params' &amp;&amp; openOnPortalParams.length" ng-click="resetOpenOnPortalParams()">Reset</button>
-                    <div class="we-spacer"></div>
+                    <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalStep === 'params' &amp;&amp; openOnPortalParams.length" ng-click="resetOpenOnPortalParams()" style="margin-right:auto">Reset</button>
                     <button class="btn btn-default we-btn we-btn-secondary" ng-if="openOnPortalCanGoBack()" ng-click="openOnPortalBack()">Back</button>
                     <button class="btn btn-default we-btn we-btn-secondary" ng-click="closeOpenOnPortalModal()">Cancel</button>
                     <button class="btn btn-primary we-btn" ng-if="openOnPortalStep === 'params'" ng-click="openOnPortalParamsNext()">Next</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Option Schema Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showOptionSchemaModal" ng-click="closeOptionSchemaModal()">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showOptionSchemaModal" we-dialog-cancel="closeOptionSchemaModal()" ng-click="closeOptionSchemaModal()">
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:45rem;max-width:95vw">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Option schema</span>
-                    <span class="close" ng-click="closeOptionSchemaModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeOptionSchemaModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body" style="padding:0;gap:0">
                     <div ng-if="optionSchemaLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
@@ -3283,14 +3383,14 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Demo Data Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showDemoDataModal" ng-click="closeDemoDataModal()">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showDemoDataModal" we-dialog-cancel="closeDemoDataModal()" ng-click="closeDemoDataModal()">
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:45rem;max-width:95vw">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Demo data</span>
-                    <span class="close" ng-click="closeDemoDataModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeDemoDataModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body" style="padding:0;gap:0">
                     <div ng-if="demoDataLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
@@ -3311,14 +3411,14 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- XML Modal -->
-        <div class="we-modal-overlay we-modal-anchored-top" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showXmlModal" ng-click="closeXmlModal()">
+        <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showXmlModal" we-dialog-cancel="closeXmlModal()" ng-click="closeXmlModal()">
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:56.25rem;max-width:95vw">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Widget XML</span>
-                    <span class="close" ng-click="closeXmlModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeXmlModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body" style="padding:0;gap:0">
                     <div ng-if="xmlLoading" style="padding:1.5rem 1rem;color:rgb(var(--now-color_text--tertiary));display:flex;flex-direction:column;align-items:center;gap:0.75rem">
@@ -3333,27 +3433,27 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-primary" ng-click="closeXmlModal()" style="margin-left:auto">Close</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Version Diff Modal -->
-        <div class="we-modal-overlay" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="versionDiffModal.open" ng-click="closeVersionDiffModal()">
+        <dialog class="we-modal-backdrop" we-modal-dialog="versionDiffModal.open" we-dialog-cancel="closeVersionDiffModal()" ng-click="closeVersionDiffModal()">
             <div class="we-modal" ng-click="$event.stopPropagation()" style="width:98vw;max-width:112.5rem;height:95vh;display:flex;flex-direction:column">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span ng-if="!versionDiffModal.expandedField">Compare versions</span>
                     <span ng-if="versionDiffModal.expandedField" ng-bind-template="Compare versions — {{versionDiffModal.expandedField}}"></span>
-                    <button class="btn btn-default" ng-if="!versionDiffModal.isUnsaved" ng-click="openVersionDiffInNewTab()" style="margin-left:auto;margin-right:0.875rem">Open in new tab <span class="we-ext-icon" style="margin-left: 0.5rem" aria-hidden="true"></span></button>
-                    <span class="close" ng-click="closeVersionDiffModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button class="btn btn-default" ng-if="!versionDiffModal.isUnsaved" ng-click="openVersionDiffInNewTab()" style="margin-left:auto;margin-right:0.875rem">Open in new tab <i class="icon-open-document-new-tab" style="margin-left: 0.375rem" aria-hidden="true"></i></button>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeVersionDiffModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <iframe class="we-diff-iframe" ng-src="{{versionDiffModal.url}}" style="flex:1;border:none;width:100%"></iframe>
             </div>
-        </div>
+        </dialog>
 
         <!-- Related Lists Modal -->
-        <div class="we-modal-overlay" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="relatedModal.open" ng-click="closeRelatedModal()">
+        <dialog class="we-modal-backdrop" we-modal-dialog="relatedModal.open" we-dialog-cancel="closeRelatedModal()" ng-click="closeRelatedModal()">
             <div class="we-modal we-related-modal" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span ng-bind-template="Related Lists — {{widget.name}}"></span>
-                    <span class="close" ng-click="closeRelatedModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeRelatedModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0">
                 <div class="we-related-loading-overlay" ng-if="relatedModal.loading">
@@ -3419,7 +3519,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 </div>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Widget picker modal -->
         <dialog class="we-modal-backdrop we-modal-anchored-top" we-modal-dialog="showWidgetPickerModal || showPicker" we-dialog-cancel="!showPicker &amp;&amp; closeWidgetPickerModal()" ng-click="!showPicker &amp;&amp; closeWidgetPickerModal()">
@@ -3436,7 +3536,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <button type="button" class="btn btn-primary we-picker-btn-new" ng-click="newWidget()">
                             <span>+ New Widget</span>
                         </button>
-                        <span class="close we-picker-close-btn" ng-if="!showPicker" ng-click="closeWidgetPickerModal()" aria-label="Close" role="button" tabindex="0" title="Close">×</span>
+                        <button type="button" class="we-modal-close-btn we-picker-close-btn" ng-if="!showPicker" ng-click="closeWidgetPickerModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                     </div>
                 </div>
 
@@ -3593,11 +3693,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
         </dialog>
 
         <!-- Keyboard shortcuts modal -->
-        <div class="we-modal-overlay" ng-class="{'we-modal-overlay--leaving': _modalClosing}" ng-if="showKeyboardShortcutsModal" ng-click="closeKeyboardShortcutsModal()">
+        <dialog class="we-modal-backdrop" we-modal-dialog="showKeyboardShortcutsModal" we-dialog-cancel="closeKeyboardShortcutsModal()" ng-click="closeKeyboardShortcutsModal()">
             <div class="we-modal we-modal-kbd" ng-click="$event.stopPropagation()">
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span>Keyboard shortcuts</span>
-                    <span class="close" ng-click="closeKeyboardShortcutsModal()" aria-label="Close" role="button" tabindex="0">×</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeKeyboardShortcutsModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <div class="we-modal-body we-kbd-sections">
 
@@ -3715,7 +3815,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-primary" ng-click="closeKeyboardShortcutsModal()">Close</button>
                 </div>
             </div>
-        </div>
+        </dialog>
 
         <!-- Reload confirmation after revert -->
         <dialog class="we-modal-backdrop" we-modal-dialog="showReloadConfirm" we-dialog-cancel="cancelReloadWidget()" ng-click="cancelReloadWidget()">
@@ -7988,15 +8088,14 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         if (_refOverlay) {
                             return;
                         }
-                        _refOverlay = document.createElement('div');
+                        _refOverlay = document.createElement('dialog');
                         _refOverlay.id = 'we-ref-panel';
-                        _refOverlay.className = 'we-modal-overlay';
-                        _refOverlay.style.display = 'none';
+                        _refOverlay.className = 'we-modal-backdrop';
                         _refOverlay.innerHTML =
-                            '<div class="we-modal we-ref-modal">' +
+                            '<div class="we-modal we-ref-modal" style="width:40rem;max-width:92vw">' +
                             '<div class="we-modal-header">' +
                             '<span id="we-ref-title"></span>' +
-                            '<span class="we-modal-close" id="we-ref-close">×</span>' +
+                            '<button type="button" class="we-modal-close-btn" id="we-ref-close" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>' +
                             '</div>' +
                             '<div id="we-ref-body" class="we-modal-body we-ref-body"></div>' +
                             '</div>';
@@ -8007,19 +8106,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         document
                             .getElementById('we-ref-close')
                             .addEventListener('click', function () {
-                                _refOverlay.style.display = 'none';
+                                if (_refOverlay.open) {
+                                    _refOverlay.close();
+                                }
                             });
                         _refOverlay.addEventListener('click', function (e) {
                             if (e.target === _refOverlay) {
-                                _refOverlay.style.display = 'none';
+                                if (_refOverlay.open) {
+                                    _refOverlay.close();
+                                }
                             }
                         });
-                        document.addEventListener('keydown', function (e) {
-                            if (
-                                e.key === 'Escape' &&
-                                _refOverlay.style.display !== 'none'
-                            ) {
-                                _refOverlay.style.display = 'none';
+                        _refOverlay.addEventListener('cancel', function () {
+                            if (_refOverlay.open) {
+                                _refOverlay.close();
                             }
                         });
                     }
@@ -8042,10 +8142,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             return;
                         }
                         _refBody.textContent = '';
-                        var div = document.createElement('div');
-                        div.className = 'we-ref-searching';
-                        div.textContent = 'Searching...';
-                        _refBody.appendChild(div);
+                        var wrap = document.createElement('div');
+                        wrap.className = 'we-ref-loading';
+                        var spin = document.createElement('span');
+                        spin.className = 'we-ref-spinner';
+                        wrap.appendChild(spin);
+                        wrap.appendChild(
+                            document.createTextNode('Searching records…')
+                        );
+                        _refBody.appendChild(wrap);
                     }
 
                     function _renderRefNone(name) {
@@ -8115,7 +8220,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         _ensureRefModal();
                         _renderRefTitle(name);
                         _renderRefSearching();
-                        _refOverlay.style.display = 'flex';
+                        if (!_refOverlay.open) {
+                            try {
+                                _refOverlay.showModal();
+                            } catch (e) {
+                                _refOverlay.setAttribute('open', '');
+                            }
+                        }
 
                         var pending = refTables.length;
                         var results = [];
