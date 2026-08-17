@@ -2114,7 +2114,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 providers.push({
                     sys_id: pSysId,
                     name: gr.getValue('name'),
-                    type: gr.getDisplayValue('type') || gr.getValue('type') || '',
+                    type: gr.getValue('type') || '',
                     script: gr.getValue('script') || '',
                 });
             }

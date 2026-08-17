@@ -624,8 +624,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'%3E%3Cpath d='M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z'/%3E%3C/svg%3E");
         }
         .we-dropdown-ext-link:hover { background-color: rgb(var(--now-color_text--primary)); }
-        .we-dropdown-item:hover .we-dropdown-ext-link,
-        .we-link-item:hover .we-dropdown-ext-link { display: block; }
+        .we-dropdown-item:hover .we-dropdown-ext-link { display: block; }
 
         /* Version ext-link: always occupies space so the row columns don't shift on hover */
         .we-dropdown-ext-link--reserved { display: block !important; visibility: hidden; }
@@ -1181,7 +1180,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-related-table-container { background: rgb(var(--now-color_background--primary)); height: 100%; }
 
         /* User Preferences modal */
-        dialog.we-modal-overlay,
         .we-modal-overlay {
             position: fixed;
             inset: 0;
@@ -1200,12 +1198,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
             justify-content: center;
             z-index: 980;
             box-sizing: border-box;
-        }
-        dialog.we-modal-overlay:not([open]) {
-            display: none;
-        }
-        dialog.we-modal-overlay::backdrop {
-            background: rgba(0,0,0,0.7);
         }
         .we-modal {
             background: rgb(var(--now-color_background--secondary));
@@ -3997,10 +3989,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         return $sce.trustAsHtml(escapeHtml(str));
                     }
                     var q = query.trim();
-                    var escapedStr = escapeHtml(str);
-                    var escapedQuery = escapeHtml(q);
-                    var regex = new RegExp('(' + escapeRegex(escapedQuery) + ')', 'gi');
-                    return $sce.trustAsHtml(escapedStr.replace(regex, '<mark>$1</mark>'));
+                    var regex = new RegExp(escapeRegex(q), 'gi');
+                    var out = '';
+                    var lastIndex = 0;
+                    var match;
+                    while ((match = regex.exec(str)) !== null) {
+                        out += escapeHtml(str.slice(lastIndex, match.index));
+                        out += '<mark>' + escapeHtml(match[0]) + '</mark>';
+                        lastIndex = match.index + match[0].length;
+                        if (match[0].length === 0) {
+                            regex.lastIndex++;
+                        }
+                    }
+                    out += escapeHtml(str.slice(lastIndex));
+                    return $sce.trustAsHtml(out);
                 };
             },
         ])
@@ -4481,7 +4483,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         attrs.$observe('weTooltipTitle', function (val) {
                             var text = val || '';
                             element.attr('data-original-title', text);
-                            element.attr('title', text);
                             var tip = element.data('bs.tooltip');
                             if (tip) {
                                 tip.options.title = text;
@@ -5360,57 +5361,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 };
 
                 $scope.onPickerItemKeydown = function (event, w) {
-                    var key = event && event.key;
-                    var keyCode = event && event.keyCode;
-
-                    if (
-                        key === 'Enter' ||
-                        keyCode === 13 ||
-                        key === ' ' ||
-                        key === 'Spacebar' ||
-                        keyCode === 32
-                    ) {
-                        if (event.target && event.target.closest && event.target.closest('.we-picker-action-btn')) {
-                            return;
-                        }
-                        event.preventDefault();
+                    _handleListItemKeydown(event, function () {
                         $scope.openWidget(w);
-                        return;
-                    }
-
-                    if (key === 'ArrowDown' || keyCode === 40) {
-                        event.preventDefault();
-                        var el = event.currentTarget;
-                        var list = el && el.parentElement;
-                        if (!list) return;
-                        var items = list.querySelectorAll('.we-picker-item');
-                        if (!items || !items.length) return;
-                        var idx = Array.prototype.indexOf.call(items, el);
-                        var nextIdx = (idx >= 0 && idx < items.length - 1) ? (idx + 1) : 0;
-                        var nextItem = items[nextIdx];
-                        if (nextItem && nextItem.focus) {
-                            nextItem.focus();
-                            if (typeof nextItem.scrollIntoView === 'function') {
-                                nextItem.scrollIntoView({ block: 'nearest' });
-                            }
-                        }
-                    } else if (key === 'ArrowUp' || keyCode === 38) {
-                        event.preventDefault();
-                        var el = event.currentTarget;
-                        var list = el && el.parentElement;
-                        if (!list) return;
-                        var items = list.querySelectorAll('.we-picker-item');
-                        if (!items || !items.length) return;
-                        var idx = Array.prototype.indexOf.call(items, el);
-                        var prevIdx = (idx > 0) ? (idx - 1) : (items.length - 1);
-                        var prevItem = items[prevIdx];
-                        if (prevItem && prevItem.focus) {
-                            prevItem.focus();
-                            if (typeof prevItem.scrollIntoView === 'function') {
-                                prevItem.scrollIntoView({ block: 'nearest' });
-                            }
-                        }
-                    }
+                    });
                 };
 
                 function _handleListSearchKeydown(event, itemSelector, onEnterFirst) {
@@ -11935,16 +11888,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.openOnPortalError = data.error || 'Failed to load pages/portals';
                             return;
                         }
-                        var rawInstances = data.instances || [];
-                        var seenPages = {};
-                        var uniqueInstances = [];
-                        rawInstances.forEach(function (inst) {
-                            if (inst && inst.pageId && !seenPages[inst.pageId]) {
-                                seenPages[inst.pageId] = true;
-                                uniqueInstances.push(inst);
-                            }
-                        });
-                        $scope.openOnPortalInstances = uniqueInstances;
+                        $scope.openOnPortalInstances = data.instances || [];
                         $scope.openOnPortalPortals = data.portals || [];
                         $scope.openOnPortalStep = $scope.openOnPortalInstances.length > 1 ? 'instance' : 'portal';
                     }, function () {
