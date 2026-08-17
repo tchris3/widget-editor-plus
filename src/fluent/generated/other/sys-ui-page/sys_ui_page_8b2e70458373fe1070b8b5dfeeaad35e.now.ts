@@ -85,44 +85,183 @@ Features version history, side-by-side diff comparison, related lists, and user 
             height: 99vh;
         }
 
-        /* Generic alert bars */
-        .we-alert-bar {
-            padding: 0.625rem 0.875rem;
+        /* Alert Status Pills Ribbon */
+        .we-alert-pills-row {
             display: flex;
-            justify-content: space-between;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.375rem 0.5rem;
+            padding: 0.3125rem 0.75rem;
+            background: rgb(var(--now-color_background--secondary, var(--now-color_background--tertiary)));
+            border-bottom: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.08);
+            flex-shrink: 0;
+            min-height: 2rem;
+        }
+
+        .we-alert-pill-wrapper {
+            position: relative;
+            display: inline-flex;
+        }
+
+        .we-alert-pill,
+        button.we-alert-pill,
+        .btn.we-alert-pill,
+        button:not(.btn).we-alert-pill {
+            all: unset;
+            box-sizing: border-box;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.3125rem !important;
+            height: 1.5rem !important;
+            padding: 0 0.625rem !important;
+            border-radius: 9999px !important;
+            font-size: var(--now-font-size--sm, 0.8125rem) !important;
+            font-weight: 500 !important;
+            line-height: 1 !important;
+            cursor: pointer !important;
+            user-select: none !important;
+            white-space: nowrap !important;
+            text-shadow: none !important;
+            box-shadow: none !important;
+            background-color: RGB(var(--now-alert--info--background-color, var(--now-color_alert--info-0, 224, 242, 254))) !important;
+            border: 1px solid RGB(var(--now-alert--info--border-color, var(--now-color_alert--info-1, 56, 189, 248))) !important;
+            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+            transition: all 0.15s ease !important;
+        }
+        .we-alert-pill:hover,
+        .we-alert-pill.active,
+        button.we-alert-pill:hover,
+        button.we-alert-pill.active {
+            filter: brightness(0.95) !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+        }
+        .we-alert-pill:focus-visible,
+        button.we-alert-pill:focus-visible,
+        .btn.we-alert-pill:focus-visible,
+        button:not(.btn).we-alert-pill:focus-visible {
+            outline: 2px solid rgb(var(--now-focus-ring--color, var(--now-color_focus--primary, var(--now-color--primary-2, 30, 133, 203)))) !important;
+            outline-offset: 2px !important;
+        }
+        .we-alert-pill:focus:not(:focus-visible),
+        button.we-alert-pill:focus:not(:focus-visible),
+        .btn.we-alert-pill:focus:not(:focus-visible),
+        button:not(.btn).we-alert-pill:focus:not(:focus-visible) {
+            outline: none !important;
+        }
+
+        .we-alert-pill i,
+        .we-alert-pill [class^="icon-"],
+        .we-alert-pill [class*=" icon-"] {
+            font-size: 0.8125rem !important;
+            line-height: 1 !important;
+            display: inline-block !important;
+            flex-shrink: 0 !important;
+            color: inherit !important;
+        }
+
+        .we-alert-pill--critical,
+        button.we-alert-pill--critical,
+        .btn.we-alert-pill--critical {
+            background-color: RGB(var(--now-alert--critical--background-color, var(--now-color_alert--critical-0, 255, 235, 235))) !important;
+            border-color: RGB(var(--now-alert--critical--border-color, var(--now-color_alert--critical-1, 230, 80, 80))) !important;
+            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+        }
+        .we-alert-pill--critical i,
+        .we-alert-pill--critical [class^="icon-"],
+        .we-alert-pill--critical [class*=" icon-"] {
+            color: RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 168, 30, 30))) !important;
+        }
+
+        .we-alert-pill--warning,
+        button.we-alert-pill--warning,
+        .btn.we-alert-pill--warning {
+            background-color: RGB(var(--now-alert--warning--background-color, var(--now-color_alert--warning-0, 254, 243, 199))) !important;
+            border-color: RGB(var(--now-alert--warning--border-color, var(--now-color_alert--warning-1, 245, 158, 11))) !important;
+            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+        }
+        .we-alert-pill--warning i,
+        .we-alert-pill--warning [class^="icon-"],
+        .we-alert-pill--warning [class*=" icon-"] {
+            color: RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 146, 64, 14))) !important;
+        }
+
+        .we-alert-pill--info,
+        button.we-alert-pill--info,
+        .btn.we-alert-pill--info {
+            background-color: RGB(var(--now-alert--info--background-color, var(--now-color_alert--info-0, 224, 242, 254))) !important;
+            border-color: RGB(var(--now-alert--info--border-color, var(--now-color_alert--info-1, 56, 189, 248))) !important;
+            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+        }
+        .we-alert-pill--info i,
+        .we-alert-pill--info [class^="icon-"],
+        .we-alert-pill--info [class*=" icon-"] {
+            color: RGB(var(--now-alert--info--color, var(--now-color_alert--info-3, 3, 105, 161))) !important;
+        }
+
+        /* Popover Card */
+        .we-alert-popover {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            z-index: 1000;
+            min-width: 17rem;
+            max-width: 22rem;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            color: rgb(var(--now-color_text--primary, 22, 27, 28));
+            border: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.15);
+            border-radius: var(--now-form-field--border-radius, 6px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.1);
+            padding: 0.875rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            font-size: var(--now-font-size--sm, 0.8125rem);
+            line-height: 1.45;
+        }
+
+        /* Popover Arrow / Caret */
+        .we-alert-popover::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 1rem;
+            width: 10px;
+            height: 10px;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            border-left: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.15);
+            border-top: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.15);
+            transform: rotate(45deg);
+        }
+
+        .we-alert-popover-title {
+            font-weight: 600;
+            font-size: var(--now-font-size--md, 0.875rem);
+            color: rgb(var(--now-color_text--primary));
+            display: flex;
             align-items: center;
             gap: 0.375rem;
-            flex-shrink: 0;
-            border-bottom: var(--now-alert--border-width, var(--now-messaging--border-width)) solid;
-            background: rgb(var(--now-alert--info--background-color, var(--now-color_alert--info-0)));
-            border-color: rgb(var(--now-alert--info--border-color, var(--now-color_alert--info-1)));
-            color: rgb(var(--now-color_text--secondary));
         }
 
-        .we-alert-bar strong { color: inherit; }
-        .we-alert-bar--critical {
-            background: rgb(var(--now-alert--critical--background-color));
-            border-color: rgb(var(--now-alert--critical--border-color));
-            color: rgb(var(--now-color_text--secondary));
-        }
-        .we-alert-bar--warning {
-            background: rgb(var(--now-alert--warning--background-color));
-            border-color: rgb(var(--now-alert--warning--border-color, var(--now-color_alert--warning-1)));
-            color: rgb(var(--now-color_text--secondary));
+        .we-alert-popover-body {
+            display: block;
+            color: rgb(var(--now-color_text--secondary, 107, 115, 126));
+            font-size: var(--now-font-size--sm, 0.8125rem);
+            line-height: 1.45;
+            word-break: normal;
+            overflow-wrap: break-word;
         }
 
-        .we-alert-bar-link {
-            color: inherit;
-            text-decoration: underline;
-            cursor: pointer;
-            margin-left: 0.25rem;
+        .we-alert-popover-body strong {
+            color: rgb(var(--now-color_text--primary));
         }
-        .we-alert-bar-link:hover { text-decoration: none; }
 
-        /* Version banner */
-        .we-version-banner {
-            padding: 0.625rem 0.75rem;
-            text-align: center;
+        .we-alert-popover-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.375rem;
+            margin-top: 0.25rem;
         }
 
         /* Header */
@@ -1969,7 +2108,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-picker-item-icon .icon-document,
         .we-picker-item-icon .icon-article,
         .we-picker-item-icon .icon-globe,
-        .we-picker-item-icon .icon-date-time {
+        .we-picker-item-icon .icon-history {
             font-size: 1rem;
             line-height: 1;
             display: inline-block;
@@ -2503,53 +2642,196 @@ Features version history, side-by-side diff comparison, related lists, and user 
             </div>
 
 
-            <!-- Write permission error banner -->
-            <div class="we-alert-bar we-alert-bar--critical" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; hasWritePermissionError() &amp;&amp; !permissionAlertDismissed">
-                <span><strong>Error:</strong>&nbsp;Unable to save widget (write permission denied).</span>
-                <span class="close" ng-click="dismissPermissionAlert()" aria-label="Dismiss">×</span>
-            </div>
+            <!-- Top Status Pills Alert Ribbon -->
+            <div class="we-alert-pills-row" ng-if="hasAnyAlerts()">
 
-            <!-- No write access info bar -->
-            <div class="we-alert-bar we-alert-bar--critical" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; !canWriteWidget &amp;&amp; !widgetSysPolicy">
-                <span ng-if="!widget.scope_mismatch">No write access to this widget.</span>
-                <span ng-if="widget.scope_mismatch">
-                    Different application scope —&nbsp;<strong ng-bind="widget.application"></strong>.
-                    <a class="we-alert-bar-link" ng-click="switchToWidgetScope()" style="margin-left: 0.3125rem;">Switch scope and reload</a>
-                </span>
-            </div>
+                <!-- ==================== 1. CRITICAL PILLS ==================== -->
 
-            <!-- Version read-only banner -->
-            <div class="we-version-banner we-alert-bar we-alert-bar--warning" ng-if="isVersionView">
-                <span ng-bind-template="Viewing version from {{versionInfo.sys_created_on}} by {{versionInfo.sys_created_by}}"></span><span ng-if="versionInfo.update_set_name" ng-bind-template=" — {{versionInfo.update_set_name}}"></span> — Read Only
-            </div>
+                <!-- Write permission error pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; hasWritePermissionError() &amp;&amp; !permissionAlertDismissed" we-close-on-outside-click="openDropdown" close-key="'alert-permission'" ng-mouseenter="onAlertPillEnter('alert-permission')" ng-mouseleave="onAlertPillLeave('alert-permission')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-permission'}" ng-focus="onAlertPillFocus('alert-permission')" ng-keydown="onAlertPillKeydown($event, 'alert-permission')" ng-click="toggleDropdown('alert-permission'); $event.stopPropagation()" aria-label="Save error details" aria-expanded="{{openDropdown === 'alert-permission'}}">
+                        <i class="icon-cross-circle" aria-hidden="true"></i>
+                        <span>Save Error</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-permission'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-permission')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-cross-circle" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true"></i>
+                            <span>Unable to Save Widget</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            Write permission was denied while trying to save changes to this widget.
+                        </div>
+                        <div class="we-alert-popover-actions">
+                            <button type="button" class="btn btn-default btn-sm" ng-click="dismissPermissionAlert(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-permission', true)">Dismiss</button>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- Widget reverted notification -->
-            <div class="we-version-banner we-alert-bar we-alert-bar--warning" ng-if="widgetReverted">
-                This widget has been reverted to a previous version.
-                <a class="we-alert-bar-link" ng-click="reloadPage()">Reload</a>
-            </div>
+                <!-- No write access / Scope mismatch pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; !canWriteWidget &amp;&amp; !widgetSysPolicy" we-close-on-outside-click="openDropdown" close-key="'alert-readonly'" ng-mouseenter="onAlertPillEnter('alert-readonly')" ng-mouseleave="onAlertPillLeave('alert-readonly')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-readonly'}" ng-focus="onAlertPillFocus('alert-readonly')" ng-keydown="onAlertPillKeydown($event, 'alert-readonly')" ng-click="toggleDropdown('alert-readonly'); $event.stopPropagation()" aria-label="Read-only access details" aria-expanded="{{openDropdown === 'alert-readonly'}}">
+                        <i class="icon-locked" aria-hidden="true" ng-if="!widget.scope_mismatch"></i>
+                        <i class="icon-error-circle" aria-hidden="true" ng-if="widget.scope_mismatch"></i>
+                        <span ng-if="!widget.scope_mismatch">Read-Only</span>
+                        <span ng-if="widget.scope_mismatch">Scope Mismatch</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-readonly'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-readonly')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-locked" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true" ng-if="!widget.scope_mismatch"></i>
+                            <i class="icon-error-circle" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true" ng-if="widget.scope_mismatch"></i>
+                            <span ng-if="!widget.scope_mismatch">Read-Only Widget</span>
+                            <span ng-if="widget.scope_mismatch">Scope Mismatch</span>
+                        </div>
+                        <div class="we-alert-popover-body" ng-if="!widget.scope_mismatch">
+                            You do not have write access to edit this widget.
+                        </div>
+                        <div class="we-alert-popover-body" ng-if="widget.scope_mismatch">
+                            This widget belongs to application scope&nbsp;<strong>{{widget.application}}</strong>. Switch to this scope to make changes.
+                        </div>
+                        <div class="we-alert-popover-actions" ng-if="widget.scope_mismatch">
+                            <button type="button" class="btn btn-primary btn-sm" ng-click="switchToWidgetScope(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-readonly', true)">Switch scope and reload</button>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- sys_policy read-only/protected bar -->
-            <div class="we-alert-bar we-alert-bar--critical" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; widgetSysPolicy">
-                <span>{{widget.name}} is {{widgetSysPolicyDisplay | lowercase}} and cannot be edited.</span>
-            </div>
+                <!-- sys_policy read-only/protected pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; widgetSysPolicy" we-close-on-outside-click="openDropdown" close-key="'alert-syspolicy'" ng-mouseenter="onAlertPillEnter('alert-syspolicy')" ng-mouseleave="onAlertPillLeave('alert-syspolicy')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-syspolicy'}" ng-focus="onAlertPillFocus('alert-syspolicy')" ng-keydown="onAlertPillKeydown($event, 'alert-syspolicy')" ng-click="toggleDropdown('alert-syspolicy'); $event.stopPropagation()" aria-label="Policy details" aria-expanded="{{openDropdown === 'alert-syspolicy'}}">
+                        <i class="icon-locked" aria-hidden="true"></i>
+                        <span>{{widgetSysPolicyDisplay || 'Protected'}}</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-syspolicy'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-syspolicy')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-locked" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true"></i>
+                            <span>Protected Policy</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-if="widget.name"><strong>{{widget.name}}</strong>&nbsp;is {{widgetSysPolicyDisplay | lowercase}} and cannot be edited.</span>
+                            <span ng-if="!widget.name">This widget is {{widgetSysPolicyDisplay | lowercase}} and cannot be edited.</span>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- ServiceNow widget bar -->
-            <div class="we-alert-bar we-alert-bar--warning" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; widgetIsServiceNow &amp;&amp; !snAlertDismissed">
-                <span><strong>Warning:</strong>&nbsp;<i>{{widget.name}}</i>&nbsp;is a ServiceNow widget — <a class="we-alert-bar-link" ng-click="cloneWidget()">Clone widget</a></span>
-                <span class="close" ng-click="dismissSnAlert()" aria-label="Dismiss">×</span>
-            </div>
+                <!-- Widget volatility High risk pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; widgetVolatilityLevel === 'High'" we-close-on-outside-click="openDropdown" close-key="'alert-volatility-high'" ng-mouseenter="onAlertPillEnter('alert-volatility-high')" ng-mouseleave="onAlertPillLeave('alert-volatility-high')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-volatility-high'}" ng-focus="onAlertPillFocus('alert-volatility-high')" ng-keydown="onAlertPillKeydown($event, 'alert-volatility-high')" ng-click="toggleDropdown('alert-volatility-high'); $event.stopPropagation()" aria-label="High volatility risk details" aria-expanded="{{openDropdown === 'alert-volatility-high'}}">
+                        <i class="icon-error-circle" aria-hidden="true"></i>
+                        <span>{{widgetVolatilityDisplay}} Risk</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-volatility-high'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-volatility-high')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-error-circle" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true"></i>
+                            <span>{{widgetVolatilityDisplay}} Risk File</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-if="widget.name"><strong>{{widget.name}}</strong>&nbsp;is a high risk file that might get updated again in later releases. Do not alter this file unless necessary.</span>
+                            <span ng-if="!widget.name">This widget is a high risk file that might get updated again in later releases. Do not alter this file unless necessary.</span>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- Update set mismatch bar -->
-            <div class="we-alert-bar" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; updateSetMismatch &amp;&amp; !updateSetAlertDismissed">
-                <span><strong>Notice:</strong>&nbsp;<i>{{widget.name}}</i>&nbsp;is currently being edited in the update set:&nbsp;<a class="we-alert-bar-link" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{widgetUpdateSetId}}" target="_blank"><strong>{{widgetUpdateSetName}}</strong><span class="icon-open-document-new-tab" style="display: inline-block; margin-left: 4px;"></span></a></span>
-                <span class="close" ng-click="dismissUpdateSetAlert()" aria-label="Dismiss">×</span>
-            </div>
+                <!-- ==================== 2. WARNING PILLS ==================== -->
 
-            <!-- Widget volatility risk bar -->
-            <div class="we-alert-bar" ng-class="widgetVolatilityLevel === 'High' ? 'we-alert-bar--critical' : 'we-alert-bar--warning'" ng-if="!loading &amp;&amp; !loadError &amp;&amp; !showPicker &amp;&amp; !isVersionView &amp;&amp; widgetVolatilityLevel &amp;&amp; !volatilityAlertDismissed">
-                <span><strong>Warning:</strong>&nbsp;<i>{{widget.name}}</i>&nbsp;is a&nbsp;<strong>{{widgetVolatilityDisplay}} Risk</strong>&nbsp;file that might get updated again in later releases. Do not alter this file unless necessary.</span>
-                <span class="close" ng-click="dismissVolatilityAlert()" aria-label="Dismiss">×</span>
+                <!-- Widget volatility Moderate/Low risk pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; widgetVolatilityLevel &amp;&amp; widgetVolatilityLevel !== 'High'" we-close-on-outside-click="openDropdown" close-key="'alert-volatility-mod'" ng-mouseenter="onAlertPillEnter('alert-volatility-mod')" ng-mouseleave="onAlertPillLeave('alert-volatility-mod')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-volatility-mod'}" ng-focus="onAlertPillFocus('alert-volatility-mod')" ng-keydown="onAlertPillKeydown($event, 'alert-volatility-mod')" ng-click="toggleDropdown('alert-volatility-mod'); $event.stopPropagation()" aria-label="Volatility risk details" aria-expanded="{{openDropdown === 'alert-volatility-mod'}}">
+                        <i class="icon-alert-triangle" aria-hidden="true"></i>
+                        <span>{{widgetVolatilityDisplay}} Risk</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-volatility-mod'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-volatility-mod')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-alert-triangle" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                            <span>{{widgetVolatilityDisplay}} Risk File</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-if="widget.name"><strong>{{widget.name}}</strong>&nbsp;is a {{widgetVolatilityDisplay | lowercase}} risk file that might get updated again in later releases. Do not alter this file unless necessary.</span>
+                            <span ng-if="!widget.name">This widget is a {{widgetVolatilityDisplay | lowercase}} risk file that might get updated again in later releases. Do not alter this file unless necessary.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ServiceNow widget pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; widgetIsServiceNow" we-close-on-outside-click="openDropdown" close-key="'alert-sn'" ng-mouseenter="onAlertPillEnter('alert-sn')" ng-mouseleave="onAlertPillLeave('alert-sn')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-sn'}" ng-focus="onAlertPillFocus('alert-sn')" ng-keydown="onAlertPillKeydown($event, 'alert-sn')" ng-click="toggleDropdown('alert-sn'); $event.stopPropagation()" aria-label="ServiceNow widget details" aria-expanded="{{openDropdown === 'alert-sn'}}">
+                        <i class="icon-star" aria-hidden="true"></i>
+                        <span>ServiceNow Widget</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-sn'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-sn')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-star" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                            <span>ServiceNow Widget</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-if="widget.name"><strong>{{widget.name}}</strong>&nbsp;is an out-of-the-box ServiceNow widget. Changes may be overwritten during future platform upgrades.</span>
+                            <span ng-if="!widget.name">This widget is an out-of-the-box ServiceNow widget. Changes may be overwritten during future platform upgrades.</span>
+                        </div>
+                        <div class="we-alert-popover-actions">
+                            <button type="button" class="btn btn-primary btn-sm" ng-click="cloneWidget(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-sn', true)">Clone widget</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Version read-only pill -->
+                <div class="we-alert-pill-wrapper" ng-if="isVersionView" we-close-on-outside-click="openDropdown" close-key="'alert-version'" ng-mouseenter="onAlertPillEnter('alert-version')" ng-mouseleave="onAlertPillLeave('alert-version')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-version'}" ng-focus="onAlertPillFocus('alert-version')" ng-keydown="onAlertPillKeydown($event, 'alert-version')" ng-click="toggleDropdown('alert-version'); $event.stopPropagation()" aria-label="Version history details" aria-expanded="{{openDropdown === 'alert-version'}}">
+                        <i class="icon-history" aria-hidden="true"></i>
+                        <span>Version History</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-version'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-version')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-history" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                            <span>Viewing Previous Version</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            Viewing version from&nbsp;<strong>{{versionInfo.sys_created_on}}</strong>&nbsp;by&nbsp;<strong>{{versionInfo.sys_created_by}}</strong><span ng-if="versionInfo.update_set_name">&nbsp;({{versionInfo.update_set_name}})</span>. This view is read-only.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Widget reverted notification pill -->
+                <div class="we-alert-pill-wrapper" ng-if="widgetReverted" we-close-on-outside-click="openDropdown" close-key="'alert-reverted'" ng-mouseenter="onAlertPillEnter('alert-reverted')" ng-mouseleave="onAlertPillLeave('alert-reverted')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-reverted'}" ng-focus="onAlertPillFocus('alert-reverted')" ng-keydown="onAlertPillKeydown($event, 'alert-reverted')" ng-click="toggleDropdown('alert-reverted'); $event.stopPropagation()" aria-label="Reverted version details" aria-expanded="{{openDropdown === 'alert-reverted'}}">
+                        <i class="icon-history" aria-hidden="true"></i>
+                        <span>Widget Reverted</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-reverted'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-reverted')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-history" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                            <span>Widget Reverted</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            This widget has been reverted to a previous version. Reload the page to reflect latest state.
+                        </div>
+                        <div class="we-alert-popover-actions">
+                            <button type="button" class="btn btn-primary btn-sm" ng-click="reloadPage(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-reverted', true)">Reload</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Different Update Set pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; updateSetMismatch &amp;&amp; !updateSetAlertDismissed" we-close-on-outside-click="openDropdown" close-key="'alert-updateset'" ng-mouseenter="onAlertPillEnter('alert-updateset')" ng-mouseleave="onAlertPillLeave('alert-updateset')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-updateset'}" ng-focus="onAlertPillFocus('alert-updateset')" ng-keydown="onAlertPillKeydown($event, 'alert-updateset')" ng-click="toggleDropdown('alert-updateset'); $event.stopPropagation()" aria-label="Different update set details" aria-expanded="{{openDropdown === 'alert-updateset'}}">
+                        <i class="icon-user-selected" aria-hidden="true"></i>
+                        <span>Different Update Set</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-updateset'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-updateset')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class=" icon-user-selected" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                            <span>Different Update Set</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-if="widget.name"><strong>{{widget.name}}</strong>&nbsp;is currently being edited in update set&nbsp;<strong>{{widgetUpdateSetName}}</strong>.</span>
+                            <span ng-if="!widget.name">This widget is currently being edited in update set&nbsp;<strong>{{widgetUpdateSetName}}</strong>.</span>
+                        </div>
+                        <div class="we-alert-popover-actions">
+                            <button type="button" class="btn btn-default btn-sm" ng-click="dismissUpdateSetAlert(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-updateset', false)">Dismiss</button>
+                            <a class="btn btn-primary btn-sm" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{widgetUpdateSetId}}" target="_blank" ng-click="openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-updateset', true)">
+                                Open Update Set&nbsp;<i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!--  Header -->
@@ -3582,7 +3864,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </div>
                     <div class="we-picker-title-actions">
                         <button type="button" class="btn btn-default we-picker-history-toggle" ng-if="userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.recentWidgets.length" ng-click="toggleRecentWidgetsPane()" ng-class="{'we-picker-history-toggle--active': userPrefs.showOpenHistory}" aria-pressed="{{!!userPrefs.showOpenHistory}}" we-tooltip-title="{{userPrefs.showOpenHistory ? 'Hide recently opened widgets' : 'Show recently opened widgets'}}" aria-label="History">
-                            <i class="icon-date-time" aria-hidden="true"></i>
+                            <i class="icon-history" aria-hidden="true"></i>
                         </button>
                         <button type="button" class="btn btn-primary we-picker-btn-new" ng-click="newWidget()">
                             <span>+ New Widget</span>
@@ -3647,7 +3929,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <div class="we-picker-list">
                             <div class="we-picker-item" ng-repeat="w in userPrefs.recentWidgets | limitTo:10 track by w.sys_id" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
                                 <span class="we-picker-item-icon" aria-hidden="true">
-                                    <i class="icon-date-time" aria-hidden="true"></i>
+                                    <i class="icon-history" aria-hidden="true"></i>
                                 </span>
                                 <div class="we-picker-item-content">
                                     <span class="we-picker-item-name" ng-bind="w.name"></span>
@@ -5935,6 +6217,33 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     return item.type === 'pane' && item.saveError && (item.saveError.indexOf('permission') !== -1 || item.saveError.indexOf('write access') !== -1);
                                 });
                                 return hasPaneError;
+                            };
+                            $scope.hasAnyAlerts = function () {
+                                if ($scope.loading || $scope.loadError || $scope.showPicker) {
+                                    return false;
+                                }
+                                if ($scope.isVersionView || $scope.widgetReverted) {
+                                    return true;
+                                }
+                                if ($scope.hasWritePermissionError() && !$scope.permissionAlertDismissed) {
+                                    return true;
+                                }
+                                if (!$scope.canWriteWidget && !$scope.widgetSysPolicy) {
+                                    return true;
+                                }
+                                if ($scope.widgetSysPolicy) {
+                                    return true;
+                                }
+                                if ($scope.widgetIsServiceNow) {
+                                    return true;
+                                }
+                                if ($scope.updateSetMismatch && !$scope.updateSetAlertDismissed) {
+                                    return true;
+                                }
+                                if ($scope.widgetVolatilityLevel) {
+                                    return true;
+                                }
+                                return false;
                             };
                             $scope.updateSetMismatch =
                                 !!data.widget.update_set_mismatch;
@@ -10899,6 +11208,114 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 $scope.onPublicChange = function () {
                     // Roles are cleared on Save if is_public is true — not immediately
+                };
+
+                // Alert Status Pills Hover & Keyboard Management
+                var alertHoverTimer = null;
+                $scope.onAlertPillEnter = function (key) {
+                    if (alertHoverTimer) {
+                        $timeout.cancel(alertHoverTimer);
+                    }
+                    alertHoverTimer = $timeout(function () {
+                        $scope.openDropdown = key;
+                    }, 280);
+                };
+                $scope.onAlertPillLeave = function (key) {
+                    if (alertHoverTimer) {
+                        $timeout.cancel(alertHoverTimer);
+                        alertHoverTimer = null;
+                    }
+                    alertHoverTimer = $timeout(function () {
+                        if ($scope.openDropdown === key) {
+                            $scope.openDropdown = null;
+                        }
+                    }, 180);
+                };
+                $scope.onAlertPopoverEnter = function () {
+                    if (alertHoverTimer) {
+                        $timeout.cancel(alertHoverTimer);
+                        alertHoverTimer = null;
+                    }
+                };
+                $scope.onAlertPopoverLeave = function (key) {
+                    if (alertHoverTimer) {
+                        $timeout.cancel(alertHoverTimer);
+                    }
+                    alertHoverTimer = $timeout(function () {
+                        if ($scope.openDropdown === key) {
+                            $scope.openDropdown = null;
+                        }
+                    }, 120);
+                };
+                $scope.onAlertPillFocus = function (key) {
+                    if (alertHoverTimer) {
+                        $timeout.cancel(alertHoverTimer);
+                        alertHoverTimer = null;
+                    }
+                    $scope.openDropdown = key;
+                };
+                $scope.onAlertPillKeydown = function ($event, key) {
+                    if ($event.keyCode === 27) {
+                        $event.preventDefault();
+                        $event.stopPropagation();
+                        $scope.openDropdown = null;
+                    } else if ($event.keyCode === 13 || $event.keyCode === 32) {
+                        $event.preventDefault();
+                        $event.stopPropagation();
+                        $scope.toggleDropdown(key);
+                    } else if ($event.keyCode === 9 && !$event.shiftKey) {
+                        var currentBtn = $event.currentTarget;
+                        var wrapper = currentBtn.closest ? currentBtn.closest('.we-alert-pill-wrapper') : null;
+                        if (wrapper) {
+                            var firstAction = wrapper.querySelector('.we-alert-popover-actions button, .we-alert-popover-actions a');
+                            if (firstAction) {
+                                $event.preventDefault();
+                                $event.stopPropagation();
+                                $scope.openDropdown = key;
+                                $timeout(function () {
+                                    firstAction.focus();
+                                }, 0);
+                            }
+                        }
+                    }
+                };
+                $scope.onAlertActionKeydown = function ($event, key, isLast) {
+                    if ($event.keyCode === 27) {
+                        $event.preventDefault();
+                        $event.stopPropagation();
+                        $scope.openDropdown = null;
+                        var wrapper = $event.currentTarget.closest ? $event.currentTarget.closest('.we-alert-pill-wrapper') : null;
+                        if (wrapper) {
+                            var pillBtn = wrapper.querySelector('.we-alert-pill');
+                            if (pillBtn) { pillBtn.focus(); }
+                        }
+                    } else if ($event.keyCode === 9 && !$event.shiftKey && isLast) {
+                        var currentWrapper = $event.currentTarget.closest ? $event.currentTarget.closest('.we-alert-pill-wrapper') : null;
+                        $scope.openDropdown = null;
+                        if (currentWrapper && currentWrapper.parentElement) {
+                            var allWrappers = Array.prototype.slice.call(currentWrapper.parentElement.querySelectorAll('.we-alert-pill-wrapper'));
+                            var idx = allWrappers.indexOf(currentWrapper);
+                            if (idx >= 0 && idx < allWrappers.length - 1) {
+                                var nextPill = allWrappers[idx + 1].querySelector('.we-alert-pill');
+                                if (nextPill) {
+                                    $event.preventDefault();
+                                    $event.stopPropagation();
+                                    nextPill.focus();
+                                }
+                            }
+                        }
+                    } else if ($event.keyCode === 9 && $event.shiftKey) {
+                        var wrapperEl = $event.currentTarget.closest ? $event.currentTarget.closest('.we-alert-pill-wrapper') : null;
+                        if (wrapperEl) {
+                            var actions = wrapperEl.querySelectorAll('.we-alert-popover-actions button, .we-alert-popover-actions a');
+                            if (actions.length > 0 && actions[0] === $event.currentTarget) {
+                                $event.preventDefault();
+                                $event.stopPropagation();
+                                var pill = wrapperEl.querySelector('.we-alert-pill');
+                                if (pill) { pill.focus(); }
+                            }
+                        }
+                    }
                 };
 
                 // Dropdown management

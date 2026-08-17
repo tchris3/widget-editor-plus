@@ -2919,10 +2919,16 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 error: 'Widget not found',
             });
         }
-        if (!gr.canWrite()) {
+        if (!gr.canRead()) {
             return this._answer({
                 success: false,
-                error: 'No write access to widget',
+                error: 'No read access to widget',
+            });
+        }
+        if (!new GlideRecordSecure('sp_widget').canCreate()) {
+            return this._answer({
+                success: false,
+                error: 'No permission to create widgets',
             });
         }
 
@@ -2942,6 +2948,15 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             });
         }
         newSysId = newSysId + '';
+
+        // Ensure cloned widget explicitly has servicenow and internal set to false
+        var updateGR = new GlideRecord('sp_widget');
+        if (updateGR.get(newSysId)) {
+            updateGR.setValue('servicenow', false);
+            updateGR.setValue('internal', false);
+            updateGR.setValue('sys_policy', '');
+            updateGR.update();
+        }
 
         // Clone widget dependencies
         var depGR = new GlideRecordSecure('m2m_sp_widget_dependency');
