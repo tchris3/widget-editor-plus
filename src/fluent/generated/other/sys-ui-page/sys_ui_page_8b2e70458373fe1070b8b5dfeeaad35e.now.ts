@@ -2008,6 +2008,19 @@ Features version history, side-by-side diff comparison, related lists, and user 
             line-height: 1.2;
         }
 
+        /* Search match highlighting using ServiceNow CSS variables */
+        .we-picker-item mark {
+            background-color: rgba(var(--now-color--primary-1, 0, 118, 204), 0.22);
+            color: rgb(var(--now-color_text--primary));
+            font-weight: 600;
+            padding: 0 0.125rem;
+            border-radius: var(--now-form-field--border-radius, 2px);
+        }
+        .we-picker-item-id mark {
+            color: rgb(var(--now-color_text--primary));
+            background-color: rgba(var(--now-color--primary-1, 0, 118, 204), 0.28);
+        }
+
         /* Action Buttons Cluster (Ext Link, Remove) — 100% Identical */
         .we-picker-item-actions {
             display: flex;
@@ -3267,7 +3280,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 <i class="icon-script" aria-hidden="true"></i>
                             </span>
                             <div class="we-picker-item-content">
-                                <span class="we-picker-item-name" ng-bind="dep.name"></span>
+                                <span class="we-picker-item-name" ng-bind-html="dep.name | weHighlight:linkDependencyActiveSearch"></span>
                             </div>
                             <div class="we-picker-item-actions">
                                 <a class="we-picker-action-btn" ng-href="/nav_to.do?uri=sp_dependency.do%3Fsys_id={{dep.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open dependency in platform">
@@ -3324,7 +3337,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 <i class="icon-script" aria-hidden="true"></i>
                             </span>
                             <div class="we-picker-item-content">
-                                <span class="we-picker-item-name" ng-bind="p.name"></span>
+                                <span class="we-picker-item-name" ng-bind-html="p.name | weHighlight:linkProviderActiveSearch"></span>
                             </div>
                             <div class="we-picker-item-actions">
                                 <a class="we-picker-action-btn" ng-href="/nav_to.do?uri=sp_angular_provider.do%3Fsys_id={{p.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open provider in platform">
@@ -3575,7 +3588,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <span class="we-picker-title">Open a Widget</span>
                     </div>
                     <div class="we-picker-title-actions">
-                        <button type="button" class="btn btn-default we-picker-history-toggle" ng-if="userPrefs.showRecentlyOpenedWidgets !== false" ng-click="toggleRecentWidgetsPane()" ng-class="{'we-picker-history-toggle--active': userPrefs.showOpenHistory}" aria-pressed="{{!!userPrefs.showOpenHistory}}" we-tooltip-title="{{userPrefs.showOpenHistory ? 'Hide recently opened widgets' : 'Show recently opened widgets'}}" aria-label="History">
+                        <button type="button" class="btn btn-default we-picker-history-toggle" ng-if="userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.recentWidgets.length" ng-click="toggleRecentWidgetsPane()" ng-class="{'we-picker-history-toggle--active': userPrefs.showOpenHistory}" aria-pressed="{{!!userPrefs.showOpenHistory}}" we-tooltip-title="{{userPrefs.showOpenHistory ? 'Hide recently opened widgets' : 'Show recently opened widgets'}}" aria-label="History">
                             <i class="icon-date-time" aria-hidden="true"></i>
                         </button>
                         <button type="button" class="btn btn-primary we-picker-btn-new" ng-click="newWidget()">
@@ -3617,8 +3630,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     <i class="icon-script" aria-hidden="true"></i>
                                 </span>
                                 <div class="we-picker-item-content">
-                                    <span class="we-picker-item-name" ng-bind="w.name"></span>
-                                    <span class="we-picker-item-id" ng-bind="w.id"></span>
+                                    <span class="we-picker-item-name" ng-bind-html="w.name | weHighlight:pickerActiveSearch"></span>
+                                    <span class="we-picker-item-id" ng-bind-html="w.id | weHighlight:pickerActiveSearch"></span>
                                 </div>
                                 <div class="we-picker-item-actions">
                                     <a class="we-picker-action-btn" ng-href="{{w.widgetEditorUrl}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in new tab" aria-label="Open widget in new tab">
@@ -3955,6 +3968,41 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
     angular
         .module('widgetEditor', [])
+
+        // Filter: weHighlight — Wraps matching search query in native <mark> tags without custom CSS overrides.
+        .filter('weHighlight', [
+            '$sce',
+            function ($sce) {
+                function escapeRegex(s) {
+                    return s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+                }
+                function escapeHtml(s) {
+                    if (!s) {
+                        return '';
+                    }
+                    return String(s)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                }
+                return function (text, query) {
+                    if (text === null || typeof text === 'undefined') {
+                        return '';
+                    }
+                    var str = String(text);
+                    if (!query || typeof query !== 'string' || !query.trim()) {
+                        return $sce.trustAsHtml(escapeHtml(str));
+                    }
+                    var q = query.trim();
+                    var escapedStr = escapeHtml(str);
+                    var escapedQuery = escapeHtml(q);
+                    var regex = new RegExp('(' + escapeRegex(escapedQuery) + ')', 'gi');
+                    return $sce.trustAsHtml(escapedStr.replace(regex, '<mark>$1</mark>'));
+                };
+            },
+        ])
 
         // Directive: we-splitter-drag — Adds mousedown-drag behaviour to splitter elements.
         .directive('weSplitterDrag', [
