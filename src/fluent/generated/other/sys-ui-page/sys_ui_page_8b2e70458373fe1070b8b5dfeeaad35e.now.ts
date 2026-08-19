@@ -92,7 +92,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             align-items: center;
             gap: 0.375rem 0.5rem;
             padding: 0.3125rem 0.75rem;
-            background: rgb(var(--now-color_background--secondary, var(--now-color_background--tertiary)));
+            background: rgb(var(--now-color_background--tertiary, var(--now-color--neutral-2)));
             border-bottom: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.08);
             flex-shrink: 0;
             min-height: 2rem;
@@ -2108,7 +2108,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-picker-item-name {
             font-size: var(--now-font-size--md, 0.875rem);
-            font-weight: 500;
+            font-weight: 400;
             color: rgb(var(--now-color_text--primary));
             white-space: nowrap;
             overflow: hidden;
