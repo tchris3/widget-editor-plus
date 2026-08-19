@@ -1748,6 +1748,25 @@ Features version history, side-by-side diff comparison, related lists, and user 
             animation: we-loader-spin 0.75s linear infinite;
             transform-origin: center;
         }
+        .we-header-loader {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: RGB(var(--now-loader_icon--color, var(--now-loading_indicator--primary--color, var(--now-color--primary-1, 56, 126, 245))));
+            line-height: 1;
+            flex-shrink: 0;
+            vertical-align: middle;
+        }
+        @keyframes we-header-loader-spin {
+            to { transform: rotate(360deg); }
+        }
+        .we-header-loader-icon {
+            display: block;
+            width: 0.75rem;
+            height: 0.75rem;
+            animation: we-header-loader-spin 0.75s linear infinite;
+            transform-origin: center;
+        }
         .we-loading {
             display: flex;
             flex-direction: column;
@@ -3552,6 +3571,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <span class="we-picker-section-title">
                             <span>Dependencies</span>
                             <span class="we-picker-count-badge" ng-if="linkDependencyTotal" ng-bind="linkDependencyTotal"></span>
+                            <we-header-loader ng-if="linkDependencySearching || linkDependencyLoadingMore"></we-header-loader>
                         </span>
                     </div>
                     <div class="we-picker-list" we-infinite-scroll="loadMoreLinkDependencies()">
@@ -3609,6 +3629,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <span class="we-picker-section-title">
                             <span>Providers</span>
                             <span class="we-picker-count-badge" ng-if="linkProviderTotal" ng-bind="linkProviderTotal"></span>
+                            <we-header-loader ng-if="linkProviderSearching || linkProviderLoadingMore"></we-header-loader>
                         </span>
                     </div>
                     <div class="we-picker-list" we-infinite-scroll="loadMoreLinkProviders()">
@@ -3901,6 +3922,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <span class="we-picker-section-title">
                                 <span>Widgets</span>
                                 <span class="we-picker-count-badge" ng-if="pickerTotal" ng-bind="pickerTotal"></span>
+                                <we-header-loader ng-if="pickerLoading || pickerLoadingMore"></we-header-loader>
                             </span>
                         </div>
 
@@ -4737,6 +4759,22 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         '<svg class="we-loader-icon" aria-hidden="true" viewBox="0 0 16 16">' +
                         '<path d="M13 8a5 5 0 1 1-2.592-4.383c.208.115.47.09.638-.078l.738-.737a.47.47 0 0 0-.067-.735 7 7 0 1 0 2.216 2.216.47.47 0 0 0-.735-.067l-.737.738a.54.54 0 0 0-.078.638A5 5 0 0 1 13 8"/>' +
                         '</svg>',
+                };
+            },
+        ])
+
+        // Directive: we-header-loader — Animated SVG loading spinner next to modal section headers
+        .directive('weHeaderLoader', [
+            function () {
+                return {
+                    restrict: 'E',
+                    template:
+                        '<span class="we-header-loader" aria-label="Loading" title="Loading…">' +
+                        '<svg class="we-header-loader-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' +
+                        '<circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" fill="none" opacity="0.25"/>' +
+                        '<path d="M8 2a6 6 0 0 1 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>' +
+                        '</svg>' +
+                        '</span>',
                 };
             },
         ])
@@ -5729,6 +5767,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 var pickerDebounce;
                 $scope.onPickerSearch = function () {
+                    $scope.pickerLoading = true;
                     $timeout.cancel(pickerDebounce);
                     pickerDebounce = $timeout(function () {
                         loadWidgetList($scope.picker.search);
@@ -5737,6 +5776,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 $scope.clearPickerSearch = function () {
                     $scope.picker.search = '';
+                    $scope.pickerLoading = true;
                     $scope.onPickerSearch();
                 };
 
@@ -5877,6 +5917,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 $scope.clearLinkDepSearch = function () {
                     $scope.linkDependency.search = '';
+                    $scope.linkDependencySearching = true;
                     $scope.onLinkDependencySearch();
                 };
                 $scope.onLinkDepSearchKeydown = function (event) {
@@ -5894,6 +5935,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 $scope.clearLinkProviderSearch = function () {
                     $scope.linkProvider.search = '';
+                    $scope.linkProviderSearching = true;
                     $scope.onLinkProviderSearch();
                 };
                 $scope.onLinkProviderSearchKeydown = function (event) {
@@ -6043,6 +6085,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.openWidgetPickerModal = function () {
                     $scope.picker.search = '';
                     $scope.pickerWidgets = [];
+                    $scope.pickerLoading = true;
                     loadWidgetList('');
                     _refreshRecentWidgetsResolved();
                     $scope.showWidgetPickerModal = true;
@@ -10530,11 +10573,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.linkProvider.search = '';
                     $scope.linkProviderActiveSearch = '';
                     $scope.linkProviderResults = [];
+                    $scope.linkProviderSearching = true;
                     $scope.showLinkProviderModal = true;
                     loadLinkProviderResults('');
                 };
 
                 $scope.onLinkProviderSearch = function () {
+                    $scope.linkProviderSearching = true;
                     $timeout.cancel(_linkProviderDebounce);
                     _linkProviderDebounce = $timeout(function () {
                         loadLinkProviderResults($scope.linkProvider.search);
@@ -10823,11 +10868,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.linkDependency.search = '';
                     $scope.linkDependencyActiveSearch = '';
                     $scope.linkDependencyResults = [];
+                    $scope.linkDependencySearching = true;
                     $scope.showLinkDependencyModal = true;
                     _loadLinkDependencyResults('');
                 };
 
                 $scope.onLinkDependencySearch = function () {
+                    $scope.linkDependencySearching = true;
                     $timeout.cancel(_linkDepDebounce);
                     _linkDepDebounce = $timeout(function () {
                         _loadLinkDependencyResults(
