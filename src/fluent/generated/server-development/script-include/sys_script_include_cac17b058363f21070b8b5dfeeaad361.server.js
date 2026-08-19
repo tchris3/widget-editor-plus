@@ -74,6 +74,35 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     },
 
     /**
+     * Returns name/id for a set of sp_widget records, for resolving recent-widget history.
+     * Accepts `sys_ids` (comma-separated sys_ids).
+     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string}>}} Return value.
+     */
+    getWidgetsBySysIds: function () {
+        var sysIds = (this.getParameter('sys_ids') || '').split(',').filter(function (id) {
+            return !!id;
+        });
+        var widgets = [];
+        if (sysIds.length) {
+            var gr = new GlideRecordSecure('sp_widget');
+            gr.addQuery('sys_id', 'IN', sysIds.join(','));
+            gr.setLimit(this.RECORD_LIMIT);
+            gr.query();
+            while (gr.next()) {
+                widgets.push({
+                    sys_id: gr.getUniqueValue(),
+                    name: gr.getValue('name'),
+                    id: gr.getValue('id'),
+                });
+            }
+        }
+        return this._answer({
+            success: true,
+            widgets: widgets,
+        });
+    },
+
+    /**
      * Returns the full field set for a single sp_widget record, including ES12 state,
      * write access flags, and the earliest update-version origin info.
      * Accepts `sys_id` (sp_widget sys_id).

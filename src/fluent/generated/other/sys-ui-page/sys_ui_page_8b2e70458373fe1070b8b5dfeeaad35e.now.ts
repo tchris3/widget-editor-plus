@@ -1600,6 +1600,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
        
         .we-modal-footer {
             display: flex;
+            align-items: center;
             justify-content: space-between;
             gap: 0.5rem;
             padding: 0.75rem 1rem;
@@ -3514,7 +3515,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </div>
                 </div>
                 <div class="we-modal-footer">
-                    <button class="btn btn-default" ng-click="resetUserPrefsModal()" style="margin-right:auto" we-tooltip-title="Restore all preferences to their default values.">Reset</button>
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-right:auto">
+                        <button class="btn btn-default" ng-click="resetUserPrefsModal()" we-tooltip-title="Restore all preferences to their default values.">Reset</button>
+                        <button class="btn btn-default" ng-click="exportUserPrefs()" we-tooltip-title="Download your current preferences as a JSON file.">Export</button>
+                        <button class="btn btn-default" ng-click="triggerImportUserPrefs()" we-tooltip-title="Load preferences from a JSON file.">Import</button>
+                        <input type="file" id="we-import-prefs-input" accept="application/json" style="display:none" we-file-change="importUserPrefsFile($file)" />
+                        <span ng-if="importPrefsStatus.text" ng-style="{color: importPrefsStatus.type === 'error' ? 'rgb(var(--now-color_alert--critical-2))' : 'rgb(var(--now-color_text--secondary))'}" style="font-size:var(--now-font-size--sm)" ng-bind="importPrefsStatus.text"></span>
+                    </div>
                     <button class="btn btn-default" ng-click="cancelUserPrefsModal()">Cancel</button>
                     <button class="btn btn-primary" ng-click="saveUserPrefsModal()">Save</button>
                 </div>
@@ -3921,7 +3928,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <a class="we-picker-clear-link" ng-click="clearWidgetHistory()" role="button" tabindex="0" title="Clear all recent widget history">Clear history</a>
                         </div>
                         <div class="we-picker-list">
-                            <div class="we-picker-item" ng-repeat="w in userPrefs.recentWidgets | limitTo:10 track by w.sys_id" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
+                            <div class="we-picker-item" ng-repeat="w in recentWidgetsResolved | limitTo:10 track by w.sys_id" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
                                 <span class="we-picker-item-icon" aria-hidden="true">
                                     <i class="icon-history" aria-hidden="true"></i>
                                 </span>
@@ -4983,6 +4990,27 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
+        // Directive: we-file-change="handler($file)" — invokes handler with the selected File on a file input's change event.
+        .directive('weFileChange', [
+            function () {
+                return {
+                    restrict: 'A',
+                    link: function (scope, el, attrs) {
+                        el.on('change', function () {
+                            var file = el[0].files && el[0].files[0];
+                            el[0].value = '';
+                            if (!file) {
+                                return;
+                            }
+                            scope.$apply(function () {
+                                scope.$eval(attrs.weFileChange, { $file: file });
+                            });
+                        });
+                    },
+                };
+            },
+        ])
+
         // Controller: WidgetEditorCtrl
         .controller('WidgetEditorCtrl', [
             '$scope',
@@ -5443,6 +5471,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     editorOrder: [],
                     editorVisibility: {},
                 };
+                $scope.recentWidgetsResolved = [];
                 $scope.showUserPrefsModal = false;
                 $scope.userPrefsEdit = {};
                 $scope.showOptionSchemaModal = false;
@@ -5810,22 +5839,44 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     );
                 }
 
-                function _mergeRecentWidget(list, w) {
-                    var entry = { sys_id: w.sys_id, name: w.name, id: w.id };
-                    var merged = (list || []).filter(function (r) {
-                        return r.sys_id !== entry.sys_id;
+                function _mergeRecentWidget(list, sysId) {
+                    var merged = (list || []).filter(function (id) {
+                        return id !== sysId;
                     });
-                    merged.unshift(entry);
+                    merged.unshift(sysId);
                     return merged.slice(0, 10);
+                }
+
+                function _refreshRecentWidgetsResolved() {
+                    var ids = ($scope.userPrefs.recentWidgets || []).slice(0, 10);
+                    if (!ids.length) {
+                        $scope.recentWidgetsResolved = [];
+                        return;
+                    }
+                    ajax('getWidgetsBySysIds', { sys_ids: ids }).then(function (d) {
+                        var byId = {};
+                        (d && d.success ? d.widgets : []).forEach(function (w) {
+                            byId[w.sys_id] = w;
+                        });
+                        $scope.recentWidgetsResolved = ids
+                            .map(function (id) { return byId[id]; })
+                            .filter(function (w) { return !!w; });
+                    });
                 }
 
                 $scope.clearWidgetHistory = function () {
                     $scope.userPrefs.recentWidgets = [];
+                    $scope.recentWidgetsResolved = [];
                     saveUserPrefs();
                 };
 
                 $scope.removeRecentWidget = function (w) {
                     $scope.userPrefs.recentWidgets = $scope.userPrefs.recentWidgets.filter(
+                        function (id) {
+                            return id !== w.sys_id;
+                        }
+                    );
+                    $scope.recentWidgetsResolved = $scope.recentWidgetsResolved.filter(
                         function (r) {
                             return r.sys_id !== w.sys_id;
                         }
@@ -5841,7 +5892,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 function navigateToWidget(w) {
                     var recentWidgets = _mergeRecentWidget(
                         $scope.userPrefs.recentWidgets,
-                        w
+                        w.sys_id
                     );
                     var go = function () {
                         window.location.href = buildWidgetEditorUrl(w.sys_id);
@@ -5902,6 +5953,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.picker.search = '';
                     $scope.pickerWidgets = [];
                     loadWidgetList('');
+                    _refreshRecentWidgetsResolved();
                     $scope.showWidgetPickerModal = true;
                 };
 
@@ -6036,6 +6088,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                     if (p.hasOwnProperty('recentWidgets') && Array.isArray(p.recentWidgets)) {
                         $scope.userPrefs.recentWidgets = p.recentWidgets;
+                        _refreshRecentWidgetsResolved();
                     }
                     if (p.hasOwnProperty('ctrlSSaveActiveOnly')) {
                         $scope.userPrefs.ctrlSSaveActiveOnly =
@@ -6352,11 +6405,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             if (!$scope.isVersionView) {
                                 $scope.userPrefs.recentWidgets = _mergeRecentWidget(
                                     $scope.userPrefs.recentWidgets,
-                                    {
-                                        sys_id: SYS_ID,
-                                        name: data.widget.name,
-                                        id: data.widget.id,
-                                    }
+                                    SYS_ID
                                 );
                                 saveUserPrefs({
                                     recentWidgets: $scope.userPrefs.recentWidgets,
@@ -10135,7 +10184,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     applyVisibility();
                 };
 
-                function saveUserPrefs(overrides) {
+                function _buildUserPrefsBlob() {
                     _snapshotEditorPrefs();
                     var prefs = {};
                     $scope.coreEditorDefs.forEach(function (d) {
@@ -10180,6 +10229,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     prefs.order = $scope.coreEditorDefs.map(function (d) {
                         return d.key;
                     });
+                    return prefs;
+                }
+
+                function saveUserPrefs(overrides) {
+                    var prefs = _buildUserPrefsBlob();
                     if (overrides) {
                         Object.keys(overrides).forEach(function (k) {
                             prefs[k] = overrides[k];
@@ -12085,6 +12139,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         availableFonts: _getAvailableMonospaceFonts(),
                         googleFonts: _GOOGLE_FONTS,
                     };
+                    $scope.importPrefsStatus = null;
                     $scope.showUserPrefsModal = true;
                     $scope.openDropdown = null;
                 };
@@ -12277,6 +12332,126 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.userPrefsEdit.showOpenInVsCode = true;
                     $scope.userPrefsEdit.showRecentlyOpenedWidgets = true;
                     $scope.userPrefsEdit.showOpenHistory = true;
+                };
+
+                $scope.importPrefsStatus = null;
+
+                $scope.exportUserPrefs = function () {
+                    var blob = new Blob(
+                        [JSON.stringify(_buildUserPrefsBlob(), null, 2)],
+                        { type: 'application/json' }
+                    );
+                    var url = URL.createObjectURL(blob);
+                    var now = new Date();
+                    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+                    var stamp = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
+                        '_' + pad(now.getHours()) + '-' + pad(now.getMinutes()) + '-' + pad(now.getSeconds());
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'widget-editor-prefs-' + stamp + '.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                };
+
+                $scope.triggerImportUserPrefs = function () {
+                    document.getElementById('we-import-prefs-input').click();
+                };
+
+                function _applyPrefsBlobToEdit(p) {
+                    if (p.order && Array.isArray(p.order)) {
+                        var orderedKeys = p.order.concat(
+                            $scope.coreEditorDefs
+                                .map(function (d) { return d.key; })
+                                .filter(function (k) { return p.order.indexOf(k) === -1; })
+                        );
+                        $scope.userPrefsEdit.editors = orderedKeys.map(function (key) {
+                            var existing = $scope.userPrefsEdit.editors.filter(function (e) { return e.key === key; })[0];
+                            var def = $scope.coreEditorDefs.filter(function (d) { return d.key === key; })[0];
+                            return {
+                                key: key,
+                                label: def ? def.label : key,
+                                visible: p.hasOwnProperty(key) ? !!p[key] : (existing ? existing.visible : (def ? def.visible : true)),
+                            };
+                        });
+                    } else {
+                        $scope.userPrefsEdit.editors.forEach(function (e) {
+                            if (p.hasOwnProperty(e.key)) {
+                                e.visible = !!p[e.key];
+                            }
+                        });
+                    }
+                    [
+                        'formatTabsToSpaces', 'wordWrap', 'editorTheme', 'minimap',
+                        'alwaysShowLink', 'realtimeWidgetUpdates', 'autoIndent',
+                        'formatOnPaste', 'formatOnType', 'fontFamily', 'languageHelpers',
+                        'showUnusedVars', 'stickyScroll', 'htmlValidation',
+                        'htmlAutoCloseTags', 'autoSurround', 'autoClosingBrackets',
+                        'autoClosingQuotes', 'linkedEditing', 'insertSpaceBeforeFuncParen',
+                        'ctrlSSaveActiveOnly', 'flashOnEditorOpen', 'showOpenInVsCode',
+                        'showRecentlyOpenedWidgets', 'showOpenHistory',
+                    ].forEach(function (k) {
+                        if (p.hasOwnProperty(k)) {
+                            $scope.userPrefsEdit[k] = p[k];
+                        }
+                    });
+                    if (p.hasOwnProperty('fontSize')) {
+                        var fs = parseInt(p.fontSize, 10);
+                        if (fs >= 8 && fs <= 32) {
+                            $scope.userPrefsEdit.fontSize = fs;
+                        }
+                    }
+                    if (p.hasOwnProperty('tabSize')) {
+                        var ts = parseInt(p.tabSize, 10);
+                        if (ts >= 1 && ts <= 8) {
+                            $scope.userPrefsEdit.tabSize = ts;
+                        }
+                    }
+                    if (p.hasOwnProperty('remBase')) {
+                        var rb = parseFloat(p.remBase);
+                        if (rb > 0) {
+                            $scope.userPrefsEdit.remBase = rb;
+                        }
+                    }
+                    if (p.hasOwnProperty('recentWidgets') && Array.isArray(p.recentWidgets)) {
+                        $scope.userPrefs.recentWidgets = p.recentWidgets;
+                        _refreshRecentWidgetsResolved();
+                    }
+                }
+
+                $scope.importUserPrefsFile = function (file) {
+                    $scope.importPrefsStatus = null;
+                    var reader = new FileReader();
+                    reader.onload = function () {
+                        $scope.$apply(function () {
+                            try {
+                                var parsed = JSON.parse(reader.result);
+                                if (!parsed || typeof parsed !== 'object') {
+                                    throw new Error('File does not contain a preferences object.');
+                                }
+                                _applyPrefsBlobToEdit(parsed);
+                                $scope.importPrefsStatus = {
+                                    type: 'success',
+                                    text: 'Preferences loaded. Click Save to apply.',
+                                };
+                            } catch (e) {
+                                $scope.importPrefsStatus = {
+                                    type: 'error',
+                                    text: 'Import failed: ' + (e.message || String(e)),
+                                };
+                            }
+                        });
+                    };
+                    reader.onerror = function () {
+                        $scope.$apply(function () {
+                            $scope.importPrefsStatus = {
+                                type: 'error',
+                                text: 'Could not read the selected file.',
+                            };
+                        });
+                    };
+                    reader.readAsText(file);
                 };
 
                 /* Trigger the modal leave animation, then invoke the close callback after it
