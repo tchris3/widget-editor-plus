@@ -6163,6 +6163,19 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.showPicker = true;
                         $scope.loading = false;
                         loadWidgetList('');
+                        ajax('getUserPrefs', {}).then(function (prefsData) {
+                            if (
+                                prefsData &&
+                                prefsData.success &&
+                                prefsData.value
+                            ) {
+                                try {
+                                    _applyUserPrefsData(
+                                        JSON.parse(prefsData.value)
+                                    );
+                                } catch (e) {}
+                            }
+                        });
                         return;
                     }
 
@@ -6334,6 +6347,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         JSON.parse(prefsData.value)
                                     );
                                 } catch (e) {}
+                            }
+
+                            if (!$scope.isVersionView) {
+                                $scope.userPrefs.recentWidgets = _mergeRecentWidget(
+                                    $scope.userPrefs.recentWidgets,
+                                    {
+                                        sys_id: SYS_ID,
+                                        name: data.widget.name,
+                                        id: data.widget.id,
+                                    }
+                                );
+                                saveUserPrefs({
+                                    recentWidgets: $scope.userPrefs.recentWidgets,
+                                });
                             }
 
                             if ($scope.isVersionView) {
