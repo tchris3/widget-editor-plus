@@ -135,10 +135,6 @@ declare global {
                         table: 'sys_module'
                         id: 'a4e68998db2a415d9539b57cb626d4a9'
                     }
-                    'widget-editor-record-limit': {
-                        table: 'sys_properties'
-                        id: 'ad6ba1d936344db993031b6e49532e2b'
-                    }
                 }
                 composite: [
                     {

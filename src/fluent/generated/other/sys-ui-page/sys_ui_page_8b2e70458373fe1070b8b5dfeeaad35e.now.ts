@@ -92,7 +92,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             align-items: center;
             gap: 0.375rem 0.5rem;
             padding: 0.3125rem 0.75rem;
-            background: rgb(var(--now-color_background--tertiary, var(--now-color--neutral-2)));
+            background: rgb(var(--now-color_background--secondary, var(--now-color_background--tertiary)));
             border-bottom: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.08);
             flex-shrink: 0;
             min-height: 2rem;
@@ -1600,7 +1600,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
        
         .we-modal-footer {
             display: flex;
-            align-items: center;
             justify-content: space-between;
             gap: 0.5rem;
             padding: 0.75rem 1rem;
@@ -1746,25 +1745,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
             height: 1rem;
             fill: RGB(var(--now-loader_icon--color, var(--now-loading_indicator--primary--color, var(--now-color--primary-1))));
             animation: we-loader-spin 0.75s linear infinite;
-            transform-origin: center;
-        }
-        .we-header-loader {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: RGB(var(--now-loader_icon--color, var(--now-loading_indicator--primary--color, var(--now-color--primary-1, 56, 126, 245))));
-            line-height: 1;
-            flex-shrink: 0;
-            vertical-align: middle;
-        }
-        @keyframes we-header-loader-spin {
-            to { transform: rotate(360deg); }
-        }
-        .we-header-loader-icon {
-            display: block;
-            width: 0.75rem;
-            height: 0.75rem;
-            animation: we-header-loader-spin 0.75s linear infinite;
             transform-origin: center;
         }
         .we-loading {
@@ -2011,12 +1991,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
             gap: 0.1875rem;
             padding-right: 0.25rem;
         }
-        .we-picker-load-more {
-            display: flex;
-            justify-content: center;
-            padding: 0.5rem 0;
-            flex-shrink: 0;
-        }
         .we-picker-list::-webkit-scrollbar {
             width: 6px;
         }
@@ -2134,7 +2108,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-picker-item-name {
             font-size: var(--now-font-size--md, 0.875rem);
-            font-weight: 400;
+            font-weight: 500;
             color: rgb(var(--now-color_text--primary));
             white-space: nowrap;
             overflow: hidden;
@@ -3540,13 +3514,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </div>
                 </div>
                 <div class="we-modal-footer">
-                    <div style="display:flex;align-items:center;gap:0.5rem;margin-right:auto">
-                        <button class="btn btn-default" ng-click="resetUserPrefsModal()" we-tooltip-title="Restore all preferences to their default values.">Reset</button>
-                        <button class="btn btn-default" ng-click="exportUserPrefs()" we-tooltip-title="Download your current preferences as a JSON file.">Export</button>
-                        <button class="btn btn-default" ng-click="triggerImportUserPrefs()" we-tooltip-title="Load preferences from a JSON file.">Import</button>
-                        <input type="file" id="we-import-prefs-input" accept="application/json" style="display:none" we-file-change="importUserPrefsFile($file)" />
-                        <span ng-if="importPrefsStatus.text" ng-style="{color: importPrefsStatus.type === 'error' ? 'rgb(var(--now-color_alert--critical-2))' : 'rgb(var(--now-color_text--secondary))'}" style="font-size:var(--now-font-size--sm)" ng-bind="importPrefsStatus.text"></span>
-                    </div>
+                    <button class="btn btn-default" ng-click="resetUserPrefsModal()" style="margin-right:auto" we-tooltip-title="Restore all preferences to their default values.">Reset</button>
                     <button class="btn btn-default" ng-click="cancelUserPrefsModal()">Cancel</button>
                     <button class="btn btn-primary" ng-click="saveUserPrefsModal()">Save</button>
                 </div>
@@ -3570,11 +3538,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <div class="we-picker-section-header">
                         <span class="we-picker-section-title">
                             <span>Dependencies</span>
-                            <span class="we-picker-count-badge" ng-if="linkDependencyTotal" ng-bind="linkDependencyTotal"></span>
-                            <we-header-loader ng-if="linkDependencySearching || linkDependencyLoadingMore"></we-header-loader>
+                            <span class="we-picker-count-badge" ng-if="linkDependencyResults.length" ng-bind="linkDependencyResults.length"></span>
                         </span>
                     </div>
-                    <div class="we-picker-list" we-infinite-scroll="loadMoreLinkDependencies()">
+                    <div class="we-picker-list">
                         <div class="we-picker-empty" ng-if="!linkDependencySearching &amp;&amp; linkDependencyResults.length === 0">
                             <span class="we-picker-empty-title">No dependencies found</span>
                         </div>
@@ -3591,7 +3558,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 </a>
                             </div>
                         </div>
-                        <div class="we-picker-load-more" ng-if="linkDependencyLoadingMore"><we-loader></we-loader></div>
                     </div>
                 </div>
             </div>
@@ -3628,11 +3594,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <div class="we-picker-section-header">
                         <span class="we-picker-section-title">
                             <span>Providers</span>
-                            <span class="we-picker-count-badge" ng-if="linkProviderTotal" ng-bind="linkProviderTotal"></span>
-                            <we-header-loader ng-if="linkProviderSearching || linkProviderLoadingMore"></we-header-loader>
+                            <span class="we-picker-count-badge" ng-if="linkProviderResults.length" ng-bind="linkProviderResults.length"></span>
                         </span>
                     </div>
-                    <div class="we-picker-list" we-infinite-scroll="loadMoreLinkProviders()">
+                    <div class="we-picker-list">
                         <div class="we-picker-empty" ng-if="!linkProviderSearching &amp;&amp; linkProviderResults.length === 0">
                             <span class="we-picker-empty-title">No providers found</span>
                         </div>
@@ -3650,7 +3615,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 </a>
                             </div>
                         </div>
-                        <div class="we-picker-load-more" ng-if="linkProviderLoadingMore"><we-loader></we-loader></div>
                     </div>
                 </div>
             </div>
@@ -3921,13 +3885,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <div class="we-picker-section-header">
                             <span class="we-picker-section-title">
                                 <span>Widgets</span>
-                                <span class="we-picker-count-badge" ng-if="pickerTotal" ng-bind="pickerTotal"></span>
-                                <we-header-loader ng-if="pickerLoading || pickerLoadingMore"></we-header-loader>
+                                <span class="we-picker-count-badge" ng-if="pickerWidgets.length" ng-bind="pickerWidgets.length"></span>
                             </span>
                         </div>
 
                         <!-- Results List -->
-                        <div class="we-picker-list" we-infinite-scroll="loadMoreWidgets()">
+                        <div class="we-picker-list">
                             <div class="we-picker-empty" ng-if="!pickerLoading &amp;&amp; pickerWidgets.length === 0">
                                 <span class="we-picker-empty-title">No widgets found</span>
                             </div>
@@ -3945,7 +3908,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     </a>
                                 </div>
                             </div>
-                            <div class="we-picker-load-more" ng-if="pickerLoadingMore"><we-loader></we-loader></div>
                         </div>
                     </div>
 
@@ -3959,7 +3921,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <a class="we-picker-clear-link" ng-click="clearWidgetHistory()" role="button" tabindex="0" title="Clear all recent widget history">Clear history</a>
                         </div>
                         <div class="we-picker-list">
-                            <div class="we-picker-item" ng-repeat="w in recentWidgetsResolved | limitTo:10 track by w.sys_id" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
+                            <div class="we-picker-item" ng-repeat="w in userPrefs.recentWidgets | limitTo:10 track by w.sys_id" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
                                 <span class="we-picker-item-icon" aria-hidden="true">
                                     <i class="icon-history" aria-hidden="true"></i>
                                 </span>
@@ -4763,22 +4725,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
             },
         ])
 
-        // Directive: we-header-loader — Animated SVG loading spinner next to modal section headers
-        .directive('weHeaderLoader', [
-            function () {
-                return {
-                    restrict: 'E',
-                    template:
-                        '<span class="we-header-loader" aria-label="Loading" title="Loading…">' +
-                        '<svg class="we-header-loader-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' +
-                        '<circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" fill="none" opacity="0.25"/>' +
-                        '<path d="M8 2a6 6 0 0 1 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>' +
-                        '</svg>' +
-                        '</span>',
-                };
-            },
-        ])
-
         // Directive: we-spinner — Renders the circular loading spinner SVG; colour is inherited via currentColor.
         .directive('weSpinner', [
             function () {
@@ -5031,51 +4977,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                         scope.$on('$destroy', function () {
                             if (ro) { ro.disconnect(); }
-                        });
-                    },
-                };
-            },
-        ])
-
-        // Directive: we-file-change="handler($file)" — invokes handler with the selected File on a file input's change event.
-        .directive('weFileChange', [
-            function () {
-                return {
-                    restrict: 'A',
-                    link: function (scope, el, attrs) {
-                        el.on('change', function () {
-                            var file = el[0].files && el[0].files[0];
-                            el[0].value = '';
-                            if (!file) {
-                                return;
-                            }
-                            scope.$apply(function () {
-                                scope.$eval(attrs.weFileChange, { $file: file });
-                            });
-                        });
-                    },
-                };
-            },
-        ])
-
-        // Directive: we-infinite-scroll="handler()" — invokes handler when the element is scrolled near its bottom.
-        .directive('weInfiniteScroll', [
-            function () {
-                var THRESHOLD_PX = 120;
-                return {
-                    restrict: 'A',
-                    link: function (scope, el, attrs) {
-                        function onScroll() {
-                            var node = el[0];
-                            if (node.scrollTop + node.clientHeight >= node.scrollHeight - THRESHOLD_PX) {
-                                scope.$apply(function () {
-                                    scope.$eval(attrs.weInfiniteScroll);
-                                });
-                            }
-                        }
-                        el.on('scroll', onScroll);
-                        scope.$on('$destroy', function () {
-                            el.off('scroll', onScroll);
                         });
                     },
                 };
@@ -5418,9 +5319,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.pickerWidgets = [];
                 $scope.pickerLoading = false;
                 $scope.picker = { search: '' };
-                $scope.pickerTotal = 0;
-                $scope.pickerHasMore = false;
-                $scope.pickerLoadingMore = false;
 
                 // Roles
                 $scope.rolesList = [];
@@ -5500,15 +5398,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.linkDependency = { search: '' };
                 $scope.linkDependencyResults = [];
                 $scope.linkDependencySearching = false;
-                $scope.linkDependencyTotal = 0;
-                $scope.linkDependencyHasMore = false;
-                $scope.linkDependencyLoadingMore = false;
                 $scope.pendingUnlinkDependency = null;
                 $scope.linkProviderResults = [];
                 $scope.linkProviderSearching = false;
-                $scope.linkProviderTotal = 0;
-                $scope.linkProviderHasMore = false;
-                $scope.linkProviderLoadingMore = false;
 
                 // Write-access state
                 $scope.canWriteWidget = true;
@@ -5551,7 +5443,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     editorOrder: [],
                     editorVisibility: {},
                 };
-                $scope.recentWidgetsResolved = [];
                 $scope.showUserPrefsModal = false;
                 $scope.userPrefsEdit = {};
                 $scope.showOptionSchemaModal = false;
@@ -5697,9 +5588,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 var _widgetListRequestId = 0;
                 function loadWidgetList(search) {
                     $scope.pickerLoading = true;
-                    $scope.pickerHasMore = false;
                     var requestId = ++_widgetListRequestId;
-                    ajax('getWidgets', { search: search, offset: 0 }).then(
+                    ajax('getWidgets', { search: search }).then(
                         function (d) {
                             if (requestId !== _widgetListRequestId) {
                                 return;
@@ -5713,9 +5603,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                               return w;
                                           })
                                         : [];
-                            $scope.pickerTotal = d.success ? d.total || 0 : 0;
-                            $scope.pickerHasMore =
-                                $scope.pickerWidgets.length < $scope.pickerTotal;
                             $scope.pickerLoading = false;
                         },
                         function () {
@@ -5724,50 +5611,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             }
                             $scope.pickerActiveSearch = search;
                             $scope.pickerWidgets = [];
-                            $scope.pickerTotal = 0;
-                            $scope.pickerHasMore = false;
                             $scope.pickerLoading = false;
                         }
                     );
                 }
 
-                $scope.loadMoreWidgets = function () {
-                    if ($scope.pickerLoading || $scope.pickerLoadingMore || !$scope.pickerHasMore) {
-                        return;
-                    }
-                    $scope.pickerLoadingMore = true;
-                    var requestId = _widgetListRequestId;
-                    var search = $scope.pickerActiveSearch;
-                    ajax('getWidgets', {
-                        search: search,
-                        offset: $scope.pickerWidgets.length,
-                    }).then(
-                        function (d) {
-                            $scope.pickerLoadingMore = false;
-                            if (requestId !== _widgetListRequestId) {
-                                return;
-                            }
-                            var more =
-                                d.success && d.widgets
-                                    ? d.widgets.map(function (w) {
-                                          w.widgetEditorUrl = buildWidgetEditorUrl(w.sys_id);
-                                          return w;
-                                      })
-                                    : [];
-                            $scope.pickerWidgets = $scope.pickerWidgets.concat(more);
-                            $scope.pickerTotal = d.success ? d.total || 0 : $scope.pickerTotal;
-                            $scope.pickerHasMore =
-                                $scope.pickerWidgets.length < $scope.pickerTotal;
-                        },
-                        function () {
-                            $scope.pickerLoadingMore = false;
-                        }
-                    );
-                };
-
                 var pickerDebounce;
                 $scope.onPickerSearch = function () {
-                    $scope.pickerLoading = true;
                     $timeout.cancel(pickerDebounce);
                     pickerDebounce = $timeout(function () {
                         loadWidgetList($scope.picker.search);
@@ -5776,7 +5626,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 $scope.clearPickerSearch = function () {
                     $scope.picker.search = '';
-                    $scope.pickerLoading = true;
                     $scope.onPickerSearch();
                 };
 
@@ -5876,14 +5725,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         var el = event.currentTarget;
                         var list = el && el.parentElement;
                         if (!list) return;
-                        // Every picker list is paginated except recent widgets, which has no fixed "last item" to wrap to.
-                        var noWrap = !(list.closest && list.closest('.we-picker-col-recent'));
                         var items = list.querySelectorAll('.we-picker-item');
                         if (!items || !items.length) return;
                         var idx = Array.prototype.indexOf.call(items, el);
-                        if (idx === items.length - 1 && noWrap) {
-                            return;
-                        }
                         var nextIdx = (idx >= 0 && idx < items.length - 1) ? (idx + 1) : 0;
                         var nextItem = items[nextIdx];
                         if (nextItem && nextItem.focus) {
@@ -5897,13 +5741,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         var el = event.currentTarget;
                         var list = el && el.parentElement;
                         if (!list) return;
-                        var noWrap = !(list.closest && list.closest('.we-picker-col-recent'));
                         var items = list.querySelectorAll('.we-picker-item');
                         if (!items || !items.length) return;
                         var idx = Array.prototype.indexOf.call(items, el);
-                        if (idx === 0 && noWrap) {
-                            return;
-                        }
                         var prevIdx = (idx > 0) ? (idx - 1) : (items.length - 1);
                         var prevItem = items[prevIdx];
                         if (prevItem && prevItem.focus) {
@@ -5917,7 +5757,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 $scope.clearLinkDepSearch = function () {
                     $scope.linkDependency.search = '';
-                    $scope.linkDependencySearching = true;
                     $scope.onLinkDependencySearch();
                 };
                 $scope.onLinkDepSearchKeydown = function (event) {
@@ -5935,7 +5774,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 $scope.clearLinkProviderSearch = function () {
                     $scope.linkProvider.search = '';
-                    $scope.linkProviderSearching = true;
                     $scope.onLinkProviderSearch();
                 };
                 $scope.onLinkProviderSearchKeydown = function (event) {
@@ -5972,44 +5810,22 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     );
                 }
 
-                function _mergeRecentWidget(list, sysId) {
-                    var merged = (list || []).filter(function (id) {
-                        return id !== sysId;
+                function _mergeRecentWidget(list, w) {
+                    var entry = { sys_id: w.sys_id, name: w.name, id: w.id };
+                    var merged = (list || []).filter(function (r) {
+                        return r.sys_id !== entry.sys_id;
                     });
-                    merged.unshift(sysId);
+                    merged.unshift(entry);
                     return merged.slice(0, 10);
-                }
-
-                function _refreshRecentWidgetsResolved() {
-                    var ids = ($scope.userPrefs.recentWidgets || []).slice(0, 10);
-                    if (!ids.length) {
-                        $scope.recentWidgetsResolved = [];
-                        return;
-                    }
-                    ajax('getWidgetsBySysIds', { sys_ids: ids }).then(function (d) {
-                        var byId = {};
-                        (d && d.success ? d.widgets : []).forEach(function (w) {
-                            byId[w.sys_id] = w;
-                        });
-                        $scope.recentWidgetsResolved = ids
-                            .map(function (id) { return byId[id]; })
-                            .filter(function (w) { return !!w; });
-                    });
                 }
 
                 $scope.clearWidgetHistory = function () {
                     $scope.userPrefs.recentWidgets = [];
-                    $scope.recentWidgetsResolved = [];
                     saveUserPrefs();
                 };
 
                 $scope.removeRecentWidget = function (w) {
                     $scope.userPrefs.recentWidgets = $scope.userPrefs.recentWidgets.filter(
-                        function (id) {
-                            return id !== w.sys_id;
-                        }
-                    );
-                    $scope.recentWidgetsResolved = $scope.recentWidgetsResolved.filter(
                         function (r) {
                             return r.sys_id !== w.sys_id;
                         }
@@ -6025,7 +5841,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 function navigateToWidget(w) {
                     var recentWidgets = _mergeRecentWidget(
                         $scope.userPrefs.recentWidgets,
-                        w.sys_id
+                        w
                     );
                     var go = function () {
                         window.location.href = buildWidgetEditorUrl(w.sys_id);
@@ -6085,9 +5901,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.openWidgetPickerModal = function () {
                     $scope.picker.search = '';
                     $scope.pickerWidgets = [];
-                    $scope.pickerLoading = true;
                     loadWidgetList('');
-                    _refreshRecentWidgetsResolved();
                     $scope.showWidgetPickerModal = true;
                 };
 
@@ -6222,7 +6036,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                     if (p.hasOwnProperty('recentWidgets') && Array.isArray(p.recentWidgets)) {
                         $scope.userPrefs.recentWidgets = p.recentWidgets;
-                        _refreshRecentWidgetsResolved();
                     }
                     if (p.hasOwnProperty('ctrlSSaveActiveOnly')) {
                         $scope.userPrefs.ctrlSSaveActiveOnly =
@@ -6350,19 +6163,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.showPicker = true;
                         $scope.loading = false;
                         loadWidgetList('');
-                        ajax('getUserPrefs', {}).then(function (prefsData) {
-                            if (
-                                prefsData &&
-                                prefsData.success &&
-                                prefsData.value
-                            ) {
-                                try {
-                                    _applyUserPrefsData(
-                                        JSON.parse(prefsData.value)
-                                    );
-                                } catch (e) {}
-                            }
-                        });
                         return;
                     }
 
@@ -6534,16 +6334,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         JSON.parse(prefsData.value)
                                     );
                                 } catch (e) {}
-                            }
-
-                            if (!$scope.isVersionView) {
-                                $scope.userPrefs.recentWidgets = _mergeRecentWidget(
-                                    $scope.userPrefs.recentWidgets,
-                                    SYS_ID
-                                );
-                                saveUserPrefs({
-                                    recentWidgets: $scope.userPrefs.recentWidgets,
-                                });
                             }
 
                             if ($scope.isVersionView) {
@@ -10318,7 +10108,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     applyVisibility();
                 };
 
-                function _buildUserPrefsBlob() {
+                function saveUserPrefs(overrides) {
                     _snapshotEditorPrefs();
                     var prefs = {};
                     $scope.coreEditorDefs.forEach(function (d) {
@@ -10363,11 +10153,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     prefs.order = $scope.coreEditorDefs.map(function (d) {
                         return d.key;
                     });
-                    return prefs;
-                }
-
-                function saveUserPrefs(overrides) {
-                    var prefs = _buildUserPrefsBlob();
                     if (overrides) {
                         Object.keys(overrides).forEach(function (k) {
                             prefs[k] = overrides[k];
@@ -10573,13 +10358,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.linkProvider.search = '';
                     $scope.linkProviderActiveSearch = '';
                     $scope.linkProviderResults = [];
-                    $scope.linkProviderSearching = true;
                     $scope.showLinkProviderModal = true;
                     loadLinkProviderResults('');
                 };
 
                 $scope.onLinkProviderSearch = function () {
-                    $scope.linkProviderSearching = true;
                     $timeout.cancel(_linkProviderDebounce);
                     _linkProviderDebounce = $timeout(function () {
                         loadLinkProviderResults($scope.linkProvider.search);
@@ -10597,12 +10380,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 var _linkProviderRequestId = 0;
                 function loadLinkProviderResults(search) {
                     $scope.linkProviderSearching = true;
-                    $scope.linkProviderHasMore = false;
                     var requestId = ++_linkProviderRequestId;
                     ajax('getAllProviders', {
                         sys_id: SYS_ID,
                         search: search,
-                        offset: 0,
                     }).then(function (d) {
                         if (requestId !== _linkProviderRequestId) {
                             return;
@@ -10611,41 +10392,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.linkProviderActiveSearch = search;
                         if (d.success) {
                             $scope.linkProviderResults = d.providers;
-                            $scope.linkProviderTotal = d.total || 0;
-                            $scope.linkProviderHasMore =
-                                $scope.linkProviderResults.length < $scope.linkProviderTotal;
                         }
                     });
                 }
-
-                $scope.loadMoreLinkProviders = function () {
-                    if ($scope.linkProviderSearching || $scope.linkProviderLoadingMore || !$scope.linkProviderHasMore) {
-                        return;
-                    }
-                    $scope.linkProviderLoadingMore = true;
-                    var requestId = _linkProviderRequestId;
-                    ajax('getAllProviders', {
-                        sys_id: SYS_ID,
-                        search: $scope.linkProviderActiveSearch,
-                        offset: $scope.linkProviderResults.length,
-                    }).then(
-                        function (d) {
-                            $scope.linkProviderLoadingMore = false;
-                            if (requestId !== _linkProviderRequestId) {
-                                return;
-                            }
-                            if (d.success) {
-                                $scope.linkProviderResults = $scope.linkProviderResults.concat(d.providers);
-                                $scope.linkProviderTotal = d.total || 0;
-                                $scope.linkProviderHasMore =
-                                    $scope.linkProviderResults.length < $scope.linkProviderTotal;
-                            }
-                        },
-                        function () {
-                            $scope.linkProviderLoadingMore = false;
-                        }
-                    );
-                };
 
                 $scope.selectLinkProvider = function (p) {
                     _closeModal(function () {
@@ -10868,13 +10617,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.linkDependency.search = '';
                     $scope.linkDependencyActiveSearch = '';
                     $scope.linkDependencyResults = [];
-                    $scope.linkDependencySearching = true;
                     $scope.showLinkDependencyModal = true;
                     _loadLinkDependencyResults('');
                 };
 
                 $scope.onLinkDependencySearch = function () {
-                    $scope.linkDependencySearching = true;
                     $timeout.cancel(_linkDepDebounce);
                     _linkDepDebounce = $timeout(function () {
                         _loadLinkDependencyResults(
@@ -10887,12 +10634,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 var _linkDependencyRequestId = 0;
                 function _loadLinkDependencyResults(search) {
                     $scope.linkDependencySearching = true;
-                    $scope.linkDependencyHasMore = false;
                     var requestId = ++_linkDependencyRequestId;
                     ajax('getAllDependencies', {
                         sys_id: SYS_ID,
                         search: search,
-                        offset: 0,
                     }).then(function (d) {
                         if (requestId !== _linkDependencyRequestId) {
                             return;
@@ -10901,41 +10646,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.linkDependencyActiveSearch = search;
                         if (d.success) {
                             $scope.linkDependencyResults = d.dependencies;
-                            $scope.linkDependencyTotal = d.total || 0;
-                            $scope.linkDependencyHasMore =
-                                $scope.linkDependencyResults.length < $scope.linkDependencyTotal;
                         }
                     });
                 }
-
-                $scope.loadMoreLinkDependencies = function () {
-                    if ($scope.linkDependencySearching || $scope.linkDependencyLoadingMore || !$scope.linkDependencyHasMore) {
-                        return;
-                    }
-                    $scope.linkDependencyLoadingMore = true;
-                    var requestId = _linkDependencyRequestId;
-                    ajax('getAllDependencies', {
-                        sys_id: SYS_ID,
-                        search: $scope.linkDependencyActiveSearch,
-                        offset: $scope.linkDependencyResults.length,
-                    }).then(
-                        function (d) {
-                            $scope.linkDependencyLoadingMore = false;
-                            if (requestId !== _linkDependencyRequestId) {
-                                return;
-                            }
-                            if (d.success) {
-                                $scope.linkDependencyResults = $scope.linkDependencyResults.concat(d.dependencies);
-                                $scope.linkDependencyTotal = d.total || 0;
-                                $scope.linkDependencyHasMore =
-                                    $scope.linkDependencyResults.length < $scope.linkDependencyTotal;
-                            }
-                        },
-                        function () {
-                            $scope.linkDependencyLoadingMore = false;
-                        }
-                    );
-                };
 
                 $scope.selectLinkDependency = function (dep) {
                     _closeModal(function () {
@@ -12345,7 +12058,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         availableFonts: _getAvailableMonospaceFonts(),
                         googleFonts: _GOOGLE_FONTS,
                     };
-                    $scope.importPrefsStatus = null;
                     $scope.showUserPrefsModal = true;
                     $scope.openDropdown = null;
                 };
@@ -12538,126 +12250,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.userPrefsEdit.showOpenInVsCode = true;
                     $scope.userPrefsEdit.showRecentlyOpenedWidgets = true;
                     $scope.userPrefsEdit.showOpenHistory = true;
-                };
-
-                $scope.importPrefsStatus = null;
-
-                $scope.exportUserPrefs = function () {
-                    var blob = new Blob(
-                        [JSON.stringify(_buildUserPrefsBlob(), null, 2)],
-                        { type: 'application/json' }
-                    );
-                    var url = URL.createObjectURL(blob);
-                    var now = new Date();
-                    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
-                    var stamp = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
-                        '_' + pad(now.getHours()) + '-' + pad(now.getMinutes()) + '-' + pad(now.getSeconds());
-                    var a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'widget-editor-prefs-' + stamp + '.json';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                };
-
-                $scope.triggerImportUserPrefs = function () {
-                    document.getElementById('we-import-prefs-input').click();
-                };
-
-                function _applyPrefsBlobToEdit(p) {
-                    if (p.order && Array.isArray(p.order)) {
-                        var orderedKeys = p.order.concat(
-                            $scope.coreEditorDefs
-                                .map(function (d) { return d.key; })
-                                .filter(function (k) { return p.order.indexOf(k) === -1; })
-                        );
-                        $scope.userPrefsEdit.editors = orderedKeys.map(function (key) {
-                            var existing = $scope.userPrefsEdit.editors.filter(function (e) { return e.key === key; })[0];
-                            var def = $scope.coreEditorDefs.filter(function (d) { return d.key === key; })[0];
-                            return {
-                                key: key,
-                                label: def ? def.label : key,
-                                visible: p.hasOwnProperty(key) ? !!p[key] : (existing ? existing.visible : (def ? def.visible : true)),
-                            };
-                        });
-                    } else {
-                        $scope.userPrefsEdit.editors.forEach(function (e) {
-                            if (p.hasOwnProperty(e.key)) {
-                                e.visible = !!p[e.key];
-                            }
-                        });
-                    }
-                    [
-                        'formatTabsToSpaces', 'wordWrap', 'editorTheme', 'minimap',
-                        'alwaysShowLink', 'realtimeWidgetUpdates', 'autoIndent',
-                        'formatOnPaste', 'formatOnType', 'fontFamily', 'languageHelpers',
-                        'showUnusedVars', 'stickyScroll', 'htmlValidation',
-                        'htmlAutoCloseTags', 'autoSurround', 'autoClosingBrackets',
-                        'autoClosingQuotes', 'linkedEditing', 'insertSpaceBeforeFuncParen',
-                        'ctrlSSaveActiveOnly', 'flashOnEditorOpen', 'showOpenInVsCode',
-                        'showRecentlyOpenedWidgets', 'showOpenHistory',
-                    ].forEach(function (k) {
-                        if (p.hasOwnProperty(k)) {
-                            $scope.userPrefsEdit[k] = p[k];
-                        }
-                    });
-                    if (p.hasOwnProperty('fontSize')) {
-                        var fs = parseInt(p.fontSize, 10);
-                        if (fs >= 8 && fs <= 32) {
-                            $scope.userPrefsEdit.fontSize = fs;
-                        }
-                    }
-                    if (p.hasOwnProperty('tabSize')) {
-                        var ts = parseInt(p.tabSize, 10);
-                        if (ts >= 1 && ts <= 8) {
-                            $scope.userPrefsEdit.tabSize = ts;
-                        }
-                    }
-                    if (p.hasOwnProperty('remBase')) {
-                        var rb = parseFloat(p.remBase);
-                        if (rb > 0) {
-                            $scope.userPrefsEdit.remBase = rb;
-                        }
-                    }
-                    if (p.hasOwnProperty('recentWidgets') && Array.isArray(p.recentWidgets)) {
-                        $scope.userPrefs.recentWidgets = p.recentWidgets;
-                        _refreshRecentWidgetsResolved();
-                    }
-                }
-
-                $scope.importUserPrefsFile = function (file) {
-                    $scope.importPrefsStatus = null;
-                    var reader = new FileReader();
-                    reader.onload = function () {
-                        $scope.$apply(function () {
-                            try {
-                                var parsed = JSON.parse(reader.result);
-                                if (!parsed || typeof parsed !== 'object') {
-                                    throw new Error('File does not contain a preferences object.');
-                                }
-                                _applyPrefsBlobToEdit(parsed);
-                                $scope.importPrefsStatus = {
-                                    type: 'success',
-                                    text: 'Preferences loaded. Click Save to apply.',
-                                };
-                            } catch (e) {
-                                $scope.importPrefsStatus = {
-                                    type: 'error',
-                                    text: 'Import failed: ' + (e.message || String(e)),
-                                };
-                            }
-                        });
-                    };
-                    reader.onerror = function () {
-                        $scope.$apply(function () {
-                            $scope.importPrefsStatus = {
-                                type: 'error',
-                                text: 'Could not read the selected file.',
-                            };
-                        });
-                    };
-                    reader.readAsText(file);
                 };
 
                 /* Trigger the modal leave animation, then invoke the close callback after it

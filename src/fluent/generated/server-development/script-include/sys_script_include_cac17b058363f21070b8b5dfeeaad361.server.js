@@ -1,6 +1,6 @@
 var WidgetEditorAjax = Class.create();
 WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
-    RECORD_LIMIT: parseInt(gs.getProperty('monaco.plus.record_limit', '1000'), 10) || 1000,
+    RECORD_LIMIT: 999,
 
     ALLOWED_WIDGET_FIELDS: [
         'name',
@@ -45,34 +45,20 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     },
 
     /**
-     * Returns a page of sp_widget records, optionally filtered by name or id.
-     * Accepts `search` (optional substring to filter by name or id) and `offset`
-     * (row to start the page at, for infinite-scroll pagination).
-     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string}>,
-     *   total: number, offset: number}} Return value.
+     * Returns a list of sp_widget records, optionally filtered by name or id.
+     * Accepts `search` (optional substring to filter by name or id).
+     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string}>}} Return value.
      */
     getWidgets: function () {
         var search = this.getParameter('search') || '';
-        var offset = parseInt(this.getParameter('offset'), 10) || 0;
-        var pageSize = this.RECORD_LIMIT;
         var widgets = [];
-
-        var countGa = new GlideAggregate('sp_widget');
-        if (search) {
-            var cq = countGa.addQuery('name', 'CONTAINS', search);
-            cq.addOrCondition('id', 'CONTAINS', search);
-        }
-        countGa.addAggregate('COUNT');
-        countGa.query();
-        var total = countGa.next() ? parseInt(countGa.getAggregate('COUNT'), 10) || 0 : 0;
-
         var gr = new GlideRecordSecure('sp_widget');
         if (search) {
             var q = gr.addQuery('name', 'CONTAINS', search);
             q.addOrCondition('id', 'CONTAINS', search);
         }
         gr.orderBy('name');
-        gr.chooseWindow(offset, offset + pageSize);
+        gr.setLimit(this.RECORD_LIMIT);
         gr.query();
         while (gr.next()) {
             widgets.push({
@@ -80,37 +66,6 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 name: gr.getValue('name'),
                 id: gr.getValue('id'),
             });
-        }
-        return this._answer({
-            success: true,
-            widgets: widgets,
-            total: total,
-            offset: offset,
-        });
-    },
-
-    /**
-     * Returns name/id for a set of sp_widget records, for resolving recent-widget history.
-     * Accepts `sys_ids` (comma-separated sys_ids).
-     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string}>}} Return value.
-     */
-    getWidgetsBySysIds: function () {
-        var sysIds = (this.getParameter('sys_ids') || '').split(',').filter(function (id) {
-            return !!id;
-        });
-        var widgets = [];
-        if (sysIds.length) {
-            var gr = new GlideRecordSecure('sp_widget');
-            gr.addQuery('sys_id', 'IN', sysIds.join(','));
-            gr.setLimit(this.RECORD_LIMIT);
-            gr.query();
-            while (gr.next()) {
-                widgets.push({
-                    sys_id: gr.getUniqueValue(),
-                    name: gr.getValue('name'),
-                    id: gr.getValue('id'),
-                });
-            }
         }
         return this._answer({
             success: true,
@@ -2157,19 +2112,16 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     },
 
     /**
-     * Returns a page of sp_angular_provider records NOT already linked to the given widget,
+     * Returns all sp_angular_provider records NOT already linked to the given widget,
      * optionally filtered by name. Used to populate the "link existing provider" picker.
-     * Accepts `sys_id` (optional sp_widget sys_id to exclude already-linked providers),
-     * `search` (optional substring to filter provider names), and `offset` (row to start
-     * the page at, for infinite-scroll pagination).
+     * Accepts `sys_id` (optional sp_widget sys_id to exclude already-linked providers) and
+     * `search` (optional substring to filter provider names).
      * @returns {{success: boolean, providers: Array.<{sys_id: string, name: string,
-     *   type: string, script: string}>, total: number, offset: number}} Return value.
+     *   type: string, script: string}>}} Return value.
      */
     getAllProviders: function () {
         var sysId = this.getParameter('sys_id');
         var search = this.getParameter('search') || '';
-        var offset = parseInt(this.getParameter('offset'), 10) || 0;
-        var pageSize = this.RECORD_LIMIT;
 
         var linkedIds = [];
         var m2m = new GlideRecordSecure('m2m_sp_ng_pro_sp_widget');
@@ -2180,42 +2132,29 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 linkedIds.push(m2m.getValue('sp_angular_provider'));
         }
 
-        var countGa = new GlideAggregate('sp_angular_provider');
-        if (search) {
-            countGa.addQuery('name', 'CONTAINS', search);
-        }
-        if (linkedIds.length) {
-            countGa.addQuery('sys_id', 'NOT IN', linkedIds.join(','));
-        }
-        countGa.addAggregate('COUNT');
-        countGa.query();
-        var total = countGa.next() ? parseInt(countGa.getAggregate('COUNT'), 10) || 0 : 0;
-
         var providers = [];
         var gr = new GlideRecordSecure('sp_angular_provider');
         if (search) {
             gr.addQuery('name', 'CONTAINS', search);
         }
-        if (linkedIds.length) {
-            gr.addQuery('sys_id', 'NOT IN', linkedIds.join(','));
-        }
         gr.orderBy('name');
-        gr.chooseWindow(offset, offset + pageSize);
+        gr.setLimit(this.RECORD_LIMIT);
         gr.query();
 
         while (gr.next()) {
-            providers.push({
-                sys_id: gr.getUniqueValue(),
-                name: gr.getValue('name'),
-                type: gr.getValue('type') || '',
-                script: gr.getValue('script') || '',
-            });
+            var pSysId = gr.getUniqueValue();
+            if (linkedIds.indexOf(pSysId) === -1) {
+                providers.push({
+                    sys_id: pSysId,
+                    name: gr.getValue('name'),
+                    type: gr.getValue('type') || '',
+                    script: gr.getValue('script') || '',
+                });
+            }
         }
         return this._answer({
             success: true,
             providers: providers,
-            total: total,
-            offset: offset,
         });
     },
 
@@ -2320,19 +2259,15 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     },
 
     /**
-     * Returns a page of sp_dependency records NOT already linked to the given widget,
+     * Returns all sp_dependency records NOT already linked to the given widget,
      * optionally filtered by name. Used to populate the "link dependency" picker.
-     * Accepts `sys_id` (optional sp_widget sys_id to exclude already-linked dependencies),
-     * `search` (optional substring to filter dependency names), and `offset` (row to start
-     * the page at, for infinite-scroll pagination).
-     * @returns {{success: boolean, dependencies: Array.<{sys_id: string, name: string}>,
-     *   total: number, offset: number}} Return value.
+     * Accepts `sys_id` (optional sp_widget sys_id to exclude already-linked dependencies) and
+     * `search` (optional substring to filter dependency names).
+     * @returns {{success: boolean, dependencies: Array.<{sys_id: string, name: string}>}} Return value.
      */
     getAllDependencies: function () {
         var sysId = this.getParameter('sys_id');
         var search = this.getParameter('search') || '';
-        var offset = parseInt(this.getParameter('offset'), 10) || 0;
-        var pageSize = this.RECORD_LIMIT;
 
         var linkedIds = [];
         var m2m = new GlideRecordSecure('m2m_sp_widget_dependency');
@@ -2342,40 +2277,23 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             while (m2m.next()) linkedIds.push(m2m.getValue('sp_dependency'));
         }
 
-        var countGa = new GlideAggregate('sp_dependency');
-        if (search) {
-            countGa.addQuery('name', 'CONTAINS', search);
-        }
-        if (linkedIds.length) {
-            countGa.addQuery('sys_id', 'NOT IN', linkedIds.join(','));
-        }
-        countGa.addAggregate('COUNT');
-        countGa.query();
-        var total = countGa.next() ? parseInt(countGa.getAggregate('COUNT'), 10) || 0 : 0;
-
         var deps = [];
         var gr = new GlideRecordSecure('sp_dependency');
         if (search) {
             gr.addQuery('name', 'CONTAINS', search);
         }
-        if (linkedIds.length) {
-            gr.addQuery('sys_id', 'NOT IN', linkedIds.join(','));
-        }
         gr.orderBy('name');
-        gr.chooseWindow(offset, offset + pageSize);
+        gr.setLimit(this.RECORD_LIMIT);
         gr.query();
         while (gr.next()) {
-            deps.push({
-                sys_id: gr.getUniqueValue(),
-                name: gr.getValue('name') || '',
-            });
+            if (linkedIds.indexOf(gr.getUniqueValue()) === -1) {
+                deps.push({
+                    sys_id: gr.getUniqueValue(),
+                    name: gr.getValue('name') || '',
+                });
+            }
         }
-        return this._answer({
-            success: true,
-            dependencies: deps,
-            total: total,
-            offset: offset,
-        });
+        return this._answer({ success: true, dependencies: deps });
     },
 
     /**
