@@ -48,7 +48,8 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
      * Returns a page of sp_widget records, optionally filtered by name or id.
      * Accepts `search` (optional substring to filter by name or id) and `offset`
      * (row to start the page at, for infinite-scroll pagination).
-     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string}>,
+     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string,
+     *   servicenow: boolean, deprecated: boolean, canWrite: boolean}>,
      *   total: number, offset: number}} Return value.
      */
     getWidgets: function () {
@@ -56,6 +57,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         var offset = parseInt(this.getParameter('offset'), 10) || 0;
         var pageSize = this.RECORD_LIMIT;
         var widgets = [];
+        var deprecatedFilter = this._getDeprecatedWidgetFilter();
 
         var countGa = new GlideAggregate('sp_widget');
         if (search) {
@@ -75,10 +77,16 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         gr.chooseWindow(offset, offset + pageSize);
         gr.query();
         while (gr.next()) {
+            var isServiceNow = gr.getValue('servicenow') == '1';
             widgets.push({
                 sys_id: gr.getUniqueValue(),
                 name: gr.getValue('name'),
                 id: gr.getValue('id'),
+                servicenow: isServiceNow,
+                deprecated: deprecatedFilter
+                    ? deprecatedFilter.match(gr, false)
+                    : false,
+                canWrite: gr.canWrite() && !isServiceNow,
             });
         }
         return this._answer({
@@ -92,7 +100,8 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     /**
      * Returns name/id for a set of sp_widget records, for resolving recent-widget history.
      * Accepts `sys_ids` (comma-separated sys_ids).
-     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string}>}} Return value.
+     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string,
+     *   servicenow: boolean, deprecated: boolean, canWrite: boolean}>}} Return value.
      */
     getWidgetsBySysIds: function () {
         var sysIds = (this.getParameter('sys_ids') || '').split(',').filter(function (id) {
@@ -100,15 +109,22 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         });
         var widgets = [];
         if (sysIds.length) {
+            var deprecatedFilter = this._getDeprecatedWidgetFilter();
             var gr = new GlideRecordSecure('sp_widget');
             gr.addQuery('sys_id', 'IN', sysIds.join(','));
             gr.setLimit(this.RECORD_LIMIT);
             gr.query();
             while (gr.next()) {
+                var isServiceNow = gr.getValue('servicenow') == '1';
                 widgets.push({
                     sys_id: gr.getUniqueValue(),
                     name: gr.getValue('name'),
                     id: gr.getValue('id'),
+                    servicenow: isServiceNow,
+                    deprecated: deprecatedFilter
+                        ? deprecatedFilter.match(gr, false)
+                        : false,
+                    canWrite: gr.canWrite() && !isServiceNow,
                 });
             }
         }
@@ -3341,17 +3357,27 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
      * @returns {boolean} True when the property query matches the widget.
      */
     _isDeprecatedWidget: function (widgetGr) {
+        var filter = this._getDeprecatedWidgetFilter();
+        return filter ? filter.match(widgetGr, false) : false;
+    },
+
+    /**
+     * Builds the GlideFilter for the configured deprecated-widget encoded query, for reuse
+     * across a batch of widget records without re-parsing the property each time.
+     * @returns {GlideFilter|null} Filter instance, or null when unconfigured/invalid.
+     */
+    _getDeprecatedWidgetFilter: function () {
         var encodedQuery =
             gs.getProperty(this.DEPRECATED_WIDGET_PROPERTY, '') || '';
         encodedQuery = (encodedQuery + '').trim();
         if (!encodedQuery) {
-            return false;
+            return null;
         }
 
         try {
             var filter = new GlideFilter(encodedQuery, 'deprecated');
             filter.setCaseSensitive(false);
-            return filter.match(widgetGr, false);
+            return filter;
         } catch (e) {
             gs.warn(
                 'WidgetEditorAjax: failed to evaluate property ' +
@@ -3359,7 +3385,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                     '. ' +
                     (e && e.message ? e.message : e)
             );
-            return false;
+            return null;
         }
     },
 

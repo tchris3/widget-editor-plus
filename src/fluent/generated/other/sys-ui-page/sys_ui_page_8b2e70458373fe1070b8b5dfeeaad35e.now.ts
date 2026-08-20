@@ -3933,7 +3933,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             </div>
                             <div class="we-picker-item" ng-repeat="w in pickerWidgets" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
                                 <span class="we-picker-item-icon" aria-hidden="true">
-                                    <i class="icon-script" aria-hidden="true"></i>
+                                    <i class="{{widgetPickerIconClass(w)}}" aria-hidden="true"></i>
                                 </span>
                                 <div class="we-picker-item-content">
                                     <span class="we-picker-item-name" ng-bind-html="(w.name || '&lt; no name &gt;') | weHighlight:pickerActiveSearch"></span>
@@ -3961,7 +3961,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <div class="we-picker-list">
                             <div class="we-picker-item" ng-repeat="w in recentWidgetsResolved | limitTo:10 track by w.sys_id" ng-click="openWidget(w)" ng-keydown="onPickerItemKeydown($event, w)" tabindex="0" role="button">
                                 <span class="we-picker-item-icon" aria-hidden="true">
-                                    <i class="icon-history" aria-hidden="true"></i>
+                                    <i class="{{widgetPickerIconClass(w)}}" aria-hidden="true"></i>
                                 </span>
                                 <div class="we-picker-item-content">
                                     <span class="we-picker-item-name" ng-bind="w.name || '&lt; no name &gt;'"></span>
@@ -5816,6 +5816,23 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     _handleListItemKeydown(event, function () {
                         $scope.openWidget(w);
                     });
+                };
+
+                // Deprecated takes priority (most urgent), then ServiceNow, then plain read-only.
+                $scope.widgetPickerIconClass = function (w) {
+                    if (!w) {
+                        return 'icon-script';
+                    }
+                    if (w.deprecated) {
+                        return 'icon-error';
+                    }
+                    if (w.servicenow) {
+                        return 'icon-brand-now';
+                    }
+                    if (w.canWrite === false) {
+                        return 'icon-locked';
+                    }
+                    return 'icon-script';
                 };
 
                 function _handleListSearchKeydown(event, itemSelector, onEnterFirst) {
