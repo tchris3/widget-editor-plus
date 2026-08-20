@@ -91,11 +91,21 @@ Features version history, side-by-side diff comparison, related lists, and user 
             flex-wrap: wrap;
             align-items: center;
             gap: 0.375rem 0.5rem;
-            padding: 0.3125rem 0.75rem;
+            padding: 0 0.75rem;
             background: rgb(var(--now-color--primary-0, var(--now-color_background--tertiary, 221, 237, 233)));
-            border-bottom: 1px solid rgba(var(--now-color--primary-1, var(--now-color--neutral-0, 48, 84, 82)), 0.15);
+            border-bottom: 1px solid transparent;
             flex-shrink: 0;
-            min-height: 2rem;
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.22s ease, opacity 0.16s ease, padding 0.22s ease, border-color 0.22s ease, overflow 0s linear 0.22s;
+        }
+        .we-alert-pills-row--open {
+            padding: 0.3125rem 0.75rem;
+            overflow: visible;
+            border-bottom-color: rgba(var(--now-color--primary-1, var(--now-color--neutral-0, 48, 84, 82)), 0.15);
+            max-height: 12rem;
+            opacity: 1;
         }
 
         .we-alert-pill-wrapper {
@@ -210,6 +220,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-alert-pill--low [class^="icon-"],
         .we-alert-pill--low [class*=" icon-"] {
             color: RGB(var(--now-alert--low--color, var(--now-color_alert--low-3, 90, 90, 90))) !important;
+        }
+
+        .we-alert-pill--success,
+        button.we-alert-pill--success,
+        .btn.we-alert-pill--success {
+            background-color: RGB(var(--now-alert--success--background-color, var(--now-color_alert--success-0, 220, 245, 227))) !important;
+            border-color: RGB(var(--now-alert--success--border-color, var(--now-color_alert--success-1, 61, 174, 106))) !important;
+            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+            cursor: default !important;
+        }
+        .we-alert-pill--success i,
+        .we-alert-pill--success [class^="icon-"],
+        .we-alert-pill--success [class*=" icon-"] {
+            color: RGB(var(--now-alert--success--color, var(--now-color_alert--success-3, 22, 122, 66))) !important;
         }
 
         /* Popover Card */
@@ -2350,62 +2374,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-modal-actions .btn-primary { margin-left: auto; order: 99; }
 
-        /* Unsaved warning */
-        .we-unsaved-warning {
-            display: flex;
-            flex-direction: column;
-            color: rgb(var(--now-color_text--tertiary, 114 114 114));
-            font-size: 0.75rem;
-            line-height: 1.2;
-            margin-right: 0.5rem;
-            text-align: right;
-            text-underline-offset: 3px;
-            flex: 1 1 6rem;
-            min-width: 6rem;
-        }
-        .we-unsaved-compare {
-            white-space: nowrap;
-        }
-        .we-unsaved-diff-btn {
-            padding: 0;
-            color: inherit;
-            font-size: inherit;
-            text-decoration: underline;
-            text-decoration-style: dotted;
-            border: none;
-            background: none;
-            cursor: pointer;
-            height: auto;
-            vertical-align: baseline;
-            line-height: inherit;
-        }
-        .we-unsaved-diff-btn:hover {
-            opacity: 0.75;
-            color: inherit;
-        }
-
         /* No write access label */
         .we-no-write-access {
             color: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3)));
             font-size: 0.75rem;
             line-height: 1;
             min-width: min-content;
-        }
-
-        /* Last save time */
-        .we-update-set-link { color: inherit; text-decoration: underline; text-decoration-style: dotted; }
-        .we-update-set-link:hover { opacity: 0.75; }
-        .we-last-save-time {
-            display: flex;
-            flex-direction: column;
-            color: rgb(var(--now-color_text--tertiary, 114 114 114));
-            font-size: 0.75rem;
-            line-height: 1.2;
-            margin-right: 0.5rem;
-            text-align: right;
-            text-underline-offset: 3px;
-            flex: 1 1 6rem;
-            min-width: 6rem;
         }
 
         /* Save error (header) */
@@ -2683,7 +2657,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
 
             <!-- Top Status Pills Alert Ribbon -->
-            <div class="we-alert-pills-row" ng-if="hasAnyAlerts()">
+            <div class="we-alert-pills-row" ng-class="{'we-alert-pills-row--open': hasAnyAlerts()}">
 
                 <!-- ==================== 1. CRITICAL PILLS ==================== -->
 
@@ -2862,6 +2836,48 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <div class="we-alert-popover-actions">
                             <button type="button" class="btn btn-default btn-sm" ng-click="dismissUpdateSetAlert(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-updateset', false)">Dismiss</button>
                             <a class="btn btn-primary btn-sm" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{widgetUpdateSetId}}" target="_blank" ng-click="openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-updateset', true)">
+                                Open Update Set&nbsp;<i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Unsaved changes pill (right-aligned; narrow layout only — see header-actions copy for wide layout) -->
+                <div class="we-alert-pill-wrapper we-alert-pill-wrapper--right" ng-if="!isVersionView &amp;&amp; isNarrowLayout &amp;&amp; hasUnsavedChanges()" we-close-on-outside-click="openDropdown" close-key="'alert-unsaved'" ng-mouseenter="onAlertPillEnter('alert-unsaved')" ng-mouseleave="onAlertPillLeave('alert-unsaved')" style="margin-left: auto;">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-unsaved'}" ng-focus="onAlertPillFocus('alert-unsaved')" ng-keydown="onAlertPillKeydown($event, 'alert-unsaved')" ng-click="toggleDropdown('alert-unsaved'); $event.stopPropagation()" aria-label="Unsaved changes details" aria-expanded="{{openDropdown === 'alert-unsaved'}}">
+                        <i class="icon-clear" aria-hidden="true"></i>
+                        <span>Unsaved Changes</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-unsaved'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-unsaved')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-clear" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                            <span>Unsaved Changes</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            You have unsaved changes in one or more fields. Save your work to avoid losing it.
+                        </div>
+                        <div class="we-alert-popover-actions" ng-if="!isNewWidget">
+                            <button type="button" class="btn btn-primary btn-sm" ng-click="openUnsavedDiff(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-unsaved', true)" title="Compare unsaved changes with current saved version">Compare</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Saved pill (right-aligned; narrow layout only — see header-actions copy for wide layout) -->
+                <div class="we-alert-pill-wrapper we-alert-pill-wrapper--right" ng-if="!isVersionView &amp;&amp; isNarrowLayout &amp;&amp; lastSaveTime &amp;&amp; !saveError &amp;&amp; !hasUnsavedChanges()" we-close-on-outside-click="openDropdown" close-key="'alert-saved'" ng-mouseenter="onAlertPillEnter('alert-saved')" ng-mouseleave="onAlertPillLeave('alert-saved')" style="margin-left: auto;">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--success" ng-class="{'active': openDropdown === 'alert-saved'}" ng-focus="onAlertPillFocus('alert-saved')" ng-keydown="onAlertPillKeydown($event, 'alert-saved')" ng-click="toggleDropdown('alert-saved'); $event.stopPropagation()" aria-label="Save details" aria-expanded="{{openDropdown === 'alert-saved'}}">
+                        <i class="icon-check-circle" aria-hidden="true"></i>
+                        <span ng-bind="getLastSaveLabel()"></span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-saved'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-saved')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-check-circle" style="color:RGB(var(--now-alert--success--color, var(--now-color_alert--success-3, 22, 122, 66)));" aria-hidden="true"></i>
+                            <span>Saved</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-bind="getLastSaveLabel()"></span><span ng-if="lastSaveUpdateSet">&nbsp;in update set&nbsp;<strong ng-bind="formatUpdateSetName(lastSaveUpdateSet.name)"></strong>.</span>
+                        </div>
+                        <div class="we-alert-popover-actions" ng-if="lastSaveUpdateSet">
+                            <a class="btn btn-primary btn-sm" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{lastSaveUpdateSet.sys_id}}" target="_blank" ng-click="openDropdown = null">
                                 Open Update Set&nbsp;<i class="icon-open-document-new-tab" aria-hidden="true"></i>
                             </a>
                         </div>
@@ -3148,12 +3164,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 <div class="we-spacer"></div>
 
                 <div class="we-header-group we-header-actions">
-                    <!-- Unsaved warning -->
-                    <span class="we-unsaved-warning" ng-if="!isVersionView &amp;&amp; hasUnsavedChanges()">
-                        <span>Unsaved changes</span>
-                        <span class="we-unsaved-compare" ng-if="!isNewWidget">(<button class="btn btn-link we-unsaved-diff-btn" ng-click="openUnsavedDiff()" title="Compare unsaved changes with current saved version">Compare</button>)</span>
-                    </span>
-
                     <!-- Save error pill -->
                     <div class="we-alert-pill-wrapper we-alert-pill-wrapper--right" ng-if="!isVersionView &amp;&amp; hasSaveError()" we-close-on-outside-click="openDropdown" close-key="'alert-save-error'" ng-mouseenter="onAlertPillEnter('alert-save-error')" ng-mouseleave="onAlertPillLeave('alert-save-error')" style="margin-right: 0.375rem;">
                         <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-save-error'}" ng-focus="onAlertPillFocus('alert-save-error')" ng-keydown="onAlertPillKeydown($event, 'alert-save-error')" ng-click="toggleDropdown('alert-save-error'); $event.stopPropagation()" aria-label="Save error details" aria-expanded="{{openDropdown === 'alert-save-error'}}">
@@ -3181,8 +3191,47 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         </div>
                     </div>
 
-                    <!-- Last save time -->
-                    <span class="we-last-save-time" ng-if="!isVersionView &amp;&amp; lastSaveTime &amp;&amp; !saveError &amp;&amp; !hasUnsavedChanges()">{{getLastSaveLabel()}}<span ng-if="lastSaveUpdateSet">(<a class="we-update-set-link" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{lastSaveUpdateSet.sys_id}}" target="_blank" we-tooltip-title="{{lastSaveUpdateSet.name}}" ng-bind="formatUpdateSetName(lastSaveUpdateSet.name)"></a>)</span></span>
+                    <!-- Unsaved changes pill (wide layout only — see pill bar copy for narrow layout) -->
+                    <div class="we-alert-pill-wrapper we-alert-pill-wrapper--right" ng-if="!isVersionView &amp;&amp; !isNarrowLayout &amp;&amp; hasUnsavedChanges()" we-close-on-outside-click="openDropdown" close-key="'alert-unsaved'" ng-mouseenter="onAlertPillEnter('alert-unsaved')" ng-mouseleave="onAlertPillLeave('alert-unsaved')" style="margin-right: 0.375rem;">
+                        <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-unsaved'}" ng-focus="onAlertPillFocus('alert-unsaved')" ng-keydown="onAlertPillKeydown($event, 'alert-unsaved')" ng-click="toggleDropdown('alert-unsaved'); $event.stopPropagation()" aria-label="Unsaved changes details" aria-expanded="{{openDropdown === 'alert-unsaved'}}">
+                            <i class="icon-clear" aria-hidden="true"></i>
+                            <span>Unsaved Changes</span>
+                        </button>
+                        <div class="we-alert-popover" ng-if="openDropdown === 'alert-unsaved'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-unsaved')" ng-click="$event.stopPropagation()" role="dialog">
+                            <div class="we-alert-popover-title">
+                                <i class="icon-clear" style="color:RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 140, 90, 10)));" aria-hidden="true"></i>
+                                <span>Unsaved Changes</span>
+                            </div>
+                            <div class="we-alert-popover-body">
+                                You have unsaved changes in one or more fields. Save your work to avoid losing it.
+                            </div>
+                            <div class="we-alert-popover-actions" ng-if="!isNewWidget">
+                                <button type="button" class="btn btn-primary btn-sm" ng-click="openUnsavedDiff(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-unsaved', true)" title="Compare unsaved changes with current saved version">Compare</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Saved pill (wide layout only — see pill bar copy for narrow layout) -->
+                    <div class="we-alert-pill-wrapper we-alert-pill-wrapper--right" ng-if="!isVersionView &amp;&amp; !isNarrowLayout &amp;&amp; lastSaveTime &amp;&amp; !saveError &amp;&amp; !hasUnsavedChanges()" we-close-on-outside-click="openDropdown" close-key="'alert-saved'" ng-mouseenter="onAlertPillEnter('alert-saved')" ng-mouseleave="onAlertPillLeave('alert-saved')" style="margin-right: 0.375rem;">
+                        <button type="button" class="btn we-alert-pill we-alert-pill--success" ng-class="{'active': openDropdown === 'alert-saved'}" ng-focus="onAlertPillFocus('alert-saved')" ng-keydown="onAlertPillKeydown($event, 'alert-saved')" ng-click="toggleDropdown('alert-saved'); $event.stopPropagation()" aria-label="Save details" aria-expanded="{{openDropdown === 'alert-saved'}}">
+                            <i class="icon-check-circle" aria-hidden="true"></i>
+                            <span ng-bind="getLastSaveLabel()"></span>
+                        </button>
+                        <div class="we-alert-popover" ng-if="openDropdown === 'alert-saved'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-saved')" ng-click="$event.stopPropagation()" role="dialog">
+                            <div class="we-alert-popover-title">
+                                <i class="icon-check-circle" style="color:RGB(var(--now-alert--success--color, var(--now-color_alert--success-3, 22, 122, 66)));" aria-hidden="true"></i>
+                                <span>Saved</span>
+                            </div>
+                            <div class="we-alert-popover-body">
+                                <span ng-bind="getLastSaveLabel()"></span><span ng-if="lastSaveUpdateSet">&nbsp;in update set&nbsp;<strong ng-bind="formatUpdateSetName(lastSaveUpdateSet.name)"></strong>.</span>
+                            </div>
+                            <div class="we-alert-popover-actions" ng-if="lastSaveUpdateSet">
+                                <a class="btn btn-primary btn-sm" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{lastSaveUpdateSet.sys_id}}" target="_blank" ng-click="openDropdown = null">
+                                    Open Update Set&nbsp;<i class="icon-open-document-new-tab" aria-hidden="true"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Save all -->
                     <button class="btn btn-primary" ng-click="saveAll()" ng-if="!isVersionView" ng-disabled="!canWriteWidget"
@@ -6516,6 +6565,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     return true;
                                 }
                                 if ($scope.widget && $scope.widget.deprecated) {
+                                    return true;
+                                }
+                                if ($scope.isNarrowLayout && $scope.hasUnsavedChanges && $scope.hasUnsavedChanges()) {
+                                    return true;
+                                }
+                                if ($scope.isNarrowLayout && $scope.lastSaveTime && !$scope.saveError && $scope.hasUnsavedChanges && !$scope.hasUnsavedChanges()) {
                                     return true;
                                 }
                                 if ($scope.updateSetMismatch && !$scope.updateSetAlertDismissed) {
@@ -13316,6 +13371,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 // Window resize → re-layout editors
                 window.addEventListener('resize', layoutAllEditors);
+
+                // Below this width the save-state pill (Unsaved/Saved) moves into the
+                // alert pill bar; at/above it, it sits to the left of the Save button.
+                var _pillBarBreakpoint = window.matchMedia('(max-width: 1699.98px)');
+                $scope.isNarrowLayout = _pillBarBreakpoint.matches;
+                function _onPillBarBreakpointChange(e) {
+                    $scope.isNarrowLayout = e.matches;
+                    $scope.$applyAsync();
+                }
+                if (_pillBarBreakpoint.addEventListener) {
+                    _pillBarBreakpoint.addEventListener('change', _onPillBarBreakpointChange);
+                } else if (_pillBarBreakpoint.addListener) {
+                    _pillBarBreakpoint.addListener(_onPillBarBreakpointChange);
+                }
 
                 // Boot
                 init();
