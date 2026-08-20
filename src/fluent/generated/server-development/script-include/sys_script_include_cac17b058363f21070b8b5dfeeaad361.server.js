@@ -48,7 +48,8 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
      * Returns a page of sp_widget records, optionally filtered by name or id.
      * Accepts `search` (optional substring to filter by name or id) and `offset`
      * (row to start the page at, for infinite-scroll pagination).
-     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string}>,
+     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string,
+     *   servicenow: boolean, deprecated: boolean, canWrite: boolean}>,
      *   total: number, offset: number}} Return value.
      */
     getWidgets: function () {
@@ -56,6 +57,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         var offset = parseInt(this.getParameter('offset'), 10) || 0;
         var pageSize = this.RECORD_LIMIT;
         var widgets = [];
+        var deprecatedFilter = this._getDeprecatedWidgetFilter();
 
         var countGa = new GlideAggregate('sp_widget');
         if (search) {
@@ -75,10 +77,16 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         gr.chooseWindow(offset, offset + pageSize);
         gr.query();
         while (gr.next()) {
+            var isServiceNow = gr.getValue('servicenow') == '1';
             widgets.push({
                 sys_id: gr.getUniqueValue(),
                 name: gr.getValue('name'),
                 id: gr.getValue('id'),
+                servicenow: isServiceNow,
+                deprecated: deprecatedFilter
+                    ? deprecatedFilter.match(gr, false)
+                    : false,
+                canWrite: gr.canWrite() && !isServiceNow,
             });
         }
         return this._answer({
@@ -92,7 +100,8 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     /**
      * Returns name/id for a set of sp_widget records, for resolving recent-widget history.
      * Accepts `sys_ids` (comma-separated sys_ids).
-     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string}>}} Return value.
+     * @returns {{success: boolean, widgets: Array.<{sys_id: string, name: string, id: string,
+     *   servicenow: boolean, deprecated: boolean, canWrite: boolean}>}} Return value.
      */
     getWidgetsBySysIds: function () {
         var sysIds = (this.getParameter('sys_ids') || '').split(',').filter(function (id) {
@@ -100,15 +109,22 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         });
         var widgets = [];
         if (sysIds.length) {
+            var deprecatedFilter = this._getDeprecatedWidgetFilter();
             var gr = new GlideRecordSecure('sp_widget');
             gr.addQuery('sys_id', 'IN', sysIds.join(','));
             gr.setLimit(this.RECORD_LIMIT);
             gr.query();
             while (gr.next()) {
+                var isServiceNow = gr.getValue('servicenow') == '1';
                 widgets.push({
                     sys_id: gr.getUniqueValue(),
                     name: gr.getValue('name'),
                     id: gr.getValue('id'),
+                    servicenow: isServiceNow,
+                    deprecated: deprecatedFilter
+                        ? deprecatedFilter.match(gr, false)
+                        : false,
+                    canWrite: gr.canWrite() && !isServiceNow,
                 });
             }
         }
@@ -2972,6 +2988,77 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         });
     },
 
+    DEBUG_MENU_PREF_NAME: 'we_debug_menu_prefs',
+
+    /**
+     * Resolves the "real" user for debug menu preferences the same way the debug menu
+     * widget does: while impersonating, that's the impersonator, not the impersonated user.
+     * @returns {string|null} sys_id of the real user, or null if it can't be resolved.
+     */
+    _getDebugMenuRealUserId: function () {
+        var impersonatedUser = gs.getImpersonatingUserName();
+        if (!impersonatedUser) {
+            return gs.getUserID();
+        }
+        var gr = new GlideRecord('sys_user');
+        gr.addQuery('user_name', impersonatedUser);
+        gr.query();
+        return gr.next() ? gr.getUniqueValue() : null;
+    },
+
+    /**
+     * Returns the current real user's debug menu (sp_widget_widget_editor_debug_menu)
+     * preferences, for inclusion in the widget editor's preferences export.
+     * Uses GlideRecord (not GlideRecordSecure) so the real user's record is readable
+     * even while impersonating.
+     * @returns {{success: boolean, value: string|null, real_user_id: string|null}} Return value.
+     */
+    getDebugMenuPrefs: function () {
+        var realUserId = this._getDebugMenuRealUserId();
+        if (!realUserId) {
+            return this._answer({ success: true, value: null, real_user_id: null });
+        }
+        var gr = new GlideRecord('sys_user_preference');
+        gr.addQuery('user', realUserId);
+        gr.addQuery('name', this.DEBUG_MENU_PREF_NAME);
+        gr.query();
+        return this._answer({
+            success: true,
+            value: gr.next() ? gr.getValue('value') : null,
+            real_user_id: realUserId,
+        });
+    },
+
+    /**
+     * Upserts the current real user's debug menu preferences, e.g. when restoring
+     * them from an imported widget editor preferences file.
+     * Accepts `value` (JSON-encoded preference blob to store).
+     * @returns {{success: boolean, real_user_id: string|null}} Return value.
+     */
+    saveDebugMenuPrefs: function () {
+        var realUserId = this._getDebugMenuRealUserId();
+        if (!realUserId) {
+            return this._answer({ success: false, real_user_id: null });
+        }
+        var value = this.getParameter('value') || '{}';
+        var gr = new GlideRecord('sys_user_preference');
+        gr.addQuery('user', realUserId);
+        gr.addQuery('name', this.DEBUG_MENU_PREF_NAME);
+        gr.query();
+        if (gr.next()) {
+            gr.setValue('value', value);
+            gr.update();
+        } else {
+            gr.initialize();
+            gr.setValue('user', realUserId);
+            gr.setValue('name', this.DEBUG_MENU_PREF_NAME);
+            gr.setValue('value', value);
+            gr.setValue('type', 'string');
+            gr.insert();
+        }
+        return this._answer({ success: true, real_user_id: realUserId });
+    },
+
     /**
      * Returns the sys_dictionary default values for sp_widget script fields,
      * plus the current application name and sys_id.
@@ -3341,17 +3428,27 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
      * @returns {boolean} True when the property query matches the widget.
      */
     _isDeprecatedWidget: function (widgetGr) {
+        var filter = this._getDeprecatedWidgetFilter();
+        return filter ? filter.match(widgetGr, false) : false;
+    },
+
+    /**
+     * Builds the GlideFilter for the configured deprecated-widget encoded query, for reuse
+     * across a batch of widget records without re-parsing the property each time.
+     * @returns {GlideFilter|null} Filter instance, or null when unconfigured/invalid.
+     */
+    _getDeprecatedWidgetFilter: function () {
         var encodedQuery =
             gs.getProperty(this.DEPRECATED_WIDGET_PROPERTY, '') || '';
         encodedQuery = (encodedQuery + '').trim();
         if (!encodedQuery) {
-            return false;
+            return null;
         }
 
         try {
             var filter = new GlideFilter(encodedQuery, 'deprecated');
             filter.setCaseSensitive(false);
-            return filter.match(widgetGr, false);
+            return filter;
         } catch (e) {
             gs.warn(
                 'WidgetEditorAjax: failed to evaluate property ' +
@@ -3359,7 +3456,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                     '. ' +
                     (e && e.message ? e.message : e)
             );
-            return false;
+            return null;
         }
     },
 
