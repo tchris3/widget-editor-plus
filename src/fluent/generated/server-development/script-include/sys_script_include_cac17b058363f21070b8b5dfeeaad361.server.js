@@ -2988,6 +2988,77 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         });
     },
 
+    DEBUG_MENU_PREF_NAME: 'we_debug_menu_prefs',
+
+    /**
+     * Resolves the "real" user for debug menu preferences the same way the debug menu
+     * widget does: while impersonating, that's the impersonator, not the impersonated user.
+     * @returns {string|null} sys_id of the real user, or null if it can't be resolved.
+     */
+    _getDebugMenuRealUserId: function () {
+        var impersonatedUser = gs.getImpersonatingUserName();
+        if (!impersonatedUser) {
+            return gs.getUserID();
+        }
+        var gr = new GlideRecord('sys_user');
+        gr.addQuery('user_name', impersonatedUser);
+        gr.query();
+        return gr.next() ? gr.getUniqueValue() : null;
+    },
+
+    /**
+     * Returns the current real user's debug menu (sp_widget_widget_editor_debug_menu)
+     * preferences, for inclusion in the widget editor's preferences export.
+     * Uses GlideRecord (not GlideRecordSecure) so the real user's record is readable
+     * even while impersonating.
+     * @returns {{success: boolean, value: string|null, real_user_id: string|null}} Return value.
+     */
+    getDebugMenuPrefs: function () {
+        var realUserId = this._getDebugMenuRealUserId();
+        if (!realUserId) {
+            return this._answer({ success: true, value: null, real_user_id: null });
+        }
+        var gr = new GlideRecord('sys_user_preference');
+        gr.addQuery('user', realUserId);
+        gr.addQuery('name', this.DEBUG_MENU_PREF_NAME);
+        gr.query();
+        return this._answer({
+            success: true,
+            value: gr.next() ? gr.getValue('value') : null,
+            real_user_id: realUserId,
+        });
+    },
+
+    /**
+     * Upserts the current real user's debug menu preferences, e.g. when restoring
+     * them from an imported widget editor preferences file.
+     * Accepts `value` (JSON-encoded preference blob to store).
+     * @returns {{success: boolean, real_user_id: string|null}} Return value.
+     */
+    saveDebugMenuPrefs: function () {
+        var realUserId = this._getDebugMenuRealUserId();
+        if (!realUserId) {
+            return this._answer({ success: false, real_user_id: null });
+        }
+        var value = this.getParameter('value') || '{}';
+        var gr = new GlideRecord('sys_user_preference');
+        gr.addQuery('user', realUserId);
+        gr.addQuery('name', this.DEBUG_MENU_PREF_NAME);
+        gr.query();
+        if (gr.next()) {
+            gr.setValue('value', value);
+            gr.update();
+        } else {
+            gr.initialize();
+            gr.setValue('user', realUserId);
+            gr.setValue('name', this.DEBUG_MENU_PREF_NAME);
+            gr.setValue('value', value);
+            gr.setValue('type', 'string');
+            gr.insert();
+        }
+        return this._answer({ success: true, real_user_id: realUserId });
+    },
+
     /**
      * Returns the sys_dictionary default values for sp_widget script fields,
      * plus the current application name and sys_id.

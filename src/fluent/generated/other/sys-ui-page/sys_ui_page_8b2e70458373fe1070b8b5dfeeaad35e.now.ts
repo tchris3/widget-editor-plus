@@ -3620,8 +3620,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 <div class="we-modal-footer">
                     <div style="display:flex;align-items:center;gap:0.5rem;margin-right:auto">
                         <button class="btn btn-default" ng-click="resetUserPrefsModal()" we-tooltip-title="Restore all preferences to their default values.">Reset</button>
-                        <button class="btn btn-default" ng-click="exportUserPrefs()" we-tooltip-title="Download your current preferences as a JSON file.">Export</button>
-                        <button class="btn btn-default" ng-click="triggerImportUserPrefs()" we-tooltip-title="Load preferences from a JSON file.">Import</button>
+                        <button class="btn btn-default" ng-click="exportUserPrefs()" we-tooltip-title="Download your current preferences, including debug menu preferences, as a JSON file.">Export</button>
+                        <button class="btn btn-default" ng-click="triggerImportUserPrefs()" we-tooltip-title="Load preferences, including debug menu preferences, from a JSON file.">Import</button>
                         <input type="file" id="we-import-prefs-input" accept="application/json" style="display:none" we-file-change="importUserPrefsFile($file)" />
                         <span ng-if="importPrefsStatus.text" ng-style="{color: importPrefsStatus.type === 'error' ? 'rgb(var(--now-color_alert--critical-2))' : 'rgb(var(--now-color_text--secondary))'}" style="font-size:var(--now-font-size--sm)" ng-bind="importPrefsStatus.text"></span>
                     </div>
@@ -12583,6 +12583,27 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                     $scope.onEditorVisibilityChange();
                     saveUserPrefs();
+                    if ($scope.userPrefsEdit.debugMenu) {
+                        var debugMenuPrefs = $scope.userPrefsEdit.debugMenu;
+                        ajax('saveDebugMenuPrefs', {
+                            value: JSON.stringify(debugMenuPrefs),
+                        }).then(function (d) {
+                            if (d && d.success && d.real_user_id) {
+                                try {
+                                    var json = JSON.stringify(debugMenuPrefs);
+                                    localStorage.setItem(
+                                        'we_debug_menu_prefs_' + d.real_user_id,
+                                        json
+                                    );
+                                    localStorage.setItem(
+                                        'we_debug_menu_prefs',
+                                        json
+                                    );
+                                } catch (e) {}
+                            }
+                        });
+                        $scope.userPrefsEdit.debugMenu = undefined;
+                    }
                     _closeModal(function () {
                         $scope.showUserPrefsModal = false;
                     });
@@ -12646,9 +12667,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 $scope.importPrefsStatus = null;
 
-                $scope.exportUserPrefs = function () {
+                function _downloadUserPrefsBlob(prefs) {
                     var blob = new Blob(
-                        [JSON.stringify(_buildUserPrefsBlob(), null, 2)],
+                        [JSON.stringify(prefs, null, 2)],
                         { type: 'application/json' }
                     );
                     var url = URL.createObjectURL(blob);
@@ -12663,6 +12684,18 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
+                }
+
+                $scope.exportUserPrefs = function () {
+                    ajax('getDebugMenuPrefs', {}).then(function (d) {
+                        var prefs = _buildUserPrefsBlob();
+                        if (d && d.success && d.value) {
+                            try {
+                                prefs.debugMenu = JSON.parse(d.value);
+                            } catch (e) {}
+                        }
+                        _downloadUserPrefsBlob(prefs);
+                    });
                 };
 
                 $scope.triggerImportUserPrefs = function () {
@@ -12728,6 +12761,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.userPrefs.recentWidgets = p.recentWidgets;
                         _refreshRecentWidgetsResolved();
                     }
+                    // Staged for saveUserPrefsModal() to push to sys_user_preference on Save;
+                    // not part of the widget editor's own preference blob.
+                    if (p.hasOwnProperty('debugMenu') && p.debugMenu && typeof p.debugMenu === 'object') {
+                        $scope.userPrefsEdit.debugMenu = p.debugMenu;
+                    }
                 }
 
                 $scope.importUserPrefsFile = function (file) {
@@ -12743,7 +12781,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 _applyPrefsBlobToEdit(parsed);
                                 $scope.importPrefsStatus = {
                                     type: 'success',
-                                    text: 'Preferences loaded. Click Save to apply.',
+                                    text: $scope.userPrefsEdit.debugMenu
+                                        ? 'Preferences loaded, including debug menu preferences. Click Save to apply.'
+                                        : 'Preferences loaded. Click Save to apply.',
                                 };
                             } catch (e) {
                                 $scope.importPrefsStatus = {
