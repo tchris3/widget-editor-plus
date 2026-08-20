@@ -92,8 +92,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
             align-items: center;
             gap: 0.375rem 0.5rem;
             padding: 0.3125rem 0.75rem;
-            background: rgb(var(--now-color_background--tertiary, var(--now-color--neutral-2)));
-            border-bottom: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.08);
+            background: rgb(var(--now-color--primary-0, var(--now-color_background--tertiary, 221, 237, 233)));
+            border-bottom: 1px solid rgba(var(--now-color--primary-1, var(--now-color--neutral-0, 48, 84, 82)), 0.15);
             flex-shrink: 0;
             min-height: 2rem;
         }
