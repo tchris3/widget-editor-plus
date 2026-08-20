@@ -199,6 +199,19 @@ Features version history, side-by-side diff comparison, related lists, and user 
             color: RGB(var(--now-alert--info--color, var(--now-color_alert--info-3, 3, 105, 161))) !important;
         }
 
+        .we-alert-pill--low,
+        button.we-alert-pill--low,
+        .btn.we-alert-pill--low {
+            background-color: RGB(var(--now-alert--low--background-color, var(--now-color_alert--low-0, 240, 240, 240))) !important;
+            border-color: RGB(var(--now-alert--low--border-color, var(--now-color_alert--low-1, 180, 180, 180))) !important;
+            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+        }
+        .we-alert-pill--low i,
+        .we-alert-pill--low [class^="icon-"],
+        .we-alert-pill--low [class*=" icon-"] {
+            color: RGB(var(--now-alert--low--color, var(--now-color_alert--low-3, 90, 90, 90))) !important;
+        }
+
         /* Popover Card */
         .we-alert-popover {
             position: absolute;
@@ -2758,6 +2771,22 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 </div>
 
                 <!-- ServiceNow widget pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; widget.deprecated" we-close-on-outside-click="openDropdown" close-key="'alert-deprecated'" ng-mouseenter="onAlertPillEnter('alert-deprecated')" ng-mouseleave="onAlertPillLeave('alert-deprecated')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--low" ng-class="{'active': openDropdown === 'alert-deprecated'}" ng-focus="onAlertPillFocus('alert-deprecated')" ng-keydown="onAlertPillKeydown($event, 'alert-deprecated')" ng-click="toggleDropdown('alert-deprecated'); $event.stopPropagation()" aria-label="Deprecated widget details" aria-expanded="{{openDropdown === 'alert-deprecated'}}">
+                        <i class="icon-error" aria-hidden="true"></i>
+                        <span>Deprecated</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-deprecated'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-deprecated')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-error" style="color:RGB(var(--now-alert--low--color, var(--now-color_alert--low-3, 90, 90, 90)));" aria-hidden="true"></i>
+                            <span>Deprecated Widget</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            <span ng-if="widget.name"><strong>{{widget.name}}</strong>&nbsp;has been marked as deprecated.</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; widgetIsServiceNow" we-close-on-outside-click="openDropdown" close-key="'alert-sn'" ng-mouseenter="onAlertPillEnter('alert-sn')" ng-mouseleave="onAlertPillLeave('alert-sn')">
                     <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-sn'}" ng-focus="onAlertPillFocus('alert-sn')" ng-keydown="onAlertPillKeydown($event, 'alert-sn')" ng-click="toggleDropdown('alert-sn'); $event.stopPropagation()" aria-label="ServiceNow widget details" aria-expanded="{{openDropdown === 'alert-sn'}}">
                         <i class="icon-star" aria-hidden="true"></i>
@@ -6484,6 +6513,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     return true;
                                 }
                                 if ($scope.widgetIsServiceNow) {
+                                    return true;
+                                }
+                                if ($scope.widget && $scope.widget.deprecated) {
                                     return true;
                                 }
                                 if ($scope.updateSetMismatch && !$scope.updateSetAlertDismissed) {
