@@ -3912,7 +3912,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button class="btn btn-default" ng-click="openAssistantInNewTab()" style="margin-left:auto;margin-right:0.875rem">Open in new tab <i class="icon-open-document-new-tab" style="margin-left: 0.375rem" aria-hidden="true"></i></button>
                     <button type="button" class="we-modal-close-btn" ng-click="closeAssistantModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
-                <iframe class="we-diff-iframe" ng-src="{{assistantModal.url}}" style="flex:1;border:none;width:100%"></iframe>
+                <iframe class="we-diff-iframe" ng-if="assistantModal.url" ng-src="{{assistantModal.url}}" style="flex:1;border:none;width:100%"></iframe>
             </div>
         </dialog>
 
