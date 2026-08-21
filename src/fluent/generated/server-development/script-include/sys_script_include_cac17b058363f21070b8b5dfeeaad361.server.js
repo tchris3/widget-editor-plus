@@ -1,6 +1,6 @@
 var WidgetEditorAjax = Class.create();
 WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
-    RECORD_LIMIT: parseInt(gs.getProperty('monaco.plus.record_limit', '1000'), 10) || 1000,
+    RECORD_LIMIT: parseInt(gs.getProperty('monaco.plus.record_limit', '500'), 10) || 500,
 
     ALLOWED_WIDGET_FIELDS: [
         'name',

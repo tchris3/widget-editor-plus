@@ -131,6 +131,10 @@ Record({
     /* Lazy SI name cache: sys_id when confirmed, '' when confirmed non-SI, absent when unchecked. */
     var _siNameMap = {};
 
+    /* { lowercasedPrefix: true } — prefixes whose _fetchSiByPrefix result was under SI_PREFIX_LIMIT, so _siNameMap is known-complete for that prefix (and any longer prefix built on it). */
+    var _siCompletePrefixes = {};
+    var SI_PREFIX_LIMIT = 500;
+
     /* { name: true } — SI names already fetched or in-flight via _fetchSIIntellisense. */
     var _siFetched = {};
 
@@ -910,7 +914,7 @@ Record({
                     encodeURIComponent(tableName) +
                     '%5Einternal_type%21%3Dcollection%5EelementISNOTEMPTY' +
                     '&sysparm_fields=element%2Cinternal_type%2Ccolumn_label%2Cmandatory%2Cmax_length%2Creference' +
-                    '&sysparm_limit=300';
+                    '&sysparm_limit=500';
                 xhr.open('GET', url, true);
                 xhr.setRequestHeader('X-UserToken', window.g_ck || '');
                 xhr.setRequestHeader('Accept', 'application/json');
@@ -1082,14 +1086,15 @@ Record({
     }
 
     /**
-     * Fetches up to 50 table names from sys_db_object whose name starts with the
-     * given prefix, excluding internal tables (nameNOT LIKE00). Always fires a
-     * fresh XHR so results stay accurate as the user types. An empty prefix
-     * returns the first 50 matching tables alphabetically.
+     * Fetches up to TABLE_PREFIX_LIMIT table names from sys_db_object whose name starts
+     * with the given prefix, excluding internal tables (nameNOT LIKE00). Always fires a
+     * fresh XHR so results stay accurate as the user types. An empty prefix returns the
+     * first TABLE_PREFIX_LIMIT matching tables alphabetically.
      *
      * @param {string} prefix - The typed prefix to match against table names.
      * @returns {Promise<Array<{name: string, label: string}>>}
      */
+    var TABLE_PREFIX_LIMIT = 500;
     function fetchTablesMatching(prefix) {
         return new Promise(function (resolve) {
             var xhr = new XMLHttpRequest();
@@ -1101,7 +1106,8 @@ Record({
                 '/api/now/table/sys_db_object' +
                 '?sysparm_query=' +
                 encodeURIComponent(query) +
-                '&sysparm_fields=name%2Clabel&sysparm_limit=50';
+                '&sysparm_fields=name%2Clabel&sysparm_limit=' +
+                TABLE_PREFIX_LIMIT;
             xhr.open('GET', url, true);
             xhr.setRequestHeader('X-UserToken', window.g_ck || '');
             xhr.setRequestHeader('Accept', 'application/json');
@@ -2557,7 +2563,8 @@ Record({
             '/api/now/table/sys_script_include' +
             '?sysparm_query=' +
             query +
-            '&sysparm_fields=name%2Csys_id&sysparm_limit=100';
+            '&sysparm_fields=name%2Csys_id&sysparm_limit=' +
+            SI_PREFIX_LIMIT;
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);
         xhr.setRequestHeader('X-UserToken', window.g_ck || '');
@@ -2572,6 +2579,9 @@ Record({
                 records.forEach(function (r) {
                     _siNameMap[r.name] = r.sys_id;
                 });
+                if (records.length < SI_PREFIX_LIMIT) {
+                    _siCompletePrefixes[prefix.toLowerCase()] = true;
+                }
                 callback(records);
             } catch (e) {
                 callback([]);
@@ -4049,7 +4059,26 @@ Record({
             results.sort(function (a, b) {
                 return a.name.localeCompare(b.name);
             });
-            return results.slice(0, 100);
+            return results.slice(0, SI_PREFIX_LIMIT);
+        }
+
+        /* A prefix is only safe to serve from cache if some already-fetched prefix it extends
+         * came back under SI_PREFIX_LIMIT — otherwise that fetch may have been truncated and
+         * _siNameMap can be silently missing matches for this narrower/longer prefix. */
+        function _isPrefixKnownComplete(prefix) {
+            var lower = prefix ? prefix.toLowerCase() : '';
+            if (_siCompletePrefixes[lower]) {
+                return true;
+            }
+            for (var p in _siCompletePrefixes) {
+                if (
+                    _siCompletePrefixes.hasOwnProperty(p) &&
+                    lower.indexOf(p) === 0
+                ) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         function _toSuggestions(cachedList, range) {
@@ -4085,11 +4114,15 @@ Record({
                     startColumn: word.startColumn,
                     endColumn: word.endColumn,
                 };
-                var cached = _getCachedSIs(prefix);
-                if (cached.length) {
-                    return { suggestions: _toSuggestions(cached, range) };
+                if (_isPrefixKnownComplete(prefix)) {
+                    return {
+                        suggestions: _toSuggestions(
+                            _getCachedSIs(prefix),
+                            range
+                        ),
+                    };
                 }
-                // Cache miss — debounce the fetch so rapid keystrokes share one request.
+                // Cache not provably complete for this prefix — debounce the fetch so rapid keystrokes share one request.
                 return new Promise(function (resolve) {
                     _siPending.push({
                         prefix: prefix,
