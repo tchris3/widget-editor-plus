@@ -592,15 +592,31 @@ Record({
      * documentation comments for use in completions, hover tooltips, and DTS generation.
      *
      * @param {string} script - Full content of a Script Include script field.
+     * @param {string} [className] - Script Include class name, used to recognise the
+     *   PrototypeJS type: 'ClassName' boilerplate so it can be excluded without also
+     *   hiding a real property named 'type'.
      * @returns {Array<{name: string, tsType: string, documentation: string}>}
      */
-    function parseSiProperties(script) {
+    function parseSiProperties(script, className) {
         var properties = [];
         var seen = {};
 
         function addProp(name, rawValue, comment) {
-            if (!name || name === 'type' || name === 'initialize' || seen[name]) {
+            if (!name || name === 'initialize' || seen[name]) {
                 return;
+            }
+            /* Skip only PrototypeJS's auto-generated type: 'ClassName' marker, not a
+             * real property that happens to be named 'type'. */
+            if (name === 'type' && className && rawValue) {
+                var _typeVal = rawValue.trim();
+                var _quote = _typeVal.charAt(0);
+                if (
+                    (_quote === '\\'' || _quote === '"') &&
+                    _typeVal.charAt(_typeVal.length - 1) === _quote &&
+                    _typeVal.slice(1, -1) === className
+                ) {
+                    return;
+                }
             }
             if (rawValue && /^\\s*(?:async\\s+)?function\\b/.test(rawValue.trim())) {
                 return;
@@ -688,9 +704,6 @@ Record({
         var m;
         while ((m = re.exec(script)) !== null) {
             var methodName = m[2];
-            if (methodName === 'type') {
-                continue;
-            }
 
             var comment = m[1] || null;
             var docInfo = parseSiDocComment(comment);
@@ -809,7 +822,10 @@ Record({
                                         script,
                                         className
                                     );
-                                    properties = parseSiProperties(script);
+                                    properties = parseSiProperties(
+                                        script,
+                                        className
+                                    );
                                 } else {
                                     methods = [];
                                 }
