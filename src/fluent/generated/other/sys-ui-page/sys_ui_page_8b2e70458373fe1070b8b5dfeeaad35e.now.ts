@@ -3064,6 +3064,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 <!-- Related Lists button -->
                 <button class="btn btn-default we-header-wide-only" ng-if="!isVersionView" ng-click="openRelatedModal()" ng-disabled="isNewWidget">Related Lists</button>
 
+                <!-- Assistant button -->
+                <button class="btn btn-default we-header-wide-only" ng-if="!isVersionView" ng-click="openAssistant()" ng-disabled="isNewWidget">Assistant</button>
+
                 <div class="we-header-sep we-header-wide-only"></div>
 
                 <!-- Editor visibility -->
@@ -3157,6 +3160,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                         <!-- Related Lists -->
                         <div class="we-dropdown-item" ng-if="!isVersionView" ng-class="{'disabled': isNewWidget}" ng-click="openRelatedModal(); openDropdown = null">Related Lists</div>
+
+                        <!-- Assistant -->
+                        <div class="we-dropdown-item" ng-if="!isVersionView" ng-class="{'disabled': isNewWidget}" ng-click="openAssistant(); openDropdown = null">Assistant</div>
 
                     </div>
                 </div>
@@ -11136,6 +11142,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             }
                         }
                     );
+                };
+
+                $scope.openAssistant = function () {
+                    if ($scope.isNewWidget) {
+                        return;
+                    }
+                    window.open('widget_editor_assistant.do?record_table=sp_widget&record_sys_id=' + SYS_ID, '_blank');
                 };
 
                 $scope.closeRelatedModal = function () {

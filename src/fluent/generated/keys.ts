@@ -135,6 +135,22 @@ declare global {
                         table: 'sys_module'
                         id: 'a4e68998db2a415d9539b57cb626d4a9'
                     }
+                    'widget-editor-assistant-module': {
+                        table: 'sys_app_module'
+                        id: '103de88e324b475e8be325c0b08c71af'
+                    }
+                    'widget-editor-assistant-script-include': {
+                        table: 'sys_script_include'
+                        id: '62048e08da804634a866cb65c9daba4f'
+                    }
+                    'widget-editor-assistant-script-include-acl': {
+                        table: 'sys_security_acl'
+                        id: '273194363c2646f6825269341eaf5b8e'
+                    }
+                    'widget-editor-assistant-ui-page-acl': {
+                        table: 'sys_security_acl'
+                        id: '33195917e3c84b1f8afafe10a38f16b0'
+                    }
                     'widget-editor-record-limit': {
                         table: 'sys_properties'
                         id: 'ad6ba1d936344db993031b6e49532e2b'
@@ -215,6 +231,13 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_ui_page'
+                        id: '584ed242cd934914bffa4b0bb3fb2974'
+                        key: {
+                            name: 'widget_editor_assistant'
+                        }
+                    },
+                    {
                         table: 'sys_ui_action_role'
                         id: '74144e9583d0831070b8b5dfeeaad3ab'
                         key: {
@@ -270,12 +293,38 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_security_acl_role'
+                        id: 'a44e4297f1d24ecebfcce369e8f658b0'
+                        key: {
+                            sys_security_acl: '33195917e3c84b1f8afafe10a38f16b0'
+                            sys_user_role: {
+                                id: 'cd640d10d7101200a9addd173e24d4cd'
+                                key: {
+                                    name: 'sp_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_claim'
                         id: 'b73d3e0b83e7321070b8b5dfeeaad398'
                         key: {
                             claim_owner_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             previous_claim_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             metadata_update_name: 'sys_security_acl_role_792d35658363b61070b8b5dfeeaad32e'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: 'c6081ed5a2e74ef4ac7263afa7667c0a'
+                        key: {
+                            sys_security_acl: '273194363c2646f6825269341eaf5b8e'
+                            sys_user_role: {
+                                id: 'cd640d10d7101200a9addd173e24d4cd'
+                                key: {
+                                    name: 'sp_admin'
+                                }
+                            }
                         }
                     },
                     {
