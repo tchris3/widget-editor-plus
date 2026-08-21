@@ -686,7 +686,8 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
 
     // Small <15k tokens, moderate 15k-150k, large >150k.
     TOKEN_CONFIG: {
-        tokensPerRecord: 2200,
+        // Rough chars-per-token ratio for estimating tokens from the actual exported XML size.
+        charsPerToken: 4,
         ranges: [
             { max: 15000, level: 'green', label: 'Small' },
             { max: 150000, level: 'orange', label: 'Moderate' },
@@ -696,12 +697,12 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
 
     /**
      * Returns token estimation configuration and color thresholds.
-     * @returns {{success: boolean, tokensPerRecord: number, ranges: Array.<{max: ?number, level: string, label: string}>}} Return value.
+     * @returns {{success: boolean, charsPerToken: number, ranges: Array.<{max: ?number, level: string, label: string}>}} Return value.
      */
     getTokenConfig: function () {
         return this._answer({
             success: true,
-            tokensPerRecord: this.TOKEN_CONFIG.tokensPerRecord,
+            charsPerToken: this.TOKEN_CONFIG.charsPerToken,
             ranges: this.TOKEN_CONFIG.ranges,
         });
     },

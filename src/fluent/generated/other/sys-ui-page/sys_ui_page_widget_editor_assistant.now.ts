@@ -1714,7 +1714,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             }
 
             ctrl.tokenConfig = {
-                tokensPerRecord: 2200,
+                charsPerToken: 4,
                 ranges: [
                     { max: 15000, level: 'green', label: 'Small' },
                     { max: 150000, level: 'orange', label: 'Moderate' },
@@ -1763,6 +1763,52 @@ export const widgetEditorAssistantUiPage = UiPage({
 
             function rowKey(row) {
                 return row.table + ':' + row.sys_id;
+            }
+
+            // Exported XML/SCHEMA byte size per row, keyed by rowKey — drives the real token estimate.
+            ctrl.rowSizeBytes = {};
+            var _sizeFetchInFlight = {};
+
+            function _fetchRowSize(row) {
+                var key = rowKey(row);
+                var p;
+                if (row.table === 'sys_db_object') {
+                    p = fetch('/sys_db_object.do?sys_id=' + encodeURIComponent(row.sys_id) + '&XML', { credentials: 'same-origin' })
+                        .then(function (r) { return r.text(); })
+                        .then(function (metaText) {
+                            var metaEl = new DOMParser().parseFromString(metaText, 'text/xml').documentElement.firstElementChild;
+                            var nameEl = metaEl ? metaEl.querySelector('name') : null;
+                            var targetTable = (nameEl && nameEl.textContent) || row.label;
+                            if (!targetTable) return 0;
+                            return fetch('/' + encodeURIComponent(targetTable) + '.do?SCHEMA', { credentials: 'same-origin' })
+                                .then(function (r) { return r.text(); })
+                                .then(function (text) { return new Blob([text]).size; });
+                        });
+                } else {
+                    p = fetch('/' + row.table + '.do?sys_id=' + encodeURIComponent(row.sys_id) + '&XML', { credentials: 'same-origin' })
+                        .then(function (r) { return r.text(); })
+                        .then(function (text) { return new Blob([text]).size; });
+                }
+                return p.then(function (size) {
+                    ctrl.rowSizeBytes[key] = size || 0;
+                }, function () {
+                    ctrl.rowSizeBytes[key] = 0;
+                }).finally(function () {
+                    delete _sizeFetchInFlight[key];
+                    $timeout(angular.noop);
+                });
+            }
+
+            function ensureRowSizesLoaded() {
+                var pending = ctrl.rows.filter(function (r) {
+                    if (r.placeholder || !r.sys_id || !r.table) return false;
+                    var key = rowKey(r);
+                    return !ctrl.rowSizeBytes.hasOwnProperty(key) && !_sizeFetchInFlight[key];
+                });
+                pending.forEach(function (r) { _sizeFetchInFlight[rowKey(r)] = true; });
+                if (pending.length) {
+                    runPool(pending, _fetchRowSize, 4);
+                }
             }
 
             // Suggested rows the user explicitly removed, so a refresh doesn't re-add them.
@@ -1852,6 +1898,7 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                 ctrl.rows = rows;
                 recomputeTypeCounts();
+                ensureRowSizesLoaded();
             }
             rebuildRows();
 
@@ -1864,9 +1911,14 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             ctrl.rawTokenCount = function () {
-                var selected = ctrl.selectedCount();
-                var perRecord = (ctrl.tokenConfig && ctrl.tokenConfig.tokensPerRecord) || 2200;
-                return selected * perRecord;
+                var charsPerToken = (ctrl.tokenConfig && ctrl.tokenConfig.charsPerToken) || 4;
+                var bytes = 0;
+                for (var i = 0; i < ctrl.rows.length; i++) {
+                    var r = ctrl.rows[i];
+                    if (r.placeholder || !r.checked) continue;
+                    bytes += ctrl.rowSizeBytes[rowKey(r)] || 0;
+                }
+                return Math.round(bytes / charsPerToken);
             };
 
             ctrl.estimatedTokens = function () {
@@ -1945,6 +1997,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.refreshingAll = true;
                 // Refresh re-adds any recommended records the user previously removed.
                 dismissedSuggestionKeys = {};
+                // Content may have changed since the last measurement.
+                ctrl.rowSizeBytes = {};
                 ctrl.saveSelections();
                 ajax('getRecordLabel', { table: ctrl.primary.table, sys_id: ctrl.primary.sysId }).then(function (res) {
                     if (res.success) {
