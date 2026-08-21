@@ -31,6 +31,23 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         if (!table || !sysId) {
             return this._answer({ success: false, error: 'No table/sys_id provided', related: [] });
         }
+
+        if (table === 'sys_db_object') {
+            try {
+                var tableGr = new GlideRecordSecure('sys_db_object');
+                if (!tableGr.get(sysId)) {
+                    return this._answer({ success: false, error: 'Table not found', related: [] });
+                }
+                var refTableNames = this._scanDictionaryReferencedTables(tableGr.getValue('name'));
+                var refTables = this._findReferencedTables(refTableNames).filter(function (r) {
+                    return r.sys_id !== sysId;
+                });
+                return this._answer({ success: true, related: refTables });
+            } catch (e) {
+                return this._answer({ success: false, error: String(e), related: [] });
+            }
+        }
+
         if (table !== 'sp_widget') {
             return this._answer({ success: true, related: [] });
         }
@@ -55,6 +72,29 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         } catch (e) {
             return this._answer({ success: false, error: String(e), related: [] });
         }
+    },
+
+    /**
+     * Finds table names referenced by a table's own reference-type dictionary fields.
+     * @param {string} tableName - The table to scan.
+     * @returns {Array.<string>} Candidate referenced table names (deduplicated).
+     */
+    _scanDictionaryReferencedTables: function (tableName) {
+        var seen = {};
+        var names = [];
+        var gr = new GlideRecordSecure('sys_dictionary');
+        gr.addQuery('name', tableName);
+        gr.addQuery('internal_type', 'reference');
+        gr.addNotNullQuery('reference');
+        gr.query();
+        while (gr.next()) {
+            var refTable = gr.getValue('reference');
+            if (refTable && refTable !== tableName && !seen[refTable]) {
+                seen[refTable] = true;
+                names.push(refTable);
+            }
+        }
+        return names;
     },
 
     /**
