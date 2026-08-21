@@ -2,13 +2,8 @@ var WidgetEditorAssistantAjax = Class.create();
 WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     WIDGET_SCAN_FIELDS: ['script', 'client_script', 'link', 'css', 'template', 'option_schema', 'demo_data'],
 
-    // Tables whose single 'script' field gets scanned for further Script Include and table references.
-    SERVER_SCRIPT_TABLES: {
-        sys_script_include: true,
-        sys_script: true,
-        sys_script_fix: true,
-        sysauto_script: true,
-    },
+    // Dictionary internal_types that hold actual script code.
+    SCRIPT_FIELD_TYPES: { script: true, script_server: true, script_plain: true },
 
     SI_SCAN_BUILTINS: {
         Array: true, Object: true, Date: true, RegExp: true, Error: true, TypeError: true,
@@ -80,27 +75,49 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             }
         }
 
-        if (this.SERVER_SCRIPT_TABLES[table]) {
+        if (table !== 'sp_widget') {
+            // Generic fallback: any table with its own script-type field(s) gets scanned for
+            // further Script Include and table references, and any table_name-type field(s)
+            // suggest whatever table that field names — whatever the table happens to be.
             try {
+                var scriptFields = this._findScriptFields(table);
+                var tableNameFields = this._findFieldsOfType(table, 'table_name');
+                if (!scriptFields.length && !tableNameFields.length) {
+                    return this._answer({ success: true, related: [] });
+                }
                 var scriptGr = new GlideRecordSecure(table);
                 if (!scriptGr.get(sysId)) {
                     return this._answer({ success: false, error: 'Record not found', related: [] });
                 }
-                var scriptContent = scriptGr.getValue('script');
-                var scriptNames = this._scanReferencedNamesInText(scriptContent);
-                var scriptIncludeMatches = this._findReferencedScriptIncludes(scriptNames, scriptGr.getValue('sys_scope')).filter(function (r) {
-                    return r.sys_id !== sysId;
-                });
-                var scriptTableNames = this._scanReferencedTableNamesInText(scriptContent);
-                var scriptTableMatches = this._findReferencedTables(scriptTableNames);
-                return this._answer({ success: true, related: this._dedupeRelated([].concat(scriptIncludeMatches, scriptTableMatches)) });
+
+                var results = [];
+                if (scriptFields.length) {
+                    var scriptContent = scriptFields.map(function (f) {
+                        return scriptGr.getValue(f) || '';
+                    }).join('\n');
+                    var scriptNames = this._scanReferencedNamesInText(scriptContent);
+                    var scriptIncludeMatches = this._findReferencedScriptIncludes(scriptNames, scriptGr.getValue('sys_scope')).filter(function (r) {
+                        return r.sys_id !== sysId;
+                    });
+                    var scriptTableNames = this._scanReferencedTableNamesInText(scriptContent);
+                    results = results.concat(scriptIncludeMatches, this._findReferencedTables(scriptTableNames));
+                }
+                if (tableNameFields.length) {
+                    var seenTableNames = {};
+                    var namedTableNames = [];
+                    tableNameFields.forEach(function (f) {
+                        var val = scriptGr.getValue(f);
+                        if (val && val !== table && !seenTableNames[val]) {
+                            seenTableNames[val] = true;
+                            namedTableNames.push(val);
+                        }
+                    });
+                    results = results.concat(this._findReferencedTables(namedTableNames));
+                }
+                return this._answer({ success: true, related: this._dedupeRelated(results) });
             } catch (e) {
                 return this._answer({ success: false, error: String(e), related: [] });
             }
-        }
-
-        if (table !== 'sp_widget') {
-            return this._answer({ success: true, related: [] });
         }
 
         // Never let an exception here kill the whole GlideAjax response.
@@ -146,6 +163,37 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             }
         }
         return names;
+    },
+
+    /**
+     * Finds a table's own script-type fields (internal_type in SCRIPT_FIELD_TYPES),
+     * so any table holding server-side code can be scanned without hardcoding its name.
+     * @param {string} table - Table name.
+     * @returns {Array.<string>} Field names.
+     */
+    _findScriptFields: function (table) {
+        return this._findFieldsOfType(table, Object.keys(this.SCRIPT_FIELD_TYPES).join(','));
+    },
+
+    /**
+     * Finds a table's own fields matching the given dictionary internal_type(s).
+     * @param {string} table - Table name.
+     * @param {string} internalTypes - Comma-separated internal_type value(s).
+     * @returns {Array.<string>} Field names.
+     */
+    _findFieldsOfType: function (table, internalTypes) {
+        var fields = [];
+        var gr = new GlideRecordSecure('sys_dictionary');
+        gr.addQuery('name', table);
+        gr.addQuery('internal_type', 'IN', internalTypes);
+        gr.query();
+        while (gr.next()) {
+            var field = gr.getValue('element');
+            if (field) {
+                fields.push(field);
+            }
+        }
+        return fields;
     },
 
     /**

@@ -1514,12 +1514,14 @@ export const widgetEditorAssistantUiPage = UiPage({
             return TABLE_LABELS[table] || table;
         }
 
-        // Tables whose suggestions can themselves be scanned one extra layer deep (mirrors server SERVER_SCRIPT_TABLES).
-        var SERVER_SCRIPT_TABLES = {
-            sys_script_include: true,
-            sys_script: true,
-            sys_script_fix: true,
-            sysauto_script: true,
+        // Tables with their own dedicated (non-script-scan) suggestion source — excluded from the
+        // generic one-layer-deep re-scan since recursing into them would trigger a different,
+        // much larger suggestion mechanism (table schema refs, portal layout, catalog metadata, widget scan).
+        var NON_GENERIC_SCAN_TABLES = {
+            sys_db_object: true,
+            sp_page: true,
+            sc_cat_item_producer: true,
+            sp_widget: true,
         };
 
         // Per-table icon overrides; anything unlisted falls back to a generic document icon.
@@ -1841,7 +1843,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             // Suggested rows the user explicitly removed, so a refresh doesn't re-add them.
             var dismissedSuggestionKeys = {};
 
-            // Script Includes/Business Rules already scanned for further references this session, to avoid re-fetching or looping on cycles.
+            // Records already scanned for further references this session (one-layer-deep re-scan), to avoid re-fetching or looping on cycles.
             var _scannedScriptKeys = {};
             var _suggestScanDepth = 0;
 
@@ -2184,7 +2186,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             checked: true,
                         });
                         // Only expand one extra layer deep — items found at that layer aren't scanned further.
-                        if (depth === 0 && SERVER_SCRIPT_TABLES[row.table] && !_scannedScriptKeys[key]) {
+                        if (depth === 0 && !NON_GENERIC_SCAN_TABLES[row.table] && !_scannedScriptKeys[key]) {
                             _scannedScriptKeys[key] = true;
                             toExpand.push(row);
                         }
