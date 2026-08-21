@@ -348,13 +348,14 @@ export const widgetEditorAssistantUiPage = UiPage({
             color: rgb(var(--now-color--primary-2, 0 118 204));
             margin-left: 0.5rem;
             vertical-align: middle;
+            cursor: default;
         }
         .we-pill-suggested i {
             font-size: 0.75rem;
         }
 
         /* Primary indicator pill */
-        .we-primary-tag {
+        .we-pill-primary {
             display: inline-flex;
             align-items: center;
             font-size: 0.7rem;
@@ -365,6 +366,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             color: rgb(var(--now-badge--secondary_positive--color, var(--now-color_alert--positive-5, 15 52 17)));
             margin-left: 0.5rem;
             vertical-align: middle;
+            cursor: default;
         }
 
         /* Inline Table and Record Lookup Triggers */
@@ -1099,7 +1101,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                         <span ng-class="{'we-lookup-link': !(row.primary &amp;&amp; ctrl.embeddedInModal)}" ng-click="!(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; ctrl.openLookupForRow(row, 'record')" title="{{(row.primary &amp;&amp; ctrl.embeddedInModal) ? '' : 'Click to change record'}}">
                                             {{row.label}}
                                         </span>
-                                        <span class="we-primary-tag" ng-if="row.primary">Primary</span>
+                                        <span class="we-pill-primary" ng-if="row.primary">Primary</span>
                                         <span class="we-pill-suggested" ng-if="row.suggested">
                                             <span>Recommended</span>
                                             <i class="icon-ai-sparkle-fill" aria-hidden="true"></i>
