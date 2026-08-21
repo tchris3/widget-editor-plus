@@ -284,13 +284,13 @@ export const widgetEditorAssistantUiPage = UiPage({
             position: sticky;
             top: 2.75rem;
             z-index: 8;
-            background: rgba(var(--now-color--primary-1, 0 118 204), 0.1);
+            background: rgb(var(--now-color--primary-0, 0 118 204));
             border-bottom: 1px solid rgba(var(--now-color--primary-1, 0 118 204), 0.25);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             font-weight: 500;
         }
         table.we-main-table tbody tr.we-primary-row:hover td {
-            background: rgba(var(--now-color--primary-1, 0 118 204), 0.16);
+            background: rgb(var(--now-color--primary-0, 0 118 204));
         }
         @keyframes we-highlight-fade {
             0% {
@@ -1833,8 +1833,13 @@ export const widgetEditorAssistantUiPage = UiPage({
             // Suggested rows the user explicitly removed, so a refresh doesn't re-add them.
             var dismissedSuggestionKeys = {};
 
+            // Script Includes/Business Rules already scanned for further references this session, to avoid re-fetching or looping on cycles.
+            var _scannedScriptKeys = {};
+            var _suggestScanDepth = 0;
+
             function loadDismissedSuggestions() {
                 dismissedSuggestionKeys = {};
+                _scannedScriptKeys = {};
                 try {
                     var stored = JSON.parse(localStorage.getItem(storageKey()) || 'null');
                     (stored && stored.dismissedSuggestions || []).forEach(function (k) {
@@ -2134,11 +2139,18 @@ export const widgetEditorAssistantUiPage = UiPage({
 
             ctrl.scanningSuggested = false;
 
-            function loadSuggested() {
-                // Always resolves so a failed fetch can't stall the rest of loadPrimaryContext.
+            // Scans table/sysId for suggestions; recurses into any newly-added Script Include or
+            // Business Rule so references inside those get suggested too. Always resolves so a
+            // failed fetch can't stall the rest of loadPrimaryContext.
+            function loadSuggested(table, sysId, depth) {
+                table = table || ctrl.primary.table;
+                sysId = sysId || ctrl.primary.sysId;
+                depth = depth || 0;
+                _scannedScriptKeys[table + ':' + sysId] = true;
+
+                _suggestScanDepth++;
                 ctrl.scanningSuggested = true;
-                return ajax('getSuggestedRelated', { table: ctrl.primary.table, sys_id: ctrl.primary.sysId }).then(function (res) {
-                    ctrl.scanningSuggested = false;
+                return ajax('getSuggestedRelated', { table: table, sys_id: sysId }).then(function (res) {
                     if (!res || !res.success || !res.related) {
                         if (res && res.error) {
                             console.error('[Widget Editor+ Assistant] getSuggestedRelated failed:', res.error);
@@ -2146,6 +2158,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         return;
                     }
                     var existingKeys = new Set(ctrl.related.map(rowKey));
+                    var toExpand = [];
                     for (var i = 0; i < res.related.length; i++) {
                         var row = res.related[i];
                         var key = rowKey(row);
@@ -2162,10 +2175,21 @@ export const widgetEditorAssistantUiPage = UiPage({
                             suggested: true,
                             checked: true,
                         });
+                        // Only expand one extra layer deep — items found at that layer aren't scanned further.
+                        if (depth === 0 && (row.table === 'sys_script_include' || row.table === 'sys_script') && !_scannedScriptKeys[key]) {
+                            _scannedScriptKeys[key] = true;
+                            toExpand.push(row);
+                        }
                     }
+                    if (!toExpand.length) return;
+                    return $q.all(toExpand.map(function (row) {
+                        return loadSuggested(row.table, row.sys_id, depth + 1);
+                    }));
                 }, function (err) {
-                    ctrl.scanningSuggested = false;
                     console.error('[Widget Editor+ Assistant] getSuggestedRelated request failed:', err);
+                }).finally(function () {
+                    _suggestScanDepth--;
+                    ctrl.scanningSuggested = _suggestScanDepth > 0;
                 });
             }
 

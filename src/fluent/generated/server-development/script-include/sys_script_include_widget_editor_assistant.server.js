@@ -72,6 +72,42 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             }
         }
 
+        if (table === 'sys_script_include') {
+            try {
+                var siGr = new GlideRecordSecure('sys_script_include');
+                if (!siGr.get(sysId)) {
+                    return this._answer({ success: false, error: 'Script Include not found', related: [] });
+                }
+                var siScript = siGr.getValue('script');
+                var siNames = this._scanReferencedNamesInText(siScript);
+                var siScriptIncludes = this._findReferencedScriptIncludes(siNames, siGr.getValue('sys_scope')).filter(function (r) {
+                    return r.sys_id !== sysId;
+                });
+                var siTableNames = this._scanReferencedTableNamesInText(siScript);
+                var siTables = this._findReferencedTables(siTableNames);
+                return this._answer({ success: true, related: this._dedupeRelated([].concat(siScriptIncludes, siTables)) });
+            } catch (e) {
+                return this._answer({ success: false, error: String(e), related: [] });
+            }
+        }
+
+        if (table === 'sys_script') {
+            try {
+                var brGr = new GlideRecordSecure('sys_script');
+                if (!brGr.get(sysId)) {
+                    return this._answer({ success: false, error: 'Business Rule not found', related: [] });
+                }
+                var brScript = brGr.getValue('script');
+                var brNames = this._scanReferencedNamesInText(brScript);
+                var brScriptIncludes = this._findReferencedScriptIncludes(brNames, brGr.getValue('sys_scope'));
+                var brTableNames = this._scanReferencedTableNamesInText(brScript);
+                var brTables = this._findReferencedTables(brTableNames);
+                return this._answer({ success: true, related: this._dedupeRelated([].concat(brScriptIncludes, brTables)) });
+            } catch (e) {
+                return this._answer({ success: false, error: String(e), related: [] });
+            }
+        }
+
         if (table !== 'sp_widget') {
             return this._answer({ success: true, related: [] });
         }
@@ -266,13 +302,21 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         var content = this.WIDGET_SCAN_FIELDS.map(function (f) {
             return widgetGr.getValue(f) || '';
         }).join('\n');
+        return this._scanReferencedNamesInText(content);
+    },
 
+    /**
+     * Regex-scans raw script text for `new SomeScriptInclude()` references.
+     * @param {string} content - Script text to scan.
+     * @returns {Array.<string>} Candidate class names found (deduplicated, builtins excluded).
+     */
+    _scanReferencedNamesInText: function (content) {
         var seen = {};
         var names = [];
         // Matches `new Foo(` or `new ns.Foo(`, capturing just the class name.
         var re = /\bnew\s+(?:[a-zA-Z_][a-zA-Z0-9_]*\.)?([A-Z][a-zA-Z0-9_]*)\s*\(/g;
         var m;
-        while ((m = re.exec(content)) !== null) {
+        while ((m = re.exec(content || '')) !== null) {
             var name = m[1];
             if (!seen[name] && !this.SI_SCAN_BUILTINS[name]) {
                 seen[name] = true;
@@ -390,12 +434,20 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         var content = this.WIDGET_SCAN_FIELDS.map(function (f) {
             return widgetGr.getValue(f) || '';
         }).join('\n');
+        return this._scanReferencedTableNamesInText(content);
+    },
 
+    /**
+     * Regex-scans raw script text for new GlideRecord/GlideRecordSecure/GlideAggregate('table_name') references.
+     * @param {string} content - Script text to scan.
+     * @returns {Array.<string>} Candidate table names (deduplicated).
+     */
+    _scanReferencedTableNamesInText: function (content) {
         var seen = {};
         var names = [];
         var re = /\bnew\s+(?:GlideRecord|GlideRecordSecure|GlideAggregate)\s*\(\s*['"]([a-zA-Z0-9_]+)['"]/g;
         var m;
-        while ((m = re.exec(content)) !== null) {
+        while ((m = re.exec(content || '')) !== null) {
             var name = m[1];
             if (!seen[name]) {
                 seen[name] = true;
