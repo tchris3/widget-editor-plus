@@ -1332,7 +1332,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                     <span class="we-picker-item-icon" aria-hidden="true"><i ng-class="ctrl.tableIconClass(ctrl.lookup.chosenTable)" aria-hidden="true"></i></span>
                                     <div class="we-picker-item-content">
                                         <span class="we-picker-item-name" ng-if="ctrl.lookup.columns.length" ng-bind-html="(r.values[ctrl.lookup.columns[0].field] || r[ctrl.lookup.columns[0].field] || '—') | weHighlight:ctrl.lookup.recordActiveSearch"></span>
-                                        <span class="we-picker-item-id we-code-font" ng-if="ctrl.lookup.columns.length &gt; 1" ng-bind-html="(r.values[ctrl.lookup.columns[1].field] || r[ctrl.lookup.columns[1].field] || '—') | weHighlight:ctrl.lookup.recordActiveSearch"></span>
+                                        <span class="we-picker-item-id we-code-font" ng-if="ctrl.recordSecondaryText(r)" ng-bind-html="ctrl.recordSecondaryText(r) | weHighlight:ctrl.lookup.recordActiveSearch"></span>
                                     </div>
                                     <div class="we-picker-item-actions">
                                         <a class="we-picker-action-btn" ng-href="/nav_to.do?uri={{ctrl.lookup.chosenTable}}.do%3Fsys_id%3D{{r.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open record in platform">
@@ -2352,6 +2352,18 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.lookup.step = 'record';
                 ctrl.lookup.recordQuery = '';
                 loadRecords('', false);
+            };
+
+            ctrl.recordSecondaryText = function (r) {
+                var parts = [];
+                for (var i = 1; i < ctrl.lookup.columns.length; i++) {
+                    var field = ctrl.lookup.columns[i].field;
+                    var val = r.values[field] || r[field];
+                    if (val) {
+                        parts.push(val);
+                    }
+                }
+                return parts.join(' · ');
             };
 
             ctrl.chooseRecord = function (r) {

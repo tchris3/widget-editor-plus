@@ -436,12 +436,38 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     /** Column internal types allowed in the record picker's list-view columns. */
     PICKER_COLUMN_TYPES: { string: true, reference: true, table_name: true },
 
+    /** Explicit picker field order for tables whose default list view doesn't lead with the most useful fields. */
+    PICKER_FIELD_OVERRIDES: {
+        sys_security_acl: ['name', 'type', 'operation'],
+    },
+
     /**
      * Resolves picker column definitions from a table's default list view.
      * @param {string} table - Table name.
      * @returns {Array.<{field: string, label: string}>}
      */
     _getTableColumns: function (table) {
+        var override = this.PICKER_FIELD_OVERRIDES[table];
+        if (override) {
+            var grOverride = new GlideRecordSecure(table);
+            grOverride.initialize();
+            var overrideCols = [];
+            for (var o = 0; o < override.length; o++) {
+                var ofName = override[o];
+                if (!grOverride.isValidField(ofName)) {
+                    continue;
+                }
+                var oLabel = ofName;
+                try {
+                    oLabel = grOverride.getElement(ofName).getLabel() || ofName;
+                } catch (oe) {}
+                overrideCols.push({ field: ofName, label: oLabel });
+            }
+            if (overrideCols.length) {
+                return overrideCols;
+            }
+        }
+
         var listSysId = this._findListSysId(table);
         var fieldNames = [];
         if (listSysId) {

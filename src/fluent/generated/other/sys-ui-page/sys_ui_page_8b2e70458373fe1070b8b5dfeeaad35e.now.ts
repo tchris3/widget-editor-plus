@@ -11181,9 +11181,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     var rawUrl = 'widget_editor_assistant.do?record_table=sp_widget&record_sys_id=' + SYS_ID;
                     var $sce = $injector.get('$sce');
                     $scope.assistantModal.rawUrl = rawUrl;
-                    $scope.assistantModal.url = $sce.trustAsResourceUrl(rawUrl);
+                    /* Clear the iframe first so a stale previous session never flashes before the fresh navigation lands. */
+                    $scope.assistantModal.url = null;
                     $scope.assistantModal.open = true;
                     $scope.openDropdown = null;
+                    $timeout(function () {
+                        $scope.assistantModal.url = $sce.trustAsResourceUrl(rawUrl);
+                    });
                 };
 
                 $scope.closeAssistantModal = function () {
