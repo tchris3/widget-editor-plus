@@ -48,6 +48,18 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             }
         }
 
+        if (table === 'sp_page') {
+            try {
+                var pageGr = new GlideRecordSecure('sp_page');
+                if (!pageGr.get(sysId)) {
+                    return this._answer({ success: false, error: 'Page not found', related: [] });
+                }
+                return this._answer({ success: true, related: this._findPortalPageLayout(sysId) });
+            } catch (e) {
+                return this._answer({ success: false, error: String(e), related: [] });
+            }
+        }
+
         if (table !== 'sp_widget') {
             return this._answer({ success: true, related: [] });
         }
@@ -95,6 +107,81 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             }
         }
         return names;
+    },
+
+    /**
+     * Walks a Portal Page's full layout hierarchy (containers, rows, columns, widget
+     * instances) so a page can be exported alongside everything it's built from.
+     * @param {string} pageSysId - The sp_page sys_id.
+     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Layout records, in hierarchy order.
+     */
+    _findPortalPageLayout: function (pageSysId) {
+        var results = [];
+
+        var containerIds = [];
+        var containerGr = new GlideRecordSecure('sp_container');
+        containerGr.addQuery('sp_page', pageSysId);
+        containerGr.orderBy('order');
+        containerGr.query();
+        while (containerGr.next()) {
+            var containerLabel = containerGr.getValue('title') || containerGr.getValue('name') ||
+                ('Container ' + (parseInt(containerGr.getValue('order'), 10) || 0));
+            results.push({
+                table: 'sp_container', sys_id: containerGr.getUniqueValue(), label: containerLabel,
+                category: 'Container (on page)', updatedOn: containerGr.getDisplayValue('sys_updated_on'),
+            });
+            containerIds.push(containerGr.getUniqueValue());
+        }
+        if (!containerIds.length) {
+            return results;
+        }
+
+        var rowIds = [];
+        var rowGr = new GlideRecordSecure('sp_row');
+        rowGr.addQuery('sp_container', 'IN', containerIds.join(','));
+        rowGr.orderBy('order');
+        rowGr.query();
+        while (rowGr.next()) {
+            results.push({
+                table: 'sp_row', sys_id: rowGr.getUniqueValue(), label: 'Row ' + (parseInt(rowGr.getValue('order'), 10) || 0),
+                category: 'Row (on page)', updatedOn: rowGr.getDisplayValue('sys_updated_on'),
+            });
+            rowIds.push(rowGr.getUniqueValue());
+        }
+        if (!rowIds.length) {
+            return results;
+        }
+
+        var columnIds = [];
+        var colGr = new GlideRecordSecure('sp_column');
+        colGr.addQuery('sp_row', 'IN', rowIds.join(','));
+        colGr.orderBy('order');
+        colGr.query();
+        while (colGr.next()) {
+            var size = colGr.getValue('size');
+            var columnLabel = 'Column ' + (parseInt(colGr.getValue('order'), 10) || 0) + (size ? ' (' + size + ')' : '');
+            results.push({
+                table: 'sp_column', sys_id: colGr.getUniqueValue(), label: columnLabel,
+                category: 'Column (on page)', updatedOn: colGr.getDisplayValue('sys_updated_on'),
+            });
+            columnIds.push(colGr.getUniqueValue());
+        }
+        if (!columnIds.length) {
+            return results;
+        }
+
+        var instGr = new GlideRecordSecure('sp_instance');
+        instGr.addQuery('sp_column', 'IN', columnIds.join(','));
+        instGr.orderBy('sp_column');
+        instGr.query();
+        while (instGr.next()) {
+            results.push({
+                table: 'sp_instance', sys_id: instGr.getUniqueValue(), label: instGr.getDisplayValue('sp_widget') || 'Widget Instance',
+                category: 'Widget Instance (on page)', updatedOn: instGr.getDisplayValue('sys_updated_on'),
+            });
+        }
+
+        return results;
     },
 
     /**

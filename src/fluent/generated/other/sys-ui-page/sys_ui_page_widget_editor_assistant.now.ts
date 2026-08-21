@@ -1494,6 +1494,10 @@ export const widgetEditorAssistantUiPage = UiPage({
             sp_widget: 'Widget',
             sp_ng_template: 'Angular Template',
             sp_angular_provider: 'Angular Provider',
+            sp_container: 'Container',
+            sp_row: 'Row',
+            sp_column: 'Column',
+            sp_instance: 'Widget Instance',
         };
         for (var i = 0; i < COMMON_TABLES.length; i++) {
             TABLE_LABELS[COMMON_TABLES[i].name] = COMMON_TABLES[i].label;
