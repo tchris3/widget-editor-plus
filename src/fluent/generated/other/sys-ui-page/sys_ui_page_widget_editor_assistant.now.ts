@@ -2563,7 +2563,25 @@ export const widgetEditorAssistantUiPage = UiPage({
                 var combinedDoc = document.implementation.createDocument(null, 'unload', null);
                 combinedDoc.documentElement.setAttribute('unload', 'widget_editor_assistant_context');
 
+                // Manifest tells a reader what's here and why before it has to parse any record data.
+                var manifestEl = combinedDoc.createElement('context_manifest');
+                selected.forEach(function (row) {
+                    var entryEl = combinedDoc.createElement('record');
+                    entryEl.setAttribute('table', row.table);
+                    entryEl.setAttribute('name', row.label || row.sys_id);
+                    entryEl.setAttribute('role', row.primary ? 'primary' : (row.manual ? 'manual' : 'suggested'));
+                    entryEl.setAttribute('reason', row.category || (row.primary ? 'Primary record' : (row.manual ? 'Manual' : 'Related')));
+                    manifestEl.appendChild(entryEl);
+                });
+                combinedDoc.documentElement.appendChild(manifestEl);
+
+                var primaryContainer = combinedDoc.createElement('primary_record');
+                var relatedContainer = combinedDoc.createElement('related_records');
+                combinedDoc.documentElement.appendChild(primaryContainer);
+                combinedDoc.documentElement.appendChild(relatedContainer);
+
                 await runPool(selected, async function (row) {
+                    var targetContainer = row.primary ? primaryContainer : relatedContainer;
                     try {
                         if (row.table === 'sys_db_object') {
                             // ?SCHEMA is keyed by the URL's own table, not sys_id — resolve the
@@ -2579,7 +2597,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 var schemaText = await schemaResp.text();
                                 var schemaEl = new DOMParser().parseFromString(schemaText, 'text/xml').documentElement;
                                 redactRecordElement(schemaEl);
-                                combinedDoc.documentElement.appendChild(combinedDoc.importNode(schemaEl, true));
+                                targetContainer.appendChild(combinedDoc.importNode(schemaEl, true));
                             }
                         } else {
                             var resp = await fetch('/' + row.table + '.do?sys_id=' + encodeURIComponent(row.sys_id) + '&XML', { credentials: 'same-origin' });
@@ -2589,7 +2607,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             for (var c = 0; c < children.length; c++) {
                                 var recordEl = children[c];
                                 redactRecordElement(recordEl);
-                                combinedDoc.documentElement.appendChild(combinedDoc.importNode(recordEl, true));
+                                targetContainer.appendChild(combinedDoc.importNode(recordEl, true));
                             }
                         }
                     } catch (e) {}
