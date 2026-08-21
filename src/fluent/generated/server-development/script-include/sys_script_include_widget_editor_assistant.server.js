@@ -66,7 +66,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
                 if (!producerGr.get(sysId)) {
                     return this._answer({ success: false, error: 'Record producer not found', related: [] });
                 }
-                return this._answer({ success: true, related: this._findCatalogProducerDependencies(sysId) });
+                return this._answer({ success: true, related: this._findCatalogProducerDependencies(sysId, producerGr.getValue('table_name')) });
             } catch (e) {
                 return this._answer({ success: false, error: String(e), related: [] });
             }
@@ -198,14 +198,16 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
 
     /**
      * Finds everything a Catalog Item Producer is built from: its variables, UI
-     * policies (and their actions), and catalog client scripts. catalog_ui_policy_action
-     * links to its parent policy via the inherited sys_ui_policy_action.ui_policy field
+     * policies (and their actions), catalog client scripts, and the target table
+     * (table_name) the producer creates records in. catalog_ui_policy_action links
+     * to its parent policy via the inherited sys_ui_policy_action.ui_policy field
      * (catalog_ui_policy extends sys_ui_policy, so sys_ids line up across the hierarchy).
      * @param {string} producerSysId - The sc_cat_item_producer sys_id.
+     * @param {string} targetTableName - The producer's table_name field value.
      * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Dependency records.
      */
-    _findCatalogProducerDependencies: function (producerSysId) {
-        var results = this._findReferencedTables(['sc_cat_item_producer']);
+    _findCatalogProducerDependencies: function (producerSysId, targetTableName) {
+        var results = targetTableName ? this._findReferencedTables([targetTableName]) : [];
 
         var varGr = new GlideRecordSecure('item_option_new');
         varGr.addQuery('cat_item', producerSysId);
