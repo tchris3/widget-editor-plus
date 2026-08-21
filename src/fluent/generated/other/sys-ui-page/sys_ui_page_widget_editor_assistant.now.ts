@@ -1498,6 +1498,10 @@ export const widgetEditorAssistantUiPage = UiPage({
             sp_row: 'Row',
             sp_column: 'Column',
             sp_instance: 'Widget Instance',
+            item_option_new: 'Variable',
+            catalog_ui_policy: 'Catalog UI Policy',
+            catalog_ui_policy_action: 'Catalog UI Policy Action',
+            catalog_script_client: 'Catalog Client Script',
         };
         for (var i = 0; i < COMMON_TABLES.length; i++) {
             TABLE_LABELS[COMMON_TABLES[i].name] = COMMON_TABLES[i].label;

@@ -60,6 +60,18 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             }
         }
 
+        if (table === 'sc_cat_item_producer') {
+            try {
+                var producerGr = new GlideRecordSecure('sc_cat_item_producer');
+                if (!producerGr.get(sysId)) {
+                    return this._answer({ success: false, error: 'Record producer not found', related: [] });
+                }
+                return this._answer({ success: true, related: this._findCatalogProducerDependencies(sysId, producerGr.getValue('table_name')) });
+            } catch (e) {
+                return this._answer({ success: false, error: String(e), related: [] });
+            }
+        }
+
         if (table !== 'sp_widget') {
             return this._answer({ success: true, related: [] });
         }
@@ -178,6 +190,67 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             results.push({
                 table: 'sp_instance', sys_id: instGr.getUniqueValue(), label: instGr.getDisplayValue('sp_widget') || 'Widget Instance',
                 category: 'Widget Instance (on page)', updatedOn: instGr.getDisplayValue('sys_updated_on'),
+            });
+        }
+
+        return results;
+    },
+
+    /**
+     * Finds everything a Catalog Item Producer is built from: its variables, UI
+     * policies (and their actions), catalog client scripts, and the target table
+     * (table_name) the producer creates records in. catalog_ui_policy_action links
+     * to its parent policy via the inherited sys_ui_policy_action.ui_policy field
+     * (catalog_ui_policy extends sys_ui_policy, so sys_ids line up across the hierarchy).
+     * @param {string} producerSysId - The sc_cat_item_producer sys_id.
+     * @param {string} targetTableName - The producer's table_name field value.
+     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Dependency records.
+     */
+    _findCatalogProducerDependencies: function (producerSysId, targetTableName) {
+        var results = targetTableName ? this._findReferencedTables([targetTableName]) : [];
+
+        var varGr = new GlideRecordSecure('item_option_new');
+        varGr.addQuery('cat_item', producerSysId);
+        varGr.orderBy('order');
+        varGr.query();
+        while (varGr.next()) {
+            results.push({
+                table: 'item_option_new', sys_id: varGr.getUniqueValue(), label: varGr.getDisplayValue() || varGr.getValue('name'),
+                category: 'Variable (on producer)', updatedOn: varGr.getDisplayValue('sys_updated_on'),
+            });
+        }
+
+        var policyIds = [];
+        var policyGr = new GlideRecordSecure('catalog_ui_policy');
+        policyGr.addQuery('catalog_item', producerSysId);
+        policyGr.query();
+        while (policyGr.next()) {
+            results.push({
+                table: 'catalog_ui_policy', sys_id: policyGr.getUniqueValue(), label: policyGr.getDisplayValue() || policyGr.getUniqueValue(),
+                category: 'UI Policy (on producer)', updatedOn: policyGr.getDisplayValue('sys_updated_on'),
+            });
+            policyIds.push(policyGr.getUniqueValue());
+        }
+        if (policyIds.length) {
+            var actionGr = new GlideRecordSecure('catalog_ui_policy_action');
+            actionGr.addQuery('ui_policy', 'IN', policyIds.join(','));
+            actionGr.query();
+            while (actionGr.next()) {
+                results.push({
+                    table: 'catalog_ui_policy_action', sys_id: actionGr.getUniqueValue(),
+                    label: actionGr.getValue('catalog_variable') || actionGr.getDisplayValue() || 'UI Policy Action',
+                    category: 'UI Policy Action (on producer)', updatedOn: actionGr.getDisplayValue('sys_updated_on'),
+                });
+            }
+        }
+
+        var clientGr = new GlideRecordSecure('catalog_script_client');
+        clientGr.addQuery('cat_item', producerSysId);
+        clientGr.query();
+        while (clientGr.next()) {
+            results.push({
+                table: 'catalog_script_client', sys_id: clientGr.getUniqueValue(), label: clientGr.getValue('name') || clientGr.getDisplayValue(),
+                category: 'Catalog Client Script (on producer)', updatedOn: clientGr.getDisplayValue('sys_updated_on'),
             });
         }
 
