@@ -1032,12 +1032,12 @@ export const widgetEditorAssistantUiPage = UiPage({
                         <div class="we-table-heading">
                             <span>Records</span>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <span class="we-scan-indicator" ng-if="ctrl.scanningSuggested" title="Scanning the primary record's script, template, and links for suggested script includes, Angular templates/providers, and tables…">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span class="we-scan-indicator" ng-if="ctrl.scanningSuggested">
                                 <we-loader></we-loader>
                                 <span>Scanning for suggestions…</span>
                             </span>
-                            <button type="button" class="btn btn-default" ng-if="ctrl.primary.sysId" ng-click="ctrl.refreshAll()" ng-disabled="ctrl.refreshingAll" title="Refresh all record names/updated dates and re-scan the primary record for suggested related components">
+                            <button type="button" class="btn btn-default" ng-if="ctrl.primary.sysId" ng-click="ctrl.refreshAll()" ng-disabled="ctrl.refreshingAll" title="Refresh all records and re-scan for suggested related components">
                                 <i class="icon-refresh" ng-class="{'we-spin': ctrl.refreshingAll}" style="margin-right: 0.375rem;"></i>
                                 <span>Refresh</span>
                             </button>
