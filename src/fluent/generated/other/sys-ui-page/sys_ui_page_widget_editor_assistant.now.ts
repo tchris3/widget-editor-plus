@@ -2569,8 +2569,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                     var entryEl = combinedDoc.createElement('record');
                     entryEl.setAttribute('table', row.table);
                     entryEl.setAttribute('name', row.label || row.sys_id);
-                    entryEl.setAttribute('role', row.primary ? 'primary' : (row.manual ? 'manual' : 'suggested'));
-                    entryEl.setAttribute('reason', row.category || (row.primary ? 'Primary record' : (row.manual ? 'Manual' : 'Related')));
+                    entryEl.setAttribute('role', row.primary ? 'primary' : 'related');
+                    if (row.suggested && row.category) {
+                        entryEl.setAttribute('reason', row.category);
+                    }
                     manifestEl.appendChild(entryEl);
                 });
                 combinedDoc.documentElement.appendChild(manifestEl);
