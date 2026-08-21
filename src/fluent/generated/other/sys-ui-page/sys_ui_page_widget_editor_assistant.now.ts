@@ -1082,7 +1082,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                             <i class="icon-add" style="margin-right: 0.375rem;"></i>
                                             <span>Select record</span>
                                         </button>
-                                        <div style="margin-top: 0.5rem; font-size: var(--now-global-font-size--md, 14px); color: rgb(var(--now-color_text--secondary, 96 100 108));">
+                                        <div style="margin-top: 1.5rem; font-size: var(--now-global-font-size--md, 14px); color: rgb(var(--now-color_text--secondary, 96 100 108));">
                                             Choose the primary record to get started.
                                         </div>
                                     </td>
@@ -1167,7 +1167,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                                     <span class="we-token-lbl">Estimated Context Size</span>
                                     <span class="we-token-badge" ng-if="ctrl.tokenLevelInfo().label" ng-bind="ctrl.tokenLevelInfo().label"></span>
                                 </div>
-                                <span class="we-token-val">~{{ctrl.estimatedTokens()}} tokens</span>
+                                <span class="we-token-val" ng-if="ctrl.rawTokenCount() === 0">N/A</span>
+                                <span class="we-token-val" ng-if="ctrl.rawTokenCount() &gt; 0">~{{ctrl.estimatedTokens()}} tokens</span>
                             </div>
 
                             <!-- Export Button -->
@@ -1644,6 +1645,13 @@ export const widgetEditorAssistantUiPage = UiPage({
             ctrl.progress = { done: 0, total: 0 };
             ctrl.activeSidebarTab = 'xml';
             ctrl.sidebarCollapsed = false;
+
+            if (!ctrl.embeddedInModal) {
+                var siteTitle = (window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.siteTitle) || 'ServiceNow';
+                $scope.$watch(function () { return ctrl.primary.label; }, function (label) {
+                    document.title = (label ? label + ' - ' : '') + 'Widget Editor+ Assistant - ' + siteTitle;
+                });
+            }
 
             ctrl.selectSidebarTab = function (tab) {
                 if (ctrl.activeSidebarTab === tab && !ctrl.sidebarCollapsed) {
