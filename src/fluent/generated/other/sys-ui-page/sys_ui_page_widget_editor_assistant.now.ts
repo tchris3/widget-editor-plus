@@ -1477,6 +1477,11 @@ export const widgetEditorAssistantUiPage = UiPage({
             { name: 'sys_security_acl', label: 'Access Control (ACL)' },
             { name: 'sys_db_object', label: 'Table' },
             { name: 'sys_properties', label: 'System Property' },
+            { name: 'sys_script_fix', label: 'Fix Script' },
+            { name: 'sysauto', label: 'Scheduled Job' },
+            { name: 'sysevent_email_action', label: 'Notification' },
+            { name: 'sp_page', label: 'Portal Page' },
+            { name: 'sysauto_script', label: 'Scheduled Script Execution' },
         ];
         COMMON_TABLES.sort(function (a, b) { return a.label.localeCompare(b.label); });
 
@@ -1511,6 +1516,11 @@ export const widgetEditorAssistantUiPage = UiPage({
             sp_css: 'icon-marker',
             sp_ng_template: 'icon-layout',
             sp_angular_provider: 'icon-console',
+            sys_script_fix: 'icon-script-check',
+            sysauto: 'icon-date-time',
+            sysevent_email_action: 'icon-mail',
+            sp_page: 'icon-application-generic',
+            sysauto_script: 'icon-timeline',
         };
         var DEFAULT_TABLE_ICON = 'icon-document-code';
 
