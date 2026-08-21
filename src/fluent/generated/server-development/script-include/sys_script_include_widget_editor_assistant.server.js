@@ -739,6 +739,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     /** Explicit picker field order for tables whose default list view doesn't lead with the most useful fields. */
     PICKER_FIELD_OVERRIDES: {
         sys_security_acl: ['name', 'type', 'operation'],
+        sys_ui_action: ['name', 'table'],
     },
 
     /**
