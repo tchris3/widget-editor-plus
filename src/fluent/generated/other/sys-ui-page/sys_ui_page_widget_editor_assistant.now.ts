@@ -24,9 +24,18 @@ export const widgetEditorAssistantUiPage = UiPage({
 
     <script>
         var _weAssistantConfigParams = new URLSearchParams(window.location.search);
+        var _weAssistantEmbedded = false;
+        try {
+            if (window.top !== window) {
+                if (window.parent !== window.top) {
+                    _weAssistantEmbedded = true;
+                }
+            }
+        } catch (e) {}
         window.WE_ASSISTANT_CONFIG = {
             table: _weAssistantConfigParams.get('record_table') || '',
             sysId: _weAssistantConfigParams.get('record_sys_id') || '',
+            embedded: _weAssistantEmbedded,
             siteTitle: '\${gs.getProperty("glide.product.name", "ServiceNow")}'
         };
     </script>
@@ -112,15 +121,6 @@ export const widgetEditorAssistantUiPage = UiPage({
             padding: 1rem;
             overflow: hidden;
         }
-        @media (max-width: 1024px) {
-            .we-body-container {
-                flex-direction: column;
-            }
-            .we-main-area {
-                padding: 1rem;
-            }
-        }
-
         /* Table Card and Scroll Area */
         .we-table-card {
             flex: 1;
@@ -245,31 +245,6 @@ export const widgetEditorAssistantUiPage = UiPage({
             gap: 0.5rem;
             flex-shrink: 0;
         }
-        .we-rail-btn {
-            width: 2rem;
-            height: 2rem;
-            border-radius: 50%;
-            border: 1px solid transparent;
-            background: transparent;
-            color: rgb(var(--now-color_text--secondary, 96 100 108));
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            transition: all 0.15s ease;
-        }
-        .we-rail-btn:hover {
-            background: rgba(var(--now-color--neutral-0, 0 0 0), 0.06);
-            color: rgb(var(--now-color_text--primary, 29 29 29));
-        }
-        .we-rail-btn.active {
-            background: rgb(var(--now-color_background--primary, 255 255 255));
-            color: rgb(var(--now-color--primary-1, 0 118 204));
-            box-shadow: var(--now-elevation--low, 0 1px 3px rgba(0, 0, 0, 0.12));
-            border-color: rgba(var(--now-color--neutral-0, 0 0 0), 0.06);
-        }
-
         /* Data Table */
         table.we-main-table {
             width: 100%;
@@ -309,13 +284,13 @@ export const widgetEditorAssistantUiPage = UiPage({
             position: sticky;
             top: 2.75rem;
             z-index: 8;
-            background: rgb(240 246 253);
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.1);
             border-bottom: 1px solid rgba(var(--now-color--primary-1, 0 118 204), 0.25);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             font-weight: 500;
         }
         table.we-main-table tbody tr.we-primary-row:hover td {
-            background: rgb(230 240 252);
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.16);
         }
         @keyframes we-highlight-fade {
             0% {
@@ -1026,33 +1001,19 @@ export const widgetEditorAssistantUiPage = UiPage({
         .we-table-chips {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.375rem;
+            gap: 0.5rem;
         }
-        .we-table-chip {
+        .we-table-chips .btn {
             display: inline-flex;
             align-items: center;
-            gap: 0.3rem;
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            background: rgb(var(--now-color_background--secondary, 246 246 248));
-            border: 1px solid rgba(var(--now-color--neutral-0, 0 0 0), 0.12);
-            cursor: pointer;
-        }
-        .we-table-chip i {
-            font-size: 0.875rem;
-            color: rgb(var(--now-color_text--secondary, 96 100 108));
-        }
-        .we-table-chip:hover {
-            background: rgba(var(--now-color--primary-0, 221 237 233), 0.5);
-            border-color: rgb(var(--now-color--primary-1, 0 118 204));
+            gap: 0.5em;
         }
     </style>
 
     <div id="we-assistant-app" ng-controller="WeAssistantCtrl as ctrl" class="dc-app" ng-cloak="">
         
         <!-- Diff-Style Sticky Header Bar -->
-        <div class="dc-header">
+        <div class="dc-header" ng-if="!ctrl.embeddedInModal">
             <div class="dc-header-row">
                 <div class="dc-title">
                     <span>Widget Editor+ Assistant</span>
@@ -1129,13 +1090,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                                         <input type="checkbox" class="we-checkbox" ng-model="row.checked" ng-disabled="row.primary" ng-change="ctrl.onSelectionChange()" />
                                     </td>
                                     <td>
-                                        <span class="we-lookup-link" ng-click="ctrl.openLookupForRow(row, 'table')" title="Click to change table">
+                                        <span ng-class="{'we-lookup-link': !(row.primary &amp;&amp; ctrl.embeddedInModal)}" ng-click="!(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; ctrl.openLookupForRow(row, 'table')" title="{{(row.primary &amp;&amp; ctrl.embeddedInModal) ? '' : 'Click to change table'}}">
                                             {{row.tableLabel || row.table}}
                                             <i ng-class="ctrl.tableIconClass(row.table)" style="margin-left: 0.25em" aria-hidden="true"></i>
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="we-lookup-link" ng-click="ctrl.openLookupForRow(row, 'record')" title="Click to change record">
+                                        <span ng-class="{'we-lookup-link': !(row.primary &amp;&amp; ctrl.embeddedInModal)}" ng-click="!(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; ctrl.openLookupForRow(row, 'record')" title="{{(row.primary &amp;&amp; ctrl.embeddedInModal) ? '' : 'Click to change record'}}">
                                             {{row.label}}
                                         </span>
                                         <span class="we-primary-tag" ng-if="row.primary">Primary</span>
@@ -1148,13 +1109,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                                         <span class="we-updated-text" ng-bind="row.updatedOn || '—'"></span>
                                     </td>
                                     <td class="we-cell-actions">
-                                        <button type="button" class="btn btn-default" ng-if="row.primary" ng-click="ctrl.openLookup('primary')" title="Select primary record">
+                                        <button type="button" class="btn btn-default" ng-if="row.primary &amp;&amp; !ctrl.embeddedInModal" ng-click="ctrl.openLookup('primary')" title="Select primary record">
                                             <i class="icon-target"></i>
                                         </button>
                                         <button type="button" class="btn btn-default" ng-if="!row.primary" ng-click="ctrl.removeRow(row)" title="Remove record">
                                             <i class="icon-cross"></i>
                                         </button>
-                                        <a class="btn btn-default" ng-href="/nav_to.do?uri={{row.table}}.do%3Fsys_id%3D{{row.sys_id}}" target="_blank" title="Open record in platform">
+                                        <a class="btn btn-default" ng-if="!(row.primary &amp;&amp; ctrl.embeddedInModal)" ng-href="/nav_to.do?uri={{row.table}}.do%3Fsys_id%3D{{row.sys_id}}" target="_blank" title="Open record in platform">
                                             <i class="icon-open-document-new-tab"></i>
                                         </a>
                                     </td>
@@ -1248,10 +1209,10 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                 <!-- Horizon Dock Rail (1) -->
                 <div class="we-sidebar-rail">
-                    <button type="button" class="we-rail-btn" ng-class="{'active': ctrl.activeSidebarTab === 'xml' &amp;&amp; !ctrl.sidebarCollapsed}" ng-click="ctrl.selectSidebarTab('xml')" title="Context XML">
+                    <button type="button" class="btn btn-icon" ng-class="{'active': ctrl.activeSidebarTab === 'xml' &amp;&amp; !ctrl.sidebarCollapsed}" ng-click="ctrl.selectSidebarTab('xml')" title="Context XML">
                         <i class="icon-document" aria-hidden="true"></i>
                     </button>
-                    <button type="button" class="we-rail-btn" ng-class="{'active': ctrl.activeSidebarTab === 'info' &amp;&amp; !ctrl.sidebarCollapsed}" ng-click="ctrl.selectSidebarTab('info')" title="About">
+                    <button type="button" class="btn btn-icon" ng-class="{'active': ctrl.activeSidebarTab === 'info' &amp;&amp; !ctrl.sidebarCollapsed}" ng-click="ctrl.selectSidebarTab('info')" title="About">
                         <i class="icon-help" aria-hidden="true"></i>
                     </button>
                 </div>
@@ -1292,9 +1253,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                                     <span class="we-picker-section-title">Popular</span>
                                 </div>
                                 <div class="we-table-chips">
-                                    <button type="button" class="we-table-chip" ng-repeat="t in ctrl.lookup.commonTables" ng-click="ctrl.chooseTable(t)" title="{{t.name}}">
-                                        <i ng-class="ctrl.tableIconClass(t.name)" aria-hidden="true"></i>
+                                    <button type="button" class="btn btn-sm btn-default" ng-repeat="t in ctrl.lookup.commonTables" ng-click="ctrl.chooseTable(t)" title="{{t.name}}">
                                         {{t.label}}
+                                        <i ng-class="ctrl.tableIconClass(t.name)" aria-hidden="true"></i>
                                     </button>
                                 </div>
 
@@ -1303,9 +1264,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                                         <span class="we-picker-section-title">Favourites</span>
                                     </div>
                                     <div class="we-table-chips">
-                                        <button type="button" class="we-table-chip" ng-repeat="t in ctrl.favouriteTables" ng-click="ctrl.chooseTable(t)" title="{{t.name}}">
-                                            <i ng-class="ctrl.tableIconClass(t.name)" aria-hidden="true"></i>
+                                        <button type="button" class="btn btn-sm btn-default" ng-repeat="t in ctrl.favouriteTables" ng-click="ctrl.chooseTable(t)" title="{{t.name}}">
                                             {{t.label}}
+                                            <i ng-class="ctrl.tableIconClass(t.name)" aria-hidden="true"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -1607,8 +1568,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                 url.searchParams.set('record_sys_id', sysId);
                 window.history.replaceState(null, '', url.toString());
 
-                // Page loads inside the classic UI nav frame, so the address bar is window.top's.
-                if (window.top !== window) {
+                // Skip if nested 2+ levels deep (e.g. inside the Assistant modal's iframe).
+                if (window.top !== window && window.parent === window.top) {
                     var page = url.pathname.substring(1) + url.search + url.hash;
                     window.top.history.replaceState(null, '', '/now/nav/ui/classic/params/target/' + encodeURIComponent(page));
                 }
@@ -1669,6 +1630,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return deferred.promise;
             }
 
+            ctrl.embeddedInModal = !!(window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.embedded);
             ctrl.primary = { table: '', sysId: '', label: '', tableLabel: '', updatedOn: '' };
             ctrl.related = [];
             ctrl.rows = [];
@@ -2150,6 +2112,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             }
 
             ctrl.openLookup = function (mode) {
+                if (mode === 'primary' && ctrl.embeddedInModal) return;
                 ctrl.lookup.open = true;
                 ctrl.lookup.mode = mode;
                 ctrl.lookup.targetRow = null;
@@ -2158,6 +2121,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             ctrl.openLookupForRow = function (row, step) {
+                if (row.primary && ctrl.embeddedInModal) return;
                 ctrl.lookup.open = true;
                 ctrl.lookup.mode = row.primary ? 'primary' : 'edit';
                 ctrl.lookup.targetRow = row;

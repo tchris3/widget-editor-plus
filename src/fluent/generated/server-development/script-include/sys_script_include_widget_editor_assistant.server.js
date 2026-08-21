@@ -43,7 +43,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             }
 
             var scannedNames = this._scanReferencedNames(gr);
-            var scriptIncludes = this._findReferencedScriptIncludes(scannedNames);
+            var scriptIncludes = this._findReferencedScriptIncludes(scannedNames, gr.getValue('sys_scope'));
             var templates = this._findLinkedTemplates(sysId);
             var providers = this._findLinkedProviders(sysId);
             var embeddedIds = this._scanEmbeddedWidgetIds(gr);
@@ -84,28 +84,46 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
 
     /**
      * Matches candidate class names against active sys_script_include records.
+     * Same-named script includes can exist in multiple scopes (different code,
+     * only one actually resolved by the widget's `new Name()` call) — picks the
+     * one in the widget's own scope, else the most recently updated, per name.
      * @param {Array.<string>} names - Candidate class names from _scanReferencedNames.
+     * @param {string} widgetScope - The widget's sys_scope sys_id, for scope preference.
      * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
      */
-    _findReferencedScriptIncludes: function (names) {
+    _findReferencedScriptIncludes: function (names, widgetScope) {
         if (!names || names.length === 0) {
             return [];
         }
 
-        var results = [];
         var siGr = new GlideRecordSecure('sys_script_include');
         siGr.addQuery('active', true);
         siGr.addQuery('name', 'IN', names.join(','));
+        siGr.orderByDesc('sys_updated_on');
         siGr.query();
+
+        var byName = {};
         while (siGr.next()) {
-            results.push({
-                table: 'sys_script_include',
-                sys_id: siGr.getUniqueValue(),
-                label: siGr.getValue('name'),
-                category: 'Script Include (referenced)',
-                updatedOn: siGr.getDisplayValue('sys_updated_on'),
-            });
+            var name = siGr.getValue('name');
+            var inWidgetScope = siGr.getValue('sys_scope') === widgetScope;
+            var existing = byName[name];
+            if (!existing || (inWidgetScope && !existing.inWidgetScope)) {
+                byName[name] = {
+                    table: 'sys_script_include',
+                    sys_id: siGr.getUniqueValue(),
+                    label: name,
+                    category: 'Script Include (referenced)',
+                    updatedOn: siGr.getDisplayValue('sys_updated_on'),
+                    inWidgetScope: inWidgetScope,
+                };
+            }
         }
+
+        var results = [];
+        Object.keys(byName).forEach(function (name) {
+            var c = byName[name];
+            results.push({ table: c.table, sys_id: c.sys_id, label: c.label, category: c.category, updatedOn: c.updatedOn });
+        });
         return results;
     },
 

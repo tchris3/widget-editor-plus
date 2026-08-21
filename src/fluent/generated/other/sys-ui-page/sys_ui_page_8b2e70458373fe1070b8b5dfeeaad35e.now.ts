@@ -3064,9 +3064,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 <!-- Related Lists button -->
                 <button class="btn btn-default we-header-wide-only" ng-if="!isVersionView" ng-click="openRelatedModal()" ng-disabled="isNewWidget">Related Lists</button>
 
-                <!-- Assistant button -->
-                <button class="btn btn-default we-header-wide-only" ng-if="!isVersionView" ng-click="openAssistant()" ng-disabled="isNewWidget">Assistant</button>
-
                 <div class="we-header-sep we-header-wide-only"></div>
 
                 <!-- Editor visibility -->
@@ -3162,7 +3159,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <div class="we-dropdown-item" ng-if="!isVersionView" ng-class="{'disabled': isNewWidget}" ng-click="openRelatedModal(); openDropdown = null">Related Lists</div>
 
                         <!-- Assistant -->
-                        <div class="we-dropdown-item" ng-if="!isVersionView" ng-class="{'disabled': isNewWidget}" ng-click="openAssistant(); openDropdown = null">Assistant</div>
+                        <div class="we-dropdown-item" ng-if="!isVersionView &amp;&amp; userPrefs.showAssistantButton === false" ng-class="{'disabled': isNewWidget}" ng-click="openAssistantModal(); openDropdown = null">Assistant</div>
 
                     </div>
                 </div>
@@ -3255,6 +3252,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 <path d="M75.8578 99.1263C73.4721 100.274 70.6219 99.7885 68.75 97.9166C71.0564 100.223 75 95.3278 75 95.3278V4.67213C75 1.41039 71.0564 -0.223106 68.75 2.08329C70.6219 0.211402 73.4721 -0.273666 75.8578 0.873633L96.4587 10.7807C98.6234 11.8217 100 14.0112 100 16.4132V83.5871C100 85.9891 98.6234 88.1786 96.4586 89.2196L75.8578 99.1263Z" fill="#1F9CF0"/>
                             </g>
                         </svg>
+                    </button>
+
+                    <!-- Assistant -->
+                    <button id="assistant-btn" class="btn btn-default" ng-if="!isVersionView &amp;&amp; !isNewWidget &amp;&amp; userPrefs.showAssistantButton !== false" ng-click="openAssistantModal()" title="Open Widget Editor+ Assistant" aria-label="Open Widget Editor+ Assistant" style="padding:0.125rem 0.625rem;line-height:1.2;margin-right:0.3125rem;">
+                        <i class="icon-ai-sparkle-fill" aria-hidden="true"></i>
                     </button>
 
                     <!-- Burger menu -->
@@ -3495,6 +3497,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <span class="input-group-checkbox">
                                             <input type="checkbox" class="checkbox" id="chk-realtime-updates" ng-model="userPrefsEdit.realtimeWidgetUpdates" />
                                             <label class="checkbox-label" for="chk-realtime-updates" we-tooltip-title="{{userPrefsEdit.realtimeWidgetUpdates ? 'Enabled: real-time changes are immediately applied.' : 'Disabled: a warning alert is displayed above the editor when another user updates the field.'}}">Apply real-time changes from other users</label>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="input-group-checkbox">
+                                            <input type="checkbox" class="checkbox" id="chk-show-assistant-button" ng-model="userPrefsEdit.showAssistantButton" />
+                                            <label class="checkbox-label" for="chk-show-assistant-button" we-tooltip-title="Displays a button in the header bar that opens Widget Editor+ Assistant for the current widget.">Show "Assistant" button</label>
                                         </span>
                                     </div>
                                 </div>
@@ -3893,6 +3901,18 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     <button type="button" class="we-modal-close-btn" ng-click="closeVersionDiffModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <iframe class="we-diff-iframe" ng-src="{{versionDiffModal.url}}" style="flex:1;border:none;width:100%"></iframe>
+            </div>
+        </dialog>
+
+        <!-- Assistant Modal -->
+        <dialog class="we-modal-backdrop" we-modal-dialog="assistantModal.open" we-dialog-cancel="closeAssistantModal()" ng-click="closeAssistantModal()">
+            <div class="we-modal" ng-click="$event.stopPropagation()" style="width:98vw;max-width:112.5rem;height:95vh;display:flex;flex-direction:column">
+                <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
+                    <span>Widget Editor+ Assistant</span>
+                    <button class="btn btn-default" ng-click="openAssistantInNewTab()" style="margin-left:auto;margin-right:0.875rem">Open in new tab <i class="icon-open-document-new-tab" style="margin-left: 0.375rem" aria-hidden="true"></i></button>
+                    <button type="button" class="we-modal-close-btn" ng-click="closeAssistantModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+                </div>
+                <iframe class="we-diff-iframe" ng-src="{{assistantModal.url}}" style="flex:1;border:none;width:100%"></iframe>
             </div>
         </dialog>
 
@@ -5608,6 +5628,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     minimap: false,
                     alwaysShowLink: true,
                     realtimeWidgetUpdates: false,
+                    showAssistantButton: true,
                     autoIndent: true,
                     formatOnPaste: true,
                     formatOnType: true,
@@ -6288,6 +6309,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         'showOpenInVsCode',
                         'showRecentlyOpenedWidgets',
                         'showOpenHistory',
+                        'showAssistantButton',
                     ].forEach(function (k) {
                         if (p.hasOwnProperty(k)) {
                             $scope.userPrefs[k] = !!p[k];
@@ -10469,6 +10491,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.userPrefs.showRecentlyOpenedWidgets !== false;
                     prefs.showOpenHistory =
                         $scope.userPrefs.showOpenHistory;
+                    prefs.showAssistantButton =
+                        $scope.userPrefs.showAssistantButton !== false;
                     prefs.recentWidgets = $scope.userPrefs.recentWidgets;
                     prefs.order = $scope.coreEditorDefs.map(function (d) {
                         return d.key;
@@ -11144,11 +11168,34 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     );
                 };
 
-                $scope.openAssistant = function () {
+                $scope.assistantModal = {
+                    open: false,
+                    url: null,
+                    rawUrl: null,
+                };
+
+                $scope.openAssistantModal = function () {
                     if ($scope.isNewWidget) {
                         return;
                     }
-                    window.open('widget_editor_assistant.do?record_table=sp_widget&record_sys_id=' + SYS_ID, '_blank');
+                    var rawUrl = 'widget_editor_assistant.do?record_table=sp_widget&record_sys_id=' + SYS_ID;
+                    var $sce = $injector.get('$sce');
+                    $scope.assistantModal.rawUrl = rawUrl;
+                    $scope.assistantModal.url = $sce.trustAsResourceUrl(rawUrl);
+                    $scope.assistantModal.open = true;
+                    $scope.openDropdown = null;
+                };
+
+                $scope.closeAssistantModal = function () {
+                    _closeModal(function () {
+                        $scope.assistantModal.open = false;
+                        $scope.assistantModal.url = null;
+                    });
+                };
+
+                $scope.openAssistantInNewTab = function () {
+                    $window.open($scope.assistantModal.rawUrl, '_blank');
+                    $scope.closeAssistantModal();
                 };
 
                 $scope.closeRelatedModal = function () {
@@ -12459,6 +12506,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.userPrefs.showRecentlyOpenedWidgets !== false,
                         showOpenHistory:
                             $scope.userPrefs.showOpenHistory !== false,
+                        showAssistantButton:
+                            $scope.userPrefs.showAssistantButton !== false,
                         availableFonts: _getAvailableMonospaceFonts(),
                         googleFonts: _GOOGLE_FONTS,
                     };
@@ -12532,6 +12581,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.userPrefsEdit.showRecentlyOpenedWidgets !== false;
                     $scope.userPrefs.showOpenHistory =
                         $scope.userPrefsEdit.showOpenHistory !== false;
+                    $scope.userPrefs.showAssistantButton =
+                        $scope.userPrefsEdit.showAssistantButton !== false;
                     var ts = parseInt($scope.userPrefsEdit.tabSize, 10);
                     if (ts >= 1 && ts <= 8) {
                         $scope.userPrefs.tabSize = ts;
@@ -12676,6 +12727,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.userPrefsEdit.showOpenInVsCode = true;
                     $scope.userPrefsEdit.showRecentlyOpenedWidgets = true;
                     $scope.userPrefsEdit.showOpenHistory = true;
+                    $scope.userPrefsEdit.showAssistantButton = true;
                 };
 
                 $scope.importPrefsStatus = null;
@@ -12746,7 +12798,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         'htmlAutoCloseTags', 'autoSurround', 'autoClosingBrackets',
                         'autoClosingQuotes', 'linkedEditing', 'insertSpaceBeforeFuncParen',
                         'ctrlSSaveActiveOnly', 'flashOnEditorOpen', 'showOpenInVsCode',
-                        'showRecentlyOpenedWidgets', 'showOpenHistory',
+                        'showRecentlyOpenedWidgets', 'showOpenHistory', 'showAssistantButton',
                     ].forEach(function (k) {
                         if (p.hasOwnProperty(k)) {
                             $scope.userPrefsEdit[k] = p[k];
