@@ -411,11 +411,13 @@ Record({
     }
 
     /**
-     * Converts a raw JavaScript value string to its TypeScript literal type, or
-     * null if the value is too complex to represent as a literal.
+     * Converts a raw JavaScript value string to a TypeScript type. Literal
+     * primitives get their literal type; object/array/function values get a
+     * best-effort structural or generic type — a static property is never
+     * dropped just because its value isn't a simple literal.
      *
      * @param {string} rawValue - Right-hand side of an assignment (trimmed).
-     * @returns {string|null}
+     * @returns {string}
      */
     function inferConstantType(rawValue) {
         var v = rawValue.trim().replace(/\\s*;.*$/, '');
@@ -433,15 +435,46 @@ Record({
                 '"'
             );
         }
-        return null;
+        if (/^(?:async\\s+)?function\\b/.test(v)) {
+            return '(...args: any[]) => any';
+        }
+        if (v.charAt(0) === '{' && v.charAt(v.length - 1) === '}') {
+            return _inferObjectLiteralType(v);
+        }
+        if (v.charAt(0) === '[' && v.charAt(v.length - 1) === ']') {
+            return 'any[]';
+        }
+        return 'any';
+    }
+
+    /**
+     * Infers a flat TypeScript object type from an object literal's source text,
+     * recursing into each field's value via inferConstantType. Falls back to
+     * Record<string, any> when no fields can be parsed out.
+     *
+     * @param {string} objLiteral - Object literal source, including braces.
+     * @returns {string}
+     */
+    function _inferObjectLiteralType(objLiteral) {
+        var inner = objLiteral.slice(1, -1);
+        var pairRe =
+            /([a-zA-Z_$][a-zA-Z0-9_$]*)\\s*:\\s*(\\{[\\s\\S]*?\\}|\\[[\\s\\S]*?\\]|[^,}]+)/g;
+        var fields = [];
+        var m;
+        while ((m = pairRe.exec(inner)) !== null) {
+            fields.push(m[1] + ': ' + inferConstantType(m[2].trim()));
+        }
+        return fields.length
+            ? '{ ' + fields.join('; ') + ' }'
+            : 'Record<string, any>';
     }
 
     /**
      * Parses static property assignments of the form \\\`ClassName.PROP = value;\\\`
      * from a Script Include script, returning descriptors for use in DTS generation.
      * An optional JSDoc comment immediately above an assignment is captured as
-     * documentation. Only assignments whose values resolve to a TypeScript literal
-     * type (number, string, boolean) are included.
+     * documentation. Object, array, and function values are included with a
+     * best-effort type via inferConstantType rather than being dropped.
      *
      * @param {string} script    - Full content of a Script Include script field.
      * @param {string} className - Script Include class name.
@@ -454,7 +487,7 @@ Record({
         var re = new RegExp(
             '(\\\\/\\\\*\\\\*(?:(?!\\\\*\\\\/)[\\\\s\\\\S])*\\\\*\\\\/)?\\\\s*' +
                 escaped +
-                '\\\\.(\\\\w+)\\\\s*=\\\\s*([^\\\\n;]+)',
+                '\\\\.(\\\\w+)\\\\s*=\\\\s*(\\\\{[\\\\s\\\\S]*?\\\\}|\\\\[[\\\\s\\\\S]*?\\\\]|[^\\\\n;]+)',
             'g'
         );
         var m;
@@ -463,9 +496,6 @@ Record({
                 continue;
             }
             var tsType = inferConstantType(m[3]);
-            if (!tsType) {
-                continue;
-            }
             var doc = '';
             if (m[1]) {
                 doc = m[1]
