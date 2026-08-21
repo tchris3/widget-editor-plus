@@ -257,6 +257,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             return results;
         }
 
+        var seenWidgetIds = {};
         var instGr = new GlideRecordSecure('sp_instance');
         instGr.addQuery('sp_column', 'IN', columnIds.join(','));
         instGr.orderBy('sp_column');
@@ -266,6 +267,14 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
                 table: 'sp_instance', sys_id: instGr.getUniqueValue(), label: instGr.getDisplayValue('sp_widget') || 'Widget Instance',
                 category: 'Widget Instance (on page)', updatedOn: instGr.getDisplayValue('sys_updated_on'),
             });
+            var widgetId = instGr.getValue('sp_widget');
+            if (widgetId && !seenWidgetIds[widgetId]) {
+                seenWidgetIds[widgetId] = true;
+                results.push({
+                    table: 'sp_widget', sys_id: widgetId, label: instGr.getDisplayValue('sp_widget') || widgetId,
+                    category: 'Widget (used on page)', updatedOn: instGr.getDisplayValue('sp_widget.sys_updated_on'),
+                });
+            }
         }
 
         return results;
