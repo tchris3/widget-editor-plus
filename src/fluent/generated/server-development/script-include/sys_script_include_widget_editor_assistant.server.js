@@ -2,6 +2,14 @@ var WidgetEditorAssistantAjax = Class.create();
 WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     WIDGET_SCAN_FIELDS: ['script', 'client_script', 'link', 'css', 'template', 'option_schema', 'demo_data'],
 
+    // Tables whose single 'script' field gets scanned for further Script Include and table references.
+    SERVER_SCRIPT_TABLES: {
+        sys_script_include: true,
+        sys_script: true,
+        sys_script_fix: true,
+        sysauto_script: true,
+    },
+
     SI_SCAN_BUILTINS: {
         Array: true, Object: true, Date: true, RegExp: true, Error: true, TypeError: true,
         RangeError: true, Map: true, Set: true, WeakMap: true, WeakSet: true, Promise: true,
@@ -72,37 +80,20 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             }
         }
 
-        if (table === 'sys_script_include') {
+        if (this.SERVER_SCRIPT_TABLES[table]) {
             try {
-                var siGr = new GlideRecordSecure('sys_script_include');
-                if (!siGr.get(sysId)) {
-                    return this._answer({ success: false, error: 'Script Include not found', related: [] });
+                var scriptGr = new GlideRecordSecure(table);
+                if (!scriptGr.get(sysId)) {
+                    return this._answer({ success: false, error: 'Record not found', related: [] });
                 }
-                var siScript = siGr.getValue('script');
-                var siNames = this._scanReferencedNamesInText(siScript);
-                var siScriptIncludes = this._findReferencedScriptIncludes(siNames, siGr.getValue('sys_scope')).filter(function (r) {
+                var scriptContent = scriptGr.getValue('script');
+                var scriptNames = this._scanReferencedNamesInText(scriptContent);
+                var scriptIncludeMatches = this._findReferencedScriptIncludes(scriptNames, scriptGr.getValue('sys_scope')).filter(function (r) {
                     return r.sys_id !== sysId;
                 });
-                var siTableNames = this._scanReferencedTableNamesInText(siScript);
-                var siTables = this._findReferencedTables(siTableNames);
-                return this._answer({ success: true, related: this._dedupeRelated([].concat(siScriptIncludes, siTables)) });
-            } catch (e) {
-                return this._answer({ success: false, error: String(e), related: [] });
-            }
-        }
-
-        if (table === 'sys_script') {
-            try {
-                var brGr = new GlideRecordSecure('sys_script');
-                if (!brGr.get(sysId)) {
-                    return this._answer({ success: false, error: 'Business Rule not found', related: [] });
-                }
-                var brScript = brGr.getValue('script');
-                var brNames = this._scanReferencedNamesInText(brScript);
-                var brScriptIncludes = this._findReferencedScriptIncludes(brNames, brGr.getValue('sys_scope'));
-                var brTableNames = this._scanReferencedTableNamesInText(brScript);
-                var brTables = this._findReferencedTables(brTableNames);
-                return this._answer({ success: true, related: this._dedupeRelated([].concat(brScriptIncludes, brTables)) });
+                var scriptTableNames = this._scanReferencedTableNamesInText(scriptContent);
+                var scriptTableMatches = this._findReferencedTables(scriptTableNames);
+                return this._answer({ success: true, related: this._dedupeRelated([].concat(scriptIncludeMatches, scriptTableMatches)) });
             } catch (e) {
                 return this._answer({ success: false, error: String(e), related: [] });
             }
