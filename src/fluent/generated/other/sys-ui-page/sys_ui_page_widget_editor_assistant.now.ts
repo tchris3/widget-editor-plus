@@ -1514,6 +1514,14 @@ export const widgetEditorAssistantUiPage = UiPage({
             return TABLE_LABELS[table] || table;
         }
 
+        // Tables whose suggestions can themselves be scanned one extra layer deep (mirrors server SERVER_SCRIPT_TABLES).
+        var SERVER_SCRIPT_TABLES = {
+            sys_script_include: true,
+            sys_script: true,
+            sys_script_fix: true,
+            sysauto_script: true,
+        };
+
         // Per-table icon overrides; anything unlisted falls back to a generic document icon.
         var TABLE_ICONS = {
             sys_db_object: 'icon-insert-table',
@@ -2176,7 +2184,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             checked: true,
                         });
                         // Only expand one extra layer deep — items found at that layer aren't scanned further.
-                        if (depth === 0 && (row.table === 'sys_script_include' || row.table === 'sys_script') && !_scannedScriptKeys[key]) {
+                        if (depth === 0 && SERVER_SCRIPT_TABLES[row.table] && !_scannedScriptKeys[key]) {
                             _scannedScriptKeys[key] = true;
                             toExpand.push(row);
                         }
