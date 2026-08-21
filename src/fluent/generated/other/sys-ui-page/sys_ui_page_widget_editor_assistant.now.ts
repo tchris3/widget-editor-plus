@@ -1167,8 +1167,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                                     <span class="we-token-lbl">Estimated Context Size</span>
                                     <span class="we-token-badge" ng-if="ctrl.tokenLevelInfo().label" ng-bind="ctrl.tokenLevelInfo().label"></span>
                                 </div>
-                                <span class="we-token-val" ng-if="ctrl.rawTokenCount() === 0">N/A</span>
-                                <span class="we-token-val" ng-if="ctrl.rawTokenCount() &gt; 0">~{{ctrl.estimatedTokens()}} tokens</span>
+                                <span class="we-token-val" ng-if="ctrl.sizesPending()">~<span class="we-skeleton-bar" style="width: 3rem; height: 1em; border-radius: 4px; vertical-align: middle; margin: 0 0.25em;" aria-hidden="true"></span> tokens</span>
+                                <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; ctrl.rawTokenCount() === 0">N/A</span>
+                                <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; ctrl.rawTokenCount() &gt; 0">~{{ctrl.estimatedTokens()}} tokens</span>
                             </div>
 
                             <!-- Export Button -->
@@ -1919,6 +1920,16 @@ export const widgetEditorAssistantUiPage = UiPage({
                     bytes += ctrl.rowSizeBytes[rowKey(r)] || 0;
                 }
                 return Math.round(bytes / charsPerToken);
+            };
+
+            // True while any checked row's export size hasn't been measured yet.
+            ctrl.sizesPending = function () {
+                for (var i = 0; i < ctrl.rows.length; i++) {
+                    var r = ctrl.rows[i];
+                    if (r.placeholder || !r.checked) continue;
+                    if (!ctrl.rowSizeBytes.hasOwnProperty(rowKey(r))) return true;
+                }
+                return false;
             };
 
             ctrl.estimatedTokens = function () {
