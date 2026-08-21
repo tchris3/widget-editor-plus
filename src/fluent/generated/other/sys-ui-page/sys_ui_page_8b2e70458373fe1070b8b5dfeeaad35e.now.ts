@@ -3502,7 +3502,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     <div>
                                         <span class="input-group-checkbox">
                                             <input type="checkbox" class="checkbox" id="chk-show-assistant-button" ng-model="userPrefsEdit.showAssistantButton" />
-                                            <label class="checkbox-label" for="chk-show-assistant-button" we-tooltip-title="Displays a button in the header bar that opens Widget Editor+ Assistant for the current widget.">Show "Assistant" button</label>
+                                            <label class="checkbox-label" for="chk-show-assistant-button" we-tooltip-title="Displays a button in the header bar that opens Widget Editor+ Assistant for the current widget.">Show Widget Editor+ Assistant (AI context helper)</label>
                                         </span>
                                     </div>
                                 </div>

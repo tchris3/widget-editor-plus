@@ -1862,8 +1862,8 @@ export const widgetEditorAssistantUiPage = UiPage({
             ctrl.estimatedTokens = function () {
                 var count = ctrl.rawTokenCount();
                 if (count === 0) return '0';
-                if (count >= 1000) {
-                    return (count / 1000).toFixed(1) + 'k';
+                if (count > 100000) {
+                    return Math.round(count / 1000) + 'K';
                 }
                 return String(count);
             };
