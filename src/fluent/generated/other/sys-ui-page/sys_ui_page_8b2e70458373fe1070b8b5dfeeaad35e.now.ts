@@ -431,12 +431,24 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-pane-type-select { padding: 0.125rem 0.25rem; height: 1.625rem; cursor: pointer; }
         .we-pane-type-select:disabled { opacity: 0.5; cursor: default; }
 
-        /* Dropdown divider — solid theme borders using ServiceNow CSS color variables.
+        /* Dropdown divider colors — defined once here, referenced via var() everywhere
+           a divider/border needs one, so the two tiers stay consistent across every
+           dropdown menu in this file. */
+        :root {
+            --we-divider-color: rgba(var(--now-color_border--tertiary, var(--now-color_divider--tertiary, var(--now-color--neutral-3, 209, 214, 214))), 0.5);
+            --we-divider-color--group: rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228 230 235)));
+        }
+        /* Dropdown dividers — solid theme borders using ServiceNow CSS color variables.
            No margin: a margin leaves a gap of bare menu background between the line
-           and an adjacent item's hover highlight, which reads as a broken/notched hover. */
-        .we-dropdown-divider { border-top: 1px solid rgba(var(--now-color_border--tertiary, var(--now-color_divider--tertiary, var(--now-color--neutral-3, 209, 214, 214))), 0.5); margin: 0; }
-        /* Group divider between logical groups of items (e.g. burger menu) */
-        .we-dropdown-divider--group { border-top: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228 230 235))); margin: 0; }
+           and an adjacent item's hover highlight, which reads as a broken/notched hover.
+           --group is a pure color override for boundaries between logical groups of
+           items (e.g. the burger menu) — same weight and spacing as the regular divider. */
+        .we-dropdown-divider,
+        .we-dropdown-divider--group {
+            border-top: 1px solid var(--we-divider-color);
+            margin: 0;
+        }
+        .we-dropdown-divider--group { border-top-color: var(--we-divider-color--group); }
 
         /* Popovers (description, roles) */
         .we-field-with-popover { position: relative; }
@@ -781,7 +793,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
 
         .we-dropdown-item + .we-dropdown-item {
-            border-top: 1px solid rgba(var(--now-color_border--tertiary, var(--now-color_divider--tertiary, var(--now-color--neutral-3, 209, 214, 214))), 0.5);
+            border-top: 1px solid var(--we-divider-color);
         }
         .we-dropdown-divider + .we-dropdown-item,
         .we-dropdown-divider--group + .we-dropdown-item {
@@ -865,7 +877,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-dropdown-item:hover button.we-dropdown-unlink-btn { display: block; }
 
         .we-dropdown-item.add-item {
-            border-top: 1px solid rgba(var(--now-color_border--tertiary, var(--now-color_divider--tertiary, var(--now-color--neutral-3, 209, 214, 214))), 0.5);
+            border-top: 1px solid var(--we-divider-color);
             color: rgb(var(--now-color--primary-2));
             gap: 0.375rem;
         }
@@ -963,14 +975,14 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
         .we-compact-submenu-trigger + .we-compact-submenu-trigger,
         .we-compact-submenu-panel + .we-compact-submenu-trigger {
-            border-top: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228 230 235)));
+            border-top: 1px solid var(--we-divider-color--group);
         }
         .we-compact-submenu-trigger:hover { background: rgb(var(--now-dropdown-list_search--background-color--hover)); }
         .we-compact-submenu-arrow { font-size: 0.625rem; opacity: 0.5; display: inline-block; transition: transform 0.15s; flex-shrink: 0; }
         .we-compact-submenu-arrow--open { transform: rotate(90deg); }
         .we-compact-submenu-panel {
             background: rgba(var(--now-color--neutral-0), 0.04);
-            border-top: 1px solid rgba(var(--now-color_border--tertiary, var(--now-color_divider--tertiary, var(--now-color--neutral-3, 209, 214, 214))), 0.5);
+            border-top: 1px solid var(--we-divider-color);
             max-height: 50vh;
             overflow-y: auto;
         }
