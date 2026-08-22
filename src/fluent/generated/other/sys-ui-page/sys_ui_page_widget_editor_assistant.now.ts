@@ -1947,6 +1947,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             { name: 'sys_script_fix', label: 'Fix Script' },
             { name: 'sysauto', label: 'Scheduled Job' },
             { name: 'sysevent_email_action', label: 'Notification' },
+            { name: 'sys_script_email', label: 'Mail Script' },
             { name: 'sp_page', label: 'Portal Page' },
             { name: 'sysauto_script', label: 'Scheduled Script Execution' },
         ];
@@ -1989,6 +1990,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             sp_page: true,
             sc_cat_item_producer: true,
             sp_widget: true,
+            sysevent_email_action: true,
         };
 
         // Per-table icon overrides; anything unlisted falls back to a generic document icon.
@@ -2004,6 +2006,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             sys_script_fix: 'icon-script-check',
             sysauto: 'icon-date-time',
             sysevent_email_action: 'icon-mail',
+            sys_script_email: 'icon-envelope-subscribe',
             sp_page: 'icon-application-generic',
             sysauto_script: 'icon-timeline',
         };
