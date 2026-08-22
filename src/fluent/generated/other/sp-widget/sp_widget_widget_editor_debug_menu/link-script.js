@@ -41,7 +41,7 @@ function link(scope, element, attrs, controller) {
         style.setAttribute('data-we-context-menu', '1');
         style.textContent = [
             '[role="contentinfo"].dropdown .dropdown-menu { padding: 0; background: rgba(255,255,255,0.85); border-radius: 16px; box-shadow: 0 4px 30px rgba(0,0,0,0.1); backdrop-filter: blur(8px) brightness(150%); -webkit-backdrop-filter: blur(8px) brightness(150%); border: 1px solid rgba(255,255,255,0.5); }',
-            '[role="contentinfo"].dropdown .dropdown-menu .divider { margin: 0; }',
+            '[role="contentinfo"].dropdown .dropdown-menu .divider { margin: 0; border-top: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228 230 235))); background-color: transparent; }',
             '[role="contentinfo"].dropdown .dropdown-menu > li { margin: 0 !important; }',
             '[role="contentinfo"].dropdown .dropdown-menu > li > a { padding: .75em 1.25em; line-height: 1; }',
             '[role="contentinfo"].dropdown .dropdown-menu > li > a:hover, [role="contentinfo"].dropdown .dropdown-menu > li > a:focus { background-color: rgba(0,0,0,0.05); }',

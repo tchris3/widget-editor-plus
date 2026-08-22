@@ -431,8 +431,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-pane-type-select { padding: 0.125rem 0.25rem; height: 1.625rem; cursor: pointer; }
         .we-pane-type-select:disabled { opacity: 0.5; cursor: default; }
 
-        /* Dropdown divider */
-        .we-dropdown-divider { border-top: 1px solid rgba(var(--now-color--neutral-0), 0.08); margin: 0.1875rem 0; }
+        /* Dropdown divider — solid theme borders using ServiceNow CSS color variables.
+           No margin: a margin leaves a gap of bare menu background between the line
+           and an adjacent item's hover highlight, which reads as a broken/notched hover. */
+        .we-dropdown-divider { border-top: 1px solid rgba(var(--now-color_border--tertiary, var(--now-color_divider--tertiary, var(--now-color--neutral-3, 209, 214, 214))), 0.5); margin: 0; }
+        /* Group divider between logical groups of items (e.g. burger menu) */
+        .we-dropdown-divider--group { border-top: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228 230 235))); margin: 0; }
 
         /* Popovers (description, roles) */
         .we-field-with-popover { position: relative; }
@@ -777,7 +781,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
         }
 
         .we-dropdown-item + .we-dropdown-item {
-            border-top: 1px solid rgba(var(--now-color--neutral-0), 0.08);
+            border-top: 1px solid rgba(var(--now-color_border--tertiary, var(--now-color_divider--tertiary, var(--now-color--neutral-3, 209, 214, 214))), 0.5);
+        }
+        .we-dropdown-divider + .we-dropdown-item,
+        .we-dropdown-divider--group + .we-dropdown-item {
+            border-top: none;
         }
 
         .we-dropdown-item:hover {
@@ -857,7 +865,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-dropdown-item:hover button.we-dropdown-unlink-btn { display: block; }
 
         .we-dropdown-item.add-item {
-            border-top: 1px solid rgba(var(--now-color--neutral-0), 0.08);
+            border-top: 1px solid rgba(var(--now-color_border--tertiary, var(--now-color_divider--tertiary, var(--now-color--neutral-3, 209, 214, 214))), 0.5);
             color: rgb(var(--now-color--primary-2));
             gap: 0.375rem;
         }
@@ -953,13 +961,16 @@ Features version history, side-by-side diff comparison, related lists, and user 
             font-size: var(--now-global-font-size--md, 14px);
             color: rgb(var(--now-color_text--primary));
         }
+        .we-compact-submenu-trigger + .we-compact-submenu-trigger,
+        .we-compact-submenu-panel + .we-compact-submenu-trigger {
+            border-top: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228 230 235)));
+        }
         .we-compact-submenu-trigger:hover { background: rgb(var(--now-dropdown-list_search--background-color--hover)); }
         .we-compact-submenu-arrow { font-size: 0.625rem; opacity: 0.5; display: inline-block; transition: transform 0.15s; flex-shrink: 0; }
         .we-compact-submenu-arrow--open { transform: rotate(90deg); }
         .we-compact-submenu-panel {
             background: rgba(var(--now-color--neutral-0), 0.04);
-            border-top: 1px solid rgba(var(--now-color--neutral-0), 0.07);
-            border-bottom: 1px solid rgba(var(--now-color--neutral-0), 0.07);
+            border-top: 1px solid rgba(var(--now-color_border--tertiary, var(--now-color_divider--tertiary, var(--now-color--neutral-3, 209, 214, 214))), 0.5);
             max-height: 50vh;
             overflow-y: auto;
         }
@@ -3024,6 +3035,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <span class="we-dropdown-item-label" ng-bind="t.id"></span>
                             <a class="we-dropdown-ext-link" href="/nav_to.do?uri=sp_ng_template.do%3Fsys_id={{t.sys_id}}" target="_blank" ng-click="$event.stopPropagation(); openDropdown = null" title="Open in platform" aria-label="Open template in platform"></a>
                         </div>
+                        <div class="we-dropdown-divider" ng-if="templates.length > 0 &amp;&amp; canWriteWidget"></div>
                         <div class="we-dropdown-item add-item we-add-new" ng-if="canWriteWidget" ng-click="addTemplate()">Add template</div>
                     </div>
                 </div>
@@ -3114,6 +3126,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 <span class="we-dropdown-item-label" ng-bind="t.id"></span>
                                 <a class="we-dropdown-ext-link" href="/nav_to.do?uri=sp_ng_template.do%3Fsys_id={{t.sys_id}}" target="_blank" ng-click="$event.stopPropagation(); openDropdown = null" title="Open in platform" aria-label="Open template in platform"></a>
                             </div>
+                            <div class="we-dropdown-divider" ng-if="!isNewWidget &amp;&amp; templates.length > 0 &amp;&amp; canWriteWidget"></div>
                             <div class="we-dropdown-item add-item we-add-new" ng-if="!isNewWidget &amp;&amp; canWriteWidget" ng-click="addTemplate()">Add template</div>
                         </div>
 
@@ -3130,7 +3143,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 <button class="we-dropdown-unlink-btn" ng-if="canWriteWidget" ng-click="$event.stopPropagation(); unlinkDependencyFromDropdown(dep)" title="Unlink dependency" aria-label="Unlink dependency" style="margin-right:0.5rem;"></button>
                                 <a class="we-dropdown-ext-link" href="/nav_to.do?uri=sp_dependency.do%3Fsys_id={{dep.sys_id}}" target="_blank" ng-click="$event.stopPropagation(); openDropdown = null" title="Open in platform" aria-label="Open dependency in platform"></a>
                             </div>
-                            <div class="we-dropdown-divider" ng-if="!isNewWidget &amp;&amp; canWriteWidget"></div>
+                            <div class="we-dropdown-divider" ng-if="!isNewWidget &amp;&amp; dependencies.length > 0 &amp;&amp; canWriteWidget"></div>
                             <div class="we-dropdown-item add-item we-add-new" ng-if="!isNewWidget &amp;&amp; canWriteWidget" ng-click="addNewDependency()">Add new dependency</div>
                             <div class="we-dropdown-item add-item we-add-link" ng-if="!isNewWidget &amp;&amp; canWriteWidget" ng-click="openLinkDependencyModal()">Link existing dependency</div>
                         </div>
@@ -3153,7 +3166,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             </div>
                         </div>
 
-                        <div class="we-dropdown-divider" ng-if="!isVersionView"></div>
+                        <div class="we-dropdown-divider--group" ng-if="!isVersionView"></div>
 
                         <!-- Related Lists -->
                         <div class="we-dropdown-item" ng-if="!isVersionView" ng-class="{'disabled': isNewWidget}" ng-click="openRelatedModal(); openDropdown = null">Related Lists</div>
@@ -3265,18 +3278,19 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <div class="we-dropdown-menu we-dropdown-menu-right" ng-show="openDropdown === 'burger'" we-dropdown-auto-pos="we-dropdown-auto-pos">
                             <div class="we-dropdown-item" ng-click="newWidget()">New widget</div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="cloneWidget()">Clone widget</div>
-                            <div class="we-dropdown-divider" ng-if="!isNewWidget"></div>
+                            <div class="we-dropdown-divider--group" ng-if="!isNewWidget"></div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-click="openOptionSchemaModal()">Edit option schema <span class="we-status-dot we-status-dot--green" ng-if="widget.option_schema_has_value" title="Has an option schema defined"></span></div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-click="openDemoDataModal()">Edit demo data <span class="we-status-dot we-status-dot--green" ng-if="widget.demo_data_has_value" title="Has demo data defined"></span></div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="openXmlModal()">Show XML</div>
+                            <div class="we-dropdown-divider--group" ng-if="!isNewWidget"></div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="copyWidgetUrl()">Copy widget URL</div>
                             <div class="we-dropdown-item" ng-if="!isNewWidget" ng-class="{'disabled': !widget.has_active_instances}" ng-click="openOnPortalModal()" title="{{widget.has_active_instances ? '' : 'This widget is not placed on any active page'}}">Open in portal</div>
                             <div class="we-dropdown-divider" ng-if="!isNewWidget"></div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="openInPlatform()">Open in platform</div>
+                            <div class="we-dropdown-divider--group" ng-if="!isNewWidget"></div>
                             <div class="we-dropdown-item" ng-click="openUserPrefsModal()">User preferences</div>
                             <div class="we-dropdown-item" ng-click="openKeyboardShortcutsModal()">Keyboard shortcuts</div>
                             <div class="we-dropdown-item" ng-click="openApiDocs()">API documentation <span class="we-ext-icon we-icon-secondary" aria-hidden="true"></span></div>
-                            <div class="we-dropdown-divider" ng-if="!isNewWidget"></div>
-                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="openInPlatform()">Open in platform</div>
                         </div>
                     </div>
                 </div>
