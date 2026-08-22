@@ -3184,7 +3184,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <div class="we-dropdown-item" ng-if="!isVersionView" ng-class="{'disabled': isNewWidget}" ng-click="openRelatedModal(); openDropdown = null">Related Lists</div>
 
                         <!-- Assistant -->
-                        <div class="we-dropdown-item" ng-if="!isVersionView &amp;&amp; userPrefs.showAssistantButton === false" ng-class="{'disabled': isNewWidget}" ng-click="openAssistantModal(); openDropdown = null">Assistant</div>
+                        <div class="we-dropdown-item" ng-if="!isVersionView &amp;&amp; userPrefs.showAssistantButton !== true" ng-class="{'disabled': isNewWidget}" ng-click="openAssistantModal(); openDropdown = null">Assistant</div>
 
                     </div>
                 </div>
@@ -3280,7 +3280,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     </button>
 
                     <!-- Assistant -->
-                    <button id="assistant-btn" class="btn btn-default" ng-if="!isVersionView &amp;&amp; !isNewWidget &amp;&amp; userPrefs.showAssistantButton !== false" ng-click="openAssistantModal()" title="Open Widget Editor+ Assistant" aria-label="Open Widget Editor+ Assistant" style="padding:0.125rem 0.625rem;line-height:1.2;margin-right:0.3125rem;">
+                    <button id="assistant-btn" class="btn btn-default" ng-if="!isVersionView &amp;&amp; !isNewWidget &amp;&amp; userPrefs.showAssistantButton === true" ng-click="openAssistantModal()" title="Open Widget Editor+ Assistant" aria-label="Open Widget Editor+ Assistant" style="padding:0.125rem 0.625rem;line-height:1.2;margin-right:0.3125rem;">
                         <i class="icon-ai-sparkle-fill" aria-hidden="true"></i>
                     </button>
 
@@ -5654,7 +5654,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     minimap: false,
                     alwaysShowLink: true,
                     realtimeWidgetUpdates: false,
-                    showAssistantButton: true,
+                    showAssistantButton: false,
                     autoIndent: true,
                     formatOnPaste: true,
                     formatOnType: true,
@@ -10548,7 +10548,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     prefs.showOpenHistory =
                         $scope.userPrefs.showOpenHistory;
                     prefs.showAssistantButton =
-                        $scope.userPrefs.showAssistantButton !== false;
+                        $scope.userPrefs.showAssistantButton;
                     prefs.recentWidgets = $scope.userPrefs.recentWidgets;
                     prefs.order = $scope.coreEditorDefs.map(function (d) {
                         return d.key;
@@ -12567,7 +12567,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         showOpenHistory:
                             $scope.userPrefs.showOpenHistory !== false,
                         showAssistantButton:
-                            $scope.userPrefs.showAssistantButton !== false,
+                            $scope.userPrefs.showAssistantButton,
                         availableFonts: _getAvailableMonospaceFonts(),
                         googleFonts: _GOOGLE_FONTS,
                     };
@@ -12642,7 +12642,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.userPrefs.showOpenHistory =
                         $scope.userPrefsEdit.showOpenHistory !== false;
                     $scope.userPrefs.showAssistantButton =
-                        $scope.userPrefsEdit.showAssistantButton !== false;
+                        !!$scope.userPrefsEdit.showAssistantButton;
                     var ts = parseInt($scope.userPrefsEdit.tabSize, 10);
                     if (ts >= 1 && ts <= 8) {
                         $scope.userPrefs.tabSize = ts;
@@ -12856,7 +12856,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     $scope.userPrefsEdit.showOpenInVsCode = true;
                     $scope.userPrefsEdit.showRecentlyOpenedWidgets = true;
                     $scope.userPrefsEdit.showOpenHistory = true;
-                    $scope.userPrefsEdit.showAssistantButton = true;
+                    $scope.userPrefsEdit.showAssistantButton = false;
                 };
 
                 $scope.importPrefsStatus = null;
