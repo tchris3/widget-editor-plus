@@ -15,6 +15,49 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         GlideAjax: true, GlideModal: true, GlideDialogWindow: true, GlideList2: true,
     },
 
+    // Kept in sync with EXPORT_BLOCKLISTED_TABLES/PREFIXES in the Assistant UI page
+    // (sys_ui_page_widget_editor_assistant.now.ts) — record data from these tables is
+    // never surfaced here either, so it can't be browsed via search before export.
+    EXPORT_BLOCKLISTED_TABLES: {
+        cmn_notif_device: true,
+        discovery_credentials: true,
+        hr_employee: true,
+        hr_profile: true,
+        oauth_credential: true,
+        sp_log: true,
+        sys_credential: true,
+        sys_user: true
+    },
+
+    EXPORT_BLOCKLISTED_PREFIXES: [
+        'pwd',
+        'sys_activity',
+        'sys_amb',
+        'sys_attachment',
+        'sys_audit',
+        'sys_df_query',
+        'sys_history',
+        'sys_scheduler_job_history',
+        'sys_user_grmember',
+        'sys_user_password',
+        'syslog',
+        'ts_'
+    ],
+
+    /**
+     * Whether record data from this table is blocklisted from search/browse/export.
+     * @param {string} table - Table name.
+     * @returns {boolean}
+     */
+    _isTableExportBlocked: function (table) {
+        if (!table) return false;
+        if (this.EXPORT_BLOCKLISTED_TABLES[table]) return true;
+        for (var i = 0; i < this.EXPORT_BLOCKLISTED_PREFIXES.length; i++) {
+            if (table.indexOf(this.EXPORT_BLOCKLISTED_PREFIXES[i]) === 0) return true;
+        }
+        return false;
+    },
+
     ////////////////////////////////////////////////////////////
     // Related component suggestions
     ////////////////////////////////////////////////////////////
@@ -698,9 +741,11 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
 
         var tables = [];
         while (gr.next()) {
+            var name = gr.getValue('name');
+            if (this._isTableExportBlocked(name)) continue;
             tables.push({
-                name: gr.getValue('name'),
-                label: gr.getValue('label') || gr.getValue('name'),
+                name: name,
+                label: gr.getValue('label') || name,
             });
         }
         return this._answer({
@@ -730,6 +775,9 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         var limit = parseInt(this.getParameter('limit'), 10) || this.RECORD_LIMIT;
         if (!table) {
             return this._answer({ success: false, error: 'No table provided', columns: [], records: [], total: 0, hasMore: false });
+        }
+        if (this._isTableExportBlocked(table)) {
+            return this._answer({ success: false, error: 'Records from this table are blocklisted and cannot be browsed or exported.', blocked: true, columns: [], records: [], total: 0, hasMore: false });
         }
 
         var cols = this._getTableColumns(table);
@@ -820,7 +868,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
                 var oLabel = ofName;
                 try {
                     oLabel = grOverride.getElement(ofName).getLabel() || ofName;
-                } catch (oe) {}
+                } catch (oe) { }
                 overrideCols.push({ field: ofName, label: oLabel });
             }
             if (overrideCols.length) {
@@ -861,7 +909,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             var internalType = '';
             try {
                 internalType = String(glideEl.getED().getInternalType());
-            } catch (e2) {}
+            } catch (e2) { }
             if (!this.PICKER_COLUMN_TYPES[internalType]) {
                 continue;
             }
@@ -878,7 +926,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
                 if (grProbe.isValidField(displayField)) {
                     try {
                         dLabel = grProbe.getElement(displayField).getLabel() || displayField;
-                    } catch (e) {}
+                    } catch (e) { }
                 }
                 cols.push({ field: displayField, label: dLabel });
             }
@@ -927,6 +975,10 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         var gr = new GlideRecordSecure(table);
         if (!gr.get(sysId)) {
             return this._answer({ success: false, label: '', updatedOn: '' });
+        }
+        if (this._isTableExportBlocked(table)) {
+            // Confirm the record exists without leaking its display value (e.g. a person's name).
+            return this._answer({ success: true, label: sysId, updatedOn: gr.getDisplayValue('sys_updated_on'), blocked: true });
         }
         return this._answer({ success: true, label: gr.getDisplayValue() || sysId, updatedOn: gr.getDisplayValue('sys_updated_on') });
     },
@@ -993,7 +1045,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         if (gr.next()) {
             try {
                 favourites = JSON.parse(gr.getValue('value') || '[]');
-            } catch (e) {}
+            } catch (e) { }
         }
         return this._answer({ success: true, favourites: favourites });
     },
@@ -1048,7 +1100,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         if (gr.next()) {
             try {
                 groups = JSON.parse(gr.getValue('value') || '[]');
-            } catch (e) {}
+            } catch (e) { }
         }
         return this._answer({ success: true, groups: groups });
     },

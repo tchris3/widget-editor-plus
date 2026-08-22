@@ -328,6 +328,11 @@ export const widgetEditorAssistantUiPage = UiPage({
             overflow: visible !important;
             text-overflow: unset !important;
         }
+
+        th.we-cell-actions {
+            text-align: left;
+        }
+
         .we-cell-actions {
             text-align: right;
             white-space: nowrap;
@@ -385,6 +390,25 @@ export const widgetEditorAssistantUiPage = UiPage({
             margin-left: 0.5rem;
             vertical-align: middle;
             cursor: default;
+        }
+
+        /* Blocked-table indicator pill: record data from this table is never exported */
+        .we-pill-blocked {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.125rem 0.45rem;
+            border-radius: 9999px;
+            background: rgb(var(--now-alert--critical--background-color, var(--now-color_alert--critical-0, 255 235 235)));
+            color: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 168 30 30)));
+            margin-left: 0.5rem;
+            vertical-align: middle;
+            cursor: default;
+        }
+        .we-pill-blocked i {
+            font-size: 0.75rem;
         }
 
         /* Favourite-group origin pill: capped width + ellipsis so a long group name
@@ -515,7 +539,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             color: rgb(var(--now-color--primary-2, 0 118 204));
         }
         .we-type-count-item.active .we-type-count-pill {
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(var(--now-pill--color--selected, 255 255 255), 0.25);
             color: rgb(var(--now-pill--color--selected, 255 255 255));
         }
 
@@ -713,7 +737,7 @@ export const widgetEditorAssistantUiPage = UiPage({
         }
         .we-fav-group-item:hover .we-fav-group-count { opacity: 0; }
         .we-fav-group-item.active .we-fav-group-count {
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(var(--now-pill--color--selected, 255 255 255), 0.25);
             color: rgb(var(--now-pill--color--selected, 255 255 255));
         }
         .we-fav-group-actions {
@@ -729,7 +753,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             color: rgb(var(--now-pill--color--selected, 255 255 255));
         }
         .we-fav-group-item.active .we-fav-group-actions .btn-icon:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(var(--now-pill--color--selected, 255 255 255), 0.2);
             color: rgb(var(--now-pill--color--selected, 255 255 255));
         }
         .we-fav-empty {
@@ -1322,7 +1346,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 </tr>
                                 <tr ng-repeat-end="ng-repeat-end" ng-if="!row.placeholder" ng-class="{'we-primary-row': row.primary, 'we-row-just-added': row._justAdded}" data-row-key="{{row.table}}:{{row.sys_id}}">
                                     <td class="we-cell-check">
-                                        <input type="checkbox" class="we-checkbox" ng-model="row.checked" ng-disabled="row.primary" ng-change="ctrl.onSelectionChange()" />
+                                        <input type="checkbox" class="we-checkbox" ng-model="row.checked" ng-disabled="row.primary || ctrl.isExportBlocked(row.table)" ng-change="ctrl.onSelectionChange()" />
                                     </td>
                                     <td>
                                         <span ng-class="{'we-lookup-link': !(row.primary &amp;&amp; ctrl.embeddedInModal)}" ng-click="!(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; ctrl.openLookupForRow(row, 'table')" title="{{(row.primary &amp;&amp; ctrl.embeddedInModal) ? '' : 'Click to change table'}}">
@@ -1335,6 +1359,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                                             {{row.label}}
                                         </span>
                                         <span class="we-pill-primary" ng-if="row.primary">Primary</span>
+                                        <span class="we-pill-blocked" ng-if="ctrl.isExportBlocked(row.table)" title="Table structure can be exported, but record data from this table is never included.">
+                                            <i class="icon-locked" aria-hidden="true"></i>
+                                            <span>Blocked</span>
+                                        </span>
                                         <span class="we-pill-suggested" ng-if="row.suggested">
                                             <span>Recommended</span>
                                             <i class="icon-ai-sparkle-fill" aria-hidden="true"></i>
@@ -1666,7 +1694,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 </div>
                                 <div class="we-picker-list" we-infinite-scroll="ctrl.loadMoreTables()">
                                     <div class="we-picker-empty" ng-if="!ctrl.lookup.tableLoading &amp;&amp; ctrl.lookup.tableResults.length === 0">
-                                        <span>No matching tables found</span>
+                                        <span>No available tables found</span>
                                     </div>
                                     <div class="we-picker-item" ng-repeat="t in ctrl.lookup.tableResults" ng-click="ctrl.chooseTable(t)" ng-keydown="ctrl.onTableItemKeydown($event, t)" tabindex="0" role="button" title="{{t.name}}">
                                         <span class="we-picker-item-icon" aria-hidden="true"><i ng-class="ctrl.tableIconClass(t.name)" aria-hidden="true"></i></span>
@@ -1974,6 +2002,45 @@ export const widgetEditorAssistantUiPage = UiPage({
         var EMAIL_ONLY_RE = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
         var REDACT_FIELDS = { sys_created_by: true, sys_updated_by: true };
 
+        // Kept in sync with EXPORT_BLOCKLISTED_TABLES/PREFIXES in the Assistant script
+        // include (sys_script_include_widget_editor_assistant.server.js) — the server
+        // already refuses to search/browse/export these; this client-side copy just
+        // keeps them out of the picker's own quick-pick lists (common/favourite tables).
+        var EXPORT_BLOCKLISTED_TABLES = {
+            cmn_notif_device: true,
+            discovery_credentials: true,
+            hr_employee: true,
+            hr_profile: true,
+            oauth_credential: true,
+            sp_log: true,
+            sys_credential: true,
+            sys_user: true,
+        };
+
+        var EXPORT_BLOCKLISTED_PREFIXES = [
+            'pwd',
+            'sys_activity',
+            'sys_amb',
+            'sys_attachment',
+            'sys_audit',
+            'sys_df_query',
+            'sys_history',
+            'sys_scheduler_job_history',
+            'sys_user_grmember',
+            'sys_user_password',
+            'syslog',
+            'ts_',
+        ];
+
+        function isTableExportBlocked(table) {
+            if (!table) return false;
+            if (EXPORT_BLOCKLISTED_TABLES[table]) return true;
+            for (var i = 0; i < EXPORT_BLOCKLISTED_PREFIXES.length; i++) {
+                if (table.indexOf(EXPORT_BLOCKLISTED_PREFIXES[i]) === 0) return true;
+            }
+            return false;
+        }
+
         function tableLabel(table) {
             return TABLE_LABELS[table] || table;
         }
@@ -2204,7 +2271,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return ajax('getFavouriteTables', {}).then(function (res) {
                     if (res.success && angular.isArray(res.favourites)) {
                         ctrl.favouriteTables = sortByLabel(res.favourites.filter(function (t) {
-                            return t && t.name && !COMMON_TABLE_NAMES[t.name];
+                            return t && t.name && !COMMON_TABLE_NAMES[t.name] && !isTableExportBlocked(t.name);
                         }));
                     }
                 }, angular.noop);
@@ -2652,6 +2719,10 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             ctrl.tableIconClass = tableIconClass;
+
+            ctrl.isExportBlocked = function (table) {
+                return isTableExportBlocked(table);
+            };
 
             ctrl.isFavouriteTable = function (name) {
                 if (!name) return false;
@@ -3581,6 +3652,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                     if (row.suggested && row.category) {
                         entryEl.setAttribute('reason', row.category);
                     }
+                    if (isTableExportBlocked(row.table)) {
+                        entryEl.setAttribute('blocked', 'true');
+                    }
                     manifestEl.appendChild(entryEl);
                 });
                 combinedDoc.documentElement.appendChild(manifestEl);
@@ -3609,6 +3683,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 redactRecordElement(schemaEl);
                                 targetContainer.appendChild(combinedDoc.importNode(schemaEl, true));
                             }
+                        } else if (isTableExportBlocked(row.table)) {
+                            // Structure export (above) is fine; record data from this table is never exported.
+                            var blockedEl = combinedDoc.createElement('blocked_record');
+                            blockedEl.setAttribute('table', row.table);
+                            blockedEl.setAttribute('sys_id', row.sys_id);
+                            blockedEl.setAttribute('reason', 'Table is on the export blocklist — record data withheld');
+                            targetContainer.appendChild(blockedEl);
                         } else {
                             var resp = await fetch('/' + row.table + '.do?sys_id=' + encodeURIComponent(row.sys_id) + '&XML', { credentials: 'same-origin' });
                             var text = await resp.text();
