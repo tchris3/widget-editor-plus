@@ -721,7 +721,8 @@ export const widgetEditorAssistantUiPage = UiPage({
             display: flex; align-items: center; justify-content: flex-end; gap: 0.25rem;
             opacity: 0; visibility: hidden; transition: opacity 0.12s ease;
         }
-        .we-fav-group-item:hover .we-fav-group-actions { opacity: 1; visibility: visible; }
+        .we-fav-group-item:hover .we-fav-group-actions,
+        .we-fav-group-item:focus-within .we-fav-group-actions { opacity: 1; visibility: visible; }
         /* .btn-icon's default (dark) icon colour disappears against the active row's
            dark selected background — force it light so it stays legible. */
         .we-fav-group-item.active .we-fav-group-actions .btn-icon {
@@ -764,18 +765,6 @@ export const widgetEditorAssistantUiPage = UiPage({
             letter-spacing: 0.04em;
             margin-bottom: 0.375rem;
             display: block;
-        }
-        .we-manage-group-warning {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.625rem 0.875rem;
-            border-radius: 6px;
-            background: rgba(var(--now-color--warning-2, 217 155 12), 0.12);
-            color: rgb(var(--now-color--warning-2, 217 155 12));
-            font-size: 0.8125rem;
-            font-weight: 600;
-            flex-shrink: 0;
         }
         .we-picker-footer {
             display: flex;
@@ -828,6 +817,9 @@ export const widgetEditorAssistantUiPage = UiPage({
             padding: 1rem;
             padding-top: 12vh;
         }
+        /* Less top offset so the taller --wide box (Manage Group) has room to actually
+           fill most of the viewport height instead of being capped by the top padding. */
+        .we-modal-backdrop--top { padding-top: 3vh; }
         .we-picker-box {
             background: rgb(var(--now-color_background--secondary, 246 246 248));
             border: 1px solid rgba(var(--now-color--neutral-0, 0 0 0), 0.12);
@@ -841,7 +833,7 @@ export const widgetEditorAssistantUiPage = UiPage({
         }
         .we-picker-box--wide {
             width: min(64rem, 96vw);
-            height: min(36rem, 85vh);
+            height: min(56rem, 90vh);
         }
         .we-picker-title-row {
             display: flex;
@@ -1502,10 +1494,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                             <span class="we-sidebar-title">About</span>
                         </div>
                         <div class="we-sidebar-content">
-                            <div style="font-size: var(--now-global-font-size--md, 14px); line-height: 1.5; color: rgb(var(--now-color_text--primary, 29 29 29)); display: flex; flex-direction: column; gap: 1rem;">
-                                <div>
+                            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                <p>
                                     <strong>Widget Editor+ Assistant</strong>&#160;bundles a record and related components into a clean XML context bundle for generative AI coding assistants.
-                                </div>
+                                </p>
                                 <div class="we-privacy-box">
                                     <p>
                                         Author fields <code>sys_created_by</code>, <code>sys_updated_by</code> and email addresses are automatically redacted for privacy.
@@ -1532,7 +1524,7 @@ export const widgetEditorAssistantUiPage = UiPage({
         </div>
 
         <!-- Manage / Create Favourite Group Modal -->
-        <div class="we-modal-backdrop" ng-if="ctrl.manageGroup" ng-click="ctrl.onManageGroupBackdropClick($event)">
+        <div class="we-modal-backdrop we-modal-backdrop--top" ng-if="ctrl.manageGroup" ng-click="ctrl.onManageGroupBackdropClick($event)">
             <div class="we-picker-box we-picker-box--wide">
                 <div class="we-picker-title-row" we-modal-draggable="we-modal-draggable">
                     <span class="we-picker-title">{{ctrl.manageGroup.isNew ? 'Create Favourite Group' : 'Edit Favourite Group: ' + ctrl.manageGroup.name}}</span>
@@ -1545,6 +1537,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                     <div>
                         <label class="we-form-label">Group Name</label>
                         <input type="text" class="form-control" ng-model="ctrl.manageGroup.name" autofocus="autofocus" />
+                        <div class="alert alert-danger" style="margin-top: 0.5rem;" ng-if="ctrl.isDuplicateGroupName()">
+                            <i class=" icon-error-circle" style="margin-right: 0.5em;" aria-hidden="true"></i>
+                            <span>A favourite group with this name already exists.</span>
+                        </div>
                     </div>
 
                     <div class="we-table-card">
@@ -1599,7 +1595,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                     <span ng-if="ctrl.manageGroup.isNew"></span>
                     <div class="we-picker-footer-right">
                         <button type="button" class="btn btn-default" ng-click="ctrl.closeManageGroup()">Cancel</button>
-                        <button type="button" class="btn btn-primary" ng-click="ctrl.saveManageGroup()" ng-disabled="!ctrl.manageGroup.name || (ctrl.manageGroup.isNew &amp;&amp; ctrl.manageGroup.records.length === 0) || ctrl.manageGroup.saving">
+                        <button type="button" class="btn btn-primary" ng-click="ctrl.saveManageGroup()" ng-disabled="!ctrl.manageGroup.name || ctrl.isDuplicateGroupName() || (ctrl.manageGroup.isNew &amp;&amp; ctrl.manageGroup.records.length === 0) || ctrl.manageGroup.saving">
                             {{ctrl.manageGroup.records.length === 0 &amp;&amp; !ctrl.manageGroup.isNew ? 'Delete Group' : 'Save Changes'}}
                         </button>
                     </div>
@@ -2260,6 +2256,22 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return 'fav_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
             }
 
+            // Trimmed + case-insensitive, so "Foo" and " foo " are treated as the same name.
+            function normalizeGroupName(name) {
+                return (name || '').trim().toLowerCase();
+            }
+
+            // True when the modal's current name collides with another group's — excludes
+            // the group being edited itself, so keeping a name unchanged is never a conflict.
+            ctrl.isDuplicateGroupName = function () {
+                if (!ctrl.manageGroup) return false;
+                var n = normalizeGroupName(ctrl.manageGroup.name);
+                if (!n) return false;
+                return ctrl.favouriteGroups.some(function (g) {
+                    return g.id !== ctrl.manageGroup.id && normalizeGroupName(g.name) === n;
+                });
+            };
+
             ctrl.exportFavouriteGroups = function () {
                 var payload = {
                     favourite_groups: ctrl.favouriteGroups.map(function (g) {
@@ -2305,18 +2317,21 @@ export const widgetEditorAssistantUiPage = UiPage({
                     var now = new Date().toISOString();
                     incoming.forEach(function (g) {
                         if (!g || !g.name) return;
+                        var name = g.name.trim();
+                        if (!name) return;
                         var validRecords = (g.records || []).filter(function (r) {
                             return r && r.table && r.sys_id && validKeys[r.table + ':' + r.sys_id];
                         }).map(function (r) { return { table: r.table, sys_id: r.sys_id }; });
                         if (!validRecords.length) return;
 
-                        // Same name as an existing group — overwrite it rather than duplicate.
-                        var existing = ctrl.favouriteGroups.filter(function (eg) { return eg.name === g.name; })[0];
+                        // Same name (trimmed, case-insensitive) as an existing group — overwrite it rather than duplicate.
+                        var normalized = normalizeGroupName(name);
+                        var existing = ctrl.favouriteGroups.filter(function (eg) { return normalizeGroupName(eg.name) === normalized; })[0];
                         if (existing) {
                             existing.records = validRecords;
                             existing.updated = now;
                         } else {
-                            ctrl.favouriteGroups.push({ id: genGroupId(), name: g.name, records: validRecords, created: g.created || now, updated: now });
+                            ctrl.favouriteGroups.push({ id: genGroupId(), name: name, records: validRecords, created: g.created || now, updated: now });
                         }
                     });
                     sortFavouriteGroups();
@@ -2470,7 +2485,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             ctrl.saveManageGroup = function () {
-                if (!ctrl.manageGroup || !ctrl.manageGroup.name) return;
+                if (!ctrl.manageGroup || !ctrl.manageGroup.name || ctrl.isDuplicateGroupName()) return;
 
                 // Saving down to 0 records on an existing group deletes it instead —
                 // the zero-record rule prevents orphaned empty groups from persisting.
@@ -2486,12 +2501,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                 var records = ctrl.manageGroup.records.map(function (r) {
                     return { table: r.table, sys_id: r.sys_id, label: r.label, tableLabel: r.tableLabel, updatedOn: r.updatedOn };
                 });
+                var name = ctrl.manageGroup.name.trim();
                 if (ctrl.manageGroup.isNew) {
-                    ctrl.favouriteGroups.push({ id: genGroupId(), name: ctrl.manageGroup.name, records: records, created: now, updated: now });
+                    ctrl.favouriteGroups.push({ id: genGroupId(), name: name, records: records, created: now, updated: now });
                 } else {
                     var existing = ctrl.favouriteGroups.filter(function (g) { return g.id === ctrl.manageGroup.id; })[0];
                     if (existing) {
-                        existing.name = ctrl.manageGroup.name;
+                        existing.name = name;
                         existing.records = records;
                         existing.updated = now;
                     }
@@ -2759,19 +2775,22 @@ export const widgetEditorAssistantUiPage = UiPage({
                 }
             }
 
+            // True when no type filter is active, or when this row's type is one of the
+            // active ones. tableLabel is set synchronously on every row (even ones whose
+            // display label is still resolving), so this is safe to use before a row has
+            // made it into ctrl.rows/visibleRows.
+            function rowMatchesActiveFilter(r) {
+                if (r.placeholder || r.primary) return true;
+                var activeLabels = Object.keys(ctrl.activeTypeFilters).filter(function (lbl) { return ctrl.activeTypeFilters[lbl]; });
+                if (activeLabels.length === 0) return true;
+                var lbl = r.tableLabel || tableLabel(r.table) || r.table;
+                return !!ctrl.activeTypeFilters[lbl];
+            }
+
             // Rows shown to the user AND the scope for selection, export, and token totals: when a
             // type filter is active only matching types (plus the primary row) are included.
             function recomputeVisibleRows() {
-                var activeLabels = Object.keys(ctrl.activeTypeFilters).filter(function (lbl) { return ctrl.activeTypeFilters[lbl]; });
-                if (activeLabels.length === 0) {
-                    ctrl.visibleRows = ctrl.rows;
-                    return;
-                }
-                ctrl.visibleRows = ctrl.rows.filter(function (r) {
-                    if (r.placeholder || r.primary) return true;
-                    var lbl = r.tableLabel || tableLabel(r.table) || r.table;
-                    return ctrl.activeTypeFilters[lbl];
-                });
+                ctrl.visibleRows = ctrl.rows.filter(rowMatchesActiveFilter);
             }
 
             ctrl.toggleTypeFilter = function (label) {
@@ -2909,15 +2928,18 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return rows.every(function (r) { return r.checked; });
             };
 
-            // Only (de)selects the currently visible rows, so a type filter can be used to
-            // bulk-select just that slice without disturbing hidden rows' checked state.
+            // Only (de)selects rows matching the active type filter, so a filter can be used
+            // to bulk-select just that slice without disturbing hidden rows' checked state.
+            // Scoped to ctrl.related (not just ctrl.rows/visibleRows) so a row whose display
+            // label hasn't resolved yet — e.g. a manual row just restored from localStorage —
+            // still gets included; tableLabel, which the filter test uses, is already set.
             ctrl.toggleSelectAll = function () {
                 var target = !ctrl.isAllSelected();
-                for (var i = 0; i < ctrl.visibleRows.length; i++) {
-                    if (!ctrl.visibleRows[i].primary && !ctrl.visibleRows[i].placeholder) {
-                        ctrl.visibleRows[i].checked = target;
+                ctrl.related.forEach(function (r) {
+                    if (!r.primary && rowMatchesActiveFilter(r)) {
+                        r.checked = target;
                     }
-                }
+                });
                 ctrl.saveSelections();
                 recomputeTypeCounts();
             };

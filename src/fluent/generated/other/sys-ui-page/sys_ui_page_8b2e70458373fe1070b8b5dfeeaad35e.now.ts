@@ -5810,6 +5810,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     return deferred.promise;
                 }
 
+                // Trimmed + case-insensitive, matching the Assistant's own uniqueness rule.
+                function _normalizeGroupName(name) {
+                    return (name || '').trim().toLowerCase();
+                }
+
                 // Widget picker
                 function _buildSavePayload() {
                     $scope.coreEditorDefs.forEach(function (def) {
@@ -12725,6 +12730,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                     if ($scope.userPrefsEdit.favouriteGroups) {
                         var importedGroups = $scope.userPrefsEdit.favouriteGroups;
+                        $scope.userPrefsEdit.favouriteGroups = undefined;
                         var allRecords = [];
                         importedGroups.forEach(function (g) {
                             (g && g.records || []).forEach(function (r) {
@@ -12734,28 +12740,40 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         var validated = allRecords.length
                             ? _assistantAjax('validateRecordsExist', { records: JSON.stringify(allRecords) })
                             : $q.resolve({ success: true, records: [] });
+                        // _assistantAjax always resolves (even on failure, with {success:false}) — every
+                        // step's success flag has to be checked explicitly, and the modal stays open with
+                        // an error instead of closing as though the import had actually been saved.
                         validated.then(function (v) {
+                            if (!v || !v.success) {
+                                return $q.reject('Could not validate the imported records.');
+                            }
                             var validKeys = {};
-                            (v && v.records || []).forEach(function (r) { validKeys[r.table + ':' + r.sys_id] = true; });
+                            (v.records || []).forEach(function (r) { validKeys[r.table + ':' + r.sys_id] = true; });
                             return _assistantAjax('getFavouriteGroups', {}).then(function (existingRes) {
-                                var existingGroups = (existingRes && existingRes.success && Array.isArray(existingRes.groups)) ? existingRes.groups : [];
+                                if (!existingRes || !existingRes.success) {
+                                    return $q.reject('Could not load your existing favourite groups.');
+                                }
+                                var existingGroups = Array.isArray(existingRes.groups) ? existingRes.groups : [];
                                 var now = new Date().toISOString();
                                 // A group with no valid records left after validation is never
                                 // imported; an existing group with the same name is overwritten.
                                 importedGroups.forEach(function (g) {
                                     if (!g || !g.name) return;
+                                    var name = g.name.trim();
+                                    if (!name) return;
                                     var validRecords = (g.records || []).filter(function (r) {
                                         return r && r.table && r.sys_id && validKeys[r.table + ':' + r.sys_id];
                                     }).map(function (r) { return { table: r.table, sys_id: r.sys_id }; });
                                     if (!validRecords.length) return;
-                                    var existing = existingGroups.filter(function (eg) { return eg.name === g.name; })[0];
+                                    var normalized = _normalizeGroupName(name);
+                                    var existing = existingGroups.filter(function (eg) { return _normalizeGroupName(eg.name) === normalized; })[0];
                                     if (existing) {
                                         existing.records = validRecords;
                                         existing.updated = now;
                                     } else {
                                         existingGroups.push({
                                             id: 'fav_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-                                            name: g.name,
+                                            name: name,
                                             records: validRecords,
                                             created: g.created || now,
                                             updated: now,
@@ -12764,8 +12782,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                                 return _assistantAjax('saveFavouriteGroups', { groups: JSON.stringify(existingGroups) });
                             });
+                        }).then(function (saveRes) {
+                            if (!saveRes || !saveRes.success) {
+                                return $q.reject('The server rejected the save.');
+                            }
+                            _closeModal(function () {
+                                $scope.showUserPrefsModal = false;
+                            });
+                        }, function (reason) {
+                            $scope.importPrefsStatus = {
+                                type: 'error',
+                                text: 'Your other preferences were saved, but importing favourite groups failed: ' + (reason || 'unknown error') + ' Try importing again.',
+                            };
                         });
-                        $scope.userPrefsEdit.favouriteGroups = undefined;
+                        return;
                     }
                     _closeModal(function () {
                         $scope.showUserPrefsModal = false;
