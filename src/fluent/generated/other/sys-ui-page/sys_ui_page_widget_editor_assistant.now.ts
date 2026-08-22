@@ -150,6 +150,8 @@ export const widgetEditorAssistantUiPage = UiPage({
             color: rgb(var(--now-color_text--secondary, 96 100 108));
         }
         .we-table-heading {
+            display: flex;
+            align-items: center;
             font-size: var(--now-font-size--lg, 18px);
             font-weight: 700;
             color: rgb(var(--now-color_text--primary, 29 29 29));
@@ -223,13 +225,29 @@ export const widgetEditorAssistantUiPage = UiPage({
         .we-sidebar-content {
             flex: 1;
             min-height: 0;
-            overflow-y: auto;
             padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.125rem;
+            overflow: hidden;
+        }
+        /* Record type list: grows/shrinks and scrolls independently of the pinned footer below. */
+        .we-sidebar-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 1.125rem;
             overscroll-behavior: contain;
             -webkit-overflow-scrolling: touch;
+        }
+        /* Token estimate, Generate XML, and progress bar: always stay visible at the bottom. */
+        .we-sidebar-footer {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1.125rem;
         }
 
         /* Horizon Dock Rail */
@@ -313,7 +331,7 @@ export const widgetEditorAssistantUiPage = UiPage({
         .we-cell-actions {
             text-align: right;
             white-space: nowrap;
-            width: 6.5rem;
+            width: 9.25rem;
             overflow: visible !important;
             text-overflow: unset !important;
         }
@@ -369,6 +387,34 @@ export const widgetEditorAssistantUiPage = UiPage({
             cursor: default;
         }
 
+        /* Favourite-group origin pill: capped width + ellipsis so a long group name
+           never blows out the Name column; the full name is available via title. */
+        .we-pill-favourite {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            max-width: 8rem;
+            vertical-align: middle;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.125rem 0.45rem;
+            border-radius: 9999px;
+            background: rgb(var(--now-alert--warning--background-color, 244 240 191));
+            color: rgb(var(--now-alert--warning--color, 149 139 17));
+            margin-left: 0.5rem;
+            cursor: default;
+        }
+        .we-pill-favourite i {
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+        .we-pill-favourite-text {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         /* Inline Table and Record Lookup Triggers */
         .we-lookup-link {
             color: rgb(var(--now-color--primary-2, 0 118 204));
@@ -405,15 +451,55 @@ export const widgetEditorAssistantUiPage = UiPage({
             gap: 0.375rem;
             margin: 0.25rem 0;
         }
+        /* Shared sidebar list-item chip — used by both the Context XML type filters
+           and the Favourites group list, so the two lists read as one system. */
         .we-type-count-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 0.625rem;
             font-size: 0.8125rem;
             padding: 0.35rem 0.5rem;
-            background: rgb(var(--now-color_background--secondary, 246 246 248));
             border-radius: 4px;
-            color: rgb(var(--now-color_text--secondary, 96 100 108));
+            cursor: pointer;
+            border-width: var(--now-pill--border-width, 1px);
+            border-style: solid;
+            background: rgb(var(--now-pill--background-color, 255 255 255));
+            border-color: rgb(var(--now-pill--border-color, 172 180 181));
+            color: rgb(var(--now-pill--color, 22 27 28));
+        }
+        .we-sidebar-item-label {
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .we-type-count-item:hover {
+            background: rgb(var(--now-pill--background-color--hover, var(--now-pill--background-color, 255 255 255)));
+            border-color: rgb(var(--now-pill--border-color--hover, var(--now-pill--border-color, 172 180 181)));
+            color: rgb(var(--now-pill--color--hover, 30 133 109));
+        }
+        .we-type-count-item:focus-visible {
+            background: rgb(var(--now-pill--background-color--focus, 221 237 233));
+            border-color: rgb(var(--now-pill--border-color--focus, 30 133 109));
+            color: rgb(var(--now-pill--color--focus, 15 67 55));
+            outline: none;
+        }
+        .we-type-count-item.active {
+            background: rgb(var(--now-pill--background-color--selected, 30 133 109));
+            border-color: rgb(var(--now-pill--border-color--selected, 30 133 109));
+            color: rgb(var(--now-pill--color--selected, 255 255 255));
+        }
+        .we-type-count-item.active:hover {
+            background: rgb(var(--now-pill--background-color--selected_hover, var(--now-pill--background-color--selected, 30 133 109)));
+            border-color: rgb(var(--now-pill--border-color--selected_hover, var(--now-pill--border-color--selected, 30 133 109)));
+            color: rgb(var(--now-pill--color--selected_hover, var(--now-pill--color--selected, 255 255 255)));
+        }
+        .we-type-count-item.active:focus-visible {
+            background: rgb(var(--now-pill--background-color--selected_focus, var(--now-pill--background-color--selected, 30 133 109)));
+            border-color: rgb(var(--now-pill--border-color--selected_focus, 30 133 109));
+            color: rgb(var(--now-pill--color--selected_focus, var(--now-pill--color--selected, 255 255 255)));
         }
         .we-type-count-pill {
             display: inline-flex;
@@ -428,6 +514,10 @@ export const widgetEditorAssistantUiPage = UiPage({
             background: rgba(var(--now-color--primary-1, 0 118 204), 0.15);
             color: rgb(var(--now-color--primary-2, 0 118 204));
         }
+        .we-type-count-item.active .we-type-count-pill {
+            background: rgba(255, 255, 255, 0.25);
+            color: rgb(var(--now-pill--color--selected, 255 255 255));
+        }
 
         /* Skeleton Placeholders */
         @keyframes we-skeleton-pulse {
@@ -436,7 +526,10 @@ export const widgetEditorAssistantUiPage = UiPage({
         }
         .we-skeleton-bar {
             display: inline-block;
-            background: rgba(var(--now-color--neutral-0, 0 0 0), 0.1);
+            /* A solid theme fill, not an alpha overlay — rgba(var(--now-color--neutral-0), X)
+               resolves to white in the real theme, so on a light background it was
+               rendering as invisible white-on-white. */
+            background: rgb(var(--now-color_background--tertiary, 243 244 246));
             border-radius: 4px;
             animation: we-skeleton-pulse 1.4s ease-in-out infinite;
         }
@@ -585,6 +678,144 @@ export const widgetEditorAssistantUiPage = UiPage({
             transition: width 0.15s ease;
         }
 
+        /* Favourites Sidebar Panel */
+        .we-fav-toolbar { display: flex; align-items: center; justify-content: flex-start; gap: 0.375rem; }
+        .we-fav-new-btn { flex-shrink: 0; }
+        .we-fav-list {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+            padding-right: 0.125rem;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+        .we-fav-list::-webkit-scrollbar { width: 6px; }
+        .we-fav-list::-webkit-scrollbar-thumb {
+            background: rgba(var(--now-color--neutral-0, 0 0 0), 0.15);
+            border-radius: 4px;
+        }
+        /* Favourites rows also carry .we-type-count-item, so the base chip look
+           (background/border/hover/focus/active) is inherited from it — everything
+           below is only the bits unique to a favourites row: the count-pill that
+           swaps for hover-revealed actions, sized for two native .btn-icon buttons. */
+        .we-fav-group-slot { position: relative; width: 4.5rem; height: 1.625rem; flex-shrink: 0; }
+        .we-fav-group-count {
+            position: absolute; inset: 0; margin-left: auto;
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 1.375rem; height: 1.375rem; width: fit-content; padding: 0 0.4rem;
+            font-size: 0.75rem; font-weight: 700; border-radius: 9999px;
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.15);
+            color: rgb(var(--now-color--primary-2, 0 118 204));
+            transition: opacity 0.12s ease;
+        }
+        .we-fav-group-item:hover .we-fav-group-count { opacity: 0; }
+        .we-fav-group-item.active .we-fav-group-count {
+            background: rgba(255, 255, 255, 0.25);
+            color: rgb(var(--now-pill--color--selected, 255 255 255));
+        }
+        .we-fav-group-actions {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: flex-end; gap: 0.25rem;
+            opacity: 0; visibility: hidden; transition: opacity 0.12s ease;
+        }
+        .we-fav-group-item:hover .we-fav-group-actions { opacity: 1; visibility: visible; }
+        /* .btn-icon's default (dark) icon colour disappears against the active row's
+           dark selected background — force it light so it stays legible. */
+        .we-fav-group-item.active .we-fav-group-actions .btn-icon {
+            color: rgb(var(--now-pill--color--selected, 255 255 255));
+        }
+        .we-fav-group-item.active .we-fav-group-actions .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: rgb(var(--now-pill--color--selected, 255 255 255));
+        }
+        .we-fav-empty {
+            flex: 1;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 1.5rem 0.5rem; gap: 0.875rem;
+        }
+        .we-fav-empty-badge {
+            width: 3rem; height: 3rem; border-radius: 50%;
+            background: rgba(var(--now-color--warning-2, 217 155 12), 0.14);
+            color: rgb(var(--now-color--warning-2, 217 155 12));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.375rem;
+        }
+        .we-fav-empty-title { font-size: 0.9375rem; font-weight: 600; color: rgb(var(--now-color_text--primary, 29 29 29)); }
+        .we-fav-empty-desc { font-size: 0.8125rem; color: rgb(var(--now-color_text--secondary, 96 100 108)); line-height: 1.5; }
+
+        /* Manage Favourite Group Modal */
+        .we-manage-group-body {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem 1.25rem;
+            gap: 0.875rem;
+            overflow: hidden;
+        }
+        .we-form-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: rgb(var(--now-color_text--secondary, 96 100 108));
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.375rem;
+            display: block;
+        }
+        .we-manage-group-warning {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 0.875rem;
+            border-radius: 6px;
+            background: rgba(var(--now-color--warning-2, 217 155 12), 0.12);
+            color: rgb(var(--now-color--warning-2, 217 155 12));
+            font-size: 0.8125rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .we-picker-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.875rem 1.25rem;
+            border-top: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228 230 235)));
+            flex-shrink: 0;
+            gap: 0.75rem;
+        }
+        .we-picker-footer-right { display: flex; align-items: center; gap: 0.625rem; }
+
+        /* Generic confirm dialog (e.g. deleting a favourite group that still has records) */
+        .we-confirm-box {
+            background: rgb(var(--now-color_background--primary, 255 255 255));
+            border: 1px solid rgba(var(--now-color--neutral-0, 0 0 0), 0.12);
+            border-radius: 12px;
+            width: min(24rem, 92vw);
+            padding: 1.5rem;
+            box-shadow: 0 24px 64px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .we-confirm-title {
+            font-size: 1.0625rem;
+            font-weight: 700;
+            color: rgb(var(--now-color_text--primary, 29 29 29));
+        }
+        .we-confirm-message {
+            font-size: 0.875rem;
+            line-height: 1.5;
+            color: rgb(var(--now-color_text--secondary, 96 100 108));
+        }
+        .we-confirm-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.625rem;
+        }
+
         /* Record Lookup Modal — matches the Widget Editor+ picker design language */
         .we-modal-backdrop {
             position: fixed;
@@ -608,6 +839,10 @@ export const widgetEditorAssistantUiPage = UiPage({
             box-shadow: 0 24px 64px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
             overflow: hidden;
         }
+        .we-picker-box--wide {
+            width: min(64rem, 96vw);
+            height: min(36rem, 85vh);
+        }
         .we-picker-title-row {
             display: flex;
             align-items: center;
@@ -617,7 +852,12 @@ export const widgetEditorAssistantUiPage = UiPage({
             background: rgb(var(--now-color_background--secondary, 246 246 248));
             flex-shrink: 0;
             gap: 1rem;
+            cursor: grab;
+            user-select: none;
         }
+        .we-picker-title-row:active { cursor: grabbing; }
+        .we-picker-box--dragging,
+        .we-picker-box--dragging .we-picker-title-row { cursor: grabbing !important; }
         .we-picker-title-left {
             display: flex;
             align-items: center;
@@ -1031,6 +1271,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                     <div class="we-table-header-toolbar">
                         <div class="we-table-heading">
                             <span>Records</span>
+                            <span class="we-type-count-pill" style="margin-left: 0.5rem;" ng-if="!ctrl.loadingInitial" ng-bind="ctrl.totalRowCount()"></span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 1rem;">
                             <span class="we-scan-indicator" ng-if="ctrl.scanningSuggested">
@@ -1061,7 +1302,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 <col style="width: 25%;" />
                                 <col style="width: 42%;" />
                                 <col style="width: 20%;" />
-                                <col style="width: 13%; min-width: 6.5rem;" />
+                                <col style="width: 13%; min-width: 9.25rem;" />
                             </colgroup>
                             <thead>
                                 <tr>
@@ -1076,14 +1317,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                             </thead>
                             <tbody>
                                 <!-- Unified Rows: Row 0 is Primary (or a placeholder prompting selection), Remaining Rows Grouped by Type -->
-                                <tr ng-repeat-start="row in ctrl.rows track by (row.placeholder ? 'ph' : (row.table + ':' + row.sys_id))" ng-if="row.placeholder" class="we-primary-row" data-row-key="ph">
+                                <tr ng-repeat-start="row in ctrl.visibleRows track by (row.placeholder ? 'ph' : (row.table + ':' + row.sys_id))" ng-if="row.placeholder" class="we-primary-row" data-row-key="ph">
                                     <td colspan="5" style="text-align: center; padding: 1.5rem 1rem;">
                                         <button type="button" class="btn btn-primary" ng-click="ctrl.openLookup('primary')">
                                             <i class="icon-add" style="margin-right: 0.375rem;"></i>
                                             <span>Select record</span>
                                         </button>
                                         <div style="margin-top: 1.5rem; font-size: var(--now-global-font-size--md, 14px); color: rgb(var(--now-color_text--secondary, 96 100 108));">
-                                            Choose the primary record to get started.
+                                            Choose a primary record.
                                         </div>
                                     </td>
                                 </tr>
@@ -1106,6 +1347,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                                             <span>Recommended</span>
                                             <i class="icon-ai-sparkle-fill" aria-hidden="true"></i>
                                         </span>
+                                        <span class="we-pill-favourite" ng-if="row.favouriteGroupName" title="{{row.favouriteGroupName}}">
+                                            <span class="we-pill-favourite-text">{{row.favouriteGroupName}}</span>
+                                            <i class="icon-star" aria-hidden="true"></i>
+                                        </span>
                                     </td>
                                     <td>
                                         <span class="we-updated-text" ng-bind="row.updatedOn || '—'"></span>
@@ -1114,12 +1359,15 @@ export const widgetEditorAssistantUiPage = UiPage({
                                         <button type="button" class="btn btn-default" ng-if="row.primary &amp;&amp; !ctrl.embeddedInModal" ng-click="ctrl.openLookup('primary')" title="Select primary record">
                                             <i class="icon-target"></i>
                                         </button>
-                                        <button type="button" class="btn btn-default" ng-if="!row.primary" ng-click="ctrl.removeRow(row)" title="Remove record">
-                                            <i class="icon-cross"></i>
+                                        <button type="button" class="btn btn-default" ng-click="ctrl.scanRow(row)" ng-disabled="row.scanning" title="Scan for related records">
+                                            <i class="icon-search"></i>
                                         </button>
                                         <a class="btn btn-default" ng-if="!(row.primary &amp;&amp; ctrl.embeddedInModal)" ng-href="/nav_to.do?uri={{row.table}}.do%3Fsys_id%3D{{row.sys_id}}" target="_blank" title="Open record in platform">
                                             <i class="icon-open-document-new-tab"></i>
                                         </a>
+                                        <button type="button" class="btn btn-default" ng-if="!row.primary" ng-click="ctrl.removeRow(row)" title="Remove record">
+                                            <i class="icon-cross"></i>
+                                        </button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -1139,59 +1387,116 @@ export const widgetEditorAssistantUiPage = UiPage({
                         </div>
 
                         <div class="we-sidebar-content">
-                            <!-- Skeleton Placeholders while loading records -->
-                            <div class="we-skeleton-counts" ng-if="ctrl.loadingInitial">
-                                <div class="we-skeleton-bar we-skeleton-count-row"></div>
-                                <div class="we-skeleton-bar we-skeleton-count-row"></div>
-                            </div>
-
-                            <div class="we-token-card we-skeleton-token-card" ng-if="ctrl.loadingInitial">
-                                <div class="we-token-header">
-                                    <span class="we-token-lbl">Estimated Context Size</span>
-                                    <span class="we-skeleton-bar" style="width: 3.5rem; height: 1rem; border-radius: 9999px;"></span>
+                            <!-- Top: Record Type Counts, scrolls independently when there are many types -->
+                            <div class="we-sidebar-scroll">
+                                <!-- Skeleton Placeholders while loading records -->
+                                <div class="we-skeleton-counts" ng-if="ctrl.loadingInitial">
+                                    <div class="we-skeleton-bar we-skeleton-count-row"></div>
+                                    <div class="we-skeleton-bar we-skeleton-count-row"></div>
                                 </div>
-                                <div class="we-skeleton-bar" style="width: 7.5rem; height: 1.375rem; margin-top: 0.25rem;"></div>
-                            </div>
 
-                            <!-- Record Type Counts (when loaded) -->
-                            <div class="we-type-counts-list" ng-if="!ctrl.loadingInitial &amp;&amp; ctrl.typeCountsList.length &gt; 0">
-                                <div class="we-type-count-item" ng-repeat="tc in ctrl.typeCountsList">
-                                    <span ng-bind="tc.label"></span>
-                                    <span class="we-type-count-pill" ng-bind="tc.selectedCount"></span>
+                                <!-- Record Type Counts (when loaded) -->
+                                <div class="we-type-counts-list" ng-if="!ctrl.loadingInitial &amp;&amp; ctrl.typeCountsList.length &gt; 0">
+                                    <div class="we-type-count-item" ng-repeat="tc in ctrl.typeCountsList" ng-class="{'active': ctrl.activeTypeFilters[tc.label]}" ng-click="ctrl.toggleTypeFilter(tc.label)" ng-keydown="($event.key === 'Enter' || $event.key === ' ') &amp;&amp; ($event.preventDefault() || ctrl.toggleTypeFilter(tc.label))" tabindex="0" role="button" aria-pressed="{{!!ctrl.activeTypeFilters[tc.label]}}" title="{{ctrl.activeTypeFilters[tc.label] ? 'Click to stop filtering to ' + tc.label : 'Click to show only ' + tc.label}}">
+                                        <span class="we-sidebar-item-label" ng-bind="tc.label"></span>
+                                        <span class="we-type-count-pill" ng-bind="tc.selectedCount"></span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Token Estimation (when loaded) -->
-                            <div class="we-token-card" ng-class="ctrl.tokenCardClass()" ng-if="!ctrl.loadingInitial">
-                                <div class="we-token-header">
-                                    <span class="we-token-lbl">Estimated Context Size</span>
-                                    <span class="we-token-badge" ng-if="ctrl.tokenLevelInfo().label" ng-bind="ctrl.tokenLevelInfo().label"></span>
+                            <!-- Bottom: Token Estimate, Export Button, Progress — always visible -->
+                            <div class="we-sidebar-footer">
+                                <div class="we-token-card we-skeleton-token-card" ng-if="ctrl.loadingInitial">
+                                    <div class="we-token-header">
+                                        <span class="we-token-lbl">Estimated Context Size</span>
+                                        <span class="we-skeleton-bar" style="width: 3.5rem; height: 1rem; border-radius: 9999px;"></span>
+                                    </div>
+                                    <div class="we-skeleton-bar" style="width: 7.5rem; height: 1.375rem; margin-top: 0.25rem;"></div>
                                 </div>
-                                <span class="we-token-val" ng-if="ctrl.sizesPending()">~<span class="we-skeleton-bar" style="width: 3rem; height: 1em; border-radius: 4px; vertical-align: middle; margin: 0 0.25em;" aria-hidden="true"></span> tokens</span>
-                                <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; ctrl.rawTokenCount() === 0">N/A</span>
-                                <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; ctrl.rawTokenCount() &gt; 0">~{{ctrl.estimatedTokens()}} tokens</span>
-                            </div>
 
-                            <!-- Export Button -->
-                            <button class="btn btn-primary btn-block" ng-click="ctrl.generateXml()" ng-disabled="ctrl.loadingInitial || ctrl.selectedCount() === 0 || ctrl.generating">
-                                <i class="icon-download" style="margin-right: 4px;"></i>
-                                <span>{{ctrl.generating ? 'Generating XML…' : 'Generate XML'}}</span>
-                            </button>
-
-                            <!-- Progress Indicator — stays visible after completion until the record set changes -->
-                            <div class="we-progress-box" ng-if="ctrl.progress.total &gt; 0">
-                                <div class="we-progress-info">
-                                    <span>{{ctrl.generating ? 'Generating XML bundle…' : 'XML bundle generated'}}</span>
-                                    <span>{{ctrl.progressPct()}}%</span>
+                                <!-- Token Estimation (when loaded) -->
+                                <div class="we-token-card" ng-class="ctrl.tokenCardClass()" ng-if="!ctrl.loadingInitial">
+                                    <div class="we-token-header">
+                                        <span class="we-token-lbl">Estimated Context Size</span>
+                                        <span class="we-token-badge" ng-if="ctrl.tokenLevelInfo().label" ng-bind="ctrl.tokenLevelInfo().label"></span>
+                                    </div>
+                                    <span class="we-token-val" ng-if="ctrl.sizesPending()">~<span class="we-skeleton-bar" style="width: 3rem; height: 1em; border-radius: 4px; vertical-align: middle; margin: 0 0.25em;" aria-hidden="true"></span> tokens</span>
+                                    <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; ctrl.rawTokenCount() === 0">N/A</span>
+                                    <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; ctrl.rawTokenCount() &gt; 0">~{{ctrl.estimatedTokens()}} tokens</span>
                                 </div>
-                                <div class="we-progress-bar">
-                                    <div class="we-progress-bar-fill" ng-style="{width: ctrl.progressPct() + '%'}"></div>
+
+                                <!-- Export Button -->
+                                <button class="btn btn-primary btn-block" ng-click="ctrl.generateXml()" ng-disabled="ctrl.loadingInitial || ctrl.selectedCount() === 0 || ctrl.generating">
+                                    <i class="icon-download" style="margin-right: 4px;"></i>
+                                    <span>{{ctrl.generating ? 'Generating XML…' : 'Generate XML'}}</span>
+                                </button>
+
+                                <!-- Progress Indicator — stays visible after completion until the record set changes -->
+                                <div class="we-progress-box" ng-if="ctrl.progress.total &gt; 0">
+                                    <div class="we-progress-info">
+                                        <span>{{ctrl.generating ? 'Generating XML bundle…' : 'XML bundle generated'}}</span>
+                                        <span>{{ctrl.progressPct()}}%</span>
+                                    </div>
+                                    <div class="we-progress-bar">
+                                        <div class="we-progress-bar-fill" ng-style="{width: ctrl.progressPct() + '%'}"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Tab 2: Help and Info -->
+                    <!-- Tab 2: Favourites -->
+                    <div class="we-sidebar-panel" ng-if="ctrl.activeSidebarTab === 'favourites'">
+                        <div class="we-sidebar-header">
+                            <span class="we-sidebar-title">Favourites</span>
+                        </div>
+                        <div class="we-sidebar-content">
+                            <div class="we-sidebar-scroll">
+                                <button type="button" class="btn btn-primary btn-block we-fav-new-btn" ng-click="ctrl.openManageGroup(null)">
+                                    <i class="icon-add" style="margin-right: 0.375rem;"></i>
+                                    <span>New Group</span>
+                                </button>
+
+                                <div class="we-fav-list" ng-if="!ctrl.loadingFavourites &amp;&amp; ctrl.favouriteGroups.length &gt; 0">
+                                    <div class="we-type-count-item we-fav-group-item" ng-repeat="group in ctrl.favouriteGroups track by group.id" ng-class="{'active': ctrl.isFavouriteGroupActive(group)}" ng-click="!group.loading &amp;&amp; ctrl.toggleFavouriteGroup(group)" ng-keydown="($event.key === 'Enter' || $event.key === ' ') &amp;&amp; ($event.preventDefault() || (!group.loading &amp;&amp; ctrl.toggleFavouriteGroup(group)))" tabindex="0" role="button" aria-pressed="{{!!ctrl.isFavouriteGroupActive(group)}}" title="{{ctrl.isFavouriteGroupActive(group) ? 'Click to remove from related records' : 'Click to add to related records'}}">
+                                        <span class="we-sidebar-item-label">{{group.name}}</span>
+                                        <div class="we-fav-group-slot">
+                                            <span class="we-fav-group-count">{{group.records.length}}</span>
+                                            <div class="we-fav-group-actions">
+                                                <button type="button" class="btn btn-icon" ng-click="$event.stopPropagation(); ctrl.openManageGroup(group)" title="Manage group">
+                                                    <i class="icon-edit" aria-hidden="true"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-icon" ng-click="$event.stopPropagation(); ctrl.deleteFavouriteGroupFromSidebar(group)" title="Delete group">
+                                                    <i class="icon-cross" aria-hidden="true"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="we-fav-empty" ng-if="!ctrl.loadingFavourites &amp;&amp; ctrl.favouriteGroups.length === 0">
+                                    <div class="we-fav-empty-badge"><i class="icon-star" aria-hidden="true"></i></div>
+                                    <div class="we-fav-empty-title">No favourite groups yet</div>
+                                    <div class="we-fav-empty-desc">Create groups to bundle frequently used records for quick reuse.</div>
+                                </div>
+                            </div>
+
+                            <div class="we-sidebar-footer">
+                                <div class="we-fav-toolbar">
+                                    <button type="button" class="btn btn-default" ng-click="ctrl.importFavouriteGroups()" title="Import favourite groups from a JSON file">
+                                        <i class="icon-upload" style="margin-right: 0.375rem;"></i>
+                                        <span>Import</span>
+                                    </button>
+                                    <button type="button" class="btn btn-default" ng-if="ctrl.favouriteGroups.length &gt; 0" ng-click="ctrl.exportFavouriteGroups()" title="Export favourite groups as a JSON file">
+                                        <i class="icon-download" style="margin-right: 0.375rem;"></i>
+                                        <span>Export</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Help and Info -->
                     <div class="we-sidebar-panel" ng-if="ctrl.activeSidebarTab === 'info'">
                         <div class="we-sidebar-header">
                             <span class="we-sidebar-title">About</span>
@@ -1216,6 +1521,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                     <button type="button" class="btn btn-icon" ng-class="{'active': ctrl.activeSidebarTab === 'xml' &amp;&amp; !ctrl.sidebarCollapsed}" ng-click="ctrl.selectSidebarTab('xml')" title="Context XML">
                         <i class="icon-document" aria-hidden="true"></i>
                     </button>
+                    <button type="button" class="btn btn-icon" ng-class="{'active': ctrl.activeSidebarTab === 'favourites' &amp;&amp; !ctrl.sidebarCollapsed}" ng-click="ctrl.selectSidebarTab('favourites')" title="Favourites">
+                        <i class="icon-star-empty" aria-hidden="true"></i>
+                    </button>
                     <button type="button" class="btn btn-icon" ng-class="{'active': ctrl.activeSidebarTab === 'info' &amp;&amp; !ctrl.sidebarCollapsed}" ng-click="ctrl.selectSidebarTab('info')" title="About">
                         <i class="icon-help" aria-hidden="true"></i>
                     </button>
@@ -1223,10 +1531,86 @@ export const widgetEditorAssistantUiPage = UiPage({
             </aside>
         </div>
 
+        <!-- Manage / Create Favourite Group Modal -->
+        <div class="we-modal-backdrop" ng-if="ctrl.manageGroup" ng-click="ctrl.onManageGroupBackdropClick($event)">
+            <div class="we-picker-box we-picker-box--wide">
+                <div class="we-picker-title-row" we-modal-draggable="we-modal-draggable">
+                    <span class="we-picker-title">{{ctrl.manageGroup.isNew ? 'Create Favourite Group' : 'Edit Favourite Group: ' + ctrl.manageGroup.name}}</span>
+                    <button type="button" class="we-modal-close-btn" ng-click="ctrl.closeManageGroup()" aria-label="Close">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    </button>
+                </div>
+
+                <div class="we-manage-group-body">
+                    <div>
+                        <label class="we-form-label">Group Name</label>
+                        <input type="text" class="form-control" ng-model="ctrl.manageGroup.name" autofocus="autofocus" />
+                    </div>
+
+                    <div class="we-table-card">
+                        <div class="we-table-header-toolbar">
+                            <div class="we-table-heading">
+                                <span>Records</span>
+                                <span class="we-type-count-pill" style="margin-left: 0.5rem;" ng-bind="ctrl.manageGroup.records.length"></span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <button type="button" class="btn btn-default" ng-click="ctrl.refreshManageGroupRecords()" ng-disabled="ctrl.manageGroup.refreshing || ctrl.manageGroup.records.length === 0">
+                                    <i class="icon-refresh" ng-class="{'we-spin': ctrl.manageGroup.refreshing}" style="margin-right: 0.375rem;"></i>Refresh
+                                </button>
+                                <button type="button" class="btn btn-primary" ng-click="ctrl.addRecordToManageGroup()">
+                                    <i class="icon-add" style="margin-right: 0.375rem;"></i>Add Record
+                                </button>
+                            </div>
+                        </div>
+                        <div class="we-table-scroll-container">
+                            <table class="we-main-table" style="table-layout: auto;" ng-if="ctrl.manageGroup.records.length &gt; 0">
+                                <thead><tr><th>Table</th><th>Name</th><th>Updated</th><th class="we-cell-actions" style="text-align: left;">Actions</th></tr></thead>
+                                <tbody>
+                                    <tr ng-repeat="row in ctrl.manageGroup.records track by (row.table + ':' + row.sys_id)">
+                                        <td>
+                                            {{row.tableLabel || row.table}}
+                                            <i ng-class="ctrl.tableIconClass(row.table)" style="margin-left: 0.25em" aria-hidden="true"></i>
+                                        </td>
+                                        <td>{{row.label}}</td>
+                                        <td><span class="we-updated-text" ng-bind="row.updatedOn || '—'"></span></td>
+                                        <td class="we-cell-actions">
+                                            <button type="button" class="btn btn-default" ng-click="ctrl.manageGroupScanRow(row)" ng-disabled="row.scanning" title="Scan for related records">
+                                                <i class="icon-search"></i>
+                                            </button>
+                                            <a class="btn btn-default" ng-href="/nav_to.do?uri={{row.table}}.do%3Fsys_id%3D{{row.sys_id}}" target="_blank" title="Open record in platform">
+                                                <i class="icon-open-document-new-tab"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-default" ng-click="ctrl.manageGroupRemoveRow(row)" title="Remove from group">
+                                                <i class="icon-cross"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="we-picker-empty" ng-if="ctrl.manageGroup.records.length === 0">
+                                <span>No records in this group yet. Click&#160;<strong>Add Record</strong>&#160;to get started.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="we-picker-footer">
+                    <button type="button" class="btn btn-danger" ng-if="!ctrl.manageGroup.isNew" ng-click="ctrl.deleteManageGroup()">Delete Group</button>
+                    <span ng-if="ctrl.manageGroup.isNew"></span>
+                    <div class="we-picker-footer-right">
+                        <button type="button" class="btn btn-default" ng-click="ctrl.closeManageGroup()">Cancel</button>
+                        <button type="button" class="btn btn-primary" ng-click="ctrl.saveManageGroup()" ng-disabled="!ctrl.manageGroup.name || (ctrl.manageGroup.isNew &amp;&amp; ctrl.manageGroup.records.length === 0) || ctrl.manageGroup.saving">
+                            {{ctrl.manageGroup.records.length === 0 &amp;&amp; !ctrl.manageGroup.isNew ? 'Delete Group' : 'Save Changes'}}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Table and Record Lookup Modal — same picker chrome as the Widget Editor+ modals -->
         <div class="we-modal-backdrop" ng-if="ctrl.lookup.open" ng-click="ctrl.onModalBackdropClick($event)">
             <div class="we-picker-box" ng-click="$event.stopPropagation()">
-                <div class="we-picker-title-row">
+                <div class="we-picker-title-row" we-modal-draggable="we-modal-draggable">
                     <div class="we-picker-title-left">
                         <span class="we-picker-title" ng-if="ctrl.lookup.step === 'table'">Select Table</span>
                         <span class="we-picker-title" ng-if="ctrl.lookup.step === 'record'">Select {{ctrl.lookup.tableLabel}}</span>
@@ -1352,6 +1736,18 @@ export const widgetEditorAssistantUiPage = UiPage({
             </div>
         </div>
 
+        <!-- Generic Confirm Dialog (e.g. deleting a favourite group with records) -->
+        <div class="we-modal-backdrop" ng-if="ctrl.confirmDialog" ng-click="ctrl.onConfirmBackdropClick($event)">
+            <div class="we-confirm-box">
+                <div class="we-confirm-title">{{ctrl.confirmDialog.title}}</div>
+                <div class="we-confirm-message">{{ctrl.confirmDialog.message}}</div>
+                <div class="we-confirm-actions">
+                    <button type="button" class="btn btn-default" ng-click="ctrl.confirmDialog = null">Cancel</button>
+                    <button type="button" class="btn btn-danger" ng-click="ctrl.confirmDialog.onConfirm()">{{ctrl.confirmDialog.confirmLabel}}</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
 </j:jelly>
@@ -1384,6 +1780,77 @@ export const widgetEditorAssistantUiPage = UiPage({
                         el.on('scroll', onScroll);
                         scope.$on('$destroy', function () {
                             el.off('scroll', onScroll);
+                        });
+                    },
+                };
+            },
+        ]);
+
+        // Directive: weModalDraggable — enables dragging a .we-picker-box modal by its
+        // title row. Ported from Widget Editor+'s own we-modal-draggable directive so both
+        // apps' modals behave identically, clamped so a modal can never be dragged off-screen.
+        weAssistantApp.directive('weModalDraggable', [
+            function () {
+                return {
+                    restrict: 'A',
+                    link: function (scope, element) {
+                        var modal = element[0].closest('.we-picker-box');
+                        if (!modal) {
+                            return;
+                        }
+
+                        var startX, startY, startTx, startTy, naturalLeft, naturalTop, dragging;
+
+                        /* Parse the current translate() values from the modal's inline transform style. */
+                        function getTranslate(el) {
+                            var m = (el.style.transform || '').match(/translate\\(([-\\d.]+)px,\\s*([-\\d.]+)px\\)/);
+                            return m ? [parseFloat(m[1]), parseFloat(m[2])] : [0, 0];
+                        }
+
+                        function onMouseMove(e) {
+                            if (!dragging) return;
+                            var dx = startTx + e.clientX - startX;
+                            var dy = startTy + e.clientY - startY;
+
+                            /* Clamp so the modal stays fully within the viewport. */
+                            var mW = modal.offsetWidth;
+                            var mH = modal.offsetHeight;
+                            dx = Math.max(-naturalLeft, Math.min(window.innerWidth - mW - naturalLeft, dx));
+                            dy = Math.max(-naturalTop, Math.min(window.innerHeight - mH - naturalTop, dy));
+
+                            modal.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+                        }
+
+                        function onMouseUp() {
+                            dragging = false;
+                            modal.classList.remove('we-picker-box--dragging');
+                            document.removeEventListener('mousemove', onMouseMove);
+                            document.removeEventListener('mouseup', onMouseUp);
+                        }
+
+                        element[0].addEventListener('mousedown', function (e) {
+                            if (e.target.closest('button, a, input, select, [role="button"]')) {
+                                return;
+                            }
+                            e.preventDefault();
+                            var t = getTranslate(modal);
+                            var rect = modal.getBoundingClientRect();
+                            startX = e.clientX;
+                            startY = e.clientY;
+                            startTx = t[0];
+                            startTy = t[1];
+                            /* Natural (untranslated) position — computed once at drag start. */
+                            naturalLeft = rect.left - t[0];
+                            naturalTop = rect.top - t[1];
+                            dragging = true;
+                            modal.classList.add('we-picker-box--dragging');
+                            document.addEventListener('mousemove', onMouseMove);
+                            document.addEventListener('mouseup', onMouseUp);
+                        });
+
+                        scope.$on('$destroy', function () {
+                            document.removeEventListener('mousemove', onMouseMove);
+                            document.removeEventListener('mouseup', onMouseUp);
                         });
                     },
                 };
@@ -1666,7 +2133,9 @@ export const widgetEditorAssistantUiPage = UiPage({
             ctrl.primary = { table: '', sysId: '', label: '', tableLabel: '', updatedOn: '' };
             ctrl.related = [];
             ctrl.rows = [];
+            ctrl.visibleRows = [];
             ctrl.typeCountsList = [];
+            ctrl.activeTypeFilters = {};
             var primaryRowObj = null;
             var placeholderRowObj = { placeholder: true, checked: false };
             ctrl.generating = false;
@@ -1741,6 +2210,406 @@ export const widgetEditorAssistantUiPage = UiPage({
                     }
                 }, angular.noop);
             }
+
+            ////////////////////////////////////////////////////////////
+            // Favourite groups: named bundles of records, persisted server-side.
+            ////////////////////////////////////////////////////////////
+
+            ctrl.favouriteGroups = [];
+            ctrl.loadingFavourites = true;
+            ctrl.manageGroup = null;
+            ctrl.confirmDialog = null;
+
+            function sortFavouriteGroups() {
+                ctrl.favouriteGroups.sort(function (a, b) { return a.name.localeCompare(b.name); });
+            }
+
+            function loadFavouriteGroups() {
+                ctrl.loadingFavourites = true;
+                return ajax('getFavouriteGroups', {}).then(function (res) {
+                    if (res.success && angular.isArray(res.groups)) {
+                        ctrl.favouriteGroups = res.groups.filter(function (g) {
+                            return g && g.id && g.name && angular.isArray(g.records);
+                        });
+                        sortFavouriteGroups();
+                    }
+                }, angular.noop).finally(function () {
+                    ctrl.loadingFavourites = false;
+                });
+            }
+
+            // Strips transient UI-only fields (loading/scanning flags, resolved labels)
+            // before persisting — the server only ever stores {id, name, records, created, updated}.
+            function persistFavouriteGroups() {
+                var serializable = ctrl.favouriteGroups.map(function (g) {
+                    return {
+                        id: g.id,
+                        name: g.name,
+                        records: g.records.map(function (r) { return { table: r.table, sys_id: r.sys_id }; }),
+                        created: g.created,
+                        updated: g.updated,
+                    };
+                });
+                return ajax('saveFavouriteGroups', { groups: JSON.stringify(serializable) }).then(angular.noop, angular.noop);
+            }
+
+            function genGroupId() {
+                return 'fav_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+            }
+
+            ctrl.exportFavouriteGroups = function () {
+                var payload = {
+                    favourite_groups: ctrl.favouriteGroups.map(function (g) {
+                        return {
+                            name: g.name,
+                            records: g.records.map(function (r) { return { table: r.table, sys_id: r.sys_id }; }),
+                            created: g.created,
+                            updated: g.updated,
+                        };
+                    }),
+                };
+                var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'widget-editor-assistant-favourites.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            ctrl.importingFavourites = false;
+
+            // A group with no valid records after checking against the server is skipped
+            // entirely — an imported group is never created (or left) empty.
+            function applyImportedFavouriteGroups(incoming) {
+                var allRecords = [];
+                incoming.forEach(function (g) {
+                    (g && g.records || []).forEach(function (r) {
+                        if (r && r.table && r.sys_id) allRecords.push({ table: r.table, sys_id: r.sys_id });
+                    });
+                });
+                if (!allRecords.length) {
+                    ctrl.importingFavourites = false;
+                    return;
+                }
+                ajax('validateRecordsExist', { records: JSON.stringify(allRecords) }).then(function (res) {
+                    if (!res || !res.success) return;
+                    var validKeys = {};
+                    res.records.forEach(function (r) { validKeys[r.table + ':' + r.sys_id] = true; });
+
+                    var now = new Date().toISOString();
+                    incoming.forEach(function (g) {
+                        if (!g || !g.name) return;
+                        var validRecords = (g.records || []).filter(function (r) {
+                            return r && r.table && r.sys_id && validKeys[r.table + ':' + r.sys_id];
+                        }).map(function (r) { return { table: r.table, sys_id: r.sys_id }; });
+                        if (!validRecords.length) return;
+
+                        // Same name as an existing group — overwrite it rather than duplicate.
+                        var existing = ctrl.favouriteGroups.filter(function (eg) { return eg.name === g.name; })[0];
+                        if (existing) {
+                            existing.records = validRecords;
+                            existing.updated = now;
+                        } else {
+                            ctrl.favouriteGroups.push({ id: genGroupId(), name: g.name, records: validRecords, created: g.created || now, updated: now });
+                        }
+                    });
+                    sortFavouriteGroups();
+                    persistFavouriteGroups();
+                }, angular.noop).finally(function () {
+                    ctrl.importingFavourites = false;
+                });
+            }
+
+            ctrl.importFavouriteGroups = function () {
+                if (ctrl.importingFavourites) return;
+                var input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'application/json,.json';
+                input.addEventListener('change', function () {
+                    var file = input.files && input.files[0];
+                    if (!file) return;
+                    ctrl.importingFavourites = true;
+                    var reader = new FileReader();
+                    reader.onload = function () {
+                        var parsed = null;
+                        try {
+                            parsed = JSON.parse(reader.result);
+                        } catch (e) {}
+                        var incoming = parsed && angular.isArray(parsed.favourite_groups) ? parsed.favourite_groups : null;
+                        $timeout(function () {
+                            if (!incoming) {
+                                console.error('[Widget Editor+ Assistant] Import failed: not a valid favourite groups JSON file.');
+                                ctrl.importingFavourites = false;
+                                return;
+                            }
+                            applyImportedFavouriteGroups(incoming);
+                        });
+                    };
+                    reader.onerror = function () {
+                        $timeout(function () { ctrl.importingFavourites = false; });
+                    };
+                    reader.readAsText(file);
+                });
+                input.click();
+            };
+
+            // Table, then name — matches the main table's own sort order.
+            function sortGroupRecords(records) {
+                records.sort(function (a, b) {
+                    var tA = a.tableLabel || a.table || '';
+                    var tB = b.tableLabel || b.table || '';
+                    if (tA !== tB) return tA.localeCompare(tB);
+                    return (a.label || '').localeCompare(b.label || '');
+                });
+                return records;
+            }
+
+            // Resolves live label/updatedOn for a group's stored {table, sys_id} pairs,
+            // same re-validation approach as the main table's manual rows.
+            function resolveGroupRecords(records) {
+                return $q.all(records.map(function (r) {
+                    return ajax('getRecordLabel', { table: r.table, sys_id: r.sys_id }).then(function (res) {
+                        return {
+                            table: r.table,
+                            sys_id: r.sys_id,
+                            label: (res && res.success) ? res.label : r.sys_id,
+                            tableLabel: tableLabel(r.table),
+                            updatedOn: (res && res.updatedOn) || '',
+                        };
+                    });
+                }));
+            }
+
+            ctrl.openManageGroup = function (group) {
+                if (!group) {
+                    ctrl.manageGroup = { id: null, name: '', records: [], isNew: true, refreshing: false, saving: false };
+                    return;
+                }
+                var openedId = group.id;
+                ctrl.manageGroup = { id: openedId, name: group.name, records: [], isNew: false, refreshing: true, saving: false, created: group.created };
+                resolveGroupRecords(group.records).then(function (records) {
+                    // The modal may have been closed (or reopened for a different group)
+                    // while this was in flight — don't clobber whatever's there now.
+                    if (ctrl.manageGroup && ctrl.manageGroup.id === openedId) {
+                        ctrl.manageGroup.records = sortGroupRecords(records);
+                        ctrl.manageGroup.refreshing = false;
+                    }
+                }, function () {
+                    if (ctrl.manageGroup && ctrl.manageGroup.id === openedId) {
+                        ctrl.manageGroup.refreshing = false;
+                    }
+                });
+            };
+
+            ctrl.closeManageGroup = function () {
+                ctrl.manageGroup = null;
+            };
+
+            ctrl.onManageGroupBackdropClick = function (event) {
+                if (event.target === event.currentTarget) {
+                    ctrl.closeManageGroup();
+                }
+            };
+
+            ctrl.refreshManageGroupRecords = function () {
+                if (!ctrl.manageGroup || ctrl.manageGroup.refreshing) return;
+                var openedId = ctrl.manageGroup.id;
+                ctrl.manageGroup.refreshing = true;
+                resolveGroupRecords(ctrl.manageGroup.records).then(function (records) {
+                    if (ctrl.manageGroup && ctrl.manageGroup.id === openedId) {
+                        ctrl.manageGroup.records = sortGroupRecords(records);
+                        ctrl.manageGroup.refreshing = false;
+                    }
+                }, function () {
+                    if (ctrl.manageGroup && ctrl.manageGroup.id === openedId) {
+                        ctrl.manageGroup.refreshing = false;
+                    }
+                });
+            };
+
+            // Scans this row's table/sys_id for further related records (same generic
+            // scan used on the main table) and adds any new ones straight into the group.
+            ctrl.manageGroupScanRow = function (row) {
+                if (row.scanning || !ctrl.manageGroup) return;
+                row.scanning = true;
+                ajax('getSuggestedRelated', { table: row.table, sys_id: row.sys_id }).then(function (res) {
+                    if (!res || !res.success || !res.related) return;
+                    var existingKeys = {};
+                    ctrl.manageGroup.records.forEach(function (r) { existingKeys[r.table + ':' + r.sys_id] = true; });
+                    res.related.forEach(function (r) {
+                        var key = r.table + ':' + r.sys_id;
+                        if (existingKeys[key]) return;
+                        existingKeys[key] = true;
+                        ctrl.manageGroup.records.push({
+                            table: r.table,
+                            sys_id: r.sys_id,
+                            label: r.label,
+                            tableLabel: tableLabel(r.table),
+                            updatedOn: r.updatedOn,
+                        });
+                    });
+                    sortGroupRecords(ctrl.manageGroup.records);
+                }, angular.noop).finally(function () {
+                    row.scanning = false;
+                });
+            };
+
+            ctrl.manageGroupRemoveRow = function (row) {
+                if (!ctrl.manageGroup) return;
+                ctrl.manageGroup.records = ctrl.manageGroup.records.filter(function (r) { return r !== row; });
+            };
+
+            ctrl.addRecordToManageGroup = function () {
+                ctrl.openLookup('group');
+            };
+
+            ctrl.saveManageGroup = function () {
+                if (!ctrl.manageGroup || !ctrl.manageGroup.name) return;
+
+                // Saving down to 0 records on an existing group deletes it instead —
+                // the zero-record rule prevents orphaned empty groups from persisting.
+                if (!ctrl.manageGroup.isNew && ctrl.manageGroup.records.length === 0) {
+                    ctrl.favouriteGroups = ctrl.favouriteGroups.filter(function (g) { return g.id !== ctrl.manageGroup.id; });
+                    persistFavouriteGroups();
+                    ctrl.closeManageGroup();
+                    return;
+                }
+                if (ctrl.manageGroup.records.length === 0) return;
+
+                var now = new Date().toISOString();
+                var records = ctrl.manageGroup.records.map(function (r) {
+                    return { table: r.table, sys_id: r.sys_id, label: r.label, tableLabel: r.tableLabel, updatedOn: r.updatedOn };
+                });
+                if (ctrl.manageGroup.isNew) {
+                    ctrl.favouriteGroups.push({ id: genGroupId(), name: ctrl.manageGroup.name, records: records, created: now, updated: now });
+                } else {
+                    var existing = ctrl.favouriteGroups.filter(function (g) { return g.id === ctrl.manageGroup.id; })[0];
+                    if (existing) {
+                        existing.name = ctrl.manageGroup.name;
+                        existing.records = records;
+                        existing.updated = now;
+                    }
+                }
+                sortFavouriteGroups();
+                persistFavouriteGroups();
+                ctrl.closeManageGroup();
+            };
+
+            function removeFavouriteGroup(id) {
+                ctrl.favouriteGroups = ctrl.favouriteGroups.filter(function (g) { return g.id !== id; });
+                persistFavouriteGroups();
+            }
+
+            // Deletes immediately if the group is already empty; otherwise asks for
+            // confirmation first, since deleting drops its records from favourites too.
+            function requestDeleteGroup(id, name, recordCount, afterDelete) {
+                if (recordCount === 0) {
+                    removeFavouriteGroup(id);
+                    if (afterDelete) afterDelete();
+                    return;
+                }
+                ctrl.confirmDialog = {
+                    title: 'Delete "' + name + '"?',
+                    message: 'This removes the group and its ' + recordCount + ' record' + (recordCount === 1 ? '' : 's') + ' from your favourites. This can’t be undone.',
+                    confirmLabel: 'Delete Group',
+                    onConfirm: function () {
+                        removeFavouriteGroup(id);
+                        ctrl.confirmDialog = null;
+                        if (afterDelete) afterDelete();
+                    },
+                };
+            }
+
+            ctrl.onConfirmBackdropClick = function (event) {
+                if (event.target === event.currentTarget) {
+                    ctrl.confirmDialog = null;
+                }
+            };
+
+            ctrl.deleteManageGroup = function () {
+                if (!ctrl.manageGroup || ctrl.manageGroup.isNew) return;
+                requestDeleteGroup(ctrl.manageGroup.id, ctrl.manageGroup.name, ctrl.manageGroup.records.length, ctrl.closeManageGroup);
+            };
+
+            ctrl.deleteFavouriteGroupFromSidebar = function (group) {
+                if (!group) return;
+                requestDeleteGroup(group.id, group.name, group.records.length);
+            };
+
+            // True while any of this group's records are currently in the related-records table.
+            ctrl.isFavouriteGroupActive = function (group) {
+                if (!group) return false;
+                return ctrl.related.some(function (r) { return r.favouriteGroupId === group.id; });
+            };
+
+            // Merges a group's records into the current workspace, resolving live labels
+            // for any not already present. Marked manual (not suggested) once added, and
+            // tagged with the group so they can be told apart and toggled back off. Records
+            // already present for another reason (primary/suggested/manual) are tagged in
+            // place rather than skipped — skipping them silently was the bug that made the
+            // toggle look like it did nothing: those rows never got tagged, so the group
+            // could never be detected as "active" and every click just re-tried the same no-op.
+            ctrl.loadFavouriteGroup = function (group) {
+                if (!group || group.loading || !group.records || !group.records.length) return;
+                group.loading = true;
+                resolveGroupRecords(group.records).then(function (records) {
+                    records.forEach(function (r) {
+                        var existingRow = null;
+                        for (var i = 0; i < ctrl.related.length; i++) {
+                            if (ctrl.related[i].table === r.table && ctrl.related[i].sys_id === r.sys_id) {
+                                existingRow = ctrl.related[i];
+                                break;
+                            }
+                        }
+                        if (existingRow) {
+                            existingRow.favouriteGroupId = group.id;
+                            existingRow.favouriteGroupName = group.name;
+                            return;
+                        }
+                        ctrl.related.push({
+                            table: r.table,
+                            sys_id: r.sys_id,
+                            label: r.label,
+                            tableLabel: r.tableLabel,
+                            category: 'Favourite: ' + group.name,
+                            updatedOn: r.updatedOn,
+                            manual: true,
+                            suggested: false,
+                            checked: true,
+                            favouriteGroupId: group.id,
+                            favouriteGroupName: group.name,
+                            addedByFavourite: true,
+                        });
+                    });
+                    ctrl.saveSelections();
+                    rebuildRows();
+                }, angular.noop).finally(function () {
+                    group.loading = false;
+                });
+            };
+
+            // Toggles a group's records in/out of the related-records table. A row that
+            // only existed because this group added it is removed outright; a row that was
+            // already there for another reason (primary/suggested/manual) just loses its tag.
+            ctrl.toggleFavouriteGroup = function (group) {
+                if (!group || group.loading) return;
+                if (ctrl.isFavouriteGroupActive(group)) {
+                    ctrl.related = ctrl.related.filter(function (r) {
+                        if (r.primary || r.favouriteGroupId !== group.id) return true;
+                        if (r.addedByFavourite) return false;
+                        delete r.favouriteGroupId;
+                        delete r.favouriteGroupName;
+                        return true;
+                    });
+                    ctrl.saveSelections();
+                    rebuildRows();
+                    return;
+                }
+                ctrl.loadFavouriteGroup(group);
+            };
 
             ctrl.tokenConfig = {
                 charsPerToken: 4,
@@ -1878,7 +2747,37 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
                 typeCountsList.sort(function (a, b) { return a.label.localeCompare(b.label); });
                 ctrl.typeCountsList = typeCountsList;
+
+                // Drop filters for types that no longer have any rows.
+                for (var lbl in ctrl.activeTypeFilters) {
+                    if (ctrl.activeTypeFilters.hasOwnProperty(lbl) && !map[lbl]) {
+                        delete ctrl.activeTypeFilters[lbl];
+                    }
+                }
             }
+
+            // Rows shown to the user AND the scope for selection, export, and token totals: when a
+            // type filter is active only matching types (plus the primary row) are included.
+            function recomputeVisibleRows() {
+                var activeLabels = Object.keys(ctrl.activeTypeFilters).filter(function (lbl) { return ctrl.activeTypeFilters[lbl]; });
+                if (activeLabels.length === 0) {
+                    ctrl.visibleRows = ctrl.rows;
+                    return;
+                }
+                ctrl.visibleRows = ctrl.rows.filter(function (r) {
+                    if (r.placeholder || r.primary) return true;
+                    var lbl = r.tableLabel || tableLabel(r.table) || r.table;
+                    return ctrl.activeTypeFilters[lbl];
+                });
+            }
+
+            ctrl.toggleTypeFilter = function (label) {
+                ctrl.activeTypeFilters[label] = !ctrl.activeTypeFilters[label];
+                if (!ctrl.activeTypeFilters[label]) {
+                    delete ctrl.activeTypeFilters[label];
+                }
+                recomputeVisibleRows();
+            };
 
             // Reuses existing row objects across calls so ng-repeat's watch settles; also resets the progress bar.
             function rebuildRows(pinnedAtEndRow) {
@@ -1932,33 +2831,36 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                 ctrl.rows = rows;
                 recomputeTypeCounts();
+                recomputeVisibleRows();
                 ensureRowSizesLoaded();
             }
             rebuildRows();
 
             ctrl.totalRowCount = function () {
-                return ctrl.rows.filter(function (r) { return !r.placeholder; }).length;
+                return ctrl.visibleRows.filter(function (r) { return !r.placeholder; }).length;
             };
 
+            // Scoped to visibleRows: when a type filter is active, hidden types count toward
+            // neither selection, export, nor the token estimate below.
             ctrl.selectedCount = function () {
-                return ctrl.rows.filter(function (r) { return r.checked && !r.placeholder; }).length;
+                return ctrl.visibleRows.filter(function (r) { return r.checked && !r.placeholder; }).length;
             };
 
             ctrl.rawTokenCount = function () {
                 var charsPerToken = (ctrl.tokenConfig && ctrl.tokenConfig.charsPerToken) || 4;
                 var bytes = 0;
-                for (var i = 0; i < ctrl.rows.length; i++) {
-                    var r = ctrl.rows[i];
+                for (var i = 0; i < ctrl.visibleRows.length; i++) {
+                    var r = ctrl.visibleRows[i];
                     if (r.placeholder || !r.checked) continue;
                     bytes += ctrl.rowSizeBytes[rowKey(r)] || 0;
                 }
                 return Math.round(bytes / charsPerToken);
             };
 
-            // True while any checked row's export size hasn't been measured yet.
+            // True while any checked, visible row's export size hasn't been measured yet.
             ctrl.sizesPending = function () {
-                for (var i = 0; i < ctrl.rows.length; i++) {
-                    var r = ctrl.rows[i];
+                for (var i = 0; i < ctrl.visibleRows.length; i++) {
+                    var r = ctrl.visibleRows[i];
                     if (r.placeholder || !r.checked) continue;
                     if (!ctrl.rowSizeBytes.hasOwnProperty(rowKey(r))) return true;
                 }
@@ -1999,21 +2901,18 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             ctrl.isAllSelected = function () {
-                var rows = ctrl.rows.filter(function (r) { return !r.placeholder; });
+                var rows = ctrl.visibleRows.filter(function (r) { return !r.placeholder; });
                 if (rows.length === 0) return false;
                 return rows.every(function (r) { return r.checked; });
             };
 
+            // Only (de)selects the currently visible rows, so a type filter can be used to
+            // bulk-select just that slice without disturbing hidden rows' checked state.
             ctrl.toggleSelectAll = function () {
                 var target = !ctrl.isAllSelected();
-                for (var i = 0; i < ctrl.rows.length; i++) {
-                    if (!ctrl.rows[i].primary && !ctrl.rows[i].placeholder) {
-                        ctrl.rows[i].checked = target;
-                    }
-                }
-                for (var j = 0; j < ctrl.related.length; j++) {
-                    if (!ctrl.related[j].primary) {
-                        ctrl.related[j].checked = target;
+                for (var i = 0; i < ctrl.visibleRows.length; i++) {
+                    if (!ctrl.visibleRows[i].primary && !ctrl.visibleRows[i].placeholder) {
+                        ctrl.visibleRows[i].checked = target;
                     }
                 }
                 ctrl.saveSelections();
@@ -2032,6 +2931,19 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.related = ctrl.related.filter(function (r) { return r !== row; });
                 ctrl.saveSelections();
                 rebuildRows();
+            };
+
+            // Re-runs the same table-driven scan used at load time, but scoped to this one row,
+            // so users can pull in further related records without refreshing the whole bundle.
+            ctrl.scanRow = function (row) {
+                if (row.scanning) return;
+                row.scanning = true;
+                loadSuggested(row.table, row.sys_id, 0).then(function () {
+                    ctrl.saveSelections();
+                    rebuildRows();
+                }).finally(function () {
+                    row.scanning = false;
+                });
             };
 
             // Refreshes every row's name/updated-on and re-scans the primary for suggestions.
@@ -2520,6 +3432,24 @@ export const widgetEditorAssistantUiPage = UiPage({
                     return;
                 }
 
+                if (ctrl.lookup.mode === 'group' && ctrl.manageGroup) {
+                    var groupExists = ctrl.manageGroup.records.some(function (row) {
+                        return row.table === ctrl.lookup.chosenTable && row.sys_id === r.sys_id;
+                    });
+                    if (!groupExists) {
+                        ctrl.manageGroup.records.push({
+                            table: ctrl.lookup.chosenTable,
+                            sys_id: r.sys_id,
+                            label: r.label,
+                            tableLabel: ctrl.lookup.tableLabel,
+                            updatedOn: r.updatedOn,
+                        });
+                        sortGroupRecords(ctrl.manageGroup.records);
+                    }
+                    ctrl.closeLookup();
+                    return;
+                }
+
                 // Add mode
                 var exists = ctrl.related.some(function (row) {
                     return row.table === ctrl.lookup.chosenTable && row.sys_id === r.sys_id;
@@ -2605,7 +3535,8 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             ctrl.generateXml = async function () {
-                var selected = ctrl.rows.filter(function (r) { return r.checked; });
+                // Scoped to visibleRows: an active type filter excludes hidden types from the export.
+                var selected = ctrl.visibleRows.filter(function (r) { return r.checked; });
                 if (selected.length === 0) {
                     return;
                 }
@@ -2689,6 +3620,7 @@ export const widgetEditorAssistantUiPage = UiPage({
 
             function init() {
                 loadFavouriteTables();
+                loadFavouriteGroups();
                 loadTokenConfig();
                 if (window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.sysId) {
                     ctrl.loadingInitial = true;

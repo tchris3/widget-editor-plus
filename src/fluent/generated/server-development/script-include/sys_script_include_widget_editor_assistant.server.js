@@ -873,6 +873,30 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     },
 
     /**
+     * Filters a candidate list of {table, sys_id} pairs down to the ones that still
+     * exist, used to validate an imported favourite-groups JSON file before it's kept.
+     * Accepts `records` (JSON-encoded array of {table, sys_id}).
+     * @returns {{success: boolean, records: Array.<{table: string, sys_id: string}>}} Return value.
+     */
+    validateRecordsExist: function () {
+        var records;
+        try {
+            records = JSON.parse(this.getParameter('records') || '[]');
+        } catch (e) {
+            return this._answer({ success: false, records: [] });
+        }
+        var valid = [];
+        for (var i = 0; i < records.length; i++) {
+            var r = records[i];
+            if (!r || !r.table || !r.sys_id) continue;
+            var gr = new GlideRecordSecure(r.table);
+            if (!gr.isValid() || !gr.get(r.sys_id)) continue;
+            valid.push({ table: r.table, sys_id: r.sys_id });
+        }
+        return this._answer({ success: true, records: valid });
+    },
+
+    /**
      * Looks up the field marked as the display field for a table's dictionary entries.
      * @param {string} table - Table name.
      * @returns {string} Display field element name, or '' if none is configured.
@@ -935,6 +959,61 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             gr.setValue('user', gs.getUserID());
             gr.setValue('name', this.FAVOURITE_TABLES_PREF_NAME);
             gr.setValue('value', favourites);
+            gr.setValue('type', 'string');
+            gr.insert();
+        }
+        return this._answer({ success: true });
+    },
+
+    ////////////////////////////////////////////////////////////
+    // Favourite groups (User Preferences)
+    ////////////////////////////////////////////////////////////
+
+    FAVOURITE_GROUPS_PREF_NAME: 'widget_editor_assistant.favourite_groups',
+
+    /**
+     * Returns the current user's favourite record groups for the Favourites sidebar,
+     * stored as a JSON array of {id, name, records: [{table, sys_id}], created, updated}
+     * in a sys_user_preference. Record names/tables are re-resolved client-side via
+     * getRecordLabel rather than cached here, so renames/moves never go stale.
+     * @returns {{success: boolean, groups: Array.<{id: string, name: string,
+     *   records: Array.<{table: string, sys_id: string}>, created: string, updated: string}>}} Return value.
+     */
+    getFavouriteGroups: function () {
+        var gr = new GlideRecordSecure('sys_user_preference');
+        gr.addQuery('user', gs.getUserID());
+        gr.addQuery('name', this.FAVOURITE_GROUPS_PREF_NAME);
+        gr.setLimit(1);
+        gr.query();
+        var groups = [];
+        if (gr.next()) {
+            try {
+                groups = JSON.parse(gr.getValue('value') || '[]');
+            } catch (e) {}
+        }
+        return this._answer({ success: true, groups: groups });
+    },
+
+    /**
+     * Upserts the current user's favourite groups.
+     * Accepts `groups` (JSON-encoded array of {id, name, records, created, updated}).
+     * @returns {{success: boolean}} Return value.
+     */
+    saveFavouriteGroups: function () {
+        var groups = this.getParameter('groups') || '[]';
+        var gr = new GlideRecordSecure('sys_user_preference');
+        gr.addQuery('user', gs.getUserID());
+        gr.addQuery('name', this.FAVOURITE_GROUPS_PREF_NAME);
+        gr.query();
+
+        if (gr.next()) {
+            gr.setValue('value', groups);
+            gr.update();
+        } else {
+            gr.initialize();
+            gr.setValue('user', gs.getUserID());
+            gr.setValue('name', this.FAVOURITE_GROUPS_PREF_NAME);
+            gr.setValue('value', groups);
             gr.setValue('type', 'string');
             gr.insert();
         }
