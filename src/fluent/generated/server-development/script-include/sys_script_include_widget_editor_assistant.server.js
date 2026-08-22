@@ -75,6 +75,20 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             }
         }
 
+        if (table === 'sysevent_email_action') {
+            try {
+                var notifGr = new GlideRecordSecure('sysevent_email_action');
+                if (!notifGr.get(sysId)) {
+                    return this._answer({ success: false, error: 'Notification not found', related: [] });
+                }
+                var notifContent = (notifGr.getValue('subject') || '') + '\n' + (notifGr.getValue('message_html') || '');
+                var mailScriptNames = this._scanMailScriptNamesInText(notifContent);
+                return this._answer({ success: true, related: this._findReferencedMailScripts(mailScriptNames) });
+            } catch (e) {
+                return this._answer({ success: false, error: String(e), related: [] });
+            }
+        }
+
         if (table !== 'sp_widget') {
             // Generic fallback: any table with its own script-type field(s) gets scanned for
             // further Script Include and table references, and any table_name-type field(s)
@@ -416,6 +430,51 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             var c = byName[name];
             results.push({ table: c.table, sys_id: c.sys_id, label: c.label, category: c.category, updatedOn: c.updatedOn });
         });
+        return results;
+    },
+
+    /**
+     * Regex-scans notification subject/message text for `${mail_script:Name}` references.
+     * @param {string} content - Subject + message text to scan.
+     * @returns {Array.<string>} Candidate mail script names found (deduplicated).
+     */
+    _scanMailScriptNamesInText: function (content) {
+        var seen = {};
+        var names = [];
+        var re = /\$\{mail_script:([^}]+)\}/g;
+        var m;
+        while ((m = re.exec(content || '')) !== null) {
+            var name = m[1].trim();
+            if (name && !seen[name]) {
+                seen[name] = true;
+                names.push(name);
+            }
+        }
+        return names;
+    },
+
+    /**
+     * Matches candidate names against sys_script_email (Mail Script) records.
+     * @param {Array.<string>} names - Candidate mail script names from _scanMailScriptNamesInText.
+     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
+     */
+    _findReferencedMailScripts: function (names) {
+        if (!names || names.length === 0) {
+            return [];
+        }
+        var results = [];
+        var gr = new GlideRecordSecure('sys_script_email');
+        gr.addQuery('name', 'IN', names.join(','));
+        gr.query();
+        while (gr.next()) {
+            results.push({
+                table: 'sys_script_email',
+                sys_id: gr.getUniqueValue(),
+                label: gr.getValue('name'),
+                category: 'Mail Script (referenced)',
+                updatedOn: gr.getDisplayValue('sys_updated_on'),
+            });
+        }
         return results;
     },
 
