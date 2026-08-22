@@ -175,7 +175,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .btn.we-alert-pill--critical {
             background-color: RGB(var(--now-alert--critical--background-color, var(--now-color_alert--critical-0, 255, 235, 235))) !important;
             border-color: RGB(var(--now-alert--critical--border-color, var(--now-color_alert--critical-1, 230, 80, 80))) !important;
-            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+            color: RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 168, 30, 30))) !important;
         }
         .we-alert-pill--critical i,
         .we-alert-pill--critical [class^="icon-"],
@@ -188,7 +188,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .btn.we-alert-pill--warning {
             background-color: RGB(var(--now-alert--warning--background-color, var(--now-color_alert--warning-0, 254, 243, 199))) !important;
             border-color: RGB(var(--now-alert--warning--border-color, var(--now-color_alert--warning-1, 245, 158, 11))) !important;
-            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+            color: RGB(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 146, 64, 14))) !important;
         }
         .we-alert-pill--warning i,
         .we-alert-pill--warning [class^="icon-"],
@@ -201,7 +201,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .btn.we-alert-pill--info {
             background-color: RGB(var(--now-alert--info--background-color, var(--now-color_alert--info-0, 224, 242, 254))) !important;
             border-color: RGB(var(--now-alert--info--border-color, var(--now-color_alert--info-1, 56, 189, 248))) !important;
-            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+            color: RGB(var(--now-alert--info--color, var(--now-color_alert--info-3, 3, 105, 161))) !important;
         }
         .we-alert-pill--info i,
         .we-alert-pill--info [class^="icon-"],
@@ -214,7 +214,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .btn.we-alert-pill--low {
             background-color: RGB(var(--now-alert--low--background-color, var(--now-color_alert--low-0, 240, 240, 240))) !important;
             border-color: RGB(var(--now-alert--low--border-color, var(--now-color_alert--low-1, 180, 180, 180))) !important;
-            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+            color: RGB(var(--now-alert--low--color, var(--now-color_alert--low-3, 90, 90, 90))) !important;
         }
         .we-alert-pill--low i,
         .we-alert-pill--low [class^="icon-"],
@@ -227,7 +227,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .btn.we-alert-pill--success {
             background-color: RGB(var(--now-alert--success--background-color, var(--now-color_alert--success-0, 220, 245, 227))) !important;
             border-color: RGB(var(--now-alert--success--border-color, var(--now-color_alert--success-1, 61, 174, 106))) !important;
-            color: RGB(var(--now-alert--color, var(--now-color_text--primary, 22, 27, 28))) !important;
+            color: RGB(var(--now-alert--success--color, var(--now-color_alert--success-3, 22, 122, 66))) !important;
             cursor: default !important;
         }
         .we-alert-pill--success i,

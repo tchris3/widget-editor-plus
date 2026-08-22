@@ -515,7 +515,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             color: rgb(var(--now-color--primary-2, 0 118 204));
         }
         .we-type-count-item.active .we-type-count-pill {
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(var(--now-pill--color--selected, 255 255 255), 0.25);
             color: rgb(var(--now-pill--color--selected, 255 255 255));
         }
 
@@ -713,7 +713,7 @@ export const widgetEditorAssistantUiPage = UiPage({
         }
         .we-fav-group-item:hover .we-fav-group-count { opacity: 0; }
         .we-fav-group-item.active .we-fav-group-count {
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(var(--now-pill--color--selected, 255 255 255), 0.25);
             color: rgb(var(--now-pill--color--selected, 255 255 255));
         }
         .we-fav-group-actions {
@@ -729,7 +729,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             color: rgb(var(--now-pill--color--selected, 255 255 255));
         }
         .we-fav-group-item.active .we-fav-group-actions .btn-icon:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(var(--now-pill--color--selected, 255 255 255), 0.2);
             color: rgb(var(--now-pill--color--selected, 255 255 255));
         }
         .we-fav-empty {
