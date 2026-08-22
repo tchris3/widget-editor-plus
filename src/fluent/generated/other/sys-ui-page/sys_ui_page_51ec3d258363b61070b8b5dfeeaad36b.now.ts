@@ -665,7 +665,7 @@ UiPage({
         }
 
         .dc-version-dd-item + .dc-version-dd-item {
-            border-top: 1px solid rgba(var(--now-color--neutral-0, 0 0 0), 0.08);
+            border-top: 1px solid rgba(var(--now-color_border--tertiary, var(--now-color_divider--tertiary, var(--now-color--neutral-3, 209, 214, 214))), 0.5);
         }
 
         .dc-version-dd-item:hover {
