@@ -141,7 +141,7 @@
     data.showAssistantButton = false;
     var grMainPrefs = new GlideRecord('sys_user_preference');
     grMainPrefs.addQuery('user', realUserId);
-    grMainPrefs.addQuery('name', 'monaco_plus.user_prefs');
+    grMainPrefs.addQuery('name', new WidgetEditorAjax().USER_PREF_NAME);
     grMainPrefs.query();
     if (grMainPrefs.next()) {
         try {

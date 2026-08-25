@@ -412,10 +412,8 @@ function link(scope, element, attrs, controller) {
     // 6. Menu item configuration
     ///////////////////////////////////////////
 
-    // id matches controller.preferences; alwaysShow bypasses preference filtering.
     const MENU_ITEM_CONFIGS = [
         {
-            id: 'showScopeButtons',
             label: function () {
                 return document.querySelector('.scope-context-menu-button, .scope-context-menu')
                     ? 'Hide scope buttons'
@@ -433,7 +431,6 @@ function link(scope, element, attrs, controller) {
             }
         },
         {
-            id: 'showWidgetLoadTimes',
             label: function () {
                 return LoadTimeTracker.isActive() ? 'Hide load times' : 'Show load times';
             },
@@ -449,20 +446,13 @@ function link(scope, element, attrs, controller) {
 
     /**
      * Returns the subset of MENU_ITEM_CONFIGS that should appear in the
-     * debug context menu right now, based on stored preferences and URL state.
+     * debug context menu right now, based on URL state.
      * Each entry is the [label, fn] pair that SP's spWidgetDebug expects.
      * @returns {Array}
      */
     function getFilteredMenuItems() {
-        const prefs = controller.preferences || {};
         return MENU_ITEM_CONFIGS
             .filter((item) => {
-                if (item.alwaysShow) {
-                    return true;
-                }
-                if (prefs[item.id] === false) {
-                    return false;
-                }
                 if (item.condition && !item.condition()) {
                     return false;
                 }
@@ -643,7 +633,8 @@ function link(scope, element, attrs, controller) {
                     if (w && w.sys_id && !seenSysIds.has(w.sys_id)) {
                         seenSysIds.add(w.sys_id);
                         const wName = w.name || w.sys_id;
-                        results.push({ el: targetEl, sysId: w.sys_id, name: wName, widgetName: wName });
+                        // No DOM element owns this scope, so capture it directly.
+                        results.push({ el: targetEl, scope: s, sysId: w.sys_id, name: wName, widgetName: wName });
                     }
                     s = s.$parent;
                 }
@@ -2391,7 +2382,7 @@ function link(scope, element, attrs, controller) {
                 addDivider(mainList);
                 addSectionHeader(mainList, 'Widget Hierarchy', 'icon-tree');
                 embeddedWidgets.forEach((info) => {
-                    const infoScope = ScopeResolver.getActualWidgetScope(info.el);
+                    const infoScope = info.scope || ScopeResolver.getActualWidgetScope(info.el);
                     const infoIndicatorHtml = buildTimingIndicatorHtml(infoScope && infoScope.widget);
                     addSubmenu(mainList, info.name, info.name, (parentSubList) => {
                         const embEditor = prefs.defaultEditor || 'openWithEditorPlus';
@@ -2405,14 +2396,14 @@ function link(scope, element, attrs, controller) {
                         addRow(parentSubList, {
                             label: 'Log to console: <code>$scope.data</code>',
                             onClick: () => {
-                                const s = ScopeResolver.getActualWidgetScope(info.el);
+                                const s = info.scope || ScopeResolver.getActualWidgetScope(info.el);
                                 console.log('%c$scope.data (' + info.name + ')\n', 'color: #0891b2; font-weight: bold;', s && s.data);
                             }
                         });
                         addRow(parentSubList, {
                             label: logVerb + '<code>$scope</code>',
                             onClick: () => {
-                                const s = ScopeResolver.getActualWidgetScope(info.el);
+                                const s = info.scope || ScopeResolver.getActualWidgetScope(info.el);
                                 console.log('%c$scope (' + info.name + ')\n', 'color: #0891b2; font-weight: bold;', s);
                                 if (prefs.assignConsoleVars !== false) Utils.assignConsoleVar('$scope', s);
                             }
