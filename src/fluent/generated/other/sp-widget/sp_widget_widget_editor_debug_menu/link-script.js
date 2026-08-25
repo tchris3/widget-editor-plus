@@ -53,9 +53,10 @@ function link(scope, element, attrs, controller) {
             '.we-menu-list { list-style: none; padding: 0 0 4px 0; margin: 0; width: 100%; }',
             '.we-menu-divider { margin: 4px 0; border-top: 1px solid rgb(var(--now-tabs--border-color, var(--now-color_border--secondary, 222, 229, 231))); }',
             '.we-menu-list > li { margin: 0; }',
-            '.we-menu-list > li:not(.we-primary-open-row):not(.we-menu-header):not(.we-back-li) > a { display: flex; align-items: center; justify-content: flex-start; padding: 6px 14px !important; margin: 0 !important; border: none !important; line-height: 1.35; text-decoration: none !important; color: inherit; cursor: pointer; transition: background 0.1s ease; outline: none !important; }',
-            '.we-menu-list > li:not(.we-primary-open-row):not(.we-menu-header):not(.we-back-li) > a:hover, .we-menu-list > li:not(.we-primary-open-row):not(.we-menu-header):not(.we-back-li) > a:focus, .we-menu-list > li:not(.we-primary-open-row):not(.we-menu-header):not(.we-back-li) > a:active { background-color: rgba(0,0,0,0.08) !important; color: rgb(var(--now-text-link--primary--color, 41, 98, 143)) !important; text-decoration: none !important; border: none !important; padding: 6px 14px !important; margin: 0 !important; outline: none !important; }',
+            '.we-menu-list > li:not(.we-menu-header):not(.we-back-li) > a { display: flex; align-items: center; justify-content: flex-start; padding: 6px 14px !important; margin: 0 !important; border: none !important; line-height: 1.35; text-decoration: none !important; color: inherit; cursor: pointer; transition: background 0.1s ease; outline: none !important; }',
+            '.we-menu-list > li:not(.we-menu-header):not(.we-back-li) > a:hover, .we-menu-list > li:not(.we-menu-header):not(.we-back-li) > a:focus, .we-menu-list > li:not(.we-menu-header):not(.we-back-li) > a:active { background-color: rgba(0,0,0,0.08) !important; color: rgb(var(--now-text-link--primary--color, 41, 98, 143)) !important; text-decoration: none !important; border: none !important; padding: 6px 14px !important; margin: 0 !important; outline: none !important; }',
             '.we-row-icon { width: 18px; min-width: 18px; text-align: center; margin-right: 8px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }',
+            '.we-row-icon--primary { color: rgb(var(--now-button--primary--background-color, 66, 139, 202)); }',
             '.we-row-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }',
             '.we-row-badge { margin-left: auto; flex-shrink: 0; }',
             '.we-menu-list code { font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; padding: 1px 4px; border-radius: 3px; background: rgba(0,0,0,0.06); color: inherit; }',
@@ -65,9 +66,6 @@ function link(scope, element, attrs, controller) {
             '.we-menu-header.bg-primary .we-cog-btn { width: 24px; height: 24px; padding: 0 !important; margin: 0 !important; font-size: 16px; line-height: 1; border: none !important; background: none !important; cursor: pointer; color: rgba(255, 255, 255, 0.85); outline: none !important; box-shadow: none !important; display: inline-flex; align-items: center; justify-content: center; }',
             '.we-menu-header.bg-primary .we-cog-btn:hover, .we-menu-header.bg-primary .we-cog-btn:focus, .we-menu-header.bg-primary .we-cog-btn:active { color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; background-color: rgba(255, 255, 255, 0.2) !important; border-radius: 4px; outline: none !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }',
             '.we-section-header { padding: 6px 14px 2px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgb(var(--now-color_text--secondary, 100, 116, 139)); display: flex; align-items: center; }',
-            '.we-primary-open-row { padding: 4px 12px 6px 12px; }',
-            '.we-primary-open-row .btn.btn-primary { width: 100%; font-weight: 600; padding: 6px 12px !important; margin: 0 !important; font-size: 13px; border-radius: 4px; text-align: center; display: flex; align-items: center; justify-content: center; background-color: rgb(var(--now-button--primary--background-color, 66, 139, 202)) !important; border: 1px solid rgb(var(--now-button--primary--border-color, 53, 126, 189)) !important; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; outline: none !important; box-shadow: none !important; }',
-            '.we-primary-open-row .btn.btn-primary:hover, .we-primary-open-row .btn.btn-primary:focus, .we-primary-open-row .btn.btn-primary:active { background-color: rgb(var(--now-button--primary--background-color, 66, 139, 202)) !important; border: 1px solid rgb(var(--now-button--primary--border-color, 53, 126, 189)) !important; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; filter: brightness(1.08); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6) !important; padding: 6px 12px !important; margin: 0 !important; outline: none !important; text-decoration: none !important; }',
             '.we-submenu-arrow { margin-left: auto; opacity: 0.6; font-size: 11px; flex-shrink: 0; padding-left: 6px; }',
             '.we-back-row { display: flex !important; align-items: center; justify-content: space-between; width: 100%; padding: 9px 12px 9px 14px !important; margin: 0 !important; border: none !important; font-weight: 600; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; text-decoration: none !important; border-radius: 0 !important; background: transparent; transition: background 0.1s ease; outline: none !important; box-shadow: none !important; }',
             '.we-back-row:hover, .we-back-row:focus, .we-back-row:active { background-color: rgba(0, 0, 0, 0.2) !important; text-decoration: none !important; padding: 9px 12px 9px 14px !important; margin: 0 !important; border: none !important; outline: none !important; box-shadow: none !important; }',
@@ -1956,7 +1954,8 @@ function link(scope, element, attrs, controller) {
             let iconHtml = '<span class="we-row-icon"></span>';
             if (opts.icon) {
                 if (opts.icon !== _lastIcon) {
-                    iconHtml = '<i class="' + opts.icon + ' text-muted we-row-icon"></i>';
+                    const iconColorClass = opts.iconPrimary ? 'we-row-icon--primary' : 'text-muted';
+                    iconHtml = '<i class="' + opts.icon + ' ' + iconColorClass + ' we-row-icon"></i>';
                     _lastIcon = opts.icon;
                 }
             } else {
@@ -2175,34 +2174,20 @@ function link(scope, element, attrs, controller) {
                 const defaultId = openWithDefs.some((d) => d.id === preferredEditorId) ? preferredEditorId : 'openWithEditorPlus';
                 const defaultDef = openWithDefs.find((d) => d.id === defaultId);
 
-                const li = document.createElement('li');
-                li.setAttribute('role', 'menuitem');
-                li.className = 'we-primary-open-row';
-                const a = document.createElement('a');
-                a.setAttribute('tabindex', '-1');
-                a.className = 'btn btn-primary btn-sm btn-block';
-                a.textContent = defaultDef.label;
                 if (defaultDef.href) {
-                    a.href = defaultDef.href;
-                    a.target = '_blank';
-                    a.addEventListener('click', () => close());
+                    addRow(targetList, { label: defaultDef.label, href: defaultDef.href, icon: defaultDef.icon, iconPrimary: true });
                 } else {
-                    a.href = 'javascript:void(0)';
-                    a.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        try { OverlayManager.openWidgetFormModal(targetSysId); } finally { close(); }
-                    });
+                    addRow(targetList, { label: defaultDef.label, icon: defaultDef.icon, iconPrimary: true, onClick: () => OverlayManager.openWidgetFormModal(targetSysId) });
                 }
-                li.appendChild(a);
-                targetList.appendChild(li);
 
                 const submenuHeaderTitle = widgetName || 'Open with\u2026';
                 addSubmenu(targetList, 'Open with\u2026', submenuHeaderTitle, (subUl) => {
                     openWithDefs.forEach((def) => {
+                        const iconPrimary = def.id === defaultId;
                         if (def.href) {
-                            addRow(subUl, { label: def.label, href: def.href, icon: def.icon });
+                            addRow(subUl, { label: def.label, href: def.href, icon: def.icon, iconPrimary: iconPrimary });
                         } else {
-                            addRow(subUl, { label: def.label, icon: def.icon, onClick: () => OverlayManager.openWidgetFormModal(targetSysId) });
+                            addRow(subUl, { label: def.label, icon: def.icon, iconPrimary: iconPrimary, onClick: () => OverlayManager.openWidgetFormModal(targetSysId) });
                         }
                     });
                     addDivider(subUl);
