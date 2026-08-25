@@ -17,6 +17,10 @@ declare global {
                         table: 'sys_ui_script'
                         id: '164618ee83e7321070b8b5dfeeaad371'
                     }
+                    '2a53a6eee23c02acb367213f0fe8354b': {
+                        table: 'sys_properties'
+                        id: '2a53a6eee23c02acb367213f0fe8354b'
+                    }
                     '33c2c34f83e7321070b8b5dfeeaad3f0': {
                         table: 'sys_ui_action'
                         id: '33c2c34f83e7321070b8b5dfeeaad3f0'
@@ -48,6 +52,10 @@ declare global {
                     '86caa2d583bf725070b8b5dfeeaad3fc': {
                         table: 'sys_script_client'
                         id: '86caa2d583bf725070b8b5dfeeaad3fc'
+                    }
+                    '8a5c13b3b97552475d762496f01876c2': {
+                        table: 'sys_properties'
+                        id: '8a5c13b3b97552475d762496f01876c2'
                     }
                     '90b5cf0d83ebb21070b8b5dfeeaad3bb': {
                         table: 'sys_security_acl'
@@ -115,9 +123,21 @@ declare global {
                         table: 'sp_widget'
                         id: 'd7ad6f7083f7be1070b8b5dfeeaad39d'
                     }
+                    da811618df6a0d5638a57943ad21bbfe: {
+                        table: 'sys_properties'
+                        id: 'da811618df6a0d5638a57943ad21bbfe'
+                    }
+                    ddc826d817f6a12c269d286eed1516a0: {
+                        table: 'sys_properties'
+                        id: 'ddc826d817f6a12c269d286eed1516a0'
+                    }
                     debe2aad837ff25070b8b5dfeeaad34b: {
                         table: 'sys_ui_script'
                         id: 'debe2aad837ff25070b8b5dfeeaad34b'
+                    }
+                    e26f703f034ce59c0206c4d0d01dc9ea: {
+                        table: 'sys_properties'
+                        id: 'e26f703f034ce59c0206c4d0d01dc9ea'
                     }
                     f4a1eed1837f725070b8b5dfeeaad394: {
                         table: 'sys_script_client'
@@ -126,6 +146,10 @@ declare global {
                     f67610e68367321070b8b5dfeeaad381: {
                         table: 'sys_ui_script'
                         id: 'f67610e68367321070b8b5dfeeaad381'
+                    }
+                    f91740c6c1e13b438184f89dcda190f3: {
+                        table: 'sys_properties'
+                        id: 'f91740c6c1e13b438184f89dcda190f3'
                     }
                     package_json: {
                         table: 'sys_module'
