@@ -63,12 +63,11 @@ function link(scope, element, attrs, controller) {
             '.we-menu-header.bg-primary.we-back-header { padding: 0; cursor: pointer; }',
             '.we-menu-header.bg-primary .we-header-title { font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }',
             '.we-menu-header.bg-primary .we-cog-btn { width: 24px; height: 24px; padding: 0 !important; margin: 0 !important; font-size: 16px; line-height: 1; border: none !important; background: none !important; cursor: pointer; color: rgba(255, 255, 255, 0.85); outline: none !important; box-shadow: none !important; display: inline-flex; align-items: center; justify-content: center; }',
-            '.we-menu-header.bg-primary .we-cog-btn:hover, .we-menu-header.bg-primary .we-cog-btn:focus, .we-menu-header.bg-primary .we-cog-btn:active { color: #ffffff !important; background-color: rgba(255, 255, 255, 0.2) !important; border-radius: 4px; outline: none !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }',
-            '.we-section-header { padding: 6px 14px 2px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; display: flex; align-items: center; }',
+            '.we-menu-header.bg-primary .we-cog-btn:hover, .we-menu-header.bg-primary .we-cog-btn:focus, .we-menu-header.bg-primary .we-cog-btn:active { color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; background-color: rgba(255, 255, 255, 0.2) !important; border-radius: 4px; outline: none !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }',
+            '.we-section-header { padding: 6px 14px 2px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgb(var(--now-color_text--secondary, 100, 116, 139)); display: flex; align-items: center; }',
             '.we-primary-open-row { padding: 4px 12px 6px 12px; }',
             '.we-primary-open-row .btn.btn-primary { width: 100%; font-weight: 600; padding: 6px 12px !important; margin: 0 !important; font-size: 13px; border-radius: 4px; text-align: center; display: flex; align-items: center; justify-content: center; background-color: rgb(var(--now-button--primary--background-color, 66, 139, 202)) !important; border: 1px solid rgb(var(--now-button--primary--border-color, 53, 126, 189)) !important; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; outline: none !important; box-shadow: none !important; }',
             '.we-primary-open-row .btn.btn-primary:hover, .we-primary-open-row .btn.btn-primary:focus, .we-primary-open-row .btn.btn-primary:active { background-color: rgb(var(--now-button--primary--background-color, 66, 139, 202)) !important; border: 1px solid rgb(var(--now-button--primary--border-color, 53, 126, 189)) !important; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; filter: brightness(1.08); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6) !important; padding: 6px 12px !important; margin: 0 !important; outline: none !important; text-decoration: none !important; }',
-            '.we-menu-list > li.we-row-disabled > a { opacity: 0.45; pointer-events: none; cursor: default; }',
             '.we-submenu-arrow { margin-left: auto; opacity: 0.6; font-size: 11px; flex-shrink: 0; padding-left: 6px; }',
             '.we-back-row { display: flex !important; align-items: center; justify-content: space-between; width: 100%; padding: 9px 12px 9px 14px !important; margin: 0 !important; border: none !important; font-weight: 600; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; text-decoration: none !important; border-radius: 0 !important; background: transparent; transition: background 0.1s ease; outline: none !important; box-shadow: none !important; }',
             '.we-back-row:hover, .we-back-row:focus, .we-back-row:active { background-color: rgba(0, 0, 0, 0.2) !important; text-decoration: none !important; padding: 9px 12px 9px 14px !important; margin: 0 !important; border: none !important; outline: none !important; box-shadow: none !important; }',
@@ -1951,8 +1950,6 @@ function link(scope, element, attrs, controller) {
         function addRow(list, opts) {
             const li = document.createElement('li');
             li.setAttribute('role', 'menuitem');
-            if (opts.highlight) li.classList.add('we-default-editor-item');
-            if (opts.disabled) li.classList.add('we-row-disabled');
             const a = document.createElement('a');
             a.setAttribute('tabindex', '-1');
 
@@ -1967,16 +1964,14 @@ function link(scope, element, attrs, controller) {
             }
 
             const badgeHtml = opts.badge ? ('<span class="badge we-row-badge">' + opts.badge + '</span>') : '';
+            const linkIconHtml = opts.isLink ? '<i class="icon-open-document-new-tab we-submenu-arrow" aria-hidden="true"></i>' : '';
             const labelHtml = '<span class="we-row-label">' + (opts.html || opts.label || '') + '</span>';
-            const contentHtml = iconHtml + labelHtml + badgeHtml;
-            if (opts.disabled) {
-                a.href = 'javascript:void(0)';
-                a.innerHTML = contentHtml;
-                a.setAttribute('aria-disabled', 'true');
-            } else if (opts.href) {
+            const contentHtml = iconHtml + labelHtml + badgeHtml + linkIconHtml;
+            if (opts.href) {
                 a.href = opts.href;
                 a.target = '_blank';
                 a.innerHTML = contentHtml;
+                a.addEventListener('click', () => close());
             } else {
                 a.href = 'javascript:void(0)';
                 a.innerHTML = contentHtml;
@@ -2190,6 +2185,7 @@ function link(scope, element, attrs, controller) {
                 if (defaultDef.href) {
                     a.href = defaultDef.href;
                     a.target = '_blank';
+                    a.addEventListener('click', () => close());
                 } else {
                     a.href = 'javascript:void(0)';
                     a.addEventListener('click', (e) => {
