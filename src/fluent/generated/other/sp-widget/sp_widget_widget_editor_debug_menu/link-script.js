@@ -60,10 +60,11 @@ function link(scope, element, attrs, controller) {
             '.we-row-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }',
             '.we-row-badge { margin-left: auto; flex-shrink: 0; }',
             '.we-menu-list code { font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; padding: 1px 4px; border-radius: 3px; background: rgba(0,0,0,0.06); color: inherit; }',
-            '.we-menu-header.bg-primary { padding: 9px 12px 9px 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; border-radius: 0 !important; margin-bottom: 6px; background-color: rgb(var(--now-button--primary--background-color, 66, 139, 202)) !important; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; }',
+            '.we-menu-header.bg-primary { min-height: 42px; box-sizing: border-box; padding: 9px 12px 9px 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; border-radius: 0 !important; margin-bottom: 6px; background-color: rgb(var(--now-button--primary--background-color, 66, 139, 202)) !important; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; }',
             '.we-menu-header.bg-primary.we-back-header { padding: 0; cursor: pointer; }',
-            '.we-menu-header.bg-primary .we-header-title { font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; display: inline-flex; align-items: center; }',
-            '.we-menu-header.bg-primary .we-cog-btn { width: 24px; height: 24px; padding: 0 !important; margin: 0 !important; font-size: 16px; line-height: 1; border: none !important; background: none !important; cursor: pointer; color: rgba(255, 255, 255, 0.85); outline: none !important; box-shadow: none !important; display: inline-flex; align-items: center; justify-content: center; }',
+            '.we-menu-header.bg-primary .we-header-title { font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; display: flex; align-items: center; min-width: 0; flex: 1 1 auto; margin-right: 8px; }',
+            '.we-menu-header.bg-primary .we-header-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }',
+            '.we-menu-header.bg-primary .we-cog-btn { width: 24px; height: 24px; flex-shrink: 0; padding: 0 !important; margin: 0 !important; font-size: 16px; line-height: 1; border: none !important; background: none !important; cursor: pointer; color: rgba(255, 255, 255, 0.85); outline: none !important; box-shadow: none !important; display: inline-flex; align-items: center; justify-content: center; }',
             '.we-menu-header.bg-primary .we-cog-btn:hover, .we-menu-header.bg-primary .we-cog-btn:focus, .we-menu-header.bg-primary .we-cog-btn:active { color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; background-color: rgba(255, 255, 255, 0.2) !important; border-radius: 4px; outline: none !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }',
             '.we-section-header { padding: 6px 14px 2px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgb(var(--now-color_text--secondary, 100, 116, 139)); display: flex; align-items: center; }',
             '.we-submenu-arrow { margin-left: auto; opacity: 0.6; font-size: 11px; flex-shrink: 0; padding-left: 6px; }',
@@ -78,7 +79,7 @@ function link(scope, element, attrs, controller) {
             '.we-menu-header .we-timing-bars--orange .we-tb-bar-1, .we-menu-header .we-timing-bars--orange .we-tb-bar-2 { fill: #fbbf24; }',
             '.we-timing-bars--red .we-tb-bar-1, .we-timing-bars--red .we-tb-bar-2, .we-timing-bars--red .we-tb-bar-3 { fill: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 220, 53, 69))); }',
             '.we-menu-header .we-timing-bars--red .we-tb-bar-1, .we-menu-header .we-timing-bars--red .we-tb-bar-2, .we-menu-header .we-timing-bars--red .we-tb-bar-3 { fill: #f87171; }',
-            '.we-back-row { display: flex !important; align-items: center; justify-content: space-between; width: 100%; padding: 9px 12px 9px 14px !important; margin: 0 !important; border: none !important; font-weight: 600; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; text-decoration: none !important; border-radius: 0 !important; background: transparent; transition: background 0.1s ease; outline: none !important; box-shadow: none !important; }',
+            '.we-back-row { display: flex !important; align-items: center; justify-content: space-between; width: 100%; min-height: 42px; box-sizing: border-box; padding: 9px 12px 9px 14px !important; margin: 0 !important; border: none !important; font-weight: 600; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; text-decoration: none !important; border-radius: 0 !important; background: transparent; transition: background 0.1s ease; outline: none !important; box-shadow: none !important; }',
             '.we-back-row:hover, .we-back-row:focus, .we-back-row:active { background-color: rgba(0, 0, 0, 0.2) !important; text-decoration: none !important; padding: 9px 12px 9px 14px !important; margin: 0 !important; border: none !important; outline: none !important; box-shadow: none !important; }',
             '.we-back-left { display: inline-flex; align-items: center; font-size: 13px; font-weight: 600; color: rgb(var(--now-button--primary--color, 255, 255, 255)); }',
             '.we-back-arrow { margin-right: 6px; font-size: 11px; }',
@@ -2042,7 +2043,7 @@ function link(scope, element, attrs, controller) {
             // (1 bar green <500ms, 2 bars orange 500-1000ms, 3 bars red >1000ms), tooltip showing all
             // three available timing values. Returns '' when data or the preference is unavailable.
             function buildTimingIndicatorHtml(widget) {
-                if (prefs.showTimingIndicators === false || prefs.showTimingDots === false || !widget) return '';
+                if (prefs.showTimingIndicators === false || !widget) return '';
                 const serverMs = parseFloat(widget._server_time) * 1000 * 10;
                 if (isNaN(serverMs)) return '';
                 const scriptMs = parseFloat(widget._script_execution_time) * 10;
@@ -2181,7 +2182,8 @@ function link(scope, element, attrs, controller) {
             const headerWidgetScope = headerWidgetEl ? ScopeResolver.getActualWidgetScope(headerWidgetEl) : null;
             const titleSpan = document.createElement('span');
             titleSpan.className = 'we-header-title';
-            titleSpan.innerHTML = Utils.escapeHtml(headerName) + buildTimingIndicatorHtml(headerWidgetScope && headerWidgetScope.widget);
+            titleSpan.innerHTML = '<span class="we-header-title-text">' + Utils.escapeHtml(headerName) + '</span>' +
+                buildTimingIndicatorHtml(headerWidgetScope && headerWidgetScope.widget);
             titleSpan.title = headerName;
             headerLi.appendChild(titleSpan);
 

@@ -9,7 +9,7 @@ api.controller = function ($scope, spUtil) {
 
     const DEFAULT_PREFS = {
         defaultEditor: 'openWithEditorPlus',
-        showTimingDots: true,
+        showTimingIndicators: true,
         assignConsoleVars: true
     };
 
@@ -30,7 +30,7 @@ api.controller = function ($scope, spUtil) {
         },
         { type: 'section', label: 'Widget' },
         {
-            id: 'showTimingDots',
+            id: 'showTimingIndicators',
             label: 'Show generation-time indicator',
             description: 'An indicator with tooltip displaying widget execution time (green &lt;500ms, orange 500–1000ms, red &gt;1000ms).'
         },
