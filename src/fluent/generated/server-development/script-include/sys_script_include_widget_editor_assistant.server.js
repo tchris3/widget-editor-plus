@@ -1,7 +1,5 @@
 var WidgetEditorAssistantAjax = Class.create();
 WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
-    WIDGET_SCAN_FIELDS: ['script', 'client_script', 'link', 'css', 'template', 'option_schema', 'demo_data'],
-
     // Dictionary internal_types that hold actual script code.
     SCRIPT_FIELD_TYPES: { script: true, script_server: true, script_plain: true },
 
@@ -15,45 +13,36 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         GlideAjax: true, GlideModal: true, GlideDialogWindow: true, GlideList2: true,
     },
 
-    // Kept in sync with EXPORT_BLOCKLISTED_TABLES/PREFIXES in the Assistant UI page
-    // (sys_ui_page_widget_editor_assistant.now.ts) — record data from these tables is
-    // never surfaced here either, so it can't be browsed via search before export.
-    EXPORT_BLOCKLISTED_TABLES: {
-        cmn_notif_device: true,
-        discovery_credentials: true,
-        hr_employee: true,
-        hr_profile: true,
-        oauth_credential: true,
-        sp_log: true,
-        sys_credential: true,
-        sys_user: true
-    },
+    EXPORT_BLOCKLIST_TABLES_PROPERTY: 'monaco.plus.assistant.export_blocklist_tables',
+    EXPORT_BLOCKLIST_PREFIXES_PROPERTY: 'monaco.plus.assistant.export_blocklist_prefixes',
 
-    EXPORT_BLOCKLISTED_PREFIXES: [
-        'pwd',
-        'sys_activity',
-        'sys_amb',
-        'sys_attachment',
-        'sys_audit',
-        'sys_df_query',
-        'sys_history',
-        'sys_scheduler_job_history',
-        'sys_user_grmember',
-        'sys_user_password',
-        'syslog',
-        'ts_'
-    ],
+    /**
+     * Comma-separated list parsed from a system property, trimmed and emptied of blanks.
+     * @param {string} propertyName - Property to read.
+     * @returns {Array.<string>}
+     */
+    _getPropertyList: function (propertyName) {
+        return gs.getProperty(propertyName, '')
+            .split(',')
+            .map(function (v) { return v.trim(); })
+            .filter(function (v) { return v.length > 0; });
+    },
 
     /**
      * Whether record data from this table is blocklisted from search/browse/export.
+     * Table names and prefixes are admin-configured via EXPORT_BLOCKLIST_TABLES_PROPERTY /
+     * EXPORT_BLOCKLIST_PREFIXES_PROPERTY — also read by the Assistant UI page's own
+     * isTableExportBlocked() so both sides stay in sync from the same source of truth.
      * @param {string} table - Table name.
      * @returns {boolean}
      */
     _isTableExportBlocked: function (table) {
         if (!table) return false;
-        if (this.EXPORT_BLOCKLISTED_TABLES[table]) return true;
-        for (var i = 0; i < this.EXPORT_BLOCKLISTED_PREFIXES.length; i++) {
-            if (table.indexOf(this.EXPORT_BLOCKLISTED_PREFIXES[i]) === 0) return true;
+        var tables = this._getPropertyList(this.EXPORT_BLOCKLIST_TABLES_PROPERTY);
+        if (tables.indexOf(table) !== -1) return true;
+        var prefixes = this._getPropertyList(this.EXPORT_BLOCKLIST_PREFIXES_PROPERTY);
+        for (var i = 0; i < prefixes.length; i++) {
+            if (table.indexOf(prefixes[i]) === 0) return true;
         }
         return false;
     },
@@ -63,9 +52,11 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     ////////////////////////////////////////////////////////////
 
     /**
-     * Suggests related components for an sp_widget primary: referenced script
-     * includes, linked Angular templates/providers, embedded widgets, and
-     * tables referenced via new GlideRecord/GlideRecordSecure/GlideAggregate(...).
+     * Suggests related components for a record: admin-configured table_config rules
+     * (see _getTableConfig) plus, for every table, script-include/table references
+     * scanned from its own script-type field(s) and whatever table its table_name-type
+     * field(s) name. sys_db_object is special-cased to suggest tables referenced by the
+     * viewed table's own reference-type dictionary fields, rather than its own fields.
      * Accepts `table` and `sys_id`.
      * @returns {{success: boolean, related: Array.<{table: string, sys_id: string,
      *   label: string, category: string, updatedOn: string}>}} Return value.
@@ -94,109 +85,229 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             }
         }
 
-        if (table === 'sp_page') {
-            try {
-                var pageGr = new GlideRecordSecure('sp_page');
-                if (!pageGr.get(sysId)) {
-                    return this._answer({ success: false, error: 'Page not found', related: [] });
-                }
-                return this._answer({ success: true, related: this._findPortalPageLayout(sysId) });
-            } catch (e) {
-                return this._answer({ success: false, error: String(e), related: [] });
+        // Never let an exception here kill the whole GlideAjax response.
+        try {
+            var gr = new GlideRecordSecure(table);
+            if (!gr.get(sysId)) {
+                return this._answer({ success: false, error: 'Record not found', related: [] });
             }
-        }
 
-        if (table === 'sc_cat_item_producer') {
-            try {
-                var producerGr = new GlideRecordSecure('sc_cat_item_producer');
-                if (!producerGr.get(sysId)) {
-                    return this._answer({ success: false, error: 'Record producer not found', related: [] });
-                }
-                return this._answer({ success: true, related: this._findCatalogProducerDependencies(sysId, producerGr.getValue('table_name')) });
-            } catch (e) {
-                return this._answer({ success: false, error: String(e), related: [] });
-            }
-        }
+            var configured = this._evaluateRules(gr, this._getTableConfig(table).rules);
 
-        if (table === 'sysevent_email_action') {
-            try {
-                var notifGr = new GlideRecordSecure('sysevent_email_action');
-                if (!notifGr.get(sysId)) {
-                    return this._answer({ success: false, error: 'Notification not found', related: [] });
-                }
-                var notifContent = (notifGr.getValue('subject') || '') + '\n' + (notifGr.getValue('message_html') || '');
-                var mailScriptNames = this._scanMailScriptNamesInText(notifContent);
-                return this._answer({ success: true, related: this._findReferencedMailScripts(mailScriptNames) });
-            } catch (e) {
-                return this._answer({ success: false, error: String(e), related: [] });
-            }
-        }
-
-        if (table !== 'sp_widget') {
             // Generic fallback: any table with its own script-type field(s) gets scanned for
             // further Script Include and table references, and any table_name-type field(s)
             // suggest whatever table that field names — whatever the table happens to be.
-            try {
-                var scriptFields = this._findScriptFields(table);
-                var tableNameFields = this._findFieldsOfType(table, 'table_name');
-                if (!scriptFields.length && !tableNameFields.length) {
-                    return this._answer({ success: true, related: [] });
-                }
-                var scriptGr = new GlideRecordSecure(table);
-                if (!scriptGr.get(sysId)) {
-                    return this._answer({ success: false, error: 'Record not found', related: [] });
-                }
-
-                var results = [];
-                if (scriptFields.length) {
-                    var scriptContent = scriptFields.map(function (f) {
-                        return scriptGr.getValue(f) || '';
-                    }).join('\n');
-                    var scriptNames = this._scanReferencedNamesInText(scriptContent);
-                    var scriptIncludeMatches = this._findReferencedScriptIncludes(scriptNames, scriptGr.getValue('sys_scope')).filter(function (r) {
-                        return r.sys_id !== sysId;
-                    });
-                    var scriptTableNames = this._scanReferencedTableNamesInText(scriptContent);
-                    results = results.concat(scriptIncludeMatches, this._findReferencedTables(scriptTableNames));
-                }
-                if (tableNameFields.length) {
-                    var seenTableNames = {};
-                    var namedTableNames = [];
-                    tableNameFields.forEach(function (f) {
-                        var val = scriptGr.getValue(f);
-                        if (val && val !== table && !seenTableNames[val]) {
-                            seenTableNames[val] = true;
-                            namedTableNames.push(val);
-                        }
-                    });
-                    results = results.concat(this._findReferencedTables(namedTableNames));
-                }
-                return this._answer({ success: true, related: this._dedupeRelated(results) });
-            } catch (e) {
-                return this._answer({ success: false, error: String(e), related: [] });
+            // Always runs, alongside any table_config rules above.
+            var generic = [];
+            var scriptFields = this._findScriptFields(table);
+            var tableNameFields = this._findFieldsOfType(table, 'table_name');
+            if (scriptFields.length) {
+                var scriptContent = scriptFields.map(function (f) {
+                    return gr.getValue(f) || '';
+                }).join('\n');
+                var scriptNames = this._scanReferencedNamesInText(scriptContent);
+                var scriptIncludeMatches = this._findReferencedScriptIncludes(scriptNames, gr.getValue('sys_scope'));
+                var scriptTableNames = this._scanReferencedTableNamesInText(scriptContent);
+                generic = generic.concat(scriptIncludeMatches, this._findReferencedTables(scriptTableNames));
             }
-        }
-
-        // Never let an exception here kill the whole GlideAjax response.
-        try {
-            var gr = new GlideRecordSecure('sp_widget');
-            if (!gr.get(sysId)) {
-                return this._answer({ success: false, error: 'Widget not found', related: [] });
+            if (tableNameFields.length) {
+                var seenTableNames = {};
+                var namedTableNames = [];
+                tableNameFields.forEach(function (f) {
+                    var val = gr.getValue(f);
+                    if (val && val !== table && !seenTableNames[val]) {
+                        seenTableNames[val] = true;
+                        namedTableNames.push(val);
+                    }
+                });
+                generic = generic.concat(this._findReferencedTables(namedTableNames));
             }
 
-            var scannedNames = this._scanReferencedNames(gr);
-            var scriptIncludes = this._findReferencedScriptIncludes(scannedNames, gr.getValue('sys_scope'));
-            var templates = this._findLinkedTemplates(sysId);
-            var providers = this._findLinkedProviders(sysId);
-            var embeddedIds = this._scanEmbeddedWidgetIds(gr);
-            var embeddedWidgets = this._findEmbeddedWidgets(embeddedIds, sysId);
-            var scannedTableNames = this._scanReferencedTableNames(gr);
-            var referencedTables = this._findReferencedTables(scannedTableNames);
-            var related = this._dedupeRelated([].concat(scriptIncludes, templates, providers, embeddedWidgets, referencedTables));
+            var related = this._dedupeRelated(configured.concat(generic)).filter(function (r) {
+                return r.sys_id !== sysId;
+            });
             return this._answer({ success: true, related: related });
         } catch (e) {
             return this._answer({ success: false, error: String(e), related: [] });
         }
+    },
+
+    ////////////////////////////////////////////////////////////
+    // Admin-configured table relationships (table_config properties)
+    ////////////////////////////////////////////////////////////
+
+    TABLE_CONFIG_PROPERTY_PREFIX: 'monaco.plus.assistant.table_config.',
+
+    /**
+     * Reads and parses the admin-configured relationship rules for a table from its
+     * `monaco.plus.assistant.table_config.<table>` system property. Absent, empty, or
+     * malformed properties simply yield no rules — this is purely additive to whatever
+     * suggestions the generic script/table_name field scan already produces.
+     * Rule shape: {type: 'reference_field'|'child_reference'|'token', ..., then: [rule, ...]}
+     *   - reference_field: {sourceField, relatedTable, relatedMatchField (default 'sys_id')}
+     *       Follows a field on the source record as a forward reference into relatedTable,
+     *       matched against relatedMatchField (a raw field value, not necessarily a sys_id).
+     *   - child_reference: {relatedTable, relatedField}
+     *       Finds every row in relatedTable whose relatedField equals the source record's
+     *       own sys_id (the reverse/"related list" direction).
+     *   - token: {sourceField, pattern, relatedTable, relatedMatchField (default 'name')}
+     *       Regex-scans sourceField (or, if an array, every field in it) for `pattern`
+     *       (one capture group), then matches each captured name against relatedMatchField.
+     * Any rule may carry `then`, a nested rule array evaluated against each record the
+     * rule resolves — e.g. a child_reference chained into a further reference_field lets
+     * one relationship link into another (A -> B -> C) without new code.
+     * @param {string} table - Table name.
+     * @returns {{rules: Array.<Object>}}
+     */
+    _getTableConfig: function (table) {
+        var raw = gs.getProperty(this.TABLE_CONFIG_PROPERTY_PREFIX + table, '');
+        if (!raw) {
+            return { rules: [] };
+        }
+        try {
+            var parsed = JSON.parse(raw);
+            return { rules: Array.isArray(parsed.rules) ? parsed.rules : [] };
+        } catch (e) {
+            gs.warn('Widget Editor+ Assistant: failed to parse table_config for ' + table + ': ' + e.message);
+            return { rules: [] };
+        }
+    },
+
+    /**
+     * Evaluates a list of table_config rules against a positioned GlideRecordSecure,
+     * recursing into each rule's `then` (if any) against the records it resolved.
+     * @param {GlideRecordSecure} gr - The source record, already .get()'d.
+     * @param {Array.<Object>} rules - Rules from _getTableConfig.
+     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>}
+     */
+    _evaluateRules: function (gr, rules) {
+        var suggestions = [];
+        for (var i = 0; i < rules.length; i++) {
+            var rule = rules[i];
+            var matches = this._evaluateRule(gr, rule);
+            for (var j = 0; j < matches.length; j++) {
+                var match = matches[j];
+                suggestions.push(match);
+                if (rule.then && rule.then.length && match.sys_id) {
+                    var childGr = new GlideRecordSecure(match.table);
+                    if (childGr.get(match.sys_id)) {
+                        suggestions = suggestions.concat(this._evaluateRules(childGr, rule.then));
+                    }
+                }
+            }
+        }
+        return suggestions;
+    },
+
+    /**
+     * Dispatches a single table_config rule by its `type`.
+     * @param {GlideRecordSecure} gr - The source record.
+     * @param {Object} rule - One rule from a table_config property.
+     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>}
+     */
+    _evaluateRule: function (gr, rule) {
+        switch (rule && rule.type) {
+            case 'reference_field': return this._evalReferenceField(gr, rule);
+            case 'child_reference': return this._evalChildReference(gr, rule);
+            case 'token': return this._evalToken(gr, rule);
+            default:
+                gs.warn('Widget Editor+ Assistant: unknown table_config rule type "' + (rule && rule.type) + '"');
+                return [];
+        }
+    },
+
+    /**
+     * Follows a forward reference: the source record's own `rule.sourceField` value is
+     * matched against `rule.relatedMatchField` (default 'sys_id') on `rule.relatedTable`.
+     */
+    _evalReferenceField: function (gr, rule) {
+        var value = gr.getValue(rule.sourceField);
+        if (!value) {
+            return [];
+        }
+        var matchField = rule.relatedMatchField || 'sys_id';
+        var targetGr = new GlideRecordSecure(rule.relatedTable);
+        if (matchField === 'sys_id') {
+            if (!targetGr.get(value)) {
+                return [];
+            }
+        } else {
+            targetGr.addQuery(matchField, value);
+            targetGr.setLimit(1);
+            targetGr.query();
+            if (!targetGr.next()) {
+                return [];
+            }
+        }
+        return [this._toMatch(targetGr, rule)];
+    },
+
+    /**
+     * Follows a reverse reference: every row in `rule.relatedTable` whose
+     * `rule.relatedField` equals the source record's own sys_id.
+     */
+    _evalChildReference: function (gr, rule) {
+        var results = [];
+        var targetGr = new GlideRecordSecure(rule.relatedTable);
+        targetGr.addQuery(rule.relatedField, gr.getUniqueValue());
+        targetGr.query();
+        while (targetGr.next()) {
+            results.push(this._toMatch(targetGr, rule));
+        }
+        return results;
+    },
+
+    /**
+     * Regex-scans `rule.sourceField` (a field name, or array of field names) for
+     * `rule.pattern` (one capture group per match), then matches each captured name
+     * against `rule.relatedMatchField` (default 'name') on `rule.relatedTable`.
+     */
+    _evalToken: function (gr, rule) {
+        var fields = Array.isArray(rule.sourceField) ? rule.sourceField : [rule.sourceField];
+        var text = fields.map(function (f) { return gr.getValue(f) || ''; }).join('\n');
+
+        var names = [];
+        var seen = {};
+        try {
+            var re = new RegExp(rule.pattern, 'g');
+            var m;
+            while ((m = re.exec(text)) !== null) {
+                var name = (m[1] || '').trim();
+                if (name && !seen[name]) {
+                    seen[name] = true;
+                    names.push(name);
+                }
+            }
+        } catch (e) {
+            gs.warn('Widget Editor+ Assistant: invalid token pattern "' + rule.pattern + '": ' + e.message);
+            return [];
+        }
+        if (!names.length) {
+            return [];
+        }
+
+        var results = [];
+        var matchField = rule.relatedMatchField || 'name';
+        var targetGr = new GlideRecordSecure(rule.relatedTable);
+        targetGr.addQuery(matchField, 'IN', names.join(','));
+        targetGr.query();
+        while (targetGr.next()) {
+            results.push(this._toMatch(targetGr, rule));
+        }
+        return results;
+    },
+
+    /**
+     * Builds a suggestion entry from a positioned GlideRecordSecure resolved by a rule.
+     */
+    _toMatch: function (gr, rule) {
+        return {
+            table: rule.relatedTable,
+            sys_id: gr.getUniqueValue(),
+            label: gr.getDisplayValue() || gr.getUniqueValue(),
+            category: rule.category || 'Related (configured)',
+            updatedOn: gr.getDisplayValue('sys_updated_on'),
+        };
     },
 
     /**
@@ -254,163 +365,6 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     },
 
     /**
-     * Walks a Portal Page's full layout hierarchy (containers, rows, columns, widget
-     * instances) so a page can be exported alongside everything it's built from.
-     * @param {string} pageSysId - The sp_page sys_id.
-     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Layout records, in hierarchy order.
-     */
-    _findPortalPageLayout: function (pageSysId) {
-        var results = [];
-
-        var containerIds = [];
-        var containerGr = new GlideRecordSecure('sp_container');
-        containerGr.addQuery('sp_page', pageSysId);
-        containerGr.orderBy('order');
-        containerGr.query();
-        while (containerGr.next()) {
-            var containerLabel = containerGr.getValue('title') || containerGr.getValue('name') ||
-                ('Container ' + (parseInt(containerGr.getValue('order'), 10) || 0));
-            results.push({
-                table: 'sp_container', sys_id: containerGr.getUniqueValue(), label: containerLabel,
-                category: 'Container (on page)', updatedOn: containerGr.getDisplayValue('sys_updated_on'),
-            });
-            containerIds.push(containerGr.getUniqueValue());
-        }
-        if (!containerIds.length) {
-            return results;
-        }
-
-        var rowIds = [];
-        var rowGr = new GlideRecordSecure('sp_row');
-        rowGr.addQuery('sp_container', 'IN', containerIds.join(','));
-        rowGr.orderBy('order');
-        rowGr.query();
-        while (rowGr.next()) {
-            results.push({
-                table: 'sp_row', sys_id: rowGr.getUniqueValue(), label: 'Row ' + (parseInt(rowGr.getValue('order'), 10) || 0),
-                category: 'Row (on page)', updatedOn: rowGr.getDisplayValue('sys_updated_on'),
-            });
-            rowIds.push(rowGr.getUniqueValue());
-        }
-        if (!rowIds.length) {
-            return results;
-        }
-
-        var columnIds = [];
-        var colGr = new GlideRecordSecure('sp_column');
-        colGr.addQuery('sp_row', 'IN', rowIds.join(','));
-        colGr.orderBy('order');
-        colGr.query();
-        while (colGr.next()) {
-            var size = colGr.getValue('size');
-            var columnLabel = 'Column ' + (parseInt(colGr.getValue('order'), 10) || 0) + (size ? ' (' + size + ')' : '');
-            results.push({
-                table: 'sp_column', sys_id: colGr.getUniqueValue(), label: columnLabel,
-                category: 'Column (on page)', updatedOn: colGr.getDisplayValue('sys_updated_on'),
-            });
-            columnIds.push(colGr.getUniqueValue());
-        }
-        if (!columnIds.length) {
-            return results;
-        }
-
-        var seenWidgetIds = {};
-        var instGr = new GlideRecordSecure('sp_instance');
-        instGr.addQuery('sp_column', 'IN', columnIds.join(','));
-        instGr.orderBy('sp_column');
-        instGr.query();
-        while (instGr.next()) {
-            results.push({
-                table: 'sp_instance', sys_id: instGr.getUniqueValue(), label: instGr.getDisplayValue('sp_widget') || 'Widget Instance',
-                category: 'Widget Instance (on page)', updatedOn: instGr.getDisplayValue('sys_updated_on'),
-            });
-            var widgetId = instGr.getValue('sp_widget');
-            if (widgetId && !seenWidgetIds[widgetId]) {
-                seenWidgetIds[widgetId] = true;
-                results.push({
-                    table: 'sp_widget', sys_id: widgetId, label: instGr.getDisplayValue('sp_widget') || widgetId,
-                    category: 'Widget (used on page)', updatedOn: instGr.getDisplayValue('sp_widget.sys_updated_on'),
-                });
-            }
-        }
-
-        return results;
-    },
-
-    /**
-     * Finds everything a Catalog Item Producer is built from: its variables, UI
-     * policies (and their actions), catalog client scripts, and the target table
-     * (table_name) the producer creates records in. catalog_ui_policy_action links
-     * to its parent policy via the inherited sys_ui_policy_action.ui_policy field
-     * (catalog_ui_policy extends sys_ui_policy, so sys_ids line up across the hierarchy).
-     * @param {string} producerSysId - The sc_cat_item_producer sys_id.
-     * @param {string} targetTableName - The producer's table_name field value.
-     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Dependency records.
-     */
-    _findCatalogProducerDependencies: function (producerSysId, targetTableName) {
-        var results = targetTableName ? this._findReferencedTables([targetTableName]) : [];
-
-        var varGr = new GlideRecordSecure('item_option_new');
-        varGr.addQuery('cat_item', producerSysId);
-        varGr.orderBy('order');
-        varGr.query();
-        while (varGr.next()) {
-            results.push({
-                table: 'item_option_new', sys_id: varGr.getUniqueValue(), label: varGr.getDisplayValue() || varGr.getValue('name'),
-                category: 'Variable (on producer)', updatedOn: varGr.getDisplayValue('sys_updated_on'),
-            });
-        }
-
-        var policyIds = [];
-        var policyGr = new GlideRecordSecure('catalog_ui_policy');
-        policyGr.addQuery('catalog_item', producerSysId);
-        policyGr.query();
-        while (policyGr.next()) {
-            results.push({
-                table: 'catalog_ui_policy', sys_id: policyGr.getUniqueValue(), label: policyGr.getDisplayValue() || policyGr.getUniqueValue(),
-                category: 'UI Policy (on producer)', updatedOn: policyGr.getDisplayValue('sys_updated_on'),
-            });
-            policyIds.push(policyGr.getUniqueValue());
-        }
-        if (policyIds.length) {
-            var actionGr = new GlideRecordSecure('catalog_ui_policy_action');
-            actionGr.addQuery('ui_policy', 'IN', policyIds.join(','));
-            actionGr.query();
-            while (actionGr.next()) {
-                results.push({
-                    table: 'catalog_ui_policy_action', sys_id: actionGr.getUniqueValue(),
-                    label: actionGr.getValue('catalog_variable') || actionGr.getDisplayValue() || 'UI Policy Action',
-                    category: 'UI Policy Action (on producer)', updatedOn: actionGr.getDisplayValue('sys_updated_on'),
-                });
-            }
-        }
-
-        var clientGr = new GlideRecordSecure('catalog_script_client');
-        clientGr.addQuery('cat_item', producerSysId);
-        clientGr.query();
-        while (clientGr.next()) {
-            results.push({
-                table: 'catalog_script_client', sys_id: clientGr.getUniqueValue(), label: clientGr.getValue('name') || clientGr.getDisplayValue(),
-                category: 'Catalog Client Script (on producer)', updatedOn: clientGr.getDisplayValue('sys_updated_on'),
-            });
-        }
-
-        return results;
-    },
-
-    /**
-     * Regex-scans a widget's script fields for `new SomeScriptInclude()` references.
-     * @param {GlideRecordSecure} widgetGr - The queried sp_widget record.
-     * @returns {Array.<string>} Candidate class names found (deduplicated, builtins excluded).
-     */
-    _scanReferencedNames: function (widgetGr) {
-        var content = this.WIDGET_SCAN_FIELDS.map(function (f) {
-            return widgetGr.getValue(f) || '';
-        }).join('\n');
-        return this._scanReferencedNamesInText(content);
-    },
-
-    /**
      * Regex-scans raw script text for `new SomeScriptInclude()` references.
      * @param {string} content - Script text to scan.
      * @returns {Array.<string>} Candidate class names found (deduplicated, builtins excluded).
@@ -436,7 +390,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
      * Same-named script includes can exist in multiple scopes (different code,
      * only one actually resolved by the widget's `new Name()` call) — picks the
      * one in the widget's own scope, else the most recently updated, per name.
-     * @param {Array.<string>} names - Candidate class names from _scanReferencedNames.
+     * @param {Array.<string>} names - Candidate class names from _scanReferencedNamesInText.
      * @param {string} widgetScope - The widget's sys_scope sys_id, for scope preference.
      * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
      */
@@ -477,117 +431,6 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     },
 
     /**
-     * Regex-scans notification subject/message text for `${mail_script:Name}` references.
-     * @param {string} content - Subject + message text to scan.
-     * @returns {Array.<string>} Candidate mail script names found (deduplicated).
-     */
-    _scanMailScriptNamesInText: function (content) {
-        var seen = {};
-        var names = [];
-        var re = /\$\{mail_script:([^}]+)\}/g;
-        var m;
-        while ((m = re.exec(content || '')) !== null) {
-            var name = m[1].trim();
-            if (name && !seen[name]) {
-                seen[name] = true;
-                names.push(name);
-            }
-        }
-        return names;
-    },
-
-    /**
-     * Matches candidate names against sys_script_email (Mail Script) records.
-     * @param {Array.<string>} names - Candidate mail script names from _scanMailScriptNamesInText.
-     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
-     */
-    _findReferencedMailScripts: function (names) {
-        if (!names || names.length === 0) {
-            return [];
-        }
-        var results = [];
-        var gr = new GlideRecordSecure('sys_script_email');
-        gr.addQuery('name', 'IN', names.join(','));
-        gr.query();
-        while (gr.next()) {
-            results.push({
-                table: 'sys_script_email',
-                sys_id: gr.getUniqueValue(),
-                label: gr.getValue('name'),
-                category: 'Mail Script (referenced)',
-                updatedOn: gr.getDisplayValue('sys_updated_on'),
-            });
-        }
-        return results;
-    },
-
-    /**
-     * Regex-scans a widget's fields for `$sp.getWidget('widget_id')` references.
-     * @param {GlideRecordSecure} widgetGr - The queried sp_widget record.
-     * @returns {Array.<string>} Candidate embedded widget ids (deduplicated).
-     */
-    _scanEmbeddedWidgetIds: function (widgetGr) {
-        var content = this.WIDGET_SCAN_FIELDS.map(function (f) {
-            return widgetGr.getValue(f) || '';
-        }).join('\n');
-
-        var seen = {};
-        var ids = [];
-        var re = /\$sp\.getWidget\(\s*['"]([^'"]+)['"]\s*\)/g;
-        var m;
-        while ((m = re.exec(content)) !== null) {
-            var id = m[1];
-            if (!seen[id]) {
-                seen[id] = true;
-                ids.push(id);
-            }
-        }
-        return ids;
-    },
-
-    /**
-     * Matches candidate widget ids against sp_widget records, excluding self-reference.
-     * @param {Array.<string>} ids - Candidate widget ids from _scanEmbeddedWidgetIds.
-     * @param {string} excludeSysId - The primary widget's own sys_id, never suggested for itself.
-     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
-     */
-    _findEmbeddedWidgets: function (ids, excludeSysId) {
-        if (!ids || ids.length === 0) {
-            return [];
-        }
-
-        var results = [];
-        var gr = new GlideRecordSecure('sp_widget');
-        gr.addQuery('id', 'IN', ids.join(','));
-        if (excludeSysId) {
-            gr.addQuery('sys_id', '!=', excludeSysId);
-        }
-        gr.query();
-        while (gr.next()) {
-            results.push({
-                table: 'sp_widget',
-                sys_id: gr.getUniqueValue(),
-                label: gr.getValue('name') || gr.getValue('id'),
-                category: 'Embedded Widget',
-                updatedOn: gr.getDisplayValue('sys_updated_on'),
-            });
-        }
-        return results;
-    },
-
-    /**
-     * Regex-scans a widget's fields for new GlideRecord/GlideRecordSecure/GlideAggregate('table_name') references.
-     * @param {GlideRecordSecure} widgetGr - The queried sp_widget record.
-     * @returns {Array.<string>} Candidate table names (deduplicated).
-     */
-    _scanReferencedTableNames: function (widgetGr) {
-        var content = this.WIDGET_SCAN_FIELDS.map(function (f) {
-            return widgetGr.getValue(f) || '';
-        }).join('\n');
-        return this._scanReferencedTableNamesInText(content);
-    },
-
-    /**
      * Regex-scans raw script text for new GlideRecord/GlideRecordSecure/GlideAggregate('table_name') references.
      * @param {string} content - Script text to scan.
      * @returns {Array.<string>} Candidate table names (deduplicated).
@@ -609,7 +452,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
 
     /**
      * Matches candidate table names against sys_db_object records.
-     * @param {Array.<string>} names - Candidate table names from _scanReferencedTableNames.
+     * @param {Array.<string>} names - Candidate table names from _scanReferencedTableNamesInText.
      * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
      */
     _findReferencedTables: function (names) {
@@ -646,66 +489,6 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             seen[key] = true;
             return true;
         });
-    },
-
-    /**
-     * Finds sp_ng_template records linked to a widget.
-     * @param {string} widgetSysId - sp_widget sys_id.
-     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
-     */
-    _findLinkedTemplates: function (widgetSysId) {
-        var results = [];
-        var gr = new GlideRecordSecure('sp_ng_template');
-        gr.addQuery('sp_widget', widgetSysId);
-        gr.orderBy('id');
-        gr.query();
-        while (gr.next()) {
-            results.push({
-                table: 'sp_ng_template',
-                sys_id: gr.getUniqueValue(),
-                label: gr.getValue('id') || gr.getDisplayValue(),
-                category: 'Angular Template',
-                updatedOn: gr.getDisplayValue('sys_updated_on'),
-            });
-        }
-        return results;
-    },
-
-    /**
-     * Finds sp_angular_provider records linked to a widget via m2m_sp_ng_pro_sp_widget.
-     * @param {string} widgetSysId - sp_widget sys_id.
-     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
-     */
-    _findLinkedProviders: function (widgetSysId) {
-        var providerIds = [];
-        var m2m = new GlideRecordSecure('m2m_sp_ng_pro_sp_widget');
-        m2m.addQuery('sp_widget', widgetSysId);
-        m2m.query();
-        while (m2m.next()) {
-            var pid = m2m.getValue('sp_angular_provider');
-            if (pid && providerIds.indexOf(pid) === -1) {
-                providerIds.push(pid);
-            }
-        }
-        if (providerIds.length === 0) {
-            return [];
-        }
-
-        var results = [];
-        var gr = new GlideRecordSecure('sp_angular_provider');
-        gr.addQuery('sys_id', 'IN', providerIds.join(','));
-        gr.orderBy('name');
-        gr.query();
-        while (gr.next()) {
-            results.push({
-                table: 'sp_angular_provider',
-                sys_id: gr.getUniqueValue(),
-                label: gr.getValue('name'),
-                category: 'Angular Provider',
-                updatedOn: gr.getDisplayValue('sys_updated_on'),
-            });
-        }
-        return results;
     },
 
     ////////////////////////////////////////////////////////////

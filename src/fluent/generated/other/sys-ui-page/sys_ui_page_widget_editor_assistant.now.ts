@@ -36,7 +36,9 @@ export const widgetEditorAssistantUiPage = UiPage({
             table: _weAssistantConfigParams.get('record_table') || '',
             sysId: _weAssistantConfigParams.get('record_sys_id') || '',
             embedded: _weAssistantEmbedded,
-            siteTitle: '\${gs.getProperty("glide.product.name", "ServiceNow")}'
+            siteTitle: '\${gs.getProperty("glide.product.name", "ServiceNow")}',
+            exportBlocklistTables: '\${gs.getProperty("monaco.plus.assistant.export_blocklist_tables", "cmn_notif_device,discovery_credentials,hr_employee,hr_profile,oauth_credential,sp_log,sys_credential,sys_user")}',
+            exportBlocklistPrefixes: '\${gs.getProperty("monaco.plus.assistant.export_blocklist_prefixes", "pwd,sys_activity,sys_amb,sys_attachment,sys_audit,sys_df_query,sys_history,sys_scheduler_job_history,sys_user_grmember,sys_user_password,syslog,ts_")}'
         };
     </script>
 
@@ -2002,35 +2004,20 @@ export const widgetEditorAssistantUiPage = UiPage({
         var EMAIL_ONLY_RE = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
         var REDACT_FIELDS = { sys_created_by: true, sys_updated_by: true };
 
-        // Kept in sync with EXPORT_BLOCKLISTED_TABLES/PREFIXES in the Assistant script
-        // include (sys_script_include_widget_editor_assistant.server.js) — the server
-        // already refuses to search/browse/export these; this client-side copy just
-        // keeps them out of the picker's own quick-pick lists (common/favourite tables).
-        var EXPORT_BLOCKLISTED_TABLES = {
-            cmn_notif_device: true,
-            discovery_credentials: true,
-            hr_employee: true,
-            hr_profile: true,
-            oauth_credential: true,
-            sp_log: true,
-            sys_credential: true,
-            sys_user: true,
-        };
+        // Sourced from the same monaco.plus.assistant.export_blocklist_tables/prefixes
+        // properties the Assistant script include (sys_script_include_widget_editor_assistant.server.js)
+        // reads, rendered into window.WE_ASSISTANT_CONFIG at page-load time above — a single
+        // admin-configured source of truth, not a hardcoded copy that can drift out of sync.
+        var EXPORT_BLOCKLISTED_TABLES = {};
+        ((window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.exportBlocklistTables) || '').split(',').forEach(function (t) {
+            t = t.trim();
+            if (t) EXPORT_BLOCKLISTED_TABLES[t] = true;
+        });
 
-        var EXPORT_BLOCKLISTED_PREFIXES = [
-            'pwd',
-            'sys_activity',
-            'sys_amb',
-            'sys_attachment',
-            'sys_audit',
-            'sys_df_query',
-            'sys_history',
-            'sys_scheduler_job_history',
-            'sys_user_grmember',
-            'sys_user_password',
-            'syslog',
-            'ts_',
-        ];
+        var EXPORT_BLOCKLISTED_PREFIXES = ((window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.exportBlocklistPrefixes) || '')
+            .split(',')
+            .map(function (p) { return p.trim(); })
+            .filter(function (p) { return p.length > 0; });
 
         function isTableExportBlocked(table) {
             if (!table) return false;
