@@ -135,4 +135,21 @@
     grLoad.addQuery('name', PREF_KEY);
     grLoad.query();
     data.preferences = grLoad.next() ? grLoad.getValue('value') : null;
+
+    // Sourced from Widget Editor+'s own user preferences, not this widget's own.
+    data.contextMenuMode = 'enhanced';
+    data.showAssistantButton = false;
+    var grMainPrefs = new GlideRecord('sys_user_preference');
+    grMainPrefs.addQuery('user', realUserId);
+    grMainPrefs.addQuery('name', 'monaco_plus.user_prefs');
+    grMainPrefs.query();
+    if (grMainPrefs.next()) {
+        try {
+            var mainPrefs = JSON.parse(grMainPrefs.getValue('value') || '{}');
+            if (mainPrefs.contextMenuMode === 'standard' || mainPrefs.contextMenuMode === 'off') {
+                data.contextMenuMode = mainPrefs.contextMenuMode;
+            }
+            data.showAssistantButton = mainPrefs.showAssistantButton === true;
+        } catch (e) { /* keep defaults */ }
+    }
 })();

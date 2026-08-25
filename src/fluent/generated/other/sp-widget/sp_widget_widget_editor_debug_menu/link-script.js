@@ -40,15 +40,41 @@ function link(scope, element, attrs, controller) {
         const style = document.createElement('style');
         style.setAttribute('data-we-context-menu', '1');
         style.textContent = [
-            '[role="contentinfo"].dropdown .dropdown-menu { padding: 0; background: rgba(255,255,255,0.85); border-radius: 16px; box-shadow: 0 4px 30px rgba(0,0,0,0.1); backdrop-filter: blur(8px) brightness(150%); -webkit-backdrop-filter: blur(8px) brightness(150%); border: 1px solid rgba(255,255,255,0.5); }',
-            '[role="contentinfo"].dropdown .dropdown-menu .divider { margin: 0; border-top: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228 230 235))); background-color: transparent; }',
-            '[role="contentinfo"].dropdown .dropdown-menu > li { margin: 0 !important; }',
-            '[role="contentinfo"].dropdown .dropdown-menu > li > a { padding: .75em 1.25em; line-height: 1; }',
-            '[role="contentinfo"].dropdown .dropdown-menu > li > a:hover, [role="contentinfo"].dropdown .dropdown-menu > li > a:focus { background-color: rgba(0,0,0,0.05); }',
-            '[role="contentinfo"].dropdown .dropdown-menu { overscroll-behavior: none; scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent; }',
-            '[role="contentinfo"].dropdown .dropdown-menu::-webkit-scrollbar { width: 4px; }',
-            '[role="contentinfo"].dropdown .dropdown-menu::-webkit-scrollbar-track { background: transparent; }',
-            '[role="contentinfo"].dropdown .dropdown-menu::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 4px; }'
+            '.we-custom-menu, .we-custom-menu *, .we-custom-menu *::before, .we-custom-menu *::after { box-sizing: border-box !important; -webkit-tap-highlight-color: transparent !important; }',
+            '.we-custom-menu { position: fixed; margin: 0; padding: 0; border: none; background: transparent; outline: none; overflow: visible; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; z-index: 2147483647; }',
+            '.we-custom-menu a, .we-custom-menu button, .we-custom-menu li, .we-custom-menu span { outline: none !important; outline-width: 0 !important; outline-style: none !important; outline-offset: 0 !important; box-shadow: none !important; -webkit-focus-ring-color: transparent !important; }',
+            '.we-custom-menu a:focus, .we-custom-menu a:focus-visible, .we-custom-menu a:active, .we-custom-menu a:hover, .we-custom-menu button:focus, .we-custom-menu button:focus-visible, .we-custom-menu button:active, .we-custom-menu button:hover, .we-custom-menu li:focus, .we-custom-menu li:focus-visible, .we-custom-menu li:active, .we-custom-menu li:hover { outline: none !important; outline-width: 0 !important; outline-style: none !important; outline-offset: 0 !important; box-shadow: none !important; -webkit-focus-ring-color: transparent !important; text-decoration: none !important; }',
+            '.we-menu-container { width: 285px; overflow: hidden; position: relative; background: rgb(var(--now-dropdown-list--background-color, 255, 255, 255)); color: rgb(var(--now-color_text--primary, 58, 63, 81)); border-radius: 10px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08) !important; backdrop-filter: blur(12px) brightness(110%); -webkit-backdrop-filter: blur(12px) brightness(110%); border: 1px solid rgb(var(--now-tabs--border-color, var(--now-color_border--secondary, 222, 229, 231))); transition: height 0.22s cubic-bezier(0.25, 1, 0.5, 1); max-height: calc(100vh - 16px); }',
+            '.we-slider-track { display: flex; transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1); align-items: flex-start; }',
+            '.we-panel { width: 285px; flex-shrink: 0; overflow-x: hidden; overscroll-behavior: none; scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent; }',
+            '.we-panel::-webkit-scrollbar { width: 4px; }',
+            '.we-panel::-webkit-scrollbar-track { background: transparent; }',
+            '.we-panel::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 4px; }',
+            '.we-menu-list { list-style: none; padding: 0 0 4px 0; margin: 0; width: 100%; }',
+            '.we-menu-divider { margin: 4px 0; border-top: 1px solid rgb(var(--now-tabs--border-color, var(--now-color_border--secondary, 222, 229, 231))); }',
+            '.we-menu-list > li { margin: 0; }',
+            '.we-menu-list > li:not(.we-primary-open-row):not(.we-menu-header):not(.we-back-li) > a { display: flex; align-items: center; justify-content: flex-start; padding: 6px 14px !important; margin: 0 !important; border: none !important; line-height: 1.35; text-decoration: none !important; color: inherit; cursor: pointer; transition: background 0.1s ease; outline: none !important; }',
+            '.we-menu-list > li:not(.we-primary-open-row):not(.we-menu-header):not(.we-back-li) > a:hover, .we-menu-list > li:not(.we-primary-open-row):not(.we-menu-header):not(.we-back-li) > a:focus, .we-menu-list > li:not(.we-primary-open-row):not(.we-menu-header):not(.we-back-li) > a:active { background-color: rgba(0,0,0,0.08) !important; color: rgb(var(--now-text-link--primary--color, 41, 98, 143)) !important; text-decoration: none !important; border: none !important; padding: 6px 14px !important; margin: 0 !important; outline: none !important; }',
+            '.we-row-icon { width: 18px; min-width: 18px; text-align: center; margin-right: 8px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }',
+            '.we-row-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }',
+            '.we-row-badge { margin-left: auto; flex-shrink: 0; }',
+            '.we-menu-list code { font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; padding: 1px 4px; border-radius: 3px; background: rgba(0,0,0,0.06); color: inherit; }',
+            '.we-menu-header.bg-primary { padding: 9px 12px 9px 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; border-radius: 0 !important; margin-bottom: 6px; background-color: rgb(var(--now-button--primary--background-color, 66, 139, 202)) !important; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; }',
+            '.we-menu-header.bg-primary.we-back-header { padding: 0; cursor: pointer; }',
+            '.we-menu-header.bg-primary .we-header-title { font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }',
+            '.we-menu-header.bg-primary .we-cog-btn { width: 24px; height: 24px; padding: 0 !important; margin: 0 !important; font-size: 16px; line-height: 1; border: none !important; background: none !important; cursor: pointer; color: rgba(255, 255, 255, 0.85); outline: none !important; box-shadow: none !important; display: inline-flex; align-items: center; justify-content: center; }',
+            '.we-menu-header.bg-primary .we-cog-btn:hover, .we-menu-header.bg-primary .we-cog-btn:focus, .we-menu-header.bg-primary .we-cog-btn:active { color: #ffffff !important; background-color: rgba(255, 255, 255, 0.2) !important; border-radius: 4px; outline: none !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }',
+            '.we-section-header { padding: 6px 14px 2px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; display: flex; align-items: center; }',
+            '.we-primary-open-row { padding: 4px 12px 6px 12px; }',
+            '.we-primary-open-row .btn.btn-primary { width: 100%; font-weight: 600; padding: 6px 12px !important; margin: 0 !important; font-size: 13px; border-radius: 4px; text-align: center; display: flex; align-items: center; justify-content: center; background-color: rgb(var(--now-button--primary--background-color, 66, 139, 202)) !important; border: 1px solid rgb(var(--now-button--primary--border-color, 53, 126, 189)) !important; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; outline: none !important; box-shadow: none !important; }',
+            '.we-primary-open-row .btn.btn-primary:hover, .we-primary-open-row .btn.btn-primary:focus, .we-primary-open-row .btn.btn-primary:active { background-color: rgb(var(--now-button--primary--background-color, 66, 139, 202)) !important; border: 1px solid rgb(var(--now-button--primary--border-color, 53, 126, 189)) !important; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; filter: brightness(1.08); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6) !important; padding: 6px 12px !important; margin: 0 !important; outline: none !important; text-decoration: none !important; }',
+            '.we-menu-list > li.we-row-disabled > a { opacity: 0.45; pointer-events: none; cursor: default; }',
+            '.we-submenu-arrow { margin-left: auto; opacity: 0.6; font-size: 11px; flex-shrink: 0; padding-left: 6px; }',
+            '.we-back-row { display: flex !important; align-items: center; justify-content: space-between; width: 100%; padding: 9px 12px 9px 14px !important; margin: 0 !important; border: none !important; font-weight: 600; color: rgb(var(--now-button--primary--color, 255, 255, 255)) !important; text-decoration: none !important; border-radius: 0 !important; background: transparent; transition: background 0.1s ease; outline: none !important; box-shadow: none !important; }',
+            '.we-back-row:hover, .we-back-row:focus, .we-back-row:active { background-color: rgba(0, 0, 0, 0.2) !important; text-decoration: none !important; padding: 9px 12px 9px 14px !important; margin: 0 !important; border: none !important; outline: none !important; box-shadow: none !important; }',
+            '.we-back-left { display: inline-flex; align-items: center; font-size: 13px; font-weight: 600; color: rgb(var(--now-button--primary--color, 255, 255, 255)); }',
+            '.we-back-arrow { margin-right: 6px; font-size: 11px; }',
+            '.we-back-title { margin-left: auto; font-size: 11px; color: rgba(255, 255, 255, 0.85); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }'
         ].join(' ');
         document.head.appendChild(style);
     }());
@@ -147,7 +173,25 @@ function link(scope, element, attrs, controller) {
             return '/nav_to.do?uri=sp_widget.do%3Fsys_id=' + encodeURIComponent(sysId);
         }
 
-        return { getEditorPlusUrl, getSPEditorUrl, getEditorPlatformUrl };
+        /**
+         * Returns the Widget Editor+ Assistant URL for the given widget sys_id.
+         * @param   {string} sysId  Widget sys_id.
+         * @returns {string}
+         */
+        function getAssistantUrl(sysId) {
+            return '/ui_page.do?sys_id=584ed242cd934914bffa4b0bb3fb2974&record_table=sp_widget&record_sys_id=' + encodeURIComponent(sysId);
+        }
+
+        /**
+         * Returns the Compare+ diff UI page URL for the given widget sys_id.
+         * @param   {string} sysId  Widget sys_id.
+         * @returns {string}
+         */
+        function getCompareUrl(sysId) {
+            return '/ui_page.do?sys_id=51ec3d258363b61070b8b5dfeeaad36b&table=sp_widget&record_id=' + encodeURIComponent(sysId);
+        }
+
+        return { getEditorPlusUrl, getSPEditorUrl, getEditorPlatformUrl, getAssistantUrl, getCompareUrl };
     }());
 
 
@@ -159,6 +203,28 @@ function link(scope, element, attrs, controller) {
         let _active = false;
         const _WE_LT = 'data-we-load-times'; // attribute used to tag every injected element
         const _WE_LT_THRESHOLD = 750;        // ms — widgets at or above this are highlighted red
+
+        /**
+         * Counts $$watchers on a widget's controller scope and its descendants, excluding nested widgets' own subtrees.
+         * @param   {Object} rootScope
+         * @returns {number}
+         */
+        function countWatchers(rootScope) {
+            let total = 0;
+            (function walk(sc, isRoot) {
+                if (!sc) return;
+                if (!isRoot && ScopeResolver.ownsWidgetProps(sc)) {
+                    return;
+                }
+                total += (sc.$$watchers && sc.$$watchers.length) || 0;
+                let child = sc.$$childHead;
+                while (child) {
+                    walk(child, false);
+                    child = child.$$nextSibling;
+                }
+            }(rootScope, true));
+            return total;
+        }
 
         /**
          * Activates the widget load-time overlay mode.
@@ -218,6 +284,12 @@ function link(scope, element, attrs, controller) {
                         });
                     })(s);
                     bar.appendChild(logLink);
+
+                    const watcherSpan = document.createElement('span');
+                    watcherSpan.style.cssText = 'color:#888;';
+                    const watcherCount = countWatchers(s);
+                    watcherSpan.textContent = watcherCount + (watcherCount === 1 ? ' watcher' : ' watchers');
+                    bar.appendChild(watcherSpan);
 
                     // Load time indicator (right-aligned, filled after refresh)
                     const timeSpan = document.createElement('span');
@@ -401,6 +473,25 @@ function link(scope, element, attrs, controller) {
     const ScopeResolver = (function () {
 
         /**
+         * Whether a scope owns widget-controller properties directly (c, data, options,
+         * or widget as own properties) — i.e. it's a widget's own controller scope, not
+         * an inherited child scope (ng-repeat, ng-if, etc).
+         * @param   {Object} sc
+         * @returns {boolean}
+         */
+        function ownsWidgetProps(sc) {
+            if (!sc) return false;
+            try {
+                return Object.prototype.hasOwnProperty.call(sc, 'c') ||
+                    Object.prototype.hasOwnProperty.call(sc, 'data') ||
+                    Object.prototype.hasOwnProperty.call(sc, 'options') ||
+                    Object.prototype.hasOwnProperty.call(sc, 'widget');
+            } catch (_e) {
+                return false;
+            }
+        }
+
+        /**
          * Given any Angular scope s, walks up the $parent chain to find the actual
          * widget controller scope (where c, data, options, widget are defined as own
          * properties, or where s.$parent no longer shares the same c/data instance).
@@ -409,18 +500,6 @@ function link(scope, element, attrs, controller) {
          */
         function resolveToWidgetControllerScope(s) {
             if (!s) return null;
-
-            function ownsWidgetProps(sc) {
-                if (!sc) return false;
-                try {
-                    return Object.prototype.hasOwnProperty.call(sc, 'c') ||
-                        Object.prototype.hasOwnProperty.call(sc, 'data') ||
-                        Object.prototype.hasOwnProperty.call(sc, 'options') ||
-                        Object.prototype.hasOwnProperty.call(sc, 'widget');
-                } catch (_e) {
-                    return false;
-                }
-            }
 
             let curr = s;
             while (curr && curr.$parent && curr.$root !== curr) {
@@ -497,38 +576,70 @@ function link(scope, element, attrs, controller) {
         }
 
         /**
-         * Walks up from el collecting every [widget] element with a valid SP sys_id class (innermost first).
-         * @param   {Element} el  Starting element.
+         * Walks up from targetEl collecting every widget in its hierarchy (DOM and $scope ancestor chain, innermost first).
+         * @param   {Element} targetEl  Starting element.
          * @returns {Array<{el: Element, sysId: string, name: string, widgetName: string}>}
          */
-        function getEmbeddedWidgetInfos(el) {
+        function getEmbeddedWidgetInfos(targetEl) {
             const results = [];
-            while (el && el !== document.body) {
-                if (el.hasAttribute && el.hasAttribute('widget')) {
-                    // Class is "v" + 32-char sys_id, optionally +5-char UID; scan since Angular adds other classes first.
-                    let sysId = null;
+            const seenSysIds = new Set();
+
+            // 1. Walk up the DOM hierarchy
+            let el = targetEl;
+            while (el && el !== document.body && el !== document.documentElement) {
+                let sysId = null;
+                let widgetName = '';
+                let instanceTitle = '';
+
+                if (el.classList) {
                     for (const cls of el.classList) {
                         if (cls.length >= 33 && cls.charAt(0) === 'v' && /^[0-9a-f]{32}/.test(cls.slice(1))) {
                             sysId = cls.slice(1, 33);
                             break;
                         }
                     }
-                    if (sysId) {
-                        let widgetName = '';
-                        try {
-                            const s = getActualWidgetScope(el);
-                            widgetName = s?.widget?.name || '';
-                        } catch (_ex) { }
-                        const instanceTitle = el.getAttribute('sn-atf-area') || '';
-                        let label = widgetName || instanceTitle || sysId;
-                        if (widgetName && instanceTitle && instanceTitle !== widgetName) {
-                            label = widgetName + ' [' + instanceTitle + ']';
-                        }
-                        results.push({ el: el, sysId: sysId, name: label, widgetName: widgetName || instanceTitle || sysId });
-                    }
                 }
+
+                try {
+                    const s = getActualWidgetScope(el);
+                    if (s) {
+                        if (!sysId) {
+                            sysId = s.widget?.sys_id || s.rectangle?.widget?.sys_id || s.c?.widget?.sys_id || null;
+                        }
+                        widgetName = s.widget?.name || s.rectangle?.widget?.name || '';
+                    }
+                } catch (_ex) { }
+
+                if (el.hasAttribute) {
+                    instanceTitle = el.getAttribute('sn-atf-area') || '';
+                }
+
+                if (sysId && !seenSysIds.has(sysId)) {
+                    seenSysIds.add(sysId);
+                    let label = widgetName || instanceTitle || sysId;
+                    if (widgetName && instanceTitle && instanceTitle !== widgetName) {
+                        label = widgetName + ' [' + instanceTitle + ']';
+                    }
+                    results.push({ el: el, sysId: sysId, name: label, widgetName: widgetName || instanceTitle || sysId });
+                }
+
                 el = el.parentElement;
             }
+
+            // 2. Walk up the Angular $scope hierarchy from targetEl up to $rootScope to find any ancestor scopes that hold widgets
+            try {
+                let s = angular.element(targetEl).scope() || angular.element(targetEl).isolateScope();
+                while (s && s !== s.$root) {
+                    const w = s.widget || s.rectangle?.widget || s.c?.widget;
+                    if (w && w.sys_id && !seenSysIds.has(w.sys_id)) {
+                        seenSysIds.add(w.sys_id);
+                        const wName = w.name || w.sys_id;
+                        results.push({ el: targetEl, sysId: w.sys_id, name: wName, widgetName: wName });
+                    }
+                    s = s.$parent;
+                }
+            } catch (_e) { }
+
             return results;
         }
 
@@ -583,7 +694,7 @@ function link(scope, element, attrs, controller) {
             return null;
         }
 
-        return { resolveToWidgetControllerScope, getActualWidgetScope, getEmbeddedWidgetInfos, getWidgetSysId, getInstanceSysId };
+        return { resolveToWidgetControllerScope, getActualWidgetScope, getEmbeddedWidgetInfos, getWidgetSysId, getInstanceSysId, ownsWidgetProps };
     }());
 
 
@@ -807,7 +918,7 @@ function link(scope, element, attrs, controller) {
 
                 (function addTreeLogButton(liEl, logObj, label) {
                     const logButton = document.createElement('button');
-                    logButton.innerHTML = '📋';
+                    logButton.innerHTML = '<i class="icon-script"></i>';
                     logButton.style.cssText = 'background:none;border:none;cursor:pointer;';
                     liEl.appendChild(logButton);
                     logButton.addEventListener('click', function (e) {
@@ -1069,10 +1180,10 @@ function link(scope, element, attrs, controller) {
                 const logButton = document.createElement('button');
 
                 if (buttonLabel) {
-                    logButton.innerHTML = '📋 ' + buttonLabel;
+                    logButton.innerHTML = '<i class="icon-script" style="margin-right:4px;"></i>' + Utils.escapeHtml(buttonLabel);
                     logButton.style.cssText = 'margin-bottom:10px;margin-left:5px;background:none;border:1px solid black;border-radius:4px;cursor:pointer;';
                 } else {
-                    logButton.innerHTML = '📋';
+                    logButton.innerHTML = '<i class="icon-script"></i>';
                     logButton.style.cssText = 'background:none;border:none;cursor:pointer;';
                 }
 
@@ -1085,7 +1196,7 @@ function link(scope, element, attrs, controller) {
 
             function addOpenInEditor(container, widgetScope) {
                 const editorButton = document.createElement('button');
-                editorButton.innerHTML = '🔍 Open in Widget Editor+';
+                editorButton.innerHTML = '<i class="icon-search" style="margin-right:4px;"></i> Open in Widget Editor+';
                 editorButton.style.cssText = 'margin-bottom:10px;margin-left:5px;background:none;border:1px solid black;border-radius:4px;cursor:pointer;';
 
                 container.appendChild(editorButton);
@@ -1121,7 +1232,7 @@ function link(scope, element, attrs, controller) {
                     ? '<span style="margin-right:4px;font-size:10px;">' + '●'.repeat(Math.min(level, 3)) + '</span>'
                     : '';
 
-                btn.innerHTML = nestedIndicator + '⚙️ <span style="margin-left:4px;">' + Utils.escapeHtml(widgetName) + '</span>';
+                btn.innerHTML = nestedIndicator + '<i class="icon-cog" style="margin-right:4px;"></i><span>' + Utils.escapeHtml(widgetName) + '</span>';
 
                 Object.assign(btn.style, {
                     position: 'absolute',
@@ -1212,7 +1323,7 @@ function link(scope, element, attrs, controller) {
 
                     // Slow / problematic widget path
                     if (widgetId && problematicWidgets.has(widgetId)) {
-                        menu.innerHTML = '<div style="color:orange;padding:10px;">⚠️ This widget was slow to process previously. Showing limited information.</div>';
+                        menu.innerHTML = '<div style="color:orange;padding:10px;"><i class="icon-alert" style="margin-right:6px;"></i>This widget was slow to process previously. Showing limited information.</div>';
                         const basicInfo = document.createElement('div');
                         Object.assign(basicInfo.style, {
                             padding: '10px', marginTop: '10px',
@@ -1245,7 +1356,7 @@ function link(scope, element, attrs, controller) {
                             if (widgetId) {
                                 problematicWidgets.add(widgetId);
                             }
-                            menu.innerHTML = '<div style="color:orange;padding:10px;">⚠️ Processing took too long and was aborted. Try again for limited information.</div>';
+                            menu.innerHTML = '<div style="color:orange;padding:10px;"><i class="icon-alert" style="margin-right:6px;"></i>Processing took too long and was aborted. Try again for limited information.</div>';
                             if (!menu.matches(':popover-open')) menu.showPopover();
                             positionMenu();
                         }, PROCESSING_TIMEOUT_MS);
@@ -1371,7 +1482,7 @@ function link(scope, element, attrs, controller) {
                                 width: '100%', padding: '5px',
                                 border: '1px solid #ccc', borderRadius: '3px', fontSize: '12px'
                             });
-                            searchInput.setAttribute('placeholder', 'Search properties...');
+                            searchInput.setAttribute('placeholder', 'Search properties\u2026');
                             searchInput.setAttribute('type', 'search');
                             searchContainer.appendChild(searchInput);
                             menu.appendChild(searchContainer);
@@ -1556,28 +1667,24 @@ function link(scope, element, attrs, controller) {
             } catch (_e) { }
         }
 
-        // SP sometimes reuses the overlay and appends a fresh UL instead of creating a new one, so bodyObserver never fires; this discards the stale UL and re-injects into the new one.
-        function attachOverlayObserver(overlayEl) {
-            const overlayObserver = new MutationObserver(function (mutations) {
-                for (let mi = 0; mi < mutations.length; mi++) {
-                    const added = mutations[mi].addedNodes;
-                    for (let ni = 0; ni < added.length; ni++) {
-                        const node = added[ni];
-                        if (node.nodeType === 1 && node.tagName === 'UL' && node.classList.contains('dropdown-menu')) {
-                            // Discards all ULs except the newly-added one, then re-injects.
-                            overlayEl.querySelectorAll('ul.dropdown-menu').forEach(function (ul) {
-                                if (ul !== node) {
-                                    ul.remove();
-                                }
-                            });
-                            overlayObserver.disconnect();
-                            MenuInjector.injectEditorItems(overlayEl);
-                            return;
-                        }
-                    }
-                }
+        // SP can insert the overlay container before its <ul> is populated (or replace/refill
+        // the <ul> across more than one digest tick), so a single "did a fresh UL appear yet"
+        // check can fire too early and see an empty list. This instead waits for the whole
+        // subtree to stop mutating for QUIET_MS before treating it as settled, then calls
+        // onSettled exactly once — safe to call from a single mutation or a burst of them.
+        const SETTLE_QUIET_MS = 60;
+        function whenSettled(overlayEl, onSettled) {
+            let timer = null;
+            const settleObserver = new MutationObserver(function () {
+                clearTimeout(timer);
+                timer = setTimeout(finish, SETTLE_QUIET_MS);
             });
-            overlayObserver.observe(overlayEl, { childList: true });
+            function finish() {
+                settleObserver.disconnect();
+                onSettled();
+            }
+            settleObserver.observe(overlayEl, { childList: true, subtree: true });
+            timer = setTimeout(finish, SETTLE_QUIET_MS);
         }
 
         // Mirrors spWidgetDebug: sets rectangle.debugModal on its scope so the SP template renders the modal, and reloads on sp.form.record.updated.
@@ -1607,38 +1714,7 @@ function link(scope, element, attrs, controller) {
             });
         }
 
-        function createStandaloneOverlay() {
-            const container = document.createElement('div');
-            container.setAttribute('role', 'contentinfo');
-            container.className = 'dropdown clearfix';
-            const ul = document.createElement('ul');
-            ul.className = 'dropdown-menu';
-            ul.setAttribute('role', 'menu');
-            const headerLi = document.createElement('li');
-            headerLi.setAttribute('role', 'presentation');
-            headerLi.className = 'dropdown-header';
-            headerLi.textContent = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || '';
-            ul.appendChild(headerLi);
-            container.appendChild(ul);
-            if (container.showPopover) {
-                container.setAttribute('popover', 'manual');
-                container.style.background = 'none';
-                container.style.border = 'none';
-                container.style.padding = '0';
-            }
-            const activeDialog = document.querySelector('dialog[open]');
-            if (activeDialog) {
-                activeDialog.appendChild(container);
-            } else {
-                document.body.appendChild(container);
-            }
-            if (container.showPopover) container.showPopover();
-            MenuInjector.injectEditorItems(container);
-            MenuInjector.injectWidgetDebugItems(ul, container);
-            attachOverlayObserver(container);
-        }
-
-        return { isDebugOverlay, removeDebugOverlays, closeSpOverlay, attachOverlayObserver, openWidgetFormModal, createStandaloneOverlay };
+        return { isDebugOverlay, removeDebugOverlays, closeSpOverlay, whenSettled, openWidgetFormModal };
     }());
 
 
@@ -1807,689 +1883,703 @@ function link(scope, element, attrs, controller) {
 
 
     ///////////////////////////////////////////
-    // 12. MenuInjector — builds the injected menu items inside an overlay
+    // 12. CustomMenu — fully custom-built context menu
     ///////////////////////////////////////////
 
-    const MenuInjector = (function () {
-
-        const EXTERNAL_LINK_ICON = ' <i class="icon-open-document-new-tab text-muted" style="margin-left: 4px"></i>';
-
-        // Maps a preference ID to a matcher on native SP debug menu item anchor text, used by filterNativeItems().
+    const CustomMenu = (function () {
+        // Native SP action items we forward clicks into rather than reimplement.
         const NATIVE_ITEM_MATCHERS = [
             { id: 'instanceOptions', match: (t) => t === 'Instance Options' },
             { id: 'instanceInPageEditor', match: (t) => t.startsWith('Instance in Page Editor') },
             { id: 'pageInDesigner', match: (t) => t.startsWith('Page in Designer') },
             { id: 'showWidgetCustomizations', match: (t) => t === 'Show Widget Customizations' || t === 'Hide Widget Customizations' },
-            { id: 'editContainerBackground', match: (t) => t === 'Edit Container Background' },
             { id: 'widgetOptionsSchema', match: (t) => t === 'Widget Options Schema' },
-            // Exact matches required: "$scope" is a prefix of "$scope.data"
-            { id: 'logScopeData', match: (t) => t === 'Log to console: $scope.data' },
-            { id: 'logScope', match: (t) => t === 'Log to console: $scope' }
+            { id: 'editContainerBackground', match: (t) => t === 'Edit Container Background' }
         ];
 
-        // For widgets without span.context, where SP never creates its own overlay.
-        function injectWidgetDebugItems(ul, container) {
-            if (!_pendingWidgetEl) return;
-            try {
-                const wScope = ScopeResolver.getActualWidgetScope(_pendingWidgetEl);
-                if (!wScope) return;
+        let _shell = null;
+        let _nativeOverlay = null;
+        let _closeOnOutsideClick = null;
+        let _closeOnEscape = null;
 
-                let items = null;
-                let callbackScope = wScope;
-
-                if (wScope.widget && Array.isArray(wScope.widget._weWidgetItems) && wScope.widget._weWidgetItems.length) {
-                    items = wScope.widget._weWidgetItems;
-                } else {
-                    let ps = wScope.$parent;
-                    while (ps) {
-                        if (ps.widget && ps.widget._customEnhancement &&
-                            Array.isArray(ps.widget._weWidgetItems) && ps.widget._weWidgetItems.length) {
-                            items = ps.widget._weWidgetItems;
-                            callbackScope = ps;
-                            break;
-                        }
-                        ps = ps.$parent;
-                    }
-                }
-                if (!items || !items.length) return;
-
-                const divLi = document.createElement('li');
-                divLi.className = 'divider';
-                divLi.setAttribute('role', 'separator');
-                divLi.setAttribute('data-we-injected', '1');
-                ul.appendChild(divLi);
-
-                for (let i = 0; i < items.length; i++) {
-                    const item = items[i];
-                    const li = document.createElement('li');
-                    li.setAttribute('role', 'presentation');
-                    li.setAttribute('data-we-injected', '1');
-                    if (!item) {
-                        li.className = 'divider';
-                        li.setAttribute('role', 'separator');
-                    } else {
-                        const a = document.createElement('a');
-                        a.className = 'sp-context-menu-padding';
-                        a.setAttribute('tabindex', '-1');
-                        a.href = 'javascript:void(0)';
-                        a.textContent = item[0];
-                        (function (fn, s) {
-                            a.addEventListener('click', function (e) {
-                                e.preventDefault();
-                                OverlayManager.closeSpOverlay(container);
-                                try { fn(s, _pendingContextmenuEvent || e); } catch (_ex) { }
-                            });
-                        }(item[1], callbackScope));
-                        li.appendChild(a);
-                    }
-                    ul.appendChild(li);
-                }
-            } catch (_e) { }
+        function close() {
+            if (_closeOnOutsideClick) {
+                document.removeEventListener('click', _closeOnOutsideClick, true);
+                _closeOnOutsideClick = null;
+            }
+            if (_closeOnEscape) {
+                document.removeEventListener('keydown', _closeOnEscape, true);
+                _closeOnEscape = null;
+            }
+            if (_shell) {
+                if (_shell.hidePopover) _shell.hidePopover();
+                _shell.remove();
+                _shell = null;
+            }
+            OverlayManager.closeSpOverlay(_nativeOverlay);
+            _nativeOverlay = null;
         }
 
-        function injectEditorItems(menuContainer) {
-            const widgetSysId = _pendingWidgetSysId;
-            if (!widgetSysId) {
-                return;
-            }
-
-            const ul = menuContainer.querySelector('.dropdown-menu');
-            if (!ul) {
-                return;
-            }
-
-            // The overlay container may span the full viewport width; keep pointer events scoped to the visible menu.
-            menuContainer.style.pointerEvents = 'none';
-            ul.style.pointerEvents = 'auto';
-
-            // Clean up any items we injected on a previous use of this element
-            ul.querySelectorAll('[data-we-injected]').forEach((el) => { el.remove(); });
-            const existingCog = ul.querySelector('[data-we-cog]');
-            if (existingCog) {
-                existingCog.remove();
-            }
-
-            const prefs = controller.preferences || {};
-
-            // Both native items are always removed; enabled openWith* prefs are injected in their place, in order.
-            let formModalLi = null;
-            let nativeEditorLi = null;
-            let pageGroupLastLi = null; // last of Instance Options / Instance in Page Editor / Page in Designer — signals the widget is placed via Page Designer (sp_instance-embedded)
-            for (const li of ul.querySelectorAll('li')) {
-                const a = li.querySelector('a');
-                if (!a) {
-                    continue;
-                }
-                const t = a.textContent.trim();
-                if (t === 'Widget in Form Modal') {
-                    formModalLi = li;
-                    continue;
-                }
-                if (t.startsWith('Widget in Editor') && !t.includes('+')) {
-                    nativeEditorLi = li;
-                }
-                if (t === 'Instance Options' || t.startsWith('Instance in Page Editor') || t.startsWith('Page in Designer')) {
-                    pageGroupLastLi = li;
-                }
-            }
-
-            let insertionAnchor = formModalLi ?? nativeEditorLi;
-            if (!insertionAnchor) {
-                // If a previous pass already removed the native items, fall back to the divider before the console-logging section (filterNativeItems hasn't run yet, so those items are still present).
-                let firstConsoleLi = null;
-                const children = ul.querySelectorAll('li');
-                for (let i = 0; i < children.length; i++) {
-                    const a = children[i].querySelector('a');
-                    if (a) {
-                        const t = a.textContent.trim();
-                        if (t === 'Log to console: $scope.data' || t === 'Log to console: $scope') {
-                            firstConsoleLi = children[i];
-                            break;
-                        }
-                    }
-                }
-                if (firstConsoleLi) {
-                    let prev = firstConsoleLi.previousElementSibling;
-                    while (prev && !prev.classList.contains('divider')) {
-                        prev = prev.previousElementSibling;
-                    }
-                    insertionAnchor = prev || firstConsoleLi;
-                }
-            }
-            let lastOpenWithLi = null;
-            const openWithDefs = [
-                { id: 'openWithEditorPlus', label: 'Open in Widget Editor+', href: UrlHelpers.getEditorPlusUrl(widgetSysId) },
-                { id: 'openWithEditorSP', label: 'Open in Widget Editor', href: UrlHelpers.getSPEditorUrl(widgetSysId) },
-                { id: 'openWithFormModal', label: 'Open in Form Modal', href: null },
-                { id: 'openWithPlatform', label: 'Open in Platform', href: UrlHelpers.getEditorPlatformUrl(widgetSysId) }
-            ];
-            for (const def of openWithDefs) {
-                if (prefs[def.id] === false) {
-                    continue;
-                }
-                const li = document.createElement('li');
-                li.setAttribute('role', 'menuitem');
-                li.setAttribute('data-we-injected', '1');
-                const a = document.createElement('a');
-                a.className = 'sp-context-menu-padding';
-                a.setAttribute('tabindex', '-1');
-                if (def.href) {
-                    a.href = def.href;
-                    a.target = '_blank';
-                    a.innerHTML = def.label + EXTERNAL_LINK_ICON;
-                } else {
-                    a.href = 'javascript:void(0)';
-                    a.textContent = def.label;
-                    a.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        OverlayManager.closeSpOverlay(menuContainer);
-                        OverlayManager.openWidgetFormModal(widgetSysId);
-                    });
-                }
-                li.appendChild(a);
-                // insertBefore(node, null) appends — works for both anchored and standalone menus
-                ul.insertBefore(li, insertionAnchor);
-                lastOpenWithLi = li;
-            }
-            formModalLi?.remove();
-            nativeEditorLi?.remove();
-
-            // Standalone (header/footer) overlays never get SP's native console items, so inject them here for parity.
-            const hasNativeScopeItem = Array.from(ul.querySelectorAll('li a')).some(
-                (a) => a.textContent.trim() === 'Log to console: $scope'
-            );
-            if (!hasNativeScopeItem && _pendingWidgetEl) {
-                const capturedEl = _pendingWidgetEl;
-                const dividerLi = document.createElement('li');
-                dividerLi.className = 'divider';
-                dividerLi.setAttribute('role', 'separator');
-                dividerLi.setAttribute('data-we-injected', '1');
-                ul.appendChild(dividerLi);
-
-                const scopeDataLi = document.createElement('li');
-                scopeDataLi.setAttribute('role', 'menuitem');
-                scopeDataLi.setAttribute('data-we-injected', '1');
-                const scopeDataA = document.createElement('a');
-                scopeDataA.className = 'sp-context-menu-padding';
-                scopeDataA.setAttribute('tabindex', '-1');
-                scopeDataA.href = 'javascript:void(0)';
-                scopeDataA.textContent = 'Log to console: $scope.data';
-                scopeDataA.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    OverlayManager.closeSpOverlay(menuContainer);
-                    const s = ScopeResolver.getActualWidgetScope(capturedEl);
-                    const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
-                    const label = wName ? '$scope.data (' + wName + ')' : '$scope.data';
-                    console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s && s.data);
-                });
-                scopeDataLi.appendChild(scopeDataA);
-                ul.appendChild(scopeDataLi);
-
-                const scopeLi = document.createElement('li');
-                scopeLi.setAttribute('role', 'menuitem');
-                scopeLi.setAttribute('data-we-injected', '1');
-                const scopeA = document.createElement('a');
-                scopeA.className = 'sp-context-menu-padding';
-                scopeA.setAttribute('tabindex', '-1');
-                scopeA.href = 'javascript:void(0)';
-                scopeA.textContent = 'Log to console: $scope';
-                scopeA.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    OverlayManager.closeSpOverlay(menuContainer);
-                    const s = ScopeResolver.getActualWidgetScope(capturedEl);
-                    const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
-                    const label = wName ? '$scope (' + wName + ')' : '$scope';
-                    console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s);
-                    if (prefs.assignConsoleVars !== false) {
-                        Utils.assignConsoleVar('$scope', s);
-                    }
-                });
-                scopeLi.appendChild(scopeA);
-                ul.appendChild(scopeLi);
-            }
-
-            // Retargets the native $scope/$scope.data console items to the clicked widget's inner scope, not the container scope.
-            const targetWidgetEl = _pendingWidgetEl || (_pendingEmbeddedWidgets.length > 0 ? _pendingEmbeddedWidgets[0].el : null);
+        /**
+         * Finds the <a> for each known native item still present in a hidden SP overlay's <ul>.
+         * @param   {Element|null} ul
+         * @returns {Object.<string, {a: Element, label: string, disabled: boolean}>}
+         */
+        function harvestNativeItems(ul) {
+            const found = {};
+            if (!ul) return found;
             ul.querySelectorAll('li').forEach((li) => {
                 const a = li.querySelector('a');
                 if (!a) return;
                 const text = a.textContent.trim();
-                if (text === 'Log to console: $scope.data' && targetWidgetEl) {
-                    const newA = a.cloneNode(true);
-                    newA.addEventListener('click', function (e) {
+                const href = a.getAttribute('href') || '';
+                NATIVE_ITEM_MATCHERS.forEach((def) => {
+                    if (def.match(text)) {
+                        found[def.id] = {
+                            a: a, label: text,
+                            disabled: li.classList.contains('disabled'),
+                            isLink: !!href && href !== '#' && href !== 'javascript:void(0)'
+                        };
+                    }
+                });
+            });
+            return found;
+        }
+
+        let _lastIcon = null;
+
+        function addRow(list, opts) {
+            const li = document.createElement('li');
+            li.setAttribute('role', 'menuitem');
+            if (opts.highlight) li.classList.add('we-default-editor-item');
+            if (opts.disabled) li.classList.add('we-row-disabled');
+            const a = document.createElement('a');
+            a.setAttribute('tabindex', '-1');
+
+            let iconHtml = '<span class="we-row-icon"></span>';
+            if (opts.icon) {
+                if (opts.icon !== _lastIcon) {
+                    iconHtml = '<i class="' + opts.icon + ' text-muted we-row-icon"></i>';
+                    _lastIcon = opts.icon;
+                }
+            } else {
+                _lastIcon = null;
+            }
+
+            const badgeHtml = opts.badge ? ('<span class="badge we-row-badge">' + opts.badge + '</span>') : '';
+            const labelHtml = '<span class="we-row-label">' + (opts.html || opts.label || '') + '</span>';
+            const contentHtml = iconHtml + labelHtml + badgeHtml;
+            if (opts.disabled) {
+                a.href = 'javascript:void(0)';
+                a.innerHTML = contentHtml;
+                a.setAttribute('aria-disabled', 'true');
+            } else if (opts.href) {
+                a.href = opts.href;
+                a.target = '_blank';
+                a.innerHTML = contentHtml;
+            } else {
+                a.href = 'javascript:void(0)';
+                a.innerHTML = contentHtml;
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    try { opts.onClick && opts.onClick(e); } finally { close(); }
+                });
+            }
+            li.appendChild(a);
+            list.appendChild(li);
+            return li;
+        }
+
+        function addSectionHeader(list, titleText, iconCls) {
+            _lastIcon = null;
+            const li = document.createElement('li');
+            li.setAttribute('role', 'presentation');
+            li.className = 'dropdown-header we-section-header';
+            const iconHtml = iconCls ? ('<i class="' + iconCls + ' we-row-icon"></i>') : '';
+            li.innerHTML = iconHtml + '<span class="we-row-label">' + Utils.escapeHtml(titleText) + '</span>';
+            list.appendChild(li);
+            return li;
+        }
+
+        function addDivider(list) {
+            _lastIcon = null;
+            const li = document.createElement('li');
+            li.className = 'we-menu-divider';
+            li.setAttribute('role', 'separator');
+            list.appendChild(li);
+        }
+
+        function forwardToNative(nativeItem) {
+            return function () {
+                if (nativeItem && nativeItem.a) {
+                    nativeItem.a.click();
+                }
+            };
+        }
+
+        /**
+         * Builds and positions the custom menu, harvesting/forward-clicking into a
+         * hidden SP overlay for the handful of native-only actions when provided.
+         * @param {Element|null} nativeOverlay
+         */
+        function open(nativeOverlay) {
+            close();
+            _lastIcon = null;
+            _nativeOverlay = nativeOverlay;
+            const native = harvestNativeItems(nativeOverlay ? nativeOverlay.querySelector('.dropdown-menu') : null);
+
+            const widgetSysId = _pendingWidgetSysId;
+            if (!widgetSysId) return;
+
+            const prefs = controller.preferences || {};
+
+            const PANEL_WIDTH = 285;
+            const navStack = [];
+
+            const shell = document.createElement('div');
+            shell.className = 'we-custom-menu';
+            shell.setAttribute('popover', 'manual');
+
+            const container = document.createElement('div');
+            container.className = 'we-menu-container';
+            shell.appendChild(container);
+
+            const track = document.createElement('div');
+            track.className = 'we-slider-track';
+            container.appendChild(track);
+
+            const mainPanel = document.createElement('div');
+            mainPanel.className = 'we-panel we-panel-main';
+            const mainList = document.createElement('ul');
+            mainList.className = 'we-menu-list';
+            mainList.setAttribute('role', 'menu');
+            mainPanel.appendChild(mainList);
+            track.appendChild(mainPanel);
+            navStack.push({ panel: mainPanel, list: mainList, title: '' });
+
+            function navigateToSubmenu(titleText, buildItems) {
+                _lastIcon = null;
+                const nextLevel = navStack.length;
+                const subPanel = document.createElement('div');
+                subPanel.className = 'we-panel we-panel-sub';
+                const subList = document.createElement('ul');
+                subList.className = 'we-menu-list';
+                subList.setAttribute('role', 'menu');
+                subPanel.appendChild(subList);
+
+                const backLi = document.createElement('li');
+                backLi.setAttribute('role', 'presentation');
+                backLi.className = 'we-menu-header bg-primary we-back-header';
+                const backA = document.createElement('a');
+                backA.setAttribute('tabindex', '-1');
+                backA.className = 'we-back-row';
+                backA.href = 'javascript:void(0)';
+                backA.innerHTML = '<span class="we-back-left"><i class="icon-chevron-left we-back-arrow" aria-hidden="true"></i> Back</span><span class="we-back-title">' + Utils.escapeHtml(titleText) + '</span>';
+                backA.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    navigateBack();
+                });
+                backLi.appendChild(backA);
+                subList.appendChild(backLi);
+
+                buildItems(subList);
+
+                track.appendChild(subPanel);
+                track.style.width = (PANEL_WIDTH * (nextLevel + 1)) + 'px';
+                navStack.push({ panel: subPanel, list: subList, title: titleText });
+
+                updateContainerHeight(subPanel);
+                track.style.transform = 'translateX(-' + (nextLevel * PANEL_WIDTH) + 'px)';
+            }
+
+            function navigateBack() {
+                if (navStack.length <= 1) return;
+                const popped = navStack.pop();
+                const current = navStack[navStack.length - 1];
+                const currentLevel = navStack.length - 1;
+
+                updateContainerHeight(current.panel);
+                track.style.transform = 'translateX(-' + (currentLevel * PANEL_WIDTH) + 'px)';
+
+                setTimeout(() => {
+                    if (popped.panel && popped.panel.parentNode) {
+                        popped.panel.parentNode.removeChild(popped.panel);
+                    }
+                    track.style.width = (PANEL_WIDTH * navStack.length) + 'px';
+                }, 220);
+            }
+
+            function addSubmenu(list, labelText, titleText, buildItems, iconCls) {
+                const li = document.createElement('li');
+                li.setAttribute('role', 'presentation');
+                li.className = 'we-submenu-li';
+                const a = document.createElement('a');
+                a.setAttribute('tabindex', '-1');
+                a.href = 'javascript:void(0)';
+
+                let iconHtml = '<span class="we-row-icon"></span>';
+                if (iconCls) {
+                    if (iconCls !== _lastIcon) {
+                        iconHtml = '<i class="' + iconCls + ' text-muted we-row-icon"></i>';
+                        _lastIcon = iconCls;
+                    }
+                } else {
+                    _lastIcon = null;
+                }
+
+                a.innerHTML = iconHtml + '<span class="we-row-label">' + Utils.escapeHtml(labelText) + '</span><i class="icon-chevron-right we-submenu-arrow" aria-hidden="true"></i>';
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    navigateToSubmenu(titleText, buildItems);
+                });
+                li.appendChild(a);
+                list.appendChild(li);
+                return li;
+            }
+
+            // Header row: widget name + preferences cog (bg-primary).
+            const headerName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || '';
+            navStack[0].title = headerName;
+            const headerLi = document.createElement('li');
+            headerLi.setAttribute('role', 'presentation');
+            headerLi.className = 'we-menu-header bg-primary';
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'we-header-title';
+            titleSpan.textContent = headerName;
+            titleSpan.title = headerName;
+            headerLi.appendChild(titleSpan);
+
+            const cogBtn = document.createElement('button');
+            cogBtn.type = 'button';
+            cogBtn.className = 'we-cog-btn';
+            cogBtn.setAttribute('data-we-cog', '1');
+            cogBtn.setAttribute('title', 'Debug menu preferences');
+            cogBtn.innerHTML = '<i class="icon-cog" aria-hidden="true"></i>';
+            cogBtn.addEventListener('mouseenter', () => { cogBtn.querySelector('i').className = 'icon-cog-selected'; });
+            cogBtn.addEventListener('mouseleave', () => { cogBtn.querySelector('i').className = 'icon-cog'; });
+            cogBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                close();
+                scope.$applyAsync(function () { controller.openPreferences(); });
+            });
+            headerLi.appendChild(cogBtn);
+            mainList.appendChild(headerLi);
+
+            // Reusable helper for Primary Editor Button + "Open with…" Submenu
+            function addOpenWithRows(targetList, targetSysId, preferredEditorId, widgetName) {
+                const openWithDefs = [
+                    { id: 'openWithEditorPlus', label: 'Open in Widget Editor+', href: UrlHelpers.getEditorPlusUrl(targetSysId), icon: 'icon-document-code' },
+                    { id: 'openWithEditorSP', label: 'Open in Widget Editor', href: UrlHelpers.getSPEditorUrl(targetSysId), icon: 'icon-brand-now' },
+                    { id: 'openWithFormModal', label: 'Open in Form Modal', href: null, icon: 'icon-new-window' },
+                    { id: 'openWithPlatform', label: 'Open in Platform', href: UrlHelpers.getEditorPlatformUrl(targetSysId), icon: 'icon-form' }
+                ];
+                const defaultId = openWithDefs.some((d) => d.id === preferredEditorId) ? preferredEditorId : 'openWithEditorPlus';
+                const defaultDef = openWithDefs.find((d) => d.id === defaultId);
+
+                const li = document.createElement('li');
+                li.setAttribute('role', 'menuitem');
+                li.className = 'we-primary-open-row';
+                const a = document.createElement('a');
+                a.setAttribute('tabindex', '-1');
+                a.className = 'btn btn-primary btn-sm btn-block';
+                a.textContent = defaultDef.label;
+                if (defaultDef.href) {
+                    a.href = defaultDef.href;
+                    a.target = '_blank';
+                } else {
+                    a.href = 'javascript:void(0)';
+                    a.addEventListener('click', (e) => {
                         e.preventDefault();
-                        e.stopPropagation();
-                        OverlayManager.closeSpOverlay(menuContainer);
-                        const s = ScopeResolver.getActualWidgetScope(targetWidgetEl);
-                        const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
-                        const label = wName ? '$scope.data (' + wName + ')' : '$scope.data';
-                        console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s && s.data);
+                        try { OverlayManager.openWidgetFormModal(targetSysId); } finally { close(); }
                     });
-                    a.parentNode.replaceChild(newA, a);
-                } else if (text === 'Log to console: $scope' && targetWidgetEl) {
-                    const newA = a.cloneNode(true);
-                    newA.addEventListener('click', function (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        OverlayManager.closeSpOverlay(menuContainer);
-                        const s = ScopeResolver.getActualWidgetScope(targetWidgetEl);
-                        const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
-                        const label = wName ? '$scope (' + wName + ')' : '$scope';
-                        console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s);
-                        if (prefs.assignConsoleVars !== false) {
-                            Utils.assignConsoleVar('$scope', s);
+                }
+                li.appendChild(a);
+                targetList.appendChild(li);
+
+                const submenuHeaderTitle = widgetName || 'Open with\u2026';
+                addSubmenu(targetList, 'Open with\u2026', submenuHeaderTitle, (subUl) => {
+                    openWithDefs.forEach((def) => {
+                        if (def.href) {
+                            addRow(subUl, { label: def.label, href: def.href, icon: def.icon });
+                        } else {
+                            addRow(subUl, { label: def.label, icon: def.icon, onClick: () => OverlayManager.openWidgetFormModal(targetSysId) });
                         }
                     });
-                    a.parentNode.replaceChild(newA, a);
-                }
-            });
+                    addDivider(subUl);
+                    if (controller.data && controller.data.showAssistantButton) {
+                        addRow(subUl, {
+                            label: 'Widget Editor+ Assistant',
+                            icon: 'icon-ai-sparkle-fill',
+                            href: UrlHelpers.getAssistantUrl(targetSysId)
+                        });
+                    }
+                    addRow(subUl, {
+                        label: 'Compare+',
+                        icon: 'icon-replace-all',
+                        href: UrlHelpers.getCompareUrl(targetSysId)
+                    });
+                }, 'icon-open-document-new-tab');
+            }
 
-            // Remove disabled native SP items, then clean up orphan dividers
-            filterNativeItems(ul, prefs);
-            cleanupDividers(ul);
+            addOpenWithRows(mainList, widgetSysId, prefs.defaultEditor, headerName);
 
-            // Used by "Open <table> record" and "Open page" below.
+            // Used by both "Open page…" and "Open <table> record" below.
             const recordParams = new URLSearchParams(location.search);
             let recordTable = recordParams.get('table');
             let recordSysId = recordParams.get('sys_id');
             if ((!recordTable || !recordSysId) && _pendingWidgetEl) {
-                const wScope = ScopeResolver.getActualWidgetScope(_pendingWidgetEl);
-                const wData = wScope && wScope.data;
+                const wScope0 = ScopeResolver.getActualWidgetScope(_pendingWidgetEl);
+                const wData = wScope0 && wScope0.data;
                 if (wData) {
-                    if (!recordTable) { recordTable = wData.table || wData.tableName || null; }
-                    if (!recordSysId) { recordSysId = wData.sys_id || null; }
+                    if (!recordTable) recordTable = wData.table || wData.tableName || null;
+                    if (!recordSysId) recordSysId = wData.sys_id || null;
                 }
             }
 
-            // Inject "Open <table> record" in the same section as the "Open with" items
-            if (prefs.openRecordInBackend !== false) {
-                if (recordTable && recordSysId) {
-                    const openRecordLi = document.createElement('li');
-                    openRecordLi.setAttribute('role', 'menuitem');
-                    openRecordLi.setAttribute('data-we-injected', '1');
-                    const openRecordA = document.createElement('a');
-                    openRecordA.className = 'sp-context-menu-padding';
-                    openRecordA.setAttribute('tabindex', '-1');
-                    openRecordA.href = '/nav_to.do?uri=' + encodeURIComponent(recordTable) + '.do%3Fsys_id=' + encodeURIComponent(recordSysId);
-                    openRecordA.target = '_blank';
-                    openRecordA.innerHTML = 'Open ' + Utils.escapeHtml(recordTable) + ' record' + EXTERNAL_LINK_ICON;
-                    openRecordLi.appendChild(openRecordA);
-                    if (lastOpenWithLi) {
-                        ul.insertBefore(openRecordLi, lastOpenWithLi.nextSibling);
-                    } else {
-                        ul.appendChild(openRecordLi);
-                    }
+            addDivider(mainList);
+
+            // Page & Instance Submenu
+            const pageItems = [];
+            [
+                ['instanceOptions', 'Instance Options'],
+                ['instanceInPageEditor', 'Instance in Page Editor'],
+                ['pageInDesigner', 'Page in Designer'],
+                ['editContainerBackground', 'Edit Container Background']
+            ].forEach(([prefId, fallbackLabel]) => {
+                const item = native[prefId];
+                if (item && !item.disabled) {
+                    pageItems.push({ label: item.label || fallbackLabel, isLink: item.isLink, icon: 'icon-layout', onClick: forwardToNative(item) });
                 }
-            }
-
-            // Only shown when the native Page group is present, SP's signal that the widget is placed via Page Designer.
-            if (prefs.openPageInPortal !== false && pageGroupLastLi && _pendingInstanceSysId) {
-                const openPageLi = document.createElement('li');
-                openPageLi.setAttribute('role', 'menuitem');
-                openPageLi.setAttribute('data-we-injected', '1');
-                const openPageA = document.createElement('a');
-                openPageA.className = 'sp-context-menu-padding';
-                openPageA.setAttribute('tabindex', '-1');
-                openPageA.href = 'javascript:void(0)';
-                openPageA.textContent = 'Open page…';
-                (function (capturedWidgetSysId, capturedInstanceSysId, capturedTable, capturedSysId, capturedX, capturedY) {
-                    openPageA.addEventListener('click', function (e) {
-                        e.preventDefault();
-                        OverlayManager.closeSpOverlay(menuContainer);
-                        PortalPicker.open(capturedWidgetSysId, capturedInstanceSysId, capturedTable, capturedSysId, capturedX, capturedY);
-                    });
-                })(widgetSysId, _pendingInstanceSysId, recordTable, recordSysId, _pendingCursorX, _pendingCursorY);
-                openPageLi.appendChild(openPageA);
-                pageGroupLastLi.insertAdjacentElement('afterend', openPageLi);
-            }
-
-            // Runs before the rename pass below, while anchor text is still the original.
-            if (prefs.logRootScope !== false) {
-                let logScopeLi = null;
-                let logScopeDataLi = null;
-                ul.querySelectorAll('li').forEach(function (li) {
-                    const a = li.querySelector('a');
-                    if (!a) {
-                        return;
-                    }
-                    const t = a.textContent.trim();
-                    if (t === 'Log to console: $scope') {
-                        logScopeLi = li;
-                    } else if (t === 'Log to console: $scope.data') {
-                        logScopeDataLi = li;
+            });
+            if (_pendingInstanceSysId) {
+                pageItems.push({
+                    label: 'Open page\u2026',
+                    icon: 'icon-layout',
+                    onClick: () => {
+                        PortalPicker.open(widgetSysId, _pendingInstanceSysId, recordTable, recordSysId, _pendingCursorX, _pendingCursorY);
                     }
                 });
-                const rootScopeLi = document.createElement('li');
-                rootScopeLi.setAttribute('role', 'menuitem');
-                rootScopeLi.setAttribute('data-we-injected', '1');
-                const rootScopeA = document.createElement('a');
-                rootScopeA.className = 'sp-context-menu-padding';
-                rootScopeA.setAttribute('tabindex', '-1');
-                rootScopeA.href = 'javascript:void(0)';
-                rootScopeA.textContent = 'Log to console: $rootScope';
-                rootScopeA.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    OverlayManager.closeSpOverlay(menuContainer);
+            }
+            if (pageItems.length) {
+                addSubmenu(mainList, 'Page & Instance', 'Page & Instance', (subUl) => { pageItems.forEach((opts) => addRow(subUl, opts)); }, 'icon-layout');
+            }
+
+            // Widget Submenu (includes toggle items)
+            const widgetItems = [];
+            [
+                ['showWidgetCustomizations', 'Show Widget Customizations'],
+                ['widgetOptionsSchema', 'Widget Options Schema']
+            ].forEach(([prefId, fallbackLabel]) => {
+                const item = native[prefId];
+                if (item && !item.disabled) {
+                    widgetItems.push({ label: item.label || fallbackLabel, isLink: item.isLink, icon: 'icon-form', onClick: forwardToNative(item) });
+                }
+            });
+            const toggleItems = [
+                {
+                    label: document.querySelector('.scope-context-menu-button, .scope-context-menu') ? 'Hide scope buttons' : 'Show scope buttons',
+                    icon: 'icon-workflow',
+                    fn: function (_s, _e) {
+                        const existing = document.querySelectorAll('.scope-context-menu-button, .scope-context-menu');
+                        if (existing.length > 0) {
+                            localStorage.setItem(SHOW_SCOPE_MENUS_KEY, 'false');
+                            existing.forEach((el) => { el.remove(); });
+                        } else {
+                            ScopeButtons.show();
+                            localStorage.setItem(SHOW_SCOPE_MENUS_KEY, 'true');
+                        }
+                    }
+                },
+                {
+                    label: LoadTimeTracker.isActive() ? 'Hide load times' : 'Show load times',
+                    icon: 'icon-history',
+                    fn: function () {
+                        if (LoadTimeTracker.isActive()) {
+                            LoadTimeTracker.deactivate();
+                        } else {
+                            LoadTimeTracker.activate();
+                        }
+                    }
+                }
+            ];
+            if (widgetItems.length || toggleItems.length) {
+                addSubmenu(mainList, 'Widget options', 'Widget options', (subUl) => {
+                    widgetItems.forEach((opts) => addRow(subUl, opts));
+                    if (widgetItems.length && toggleItems.length) {
+                        addDivider(subUl);
+                    }
+                    toggleItems.forEach((item) => {
+                        addRow(subUl, { label: item.label, icon: item.icon, onClick: () => item.fn(null, _pendingContextmenuEvent) });
+                    });
+                }, 'icon-application-generic');
+            }
+
+            if (recordTable && recordSysId) {
+                addRow(mainList, {
+                    label: 'Open <code>' + Utils.escapeHtml(recordTable) + '</code> record',
+                    icon: 'icon-form',
+                    href: '/nav_to.do?uri=' + encodeURIComponent(recordTable) + '.do%3Fsys_id=' + encodeURIComponent(recordSysId)
+                });
+            }
+
+            addDivider(mainList);
+
+            // Diagnostics Section (no row icons)
+            addSectionHeader(mainList, 'Diagnostics', 'icon-code');
+
+            const targetWidgetEl = _pendingWidgetEl || (_pendingEmbeddedWidgets.length > 0 ? _pendingEmbeddedWidgets[0].el : null);
+            const logVerb = prefs.assignConsoleVars !== false ? 'Add to console: ' : 'Log to console: ';
+            if (targetWidgetEl) {
+                addRow(mainList, {
+                    label: 'Log to console: <code>$scope.data</code>',
+                    onClick: () => {
+                        const s = ScopeResolver.getActualWidgetScope(targetWidgetEl);
+                        const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
+                        const label = wName ? '$scope.data (' + wName + ')' : '$scope.data';
+                        console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s && s.data);
+                    }
+                });
+                addRow(mainList, {
+                    label: logVerb + '<code>$scope</code>',
+                    onClick: () => {
+                        const s = ScopeResolver.getActualWidgetScope(targetWidgetEl);
+                        const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
+                        const label = wName ? '$scope (' + wName + ')' : '$scope';
+                        console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s);
+                        if (prefs.assignConsoleVars !== false) Utils.assignConsoleVar('$scope', s);
+                    }
+                });
+            }
+            addRow(mainList, {
+                label: logVerb + '<code>$rootScope</code>',
+                onClick: () => {
                     const rootScope = angular.element(document.body).scope();
                     console.log('%c$rootScope\n', 'color: #0891b2; font-weight: bold;', rootScope);
-                    if (prefs.assignConsoleVars !== false) {
-                        Utils.assignConsoleVar('$rootScope', rootScope);
-                    }
-                });
-                rootScopeLi.appendChild(rootScopeA);
-                // Falls back to $scope.data when $scope is hidden by prefs, keeping $rootScope in the console-logging section.
-                const consoleLi = logScopeLi || logScopeDataLi;
-                if (consoleLi) {
-                    ul.insertBefore(rootScopeLi, consoleLi.nextSibling);
-                } else {
-                    ul.appendChild(rootScopeLi);
-                }
-            }
-
-            // $scope.data is excluded — it's never added to the window object.
-            if (prefs.assignConsoleVars !== false) {
-                ul.querySelectorAll('li a').forEach((a) => {
-                    const text = a.textContent;
-                    if (text.indexOf('Log to console:') === 0 && text !== 'Log to console: $scope.data') {
-                        a.textContent = text.replace('Log to console:', 'Add to console:');
-                    }
-                });
-            }
-
-            // Replace SP's ➚ arrow on native external-link items with icon
-            ul.querySelectorAll('li:not([data-we-injected]) a').forEach((a) => {
-                const text = a.textContent;
-                if (/[➚↗]/.test(text)) {
-                    a.innerHTML = Utils.escapeHtml(text.replace(/\s*[➚↗]\s*$/, '')) + EXTERNAL_LINK_ICON;
+                    if (prefs.assignConsoleVars !== false) Utils.assignConsoleVar('$rootScope', rootScope);
                 }
             });
 
-            // Inject ⚙ settings button into the header row
-            let headerLi = null;
-            Array.from(ul.children).some((li) => {
-                if (!li.classList.contains('divider') && !li.querySelector('a')) {
-                    headerLi = li;
-                    return true;
-                }
-                return false;
-            });
-
-            if (headerLi && _pendingEmbeddedWidgets.length > 0) {
-                headerLi.textContent = _pendingEmbeddedWidgets[0].name;
-            }
-
-            if (headerLi) {
-                const cogBtn = document.createElement('button');
-                cogBtn.setAttribute('data-we-cog', '1');
-                cogBtn.innerHTML = '<i class="icon-cog"></i>';
-                cogBtn.setAttribute('title', 'Debug menu preferences');
-                Object.assign(cogBtn.style, {
-                    position: 'absolute',
-                    top: '50%',
-                    right: '10px',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    padding: '0',
-                    lineHeight: '1'
-                });
-                cogBtn.addEventListener('mouseenter', function () {
-                    cogBtn.querySelector('i').className = 'icon-cog-selected';
-                });
-                cogBtn.addEventListener('mouseleave', function () {
-                    cogBtn.querySelector('i').className = 'icon-cog';
-                });
-                cogBtn.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Close SP's overlay before opening the modal
-                    OverlayManager.closeSpOverlay(menuContainer);
-                    scope.$applyAsync(function () {
-                        controller.openPreferences();
-                    });
-                });
-                headerLi.style.position = 'sticky';
-                headerLi.style.top = '0';
-                headerLi.style.paddingRight = '34px'; // reserve space so text doesn't run under the icon
-                headerLi.style.marginBottom = '0';
-                headerLi.appendChild(cogBtn);
-            }
-
-            // _pendingEmbeddedWidgets is innermost-first; index 0 (the clicked widget) is already shown in the main header.
+            // Embedding / Ancestor Widgets Hierarchy as Drill-Down Submenus
             const embeddedWidgets = _pendingEmbeddedWidgets.slice(1);
             if (embeddedWidgets.length > 0) {
-                const showOpen = prefs.openEmbeddedWidget !== false;
-                const showLog = prefs.logEmbeddedScope !== false;
-                if (showOpen || showLog) {
-                    const embSep = document.createElement('li');
-                    embSep.setAttribute('data-we-injected', '1');
-                    embSep.setAttribute('role', 'separator');
-                    embSep.className = 'divider';
-                    ul.appendChild(embSep);
+                addDivider(mainList);
+                addSectionHeader(mainList, 'Widget Hierarchy', 'icon-tree');
+                embeddedWidgets.forEach((info) => {
+                    addSubmenu(mainList, info.name, info.name, (parentSubList) => {
+                        const embEditor = prefs.defaultEditor || 'openWithEditorPlus';
 
-                    embeddedWidgets.forEach((info) => {
-                        const headerLiEmb = document.createElement('li');
-                        headerLiEmb.setAttribute('data-we-injected', '1');
-                        headerLiEmb.setAttribute('role', 'presentation');
-                        headerLiEmb.className = 'dropdown-header';
-                        headerLiEmb.textContent = info.name;
-                        headerLiEmb.style.color = 'rgb(var(--now-dropdown-list_sublabel--color, 66, 80, 81))';
-                        headerLiEmb.style.fontWeight = '600';
-                        ul.appendChild(headerLiEmb);
+                        // 1. Open in default editor & Open with… for the parent widget
+                        addOpenWithRows(parentSubList, info.sysId, embEditor, info.name);
 
-                        if (showOpen) {
-                            const openLi = document.createElement('li');
-                            openLi.setAttribute('role', 'menuitem');
-                            openLi.setAttribute('data-we-injected', '1');
-                            const openA = document.createElement('a');
-                            openA.className = 'sp-context-menu-padding';
-                            openA.setAttribute('tabindex', '-1');
-
-                            const embEditor = prefs.embeddedWidgetEditor || 'openWithEditorPlus';
-                            if (embEditor === 'openWithFormModal') {
-                                openA.href = 'javascript:void(0)';
-                                openA.textContent = 'Open ' + info.widgetName;
-                                (function (capturedInfo) {
-                                    openA.addEventListener('click', function (e) {
-                                        e.preventDefault();
-                                        OverlayManager.closeSpOverlay(menuContainer);
-                                        OverlayManager.openWidgetFormModal(capturedInfo.sysId);
-                                    });
-                                })(info);
-                            } else {
-                                const embHref = embEditor === 'openWithEditorSP' ? UrlHelpers.getSPEditorUrl(info.sysId) :
-                                    embEditor === 'openWithPlatform' ? UrlHelpers.getEditorPlatformUrl(info.sysId) :
-                                        UrlHelpers.getEditorPlusUrl(info.sysId);
-                                openA.href = embHref;
-                                openA.target = '_blank';
-                                openA.innerHTML = 'Open ' + Utils.escapeHtml(info.widgetName) + EXTERNAL_LINK_ICON;
+                        // 2. Diagnostics for the parent widget (no row icons)
+                        addDivider(parentSubList);
+                        addSectionHeader(parentSubList, 'Diagnostics', 'icon-code');
+                        addRow(parentSubList, {
+                            label: 'Log to console: <code>$scope.data</code>',
+                            onClick: () => {
+                                const s = ScopeResolver.getActualWidgetScope(info.el);
+                                console.log('%c$scope.data (' + info.name + ')\n', 'color: #0891b2; font-weight: bold;', s && s.data);
                             }
+                        });
+                        addRow(parentSubList, {
+                            label: logVerb + '<code>$scope</code>',
+                            onClick: () => {
+                                const s = ScopeResolver.getActualWidgetScope(info.el);
+                                console.log('%c$scope (' + info.name + ')\n', 'color: #0891b2; font-weight: bold;', s);
+                                if (prefs.assignConsoleVars !== false) Utils.assignConsoleVar('$scope', s);
+                            }
+                        });
 
-                            openLi.appendChild(openA);
-                            ul.appendChild(openLi);
-                        }
-
-                        if (showLog) {
-                            const logEmbLi = document.createElement('li');
-                            logEmbLi.setAttribute('role', 'menuitem');
-                            logEmbLi.setAttribute('data-we-injected', '1');
-                            const logEmbA = document.createElement('a');
-                            logEmbA.className = 'sp-context-menu-padding';
-                            logEmbA.setAttribute('tabindex', '-1');
-                            logEmbA.href = 'javascript:void(0)';
-                            logEmbA.textContent = (prefs.assignConsoleVars !== false ? 'Add to console: Embedded $scope' : 'Log to console: Embedded $scope');
-                            (function (capturedInfo) {
-                                logEmbA.addEventListener('click', function (e) {
-                                    e.preventDefault();
-                                    OverlayManager.closeSpOverlay(menuContainer);
-                                    const embeddedScope = ScopeResolver.getActualWidgetScope(capturedInfo.el);
-                                    console.log('%cEmbedded $scope (' + capturedInfo.name + ')\n', 'color: #0891b2; font-weight: bold;', embeddedScope);
-                                    if (prefs.assignConsoleVars !== false) {
-                                        Utils.assignConsoleVar('$scope', embeddedScope);
-                                    }
-                                });
-                            })(info);
-                            logEmbLi.appendChild(logEmbA);
-                            ul.appendChild(logEmbLi);
+                        // 3. Parent instance options / open page (if available)
+                        const parentInstSysId = ScopeResolver.getInstanceSysId(info.el);
+                        if (parentInstSysId) {
+                            addDivider(parentSubList);
+                            addRow(parentSubList, {
+                                label: 'Open page\u2026',
+                                icon: 'icon-layout',
+                                onClick: () => {
+                                    PortalPicker.open(info.sysId, parentInstSysId, recordTable, recordSysId, _pendingCursorX, _pendingCursorY);
+                                }
+                            });
                         }
                     });
+                });
+            }
+
+            // Legacy widget-contributed items (widget._debugContextMenu / _weWidgetItems).
+            if (_pendingWidgetEl) {
+                try {
+                    const wScope = ScopeResolver.getActualWidgetScope(_pendingWidgetEl);
+                    let items = null;
+                    let callbackScope = wScope;
+                    if (wScope && wScope.widget && Array.isArray(wScope.widget._weWidgetItems) && wScope.widget._weWidgetItems.length) {
+                        items = wScope.widget._weWidgetItems;
+                    } else if (wScope) {
+                        let ps = wScope.$parent;
+                        while (ps) {
+                            if (ps.widget && ps.widget._customEnhancement &&
+                                Array.isArray(ps.widget._weWidgetItems) && ps.widget._weWidgetItems.length) {
+                                items = ps.widget._weWidgetItems;
+                                callbackScope = ps;
+                                break;
+                            }
+                            ps = ps.$parent;
+                        }
+                    }
+                    if (items && items.length) {
+                        addDivider(mainList);
+                        items.forEach((item) => {
+                            if (!item) {
+                                addDivider(mainList);
+                            } else {
+                                addRow(mainList, {
+                                    label: item[0],
+                                    onClick: () => { try { item[1](callbackScope, _pendingContextmenuEvent); } catch (_ex) { } }
+                                });
+                            }
+                        });
+                    }
+                } catch (_e) { }
+            }
+
+            const activeDialog = document.querySelector('dialog[open]');
+            if (activeDialog) {
+                activeDialog.appendChild(shell);
+            } else {
+                document.body.appendChild(shell);
+            }
+            if (shell.showPopover) shell.showPopover();
+            _shell = shell;
+
+            function getActiveActionableItems() {
+                if (!navStack.length) return [];
+                const active = navStack[navStack.length - 1];
+                if (!active || !active.panel) return [];
+                return Array.from(active.panel.querySelectorAll('a:not([aria-disabled="true"]), button:not([disabled])'));
+            }
+
+            function focusItem(el) {
+                if (!el) return;
+                try { el.focus(); } catch (_e) { }
+            }
+
+            _closeOnOutsideClick = (e) => { if (!shell.contains(e.target)) close(); };
+            _closeOnEscape = (e) => {
+                const items = getActiveActionableItems();
+                const currentIdx = items.indexOf(document.activeElement);
+
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    close();
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (!items.length) return;
+                    const nextIdx = currentIdx >= 0 ? ((currentIdx + 1) % items.length) : 0;
+                    focusItem(items[nextIdx]);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (!items.length) return;
+                    const prevIdx = currentIdx >= 0 ? ((currentIdx - 1 + items.length) % items.length) : (items.length - 1);
+                    focusItem(items[prevIdx]);
+                } else if (e.key === 'Home') {
+                    e.preventDefault();
+                    if (items.length) focusItem(items[0]);
+                } else if (e.key === 'End') {
+                    e.preventDefault();
+                    if (items.length) focusItem(items[items.length - 1]);
+                } else if (e.key === 'ArrowRight') {
+                    if (document.activeElement && document.activeElement.closest('.we-submenu-li')) {
+                        e.preventDefault();
+                        document.activeElement.click();
+                        requestAnimationFrame(() => {
+                            const newItems = getActiveActionableItems();
+                            if (newItems.length > 1) focusItem(newItems[1]);
+                            else if (newItems.length) focusItem(newItems[0]);
+                        });
+                    }
+                } else if ((e.key === 'ArrowLeft' || e.key === 'Backspace') && navStack.length > 1) {
+                    e.preventDefault();
+                    navigateBack();
+                    requestAnimationFrame(() => {
+                        const prevItems = getActiveActionableItems();
+                        if (prevItems.length) focusItem(prevItems[0]);
+                    });
+                }
+            };
+            document.addEventListener('click', _closeOnOutsideClick, true);
+            document.addEventListener('keydown', _closeOnEscape, true);
+
+            let _menuFixedTop = null;
+            let _menuFixedLeft = null;
+
+            function updateContainerHeight(activePanel) {
+                if (!activePanel) return;
+                const pad = 8;
+                const topPos = _menuFixedTop !== null ? _menuFixedTop : pad;
+                const maxAvailableH = Math.max(120, window.innerHeight - topPos - pad);
+
+                const list = activePanel.querySelector('.we-menu-list');
+                const naturalH = (list ? list.offsetHeight : activePanel.scrollHeight) || activePanel.scrollHeight || 300;
+
+                if (naturalH + 2 <= maxAvailableH) {
+                    const targetH = naturalH + 2;
+                    container.style.height = targetH + 'px';
+                    activePanel.style.overflowY = 'hidden';
+                    activePanel.style.maxHeight = 'none';
+                } else {
+                    container.style.height = maxAvailableH + 'px';
+                    activePanel.style.overflowY = 'auto';
+                    activePanel.style.maxHeight = (maxAvailableH - 2) + 'px';
                 }
             }
 
-            // Widen menu to avoid crowding
-            ul.style.minWidth = '220px';
-
-            // pointer-events:none on the container means SP's own outside-click handler never fires, so this replicates it.
-            const closeOnOutsideClick = (e) => {
-                if (!ul.contains(e.target)) {
-                    document.removeEventListener('click', closeOnOutsideClick, true);
-                    document.removeEventListener('keydown', closeOnEscape, true);
-                    OverlayManager.closeSpOverlay(menuContainer);
-                }
-            };
-            const closeOnEscape = (e) => {
-                if (e.key === 'Escape') {
-                    document.removeEventListener('click', closeOnOutsideClick, true);
-                    document.removeEventListener('keydown', closeOnEscape, true);
-                    OverlayManager.closeSpOverlay(menuContainer);
-                }
-            };
-            document.addEventListener('click', closeOnOutsideClick, true);
-            document.addEventListener('keydown', closeOnEscape, true);
-
-            // rAF ensures SP has finished its own positioning before this overrides it.
-            requestAnimationFrame(function () {
-                const pad = 10;
+            function initPosition() {
+                const pad = 8;
                 const vw = window.innerWidth;
                 const vh = window.innerHeight;
                 const cursorX = _pendingCursorX;
                 const cursorY = _pendingCursorY;
+                const menuW = 285;
 
-                // Measure natural height before applying any constraint.
-                ul.style.maxHeight = '';
-                ul.style.overflowY = 'hidden';
-                ul.style.overflowX = 'hidden';
-                const naturalRect = ul.getBoundingClientRect();
-                const naturalH = naturalRect.height;
-                const menuW = naturalRect.width || 220;
+                const list = mainPanel.querySelector('.we-menu-list');
+                const naturalH = (list ? list.offsetHeight : mainPanel.scrollHeight) || mainPanel.scrollHeight || 380;
+                const menuH = Math.min(naturalH + 2, vh - 2 * pad);
 
-                const spaceBelow = vh - cursorY - pad;
-                const spaceAbove = cursorY - pad;
-
-                // Opens below unless it doesn't fit but fits above, or there's more room above.
-                let openBelow, constrainedH;
-                if (naturalH <= spaceBelow) {
-                    openBelow = true;
-                    constrainedH = null;
-                } else if (naturalH <= spaceAbove) {
-                    openBelow = false;
-                    constrainedH = null;
-                } else if (spaceBelow >= spaceAbove) {
-                    openBelow = true;
-                    constrainedH = Math.max(120, spaceBelow);
+                // 1. Fixed Horizontal positioning
+                if (cursorX + menuW <= vw - pad) {
+                    _menuFixedLeft = cursorX;
+                } else if (cursorX - menuW >= pad) {
+                    _menuFixedLeft = cursorX - menuW;
                 } else {
-                    openBelow = false;
-                    constrainedH = Math.max(120, spaceAbove);
+                    _menuFixedLeft = Math.max(pad, Math.min(vw - menuW - pad, cursorX));
                 }
 
-                if (constrainedH !== null) {
-                    ul.style.maxHeight = constrainedH + 'px';
-                    ul.style.overflowY = 'auto';
-                }
-
-                const menuH = constrainedH !== null ? constrainedH : naturalH;
-
-                const top = openBelow ? cursorY : Math.max(pad, cursorY - menuH);
-                let left = cursorX;
-                if (left + menuW > vw - pad) {
-                    left = Math.max(pad, cursorX - menuW);
-                }
-
-                // Fixes the ul directly (not the container) since SP's container is width:100%, which would double the offset if moved. Also sets display:block since our standalone overlay lacks SP's Angular binding for it.
-                ul.style.display = 'block';
-                ul.style.position = 'fixed';
-                ul.style.top = top + 'px';
-                ul.style.left = left + 'px';
-            });
-        }
-
-        /**
-         * Removes any native SP debug menu items that have been disabled in prefs.
-         * Matches by anchor text using NATIVE_ITEM_MATCHERS.
-         * @param {Element} ul
-         * @param {Object}  prefs
-         */
-        function filterNativeItems(ul, prefs) {
-            ul.querySelectorAll('li').forEach((li) => {
-                const a = li.querySelector('a');
-                if (!a) {
-                    return;
-                }
-                const text = a.textContent.trim();
-                NATIVE_ITEM_MATCHERS.forEach((def) => {
-                    if (def.match(text) && prefs[def.id] === false) {
-                        li.remove();
-                    }
-                });
-            });
-
-            // Reorder: move "Widget Options Schema" immediately after "Show/Hide Widget Customizations"
-            let customizationsLi = null;
-            let optionsSchemaLi = null;
-            ul.querySelectorAll('li').forEach((li) => {
-                const a = li.querySelector('a');
-                if (!a) { return; }
-                const text = a.textContent.trim();
-                if (text === 'Show Widget Customizations' || text === 'Hide Widget Customizations') {
-                    customizationsLi = li;
-                } else if (text === 'Widget Options Schema') {
-                    optionsSchemaLi = li;
-                }
-            });
-            if (customizationsLi && optionsSchemaLi && customizationsLi.nextElementSibling !== optionsSchemaLi) {
-                customizationsLi.insertAdjacentElement('afterend', optionsSchemaLi);
-            }
-        }
-
-        /**
-         * Removes consecutive dividers, dividers immediately after the header, and
-         * any trailing divider.  Call after item removal to keep the menu tidy.
-         * @param {Element} ul
-         */
-        function cleanupDividers(ul) {
-            let prevType = 'start'; // 'start' | 'header' | 'item' | 'divider'
-
-            Array.from(ul.children).forEach((li) => {
-                const isDivider = li.classList.contains('divider');
-                const hasAnchor = !!li.querySelector('a');
-
-                if (!isDivider && !hasAnchor) {
-                    // The "generated in" header — never remove
-                    prevType = 'header';
-                    return;
-                }
-
-                if (isDivider) {
-                    if (prevType === 'start' || prevType === 'header' || prevType === 'divider') {
-                        li.remove();
-                    } else {
-                        prevType = 'divider';
-                    }
+                // 2. Fixed Vertical positioning (never changes during submenu transitions)
+                if (cursorY + menuH <= vh - pad) {
+                    _menuFixedTop = cursorY;
+                } else if (cursorY - menuH >= pad) {
+                    _menuFixedTop = cursorY - menuH;
                 } else {
-                    prevType = 'item';
+                    _menuFixedTop = Math.max(pad, vh - menuH - pad);
                 }
-            });
 
-            // Remove a trailing divider left after the last item
-            const allLi = ul.querySelectorAll('li');
-            if (allLi.length > 0 && allLi[allLi.length - 1].classList.contains('divider')) {
-                allLi[allLi.length - 1].remove();
+                shell.style.setProperty('position', 'fixed', 'important');
+                shell.style.setProperty('top', Math.round(_menuFixedTop) + 'px', 'important');
+                shell.style.setProperty('left', Math.round(_menuFixedLeft) + 'px', 'important');
+                shell.style.setProperty('margin', '0', 'important');
+
+                updateContainerHeight(mainPanel);
             }
+
+            initPosition();
+            requestAnimationFrame(initPosition);
         }
 
-        return { injectWidgetDebugItems, injectEditorItems, filterNativeItems, cleanupDividers };
+        return { open, close };
     }());
 
 
@@ -2503,6 +2593,9 @@ function link(scope, element, attrs, controller) {
                 for (const node of mutation.addedNodes) {
                     if (node.nodeType === 1 && node.hasAttribute && node.hasAttribute('widget')) {
                         setTimeout(function () {
+                            if (((controller.data && controller.data.contextMenuMode) || 'enhanced') !== 'enhanced') {
+                                return;
+                            }
                             const s = angular.element(node).scope();
                             if (s && s.widget && !s.widget._customEnhancement) {
                                 s.widget._customEnhancement = true;
@@ -2600,7 +2693,7 @@ function link(scope, element, attrs, controller) {
 
     document.addEventListener('contextmenu', function (e) {
         // stopPropagation isolates a right-click on an already-open menu item (e.g. "Copy Link Address") from our own teardown logic and other listeners, so only the browser's native context menu proceeds.
-        const menuItem = e.target.closest && e.target.closest('[role="contentinfo"].dropdown ul.dropdown-menu, dialog[open] ul.dropdown-menu');
+        const menuItem = e.target.closest && e.target.closest('.we-custom-menu, [role="contentinfo"].dropdown ul.dropdown-menu, dialog[open] ul.dropdown-menu');
         if (menuItem) {
             e.stopPropagation();
             return;
@@ -2612,7 +2705,19 @@ function link(scope, element, attrs, controller) {
         _pendingCursorX = e.clientX;
         _pendingCursorY = e.clientY;
         _pendingContextmenuEvent = e;
+
         if (!e.ctrlKey) {
+            return;
+        }
+        const contextMenuMode = (controller.data && controller.data.contextMenuMode) || 'enhanced';
+        if (contextMenuMode === 'off') {
+            // Suppress both the browser's native menu and SP's own debug overlay.
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        if (contextMenuMode === 'standard') {
+            // Leave Ctrl+Right-click entirely to the legacy Service Portal debug menu.
             return;
         }
         // Only clean up stale overlays when SP will actually create a new one.
@@ -2629,19 +2734,22 @@ function link(scope, element, attrs, controller) {
             }
             el = el.parentElement;
         }
-
-        // Header/footer widgets lack SP's span.context, so SP never creates a debug overlay for them; create our own if none appears within 50ms.
-        if (_pendingWidgetSysId && _pendingWidgetEl && !_pendingWidgetEl.querySelector('span.context')) {
-            e.preventDefault(); // suppress browser context menu; SP does this for normal widgets
-            setTimeout(function () {
-                if (!document.querySelector('body > [role="contentinfo"].dropdown.clearfix, dialog[open] [role="contentinfo"].dropdown.clearfix')) {
-                    OverlayManager.createStandaloneOverlay();
-                }
-            }, 50);
+        if (!_pendingWidgetSysId || !_pendingWidgetEl) {
+            return;
         }
+        e.preventDefault(); // suppress the browser's native context menu — CustomMenu replaces it entirely
+        if (!_pendingWidgetEl.querySelector('span.context')) {
+            // Header/footer widgets lack SP's span.context, so SP never creates a debug overlay for them.
+            setTimeout(function () { CustomMenu.open(null); }, 50);
+        }
+        // Otherwise SP still builds (and reveals) its native overlay as before; bodyObserver below hides it and hands off to CustomMenu.
     }, true);
 
     const bodyObserver = new MutationObserver((mutations) => {
+        if (((controller.data && controller.data.contextMenuMode) || 'enhanced') !== 'enhanced') {
+            // Not in enhanced mode — leave any SP-native overlay alone, untouched.
+            return;
+        }
         // Collect all overlays added in this batch.
         const addedOverlays = [];
         for (const mutation of mutations) {
@@ -2671,13 +2779,15 @@ function link(scope, element, attrs, controller) {
         }
         if (targetOverlay.showPopover) {
             targetOverlay.setAttribute('popover', 'manual');
-            targetOverlay.style.background = 'none';
-            targetOverlay.style.border = 'none';
-            targetOverlay.style.padding = '0';
             targetOverlay.showPopover();
         }
-        MenuInjector.injectEditorItems(targetOverlay);
-        OverlayManager.attachOverlayObserver(targetOverlay);
+        // Kept in the DOM (not removed) so its own handlers still work — CustomMenu forward-clicks into it.
+        targetOverlay.style.opacity = '0';
+        targetOverlay.style.pointerEvents = 'none';
+        // Wait for SP to finish populating its (hidden) <ul> before harvesting from it.
+        OverlayManager.whenSettled(targetOverlay, function () {
+            CustomMenu.open(targetOverlay);
+        });
     });
     bodyObserver.observe(document.body, { childList: true });
 }

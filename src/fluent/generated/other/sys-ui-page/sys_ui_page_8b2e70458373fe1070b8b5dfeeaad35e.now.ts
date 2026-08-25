@@ -31,6 +31,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
             sys_id: _weConfigParams.get('widget_id') || '',
             version_id: _weConfigParams.get('version_id') || '',
             is_new: _weConfigParams.get('new') === '1',
+            openPanel: _weConfigParams.get('open') || '',
             widgetPageSysId: '8b2e70458373fe1070b8b5dfeeaad35e',
             diffPageSysId: '51ec3d258363b61070b8b5dfeeaad36b',
             siteTitle: '\${gs.getProperty("glide.product.name", "ServiceNow")}',
@@ -3528,7 +3529,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     <div>
                                         <span class="input-group-checkbox">
                                             <input type="checkbox" class="checkbox" id="chk-show-assistant-button" ng-model="userPrefsEdit.showAssistantButton" />
-                                            <label class="checkbox-label" for="chk-show-assistant-button" we-tooltip-title="Displays a button in the header bar that opens Widget Editor+ Assistant for the current widget.">Show Widget Editor+ Assistant (AI context helper)</label>
+                                            <label class="checkbox-label" for="chk-show-assistant-button" we-tooltip-title="Off also hides Widget Editor+ Assistant from the header bar and the Service Portal debug menu.">Show Widget Editor+ Assistant (AI context helper)</label>
                                         </span>
                                     </div>
                                 </div>
@@ -3652,6 +3653,17 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <button type="button" class="we-spin-btn we-spin-inc" ng-click="userPrefsEdit.remBase = userPrefsEdit.remBase &lt; 100 ? userPrefsEdit.remBase + 1 : 100" aria-label="Increase 1rem base">+</button>
                                     </div>
                                     <span style="font-size:var(--now-font-size--md);color:rgb(var(--now-color_text--secondary))">px</span>
+                                </div>
+                            </div>
+                            <div class="we-modal-section">
+                                <div class="we-modal-section-title">Service Portal</div>
+                                <div class="we-modal-option we-modal-option-row">
+                                    <label class="we-modal-option-label" for="sel-context-menu-mode" we-tooltip-title="Which widget context menu to use.">Debug context menu</label>
+                                    <select id="sel-context-menu-mode" class="form-control we-pref-select" ng-model="userPrefsEdit.contextMenuMode">
+                                        <option value="enhanced">Enhanced</option>
+                                        <option value="standard">Standard</option>
+                                        <option value="off">Off</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -5655,6 +5667,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     alwaysShowLink: true,
                     realtimeWidgetUpdates: false,
                     showAssistantButton: false,
+                    contextMenuMode: 'enhanced',
                     autoIndent: true,
                     formatOnPaste: true,
                     formatOnType: true,
@@ -6371,6 +6384,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.userPrefs[k] = !!p[k];
                         }
                     });
+                    if (p.contextMenuMode === 'standard' || p.contextMenuMode === 'off') {
+                        $scope.userPrefs.contextMenuMode = p.contextMenuMode;
+                    } else if (p.hasOwnProperty('contextMenuMode')) {
+                        $scope.userPrefs.contextMenuMode = 'enhanced';
+                    }
                     if (window.SNMonacoPlus && SNMonacoPlus.setUnusedVarsEnabled) {
                         SNMonacoPlus.setUnusedVarsEnabled($scope.userPrefs.showUnusedVars);
                     }
@@ -6767,6 +6785,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }).then(function (d) {
                         if (d.success) {
                             $scope.versions = d.versions;
+                            // Auto-open the Versions dropdown once, on initial load only.
+                            if (window.WE_CONFIG && window.WE_CONFIG.openPanel === 'versions') {
+                                window.WE_CONFIG.openPanel = '';
+                                $scope.toggleDropdown('versions');
+                            }
                         }
                     });
                     ajax('getTemplates', {
@@ -10549,6 +10572,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.userPrefs.showOpenHistory;
                     prefs.showAssistantButton =
                         $scope.userPrefs.showAssistantButton;
+                    prefs.contextMenuMode =
+                        $scope.userPrefs.contextMenuMode || 'enhanced';
                     prefs.recentWidgets = $scope.userPrefs.recentWidgets;
                     prefs.order = $scope.coreEditorDefs.map(function (d) {
                         return d.key;
@@ -12568,6 +12593,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.userPrefs.showOpenHistory !== false,
                         showAssistantButton:
                             $scope.userPrefs.showAssistantButton,
+                        contextMenuMode:
+                            $scope.userPrefs.contextMenuMode || 'enhanced',
                         availableFonts: _getAvailableMonospaceFonts(),
                         googleFonts: _GOOGLE_FONTS,
                     };
@@ -12643,6 +12670,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.userPrefsEdit.showOpenHistory !== false;
                     $scope.userPrefs.showAssistantButton =
                         !!$scope.userPrefsEdit.showAssistantButton;
+                    $scope.userPrefs.contextMenuMode =
+                        $scope.userPrefsEdit.contextMenuMode || 'enhanced';
                     var ts = parseInt($scope.userPrefsEdit.tabSize, 10);
                     if (ts >= 1 && ts <= 8) {
                         $scope.userPrefs.tabSize = ts;
@@ -12941,6 +12970,11 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.userPrefsEdit[k] = p[k];
                         }
                     });
+                    if (p.contextMenuMode === 'standard' || p.contextMenuMode === 'off') {
+                        $scope.userPrefsEdit.contextMenuMode = p.contextMenuMode;
+                    } else if (p.hasOwnProperty('contextMenuMode')) {
+                        $scope.userPrefsEdit.contextMenuMode = 'enhanced';
+                    }
                     if (p.hasOwnProperty('fontSize')) {
                         var fs = parseInt(p.fontSize, 10);
                         if (fs >= 8 && fs <= 32) {
