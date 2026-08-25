@@ -2041,8 +2041,8 @@ function link(scope, element, attrs, controller) {
             // Builds a colored segmented latency indicator reflecting a widget's total load time
             // (1 bar green <500ms, 2 bars orange 500-1000ms, 3 bars red >1000ms), tooltip showing all
             // three available timing values. Returns '' when data or the preference is unavailable.
-            function buildTimingBarsHtml(widget) {
-                if (prefs.showTimingDots === false || !widget) return '';
+            function buildTimingIndicatorHtml(widget) {
+                if (prefs.showTimingIndicators === false || prefs.showTimingDots === false || !widget) return '';
                 const serverMs = parseFloat(widget._server_time) * 1000 * 10;
                 if (isNaN(serverMs)) return '';
                 const scriptMs = parseFloat(widget._script_execution_time) * 10;
@@ -2141,7 +2141,7 @@ function link(scope, element, attrs, controller) {
                 }, 220);
             }
 
-            function addSubmenu(list, labelText, titleText, buildItems, iconCls, dotHtml) {
+            function addSubmenu(list, labelText, titleText, buildItems, iconCls, indicatorHtml) {
                 const li = document.createElement('li');
                 li.setAttribute('role', 'presentation');
                 li.className = 'we-submenu-li';
@@ -2149,7 +2149,7 @@ function link(scope, element, attrs, controller) {
                 a.setAttribute('tabindex', '-1');
                 a.href = 'javascript:void(0)';
 
-                let iconHtml = '<span class="we-row-icon">' + (dotHtml || '') + '</span>';
+                let iconHtml = '<span class="we-row-icon">' + (indicatorHtml || '') + '</span>';
                 if (iconCls) {
                     if (iconCls !== _lastIcon) {
                         iconHtml = '<i class="' + iconCls + ' text-muted we-row-icon"></i>';
@@ -2181,7 +2181,7 @@ function link(scope, element, attrs, controller) {
             const headerWidgetScope = headerWidgetEl ? ScopeResolver.getActualWidgetScope(headerWidgetEl) : null;
             const titleSpan = document.createElement('span');
             titleSpan.className = 'we-header-title';
-            titleSpan.innerHTML = Utils.escapeHtml(headerName) + buildTimingBarsHtml(headerWidgetScope && headerWidgetScope.widget);
+            titleSpan.innerHTML = Utils.escapeHtml(headerName) + buildTimingIndicatorHtml(headerWidgetScope && headerWidgetScope.widget);
             titleSpan.title = headerName;
             headerLi.appendChild(titleSpan);
 
@@ -2390,7 +2390,7 @@ function link(scope, element, attrs, controller) {
                 addSectionHeader(mainList, 'Widget Hierarchy', 'icon-tree');
                 embeddedWidgets.forEach((info) => {
                     const infoScope = ScopeResolver.getActualWidgetScope(info.el);
-                    const infoBarsHtml = buildTimingBarsHtml(infoScope && infoScope.widget);
+                    const infoIndicatorHtml = buildTimingIndicatorHtml(infoScope && infoScope.widget);
                     addSubmenu(mainList, info.name, info.name, (parentSubList) => {
                         const embEditor = prefs.defaultEditor || 'openWithEditorPlus';
 
@@ -2428,7 +2428,7 @@ function link(scope, element, attrs, controller) {
                                 }
                             });
                         }
-                    }, undefined, infoBarsHtml);
+                    }, undefined, infoIndicatorHtml);
                 });
             }
 
