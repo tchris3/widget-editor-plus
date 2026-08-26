@@ -1,171 +1,200 @@
 # Widget Editor+
 
-Widget Editor+ is an enhanced Service Portal widget editor for ServiceNow. It integrates Microsoft Monaco Editor and adds developer productivity tools including server-side and client-side IntelliSense, version comparison, per-field saving, and an improved right-click debug menu for Service Portal pages.
+Widget Editor+ is a development and diagnostics suite for ServiceNow Service Portal developers. It replaces the standard widget editor with one built around the Microsoft Monaco Editor and ServiceNow-specific IntelliSense, alongside dedicated tools for version diffing (**Compare+**), runtime portal diagnostics (**Debug Context Menu**), and AI context extraction (**Widget Editor+ Assistant**).
 
-> **Native Platform Dependencies Only**: Widget Editor+ uses no external third-party libraries. All capabilities rely exclusively on libraries and frameworks already natively available within the ServiceNow platform (such as Microsoft Monaco Editor, AngularJS, jQuery, Bootstrap, and standard ServiceNow platform APIs).
+> **Zero External Dependencies**: Built entirely with native ServiceNow platform capabilities. All editor functionality, language tooling, and diagnostics rely strictly on libraries already present within the ServiceNow platform (Monaco Editor, AngularJS, Bootstrap, and standard ServiceNow client/server APIs).
 
 ---
 
 ## Table of Contents
-- [Features](#features)
-  - [Monaco Editor Engine](#monaco-editor-engine)
-  - [Editor & Collaboration Capabilities](#editor--collaboration-capabilities)
-  - [Right-Click Debug Menu](#right-click-debug-menu)
-- [Building and Installation](#building-and-installation)
+- [Core Components](#core-components)
+  - [1. Widget Editor+](#1-widget-editor)
+  - [2. Compare+](#2-compare)
+  - [3. Debug Context Menu](#3-debug-context-menu)
+  - [4. Widget Editor+ Assistant](#4-widget-editor-assistant)
+- [Installation & Deployment](#installation--deployment)
   - [Prerequisites](#prerequisites)
-  - [Build Process](#build-process)
-  - [Deployment / Installation](#deployment--installation)
+  - [Build with ServiceNow SDK](#build-with-servicenow-sdk)
+  - [Direct Deployment](#direct-deployment)
 - [End-to-End Testing](#end-to-end-testing)
-  - [Environment Setup](#environment-setup)
-  - [Automated Test Data Seeding](#automated-test-data-seeding)
-  - [Running E2E Tests](#running-e2e-tests)
 - [Configuration](#configuration)
   - [System Properties](#system-properties)
-  - [UI Scripts](#ui-scripts)
+  - [UI Scripts Reference](#ui-scripts-reference)
   - [User Preferences](#user-preferences)
 - [AI Disclosure](#ai-disclosure)
 
 ---
 
-## Features
+## Core Components
 
-### Monaco Editor Engine
-- **Rich Code Editor**: Powered by the Monaco Editor engine across HTML, CSS/SCSS, Client Controller, Server Script, Link Function, Option Schema, and Provider sub-editors.
-- **ServiceNow Client & Server IntelliSense**:
-  - Auto-completions and hover documentation for ServiceNow client APIs (`g_form`, `g_user`, `spUtil`, AngularJS services `$scope`, `$http`, `$q`, `$timeout`, `$interval`, `$location`).
-  - Auto-completions for server-side APIs (`GlideRecord`, `GlideRecordSecure`, `$sp`).
-  - Live Script Include dot-walk completions and JSDoc type inference.
-  - Live GlideRecord field name completions based on database schema queries.
-- **Language Support**:
-  - HTML Monarch tokenizer with AngularJS directive completions (`ng-app`, `ng-repeat`, `ng-model`, `sp-widget`, etc.).
-  - SCSS/CSS completion providers with CSS/SCSS variable suggestions and `px` to `rem` code actions.
-  - Extensible custom code actions framework for editor refactoring tools.
-
-### Editor & Collaboration Capabilities
-- **Per-Field Saving**: Save individual widget fields (such as Server Script or HTML Template) without needing to save the entire widget record.
-- **Version History & Diff Comparison**: Compare current code against previous versions side-by-side using the Monaco diff viewer.
-- **Real-Time User Presence**: Displays active co-authors currently inspecting or editing the same widget.
-- **Angular Template & Provider Management**: Integrated interface for managing attached Angular templates and Script Includes / Providers directly from the editor.
-
-### Right-Click Debug Menu
-Widget Editor+ includes a Service Portal debug menu widget (`sp_widget_widget_editor_debug_menu`) that integrates into Service Portal pages to provide developer diagnostics and quick navigation via Ctrl + Right-Click or context menu interaction.
-
-#### Debug Menu Capabilities
-- **Navigation Shortcuts**:
-  - Open widgets directly in Widget Editor+, Service Portal Widget Editor, Form Modal, or Platform record view.
-  - Quick links to Instance Options, Page in Designer, and Page in Page Editor.
-  - Open backend database record for pages or widgets with `table` and `sys_id` parameters.
-- **Widget Diagnostics & Customisation**:
-  - Display widget load timing metrics.
-  - Highlight customised vs. out-of-box widget status.
-  - Inline editing for container background properties.
-  - Inspect and edit Widget Options Schema.
-  - Scope toggles for embedded/nested widgets.
-- **Developer Console Integration**:
-  - Log `$scope`, `$scope.data`, or `$rootScope` directly to the browser console.
-  - Log embedded widget `$scope` when right-clicking nested widgets.
-  - Expose `$scope` and `$rootScope` globally on the `window` object for debugging in the browser console.
-- **User Preferences**:
-  - Preferences modal built using HTML5 `<dialog>` elements.
-  - Preferences persist locally in `localStorage` and synchronise across devices via user preference records (`monaco_plus.user_prefs`).
+| Component | Purpose |
+|---|---|
+| **Widget Editor+** | Monaco-powered IDE for Service Portal widgets, with ServiceNow client/server IntelliSense |
+| **Compare+** | Side-by-side Monaco diff viewer, including a condition-builder diff |
+| **Debug Context Menu** | Runtime diagnostics overlay on live Service Portal pages |
+| **Widget Editor+ Assistant** | AI-ready XML context bundle exporter and dependency traversal engine |
 
 ---
 
-## Building and Installation
+### 1. Widget Editor+
+
+A full-featured IDE for Service Portal widgets that replaces the standard editor experience with rich language intelligence and developer conveniences.
+
+- **Monaco Multi-Pane Editor**: Edit HTML Templates, CSS/SCSS, Client Controllers, Server Scripts, Link Functions, Option Schemas, and Demo Data within high-performance Monaco editor panes.
+- **Intelligent ServiceNow IntelliSense**:
+  - **Client-Side Autocomplete**: Full autocompletion and hover documentation for `g_form`, `g_user`, `spUtil`, and AngularJS core services (`$scope`, `$http`, `$q`, `$timeout`, `$interval`, `$location`).
+  - **Dynamic Controller Injection**: Injected AngularJS dependencies in `api.controller` are resolved and typed dynamically by parameter name in any order.
+  - **Server-Side Autocomplete**: Comprehensive API completions for `GlideRecord`, `GlideRecordSecure`, and `$sp`.
+  - **Table Schema & Inheritance Completion**: Field autocompletions recursively traverse extended table hierarchies (e.g. `incident` inheriting from `task`).
+  - **Script Include Dot-Walking**: Live dot-walk autocompletion and JSDoc type inference across Script Includes, including PrototypeJS methods and `this.property` assignments.
+  - **Native JSDoc `@typedef` Support**: Type inference and code completion for custom widget data models defined via JSDoc annotations.
+- **AngularJS Expression Validation & Highlighting**:
+  - Real-time syntax checking on `{{ }}` interpolations and `ng-*` directive expressions using AngularJS `$parse`.
+  - Rich token syntax highlighting for embedded Angular expressions within HTML templates.
+- **Productivity & Safety Tools**:
+  - **Per-Field Saving**: Save individual widget scripts (e.g. only the Server Script) independently without updating unchanged fields.
+  - **Angular Provider Scaffolding**: Automatically inserts boilerplate starter code when creating Directives, Factories, or Services.
+  - **Demo Data Editor**: Built-in JSON editor modal with real-time JSON syntax validation.
+  - **Real-Time Presence**: Live indicators showing other developers currently viewing or editing the same widget.
+  - **SN Utils Integration**: Direct "Open in VS Code" button integration for users with the SN Utils browser extension.
+  - **Fast Navigation**: Infinite-scrolling widget picker with search match highlighting and recent widget history.
+
+---
+
+### 2. Compare+
+
+A purpose-built version comparison and merge inspection tool (`widget_editor_diff.do`) available directly within the editor, via the Debug Context Menu, or as a list action on `sys_update_version` records.
+
+- **Monaco Code Diff Viewer**: Side-by-side Monaco diff inspection across all widget fields with synchronised scrolling and line-change badges.
+- **Visual Condition Builder Diff**: Side-by-side comparison for encoded condition queries, resolving raw query strings into human-readable field labels and condition statements.
+- **Display Value Resolution**: Automatically resolves reference values and `glide_list` fields into human-readable display values with sys_id tooltips.
+- **Composite-Key Target Support**: Accurately resolves version targets from XML update payloads for composite-keyed records (e.g. `sys_dictionary`).
+
+---
+
+### 3. Debug Context Menu
+
+A non-intrusive runtime diagnostic popover (`sp_widget_widget_editor_debug_menu`) embedded directly into Service Portal pages, accessible via **Ctrl + Right-Click** on any widget instance.
+
+- **Hierarchy & Navigation**:
+  - **Widget Hierarchy**: Drill down through nested and embedded widget trees to pinpoint child components.
+  - **Quick Editor Switching**: Seamlessly jump to Widget Editor+, ServiceNow Widget Editor, Compare+, Page in Designer, Page Editor, or the backend platform record.
+  - **Portal Navigation**: Smart URL resolution for opening widgets in their parent portal pages with interactive parameter prompts for widgets that read URL query strings (`$sp.getParameter`).
+- **Runtime Performance & Diagnostics**:
+  - **Generation-Time Indicators**: Visual latency indicators showing server generation time on widget rows with instant hover tooltips.
+  - **Console Debugging**: Log widget `$scope`, `$scope.data`, or `$rootScope` directly to the browser console, or expose `$scope` globally on `window` for live debugging.
+  - **Instance Customisation Checks**: Visual indicators highlighting whether an instance is customized or out-of-the-box, with inline editing for container background properties and options schemas.
+- **User Preference Controls**: Three-state toggle (**Enhanced / Standard / Off**) configurable from within the Widget Editor+ User Preferences modal.
+
+---
+
+### 4. Widget Editor+ Assistant
+
+An AI context bundle exporter (`widget_editor_assistant.do`) available as a standalone tool and embedded directly within Widget Editor+. It solves the challenge of exporting complex, interconnected ServiceNow application records into structured XML context for Large Language Models (ChatGPT, Claude, Gemini, Copilot).
+
+- **Automated Dependency Detection**:
+  - **Service Portal Pages (`sp_page`)**: Traverses complete page layout trees (`sp_container` → `sp_row` → `sp_column` → `sp_instance` → `sp_widget`).
+  - **Widgets (`sp_widget`)**: Scans scripts and templates for referenced Script Includes, Tables, Angular Templates (`sp_ng_template`), Angular Providers (`sp_angular_provider`), and embedded directives (`<sp-widget>`).
+  - **Server-Side Scripts**: Unified dependency resolution across Script Includes, Business Rules, Fix Scripts, and Scheduled Script Executions.
+  - **Record Producers (`sc_cat_item_producer`)**: Detects catalog variables (`item_option_new`), catalog UI policies, catalog client scripts, and target table definitions.
+  - **Notifications (`sysevent_email_action`)**: Identifies `${mail_script:Name}` tags and resolves referenced Mail Scripts (`sys_script_email`).
+  - **Tables (`sys_db_object`)**: Scans dictionary reference fields to resolve related table schemas (`?SCHEMA`).
+- **Extensible Relationship Engine**: Admin-configurable relationship rules defined through `monaco.plus.assistant.table_config.<table>` system properties.
+- **Favourites & Bundles**: Save and group frequently referenced record sets with user preference persistence and JSON export/import.
+- **Live Token Estimation**: Real-time token count estimation based on payload size with progress animations.
+- **Security Guardrails**: Table search blocklists, credential table withholding, and automated password redaction.
+
+---
+
+## Installation & Deployment
 
 ### Prerequisites
 - Node.js (v18 or higher recommended)
 - ServiceNow SDK (`@servicenow/sdk`)
+- A ServiceNow instance to deploy to
 
-### Build Process
+### Build with ServiceNow SDK
 1. Clone the repository and install dependencies:
    ```bash
+   git clone https://github.com/tchris3/widget-editor-plus.git
+   cd widget-editor-plus
    npm install
    ```
-2. Build the project using the ServiceNow SDK:
+2. Build the Fluent source definitions into update set XML:
    ```bash
    npm run build
    ```
-   This executes `now-sdk build`, compiling the Fluent TypeScript definitions under `src/fluent/` into update set XML files inside the `dist/app/` directory.
+   The compiled metadata is output to the `dist/app/` directory.
 
-### Deployment / Installation
-Deploy the application scope directly to a target ServiceNow instance:
+### Direct Deployment
+Deploy the application directly to your configured ServiceNow instance:
 ```bash
 npm run deploy
 ```
-This executes `now-sdk install` to transmit and install the scope on the configured ServiceNow target instance.
+*(This executes `now-sdk install` to authenticate and apply the application package to the target instance).*
+
+Alternatively, deploy the retrieved update set XML artifact located in the latest [GitHub Release](https://github.com/tchris3/widget-editor-plus/releases) via **System Update Sets → Retrieved Update Sets**.
 
 ---
 
 ## End-to-End Testing
 
-Widget Editor+ includes a Playwright end-to-end (E2E) testing framework designed for running automated browser tests against a ServiceNow Personal Developer Instance (PDI) or sub-production instance.
+Widget Editor+ features a comprehensive Playwright test suite validating editor features, language services, and context menus against a live ServiceNow instance.
 
-### Environment Setup
-1. Install project dependencies (including Playwright):
-   ```bash
-   npm install
-   ```
-2. Copy `.env.example` to create your local `.env` file (which is git-ignored for security):
+1. Create a local `.env` configuration:
    ```bash
    cp .env.example .env
    ```
-3. Configure your target ServiceNow instance URL, admin credentials, and optional portal suffix inside `.env`:
+2. Set your instance credentials:
    ```env
    SN_INSTANCE_URL=https://devXXXXX.service-now.com
    SN_USERNAME=admin
    SN_PASSWORD=your_pdi_password
    SN_PORTAL_SUFFIX=sp
    ```
-4. Install Playwright browser engines:
+3. Install browser binaries and run the tests:
    ```bash
    npx playwright install
+   npm run test:e2e        # Headless mode
+   npm run test:e2e:ui     # Interactive UI runner
    ```
 
-### Automated Test Data Seeding
-Before running test suites, Playwright automatically interacts with the ServiceNow Table API to verify and create required test records (`sp_widget`, `sp_page`, `sp_instance`). This ensures tests pass out-of-the-box on any fresh PDI without needing manual pre-configuration.
-
-### Running E2E Tests
-- **Headless mode**:
-  ```bash
-  npm run test:e2e
-  ```
-- **Interactive UI mode**:
-  ```bash
-  npm run test:e2e:ui
-  ```
+*Note: Test fixtures automatically seed and tear down necessary test records via the ServiceNow Table API.*
 
 ---
 
 ## Configuration
 
 ### System Properties
-Widget Editor+ is configured through system properties (`sys_properties`) defined under the `monaco.plus.*` namespace:
+All system properties are managed under the `monaco.plus.*` namespace:
 
-| Property Name | Default Value | Description |
+| Property Name | Default | Description |
 |---|---|---|
+| `monaco.plus.record_limit` | `500` | Page size for record pickers (widgets, versions, providers, dependencies) with infinite scroll. |
 | `monaco.plus.widget.fields` | *(empty)* | Comma-separated list of additional fields on `sp_widget` to display inside Widget Editor+. |
-| `monaco.plus.css.variables` | `{ "example-variable": "#a4c5ea" }` | JSON string of CSS custom property name-value pairs offered as autocompletion suggestions. |
-| `monaco.plus.scss.variables` | `{ "$breakpoint-xs": "480px", ... }` | JSON string of SCSS variable name-value pairs offered as autocompletion suggestions. |
-| `monaco.plus.widget.deprecated` | `descriptionLIKEdeprecated` | Encoded query string evaluated against `sp_widget`. If true, flags the widget as deprecated in the editor interface. |
-| `monaco.plus.widget.related_list_exclusions` | *(empty)* | Comma-separated list of `sys_ui_related_list_entry.related_list` values to exclude from widget editor related lists. |
+| `monaco.plus.widget.deprecated` | `descriptionLIKEdeprecated` | Encoded query string evaluated against `sp_widget` to flag widgets as deprecated. |
+| `monaco.plus.widget.related_list_exclusions` | *(empty)* | Comma-separated list of `sys_ui_related_list_entry.related_list` values to exclude from related lists. |
+| `monaco.plus.css.variables` | `{ "example-variable": "#a4c5ea" }` | JSON string of CSS custom property name-value pairs for autocomplete suggestions. |
+| `monaco.plus.scss.variables` | `{ "$breakpoint-xs": "480px", ... }` | JSON string of SCSS variable name-value pairs for autocomplete suggestions. |
+| `monaco.plus.assistant.export_blocklist_tables` | *(credential & audit tables)* | Comma-separated table names excluded from Assistant search, browsing, and XML export. |
+| `monaco.plus.assistant.export_blocklist_prefixes` | `pwd,sys_activity,sys_amb,...` | Comma-separated table prefixes excluded from Assistant search, browsing, and XML export. |
+| `monaco.plus.assistant.table_config.<table_name>` | *(JSON rule configs)* | Declarative relationship rules for Assistant dependency detection per table (e.g. `sp_page`, `sp_widget`, `sc_cat_item_producer`, `sysevent_email_action`). |
 
-### UI Scripts
-Editor features and language services are modularised across several ServiceNow UI Scripts (`sys_ui_script`):
+### UI Scripts Reference
 
-| UI Script Name | Description |
+| UI Script | Purpose |
 |---|---|
-| `monaco_plus_core` | Core Monaco enhancement engine. Handles live Script Include IntelliSense, GlideRecord field completions, JSDoc hover resolution, and property suggestions. |
-| `monaco_plus_bootstrap` | Bootstraps and upgrades Monaco Editor instances on target ServiceNow pages. |
-| `monaco_language_client` | Client-side TypeScript ambient declaration library (`MONACO_LANGUAGE_CLIENT_DTS`) covering AngularJS (`$scope`, `$http`, `$q`), `g_form`, `g_user`, `spUtil`, `$sp`, and jQuery. |
-| `monaco_language_server` | Server-side TypeScript ambient declaration library (`MONACO_LANGUAGE_SERVER_DTS`) covering server APIs including `GlideRecord`, `GlideRecordSecure`, and `$sp`. |
+| `monaco_plus_core` | Core engine. Manages Script Include IntelliSense, GlideRecord field completions, JSDoc hovers, and property suggestions. |
+| `monaco_plus_bootstrap` | Initialises and upgrades Monaco Editor instances on target ServiceNow pages. |
+| `monaco_language_client` | Client-side TypeScript ambient declarations covering AngularJS, `g_form`, `g_user`, `spUtil`, `$sp`, and jQuery. |
+| `monaco_language_server` | Server-side TypeScript ambient declarations covering `GlideRecord`, `GlideRecordSecure`, and `$sp`. |
 | `monaco_language_html` | Monarch tokenizer and directive autocompletion provider for HTML and AngularJS directives (`ng-*`, `sp-widget`, etc.). |
-| `monaco_language_css` | Completion provider for CSS/SCSS at-rules (`@media`, `@font-face`, `@keyframes`) and style descriptors. |
-| `monaco_code_actions` | Built-in code action provider for JavaScript (JSDoc generation) and SCSS (`px` to `rem` conversion). |
-| `monaco_custom_code_actions` | Extension point for users to provide custom per-language code actions. |
+| `monaco_language_css` | Completion provider for CSS/SCSS at-rules and style descriptors. |
+| `monaco_code_actions` | Built-in code actions for JavaScript (JSDoc generation) and SCSS (`px` to `rem` conversion). |
+| `monaco_custom_code_actions` | Extension point for custom per-language code actions. |
 
 ### User Preferences
-Preferences configured via the Debug Menu modal are stored in `localStorage` under `we_debug_menu_prefs` and synchronised to the ServiceNow server as a `sys_user_preference` record named `monaco_plus.user_prefs`.
+User preferences (including editor themes, Assistant visibility, and Debug Menu settings) persist in `localStorage` and synchronise to the ServiceNow instance as `sys_user_preference` records under `monaco_plus.user_prefs`.
 
 ---
 
