@@ -2075,10 +2075,10 @@ function link(scope, element, attrs, controller) {
             // three available timing values. Returns '' when data or the preference is unavailable.
             function buildTimingIndicatorHtml(widget) {
                 if (prefs.showTimingIndicators === false || !widget) return '';
-                const serverMs = parseFloat(widget._server_time) * 1000 * 10;
+                const serverMs = parseFloat(widget._server_time) * 1000;
                 if (isNaN(serverMs)) return '';
-                const scriptMs = parseFloat(widget._script_execution_time) * 10;
-                const clientMs = parseFloat(widget.clientLoadTime) * 10;
+                const scriptMs = parseFloat(widget._script_execution_time);
+                const clientMs = parseFloat(widget.clientLoadTime);
                 const maxMs = Math.max(serverMs, isNaN(scriptMs) ? 0 : scriptMs, isNaN(clientMs) ? 0 : clientMs);
                 let colorClass = 'we-timing-bars--green';
                 if (maxMs > 1000) colorClass = 'we-timing-bars--red';
