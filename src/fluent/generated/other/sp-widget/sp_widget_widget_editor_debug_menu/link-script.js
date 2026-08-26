@@ -67,7 +67,7 @@ function link(scope, element, attrs, controller) {
     const COLOR_TEXT_PRIMARY = resolveThemeColor(['--now-color_text--primary'], '58, 63, 81');
     const COLOR_TEXT_SECONDARY = resolveThemeColor(['--now-color_text--secondary'], '100, 116, 139');
     const COLOR_BORDER = resolveThemeColor(['--now-tabs--border-color', '--now-color_border--secondary'], '222, 229, 231');
-    const COLOR_BTN_PRIMARY_BG = resolveThemeColor(['--now-button--primary--background-color'], '66, 139, 202');
+    const COLOR_PRIMARY_ACCENT = resolveThemeColor(['--now-button--primary--background-color'], '66, 139, 202');
     const COLOR_BTN_PRIMARY_TEXT = resolveThemeColor(['--now-button--primary--color'], '255, 255, 255');
     const COLOR_ALERT_SUCCESS = resolveThemeColor(['--now-alert--success--color', '--now-color_alert--low-3'], '40, 167, 69');
     const COLOR_ALERT_WARNING = resolveThemeColor(['--now-alert--warning--color', '--now-color_alert--warning-4'], '253, 126, 20');
@@ -92,12 +92,13 @@ function link(scope, element, attrs, controller) {
             '.we-menu-list > li { margin: 0; }',
             '.we-menu-list > li:not(.we-menu-header):not(.we-back-li) > a { display: flex; align-items: center; justify-content: flex-start; padding: 6px 14px !important; margin: 0 !important; border: none !important; line-height: 1.35; text-decoration: none !important; color: inherit; cursor: pointer; transition: background 0.1s ease; outline: none !important; }',
             '.we-menu-list > li:not(.we-menu-header):not(.we-back-li) > a:hover, .we-menu-list > li:not(.we-menu-header):not(.we-back-li) > a:focus, .we-menu-list > li:not(.we-menu-header):not(.we-back-li) > a:active { background-color: rgba(0,0,0,0.08) !important; text-decoration: none !important; border: none !important; padding: 6px 14px !important; margin: 0 !important; outline: none !important; }',
+            '.we-menu-list > li:not(.we-menu-header):not(.we-back-li) > a:hover .we-row-icon, .we-menu-list > li:not(.we-menu-header):not(.we-back-li) > a:focus .we-row-icon, .we-menu-list > li:not(.we-menu-header):not(.we-back-li) > a:active .we-row-icon { color: ' + COLOR_PRIMARY_ACCENT + '; }',
             '.we-row-icon { width: 18px; min-width: 18px; text-align: center; margin-right: 8px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }',
-            '.we-row-icon--primary { color: ' + COLOR_BTN_PRIMARY_BG + '; }',
+            '.we-row-icon--primary { color: ' + COLOR_PRIMARY_ACCENT + '; }',
             '.we-row-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }',
             '.we-row-badge { margin-left: auto; flex-shrink: 0; }',
             '.we-menu-list code { font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; padding: 1px 4px; border-radius: 3px; background: rgba(0,0,0,0.06); color: inherit; }',
-            '.we-menu-header.bg-primary { min-height: 42px; box-sizing: border-box; padding: 9px 12px 9px 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; border-radius: 0 !important; margin-bottom: 6px; background-color: ' + COLOR_BTN_PRIMARY_BG + ' !important; color: ' + COLOR_BTN_PRIMARY_TEXT + ' !important; }',
+            '.we-menu-header.bg-primary { min-height: 42px; box-sizing: border-box; padding: 9px 12px 9px 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; border-radius: 0 !important; margin-bottom: 6px; background-color: ' + COLOR_PRIMARY_ACCENT + ' !important; color: ' + COLOR_BTN_PRIMARY_TEXT + ' !important; }',
             '.we-menu-header.bg-primary.we-back-header { padding: 0; cursor: pointer; }',
             '.we-menu-header.bg-primary .we-header-title { font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: ' + COLOR_BTN_PRIMARY_TEXT + ' !important; display: flex; align-items: center; min-width: 0; flex: 1 1 auto; margin-right: 8px; }',
             '.we-menu-header.bg-primary .we-header-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }',
@@ -120,7 +121,9 @@ function link(scope, element, attrs, controller) {
             '.we-back-row:hover, .we-back-row:focus, .we-back-row:active { background-color: rgba(0, 0, 0, 0.2) !important; text-decoration: none !important; padding: 9px 12px 9px 14px !important; margin: 0 !important; border: none !important; outline: none !important; box-shadow: none !important; }',
             '.we-back-left { display: inline-flex; align-items: center; font-size: 13px; font-weight: 600; color: ' + COLOR_BTN_PRIMARY_TEXT + '; }',
             '.we-back-arrow { margin-right: 6px; font-size: 11px; }',
-            '.we-back-title { margin-left: auto; font-size: 11px; color: rgba(255, 255, 255, 0.85); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }'
+            '.we-back-title { margin-left: auto; font-size: 11px; color: rgba(255, 255, 255, 0.85); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+            '.we-tooltip { position: fixed; z-index: 10; max-width: 220px; padding: 6px 9px; border-radius: 6px; background: rgba(20, 20, 24, 0.95); color: #fff; font-size: 11px; line-height: 1.5; white-space: pre-line; pointer-events: none; opacity: 0; transform: translateY(2px); transition: opacity 0.08s ease, transform 0.08s ease; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }',
+            '.we-tooltip--visible { opacity: 1; transform: translateY(0); }'
         ].join(' ');
         document.head.appendChild(style);
     }());
@@ -2084,7 +2087,7 @@ function link(scope, element, attrs, controller) {
                 const tooltip = 'Server round-trip: ' + fmt(serverMs) +
                     '\nScript execution: ' + fmt(scriptMs) +
                     '\nClient render: ' + fmt(clientMs);
-                return '<span class="we-timing-bars ' + colorClass + '" title="' + Utils.escapeHtml(tooltip) + '">' +
+                return '<span class="we-timing-bars ' + colorClass + '" data-we-tooltip="' + Utils.escapeHtml(tooltip) + '">' +
                     '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
                     '<rect class="we-tb-bar we-tb-bar-1" x="1" y="8" width="2.5" height="4.5" rx="0.75" />' +
                     '<rect class="we-tb-bar we-tb-bar-2" x="5.25" y="4.5" width="2.5" height="8" rx="0.75" />' +
@@ -2103,6 +2106,44 @@ function link(scope, element, attrs, controller) {
             const container = document.createElement('div');
             container.className = 'we-menu-container';
             shell.appendChild(container);
+
+            // Appended to shell (not container) so it isn't clipped by the container's
+            // overflow: hidden, and positioned via getBoundingClientRect() rather than CSS
+            // anchoring since .we-slider-track gets a transform for its slide animation,
+            // which would otherwise become the containing block for a position: fixed child.
+            const tooltipEl = document.createElement('div');
+            tooltipEl.className = 'we-tooltip';
+            shell.appendChild(tooltipEl);
+
+            function showTooltip(target) {
+                const text = target.getAttribute('data-we-tooltip');
+                if (!text) return;
+                tooltipEl.textContent = text;
+                tooltipEl.classList.add('we-tooltip--visible');
+                const targetRect = target.getBoundingClientRect();
+                const tipRect = tooltipEl.getBoundingClientRect();
+                let top = targetRect.top - tipRect.height - 8;
+                if (top < 4) {
+                    top = targetRect.bottom + 8;
+                }
+                let left = targetRect.left + (targetRect.width / 2) - (tipRect.width / 2);
+                left = Math.max(4, Math.min(left, window.innerWidth - tipRect.width - 4));
+                tooltipEl.style.top = top + 'px';
+                tooltipEl.style.left = left + 'px';
+            }
+
+            function hideTooltip() {
+                tooltipEl.classList.remove('we-tooltip--visible');
+            }
+
+            container.addEventListener('mouseover', function (e) {
+                const t = e.target.closest('[data-we-tooltip]');
+                if (t) showTooltip(t);
+            });
+            container.addEventListener('mouseout', function (e) {
+                const t = e.target.closest('[data-we-tooltip]');
+                if (t && !t.contains(e.relatedTarget)) hideTooltip();
+            });
 
             const track = document.createElement('div');
             track.className = 'we-slider-track';
