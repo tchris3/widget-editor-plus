@@ -215,7 +215,7 @@ function onLoad() {
 ```
 
 - `field` / `language` — the form field to mount on, and the Monaco language id (`json`, `javascript`, `css`, `scss`, `html`, etc.).
-- `editorOptions` — any `monaco.editor.create()` option, applied before the editor is created and taking precedence over the user's synced editor preferences.
+- `editorOptions` — any [`IStandaloneEditorConstructionOptions`](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor_editor_api.editor.IStandaloneEditorConstructionOptions.html) accepted by `monaco.editor.create()`, applied before the editor is created and taking precedence over the user's synced editor preferences.
 - `onEditorReady(editor)` — optional callback given the created Monaco editor instance for further customisation.
 
 The bootstrap script lazy-loads `monaco_plus_core` on demand, so completions/IntelliSense for the chosen `language` come free without any additional wiring.
