@@ -52,7 +52,7 @@ function link(scope, element, attrs, controller) {
         const rootStyle = getComputedStyle(document.documentElement);
         for (const name of varNames) {
             const raw = rootStyle.getPropertyValue(name).trim();
-            if (!raw || raw === 'transparent' || /^rgba?\([^)]*,\s*0\s*\)$/.test(raw)) {
+            if (!raw || raw === 'transparent' || /^rgba\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*0(?:\.0+)?\s*\)$/.test(raw)) {
                 continue;
             }
             if (/^\d+\s*,\s*\d+\s*,\s*\d+$/.test(raw)) {
