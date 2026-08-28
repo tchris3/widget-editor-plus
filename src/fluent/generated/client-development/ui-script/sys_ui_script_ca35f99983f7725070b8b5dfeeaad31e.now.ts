@@ -394,6 +394,7 @@ Record({
      * @param {string}   [config.language]       - Monaco language id (default: 'javascript').
      * @param {string}   [config.containerStyle] - Inline CSS for the editor container div.
      * @param {Function} [config.resolveTheme]   - Returns a Monaco theme id; defaults to auto-detect.
+     * @param {Object}   [config.editorOptions]  - monaco.editor.create options, applied before create (wins over user prefs).
      * @param {Function} [config.onEditorReady]  - Called with the created editor instance.
      * @returns {Promise<Object|null>} Resolves to the Monaco editor instance, or null.
      */
@@ -481,6 +482,11 @@ Record({
                             scrollBeyondLastLine: false,
                             wordWrap: 'on',
                         });
+                        for (var optKey in config.editorOptions) {
+                            if (Object.prototype.hasOwnProperty.call(config.editorOptions, optKey)) {
+                                options[optKey] = config.editorOptions[optKey];
+                            }
+                        }
                         var editor = global.monaco.editor.create(container, options);
                         global.monaco.editor.setTheme(theme);
 
