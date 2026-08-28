@@ -628,6 +628,9 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
 
     /** Explicit picker field order for tables whose default list view doesn't lead with the most useful fields. */
     PICKER_FIELD_OVERRIDES: {
+        sp_angular_provider: ['name', 'type'],
+        sp_page: ['id', 'title'],
+        sp_widget: ['name', 'id'],
         sys_security_acl: ['name', 'type', 'operation'],
         sys_ui_action: ['name', 'table'],
     },
@@ -753,17 +756,34 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         var table = this.getParameter('table');
         var sysId = this.getParameter('sys_id');
         if (!table || !sysId) {
-            return this._answer({ success: false, label: '', updatedOn: '' });
+            return this._answer({ success: false, label: '', tableLabel: '', updatedOn: '' });
         }
         var gr = new GlideRecordSecure(table);
         if (!gr.get(sysId)) {
-            return this._answer({ success: false, label: '', updatedOn: '' });
+            return this._answer({ success: false, label: '', tableLabel: '', updatedOn: '' });
         }
+        var tableLabel = this._getTableLabel(table);
         if (this._isTableExportBlocked(table)) {
             // Confirm the record exists without leaking its display value (e.g. a person's name).
-            return this._answer({ success: true, label: sysId, updatedOn: gr.getDisplayValue('sys_updated_on'), blocked: true });
+            return this._answer({ success: true, label: sysId, tableLabel: tableLabel, updatedOn: gr.getDisplayValue('sys_updated_on'), blocked: true });
         }
-        return this._answer({ success: true, label: gr.getDisplayValue() || sysId, updatedOn: gr.getDisplayValue('sys_updated_on') });
+        return this._answer({ success: true, label: gr.getDisplayValue() || sysId, tableLabel: tableLabel, updatedOn: gr.getDisplayValue('sys_updated_on') });
+    },
+
+    /**
+     * Resolves a table's display label from sys_db_object.
+     * @param {string} table - Table name.
+     * @returns {string} The table's label, or the table name if not found.
+     */
+    _getTableLabel: function (table) {
+        var gr = new GlideRecordSecure('sys_db_object');
+        gr.addQuery('name', table);
+        gr.setLimit(1);
+        gr.query();
+        if (gr.next()) {
+            return gr.getValue('label') || table;
+        }
+        return table;
     },
 
     /**
