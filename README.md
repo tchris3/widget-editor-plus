@@ -193,6 +193,33 @@ All system properties are managed under the `monaco.plus.*` namespace:
 | `monaco_code_actions` | Built-in code actions for JavaScript (JSDoc generation) and SCSS (`px` to `rem` conversion). |
 | `monaco_custom_code_actions` | Extension point for custom per-language code actions. |
 
+#### Embedding Monaco on Any Form Field
+
+`monaco_plus_bootstrap` isn't limited to Widget Editor+ itself — add it as a UI Script dependency on an `onLoad` Client Script for any table/field to mount a full Monaco editor in place of the native textarea, in whatever language you choose:
+
+```javascript
+function onLoad() {
+    if (typeof SNMonacoPlusBootstrap === 'undefined') {
+        return;
+    }
+    SNMonacoPlusBootstrap.upgradeEditor({
+        gForm: g_form,
+        field: 'my_json_field',
+        language: 'json',
+        editorOptions: {
+            minimap: { enabled: true },
+            tabSize: 4,
+        },
+    });
+}
+```
+
+- `field` / `language` — the form field to mount on, and the Monaco language id (`json`, `javascript`, `css`, `scss`, `html`, etc.).
+- `editorOptions` — any `monaco.editor.create()` option, applied before the editor is created and taking precedence over the user's synced editor preferences.
+- `onEditorReady(editor)` — optional callback given the created Monaco editor instance for further customisation.
+
+The bootstrap script lazy-loads `monaco_plus_core` on demand, so completions/IntelliSense for the chosen `language` come free without any additional wiring.
+
 ### User Preferences
 User preferences (including editor themes, Assistant visibility, and Debug Menu settings) persist in `localStorage` and synchronise to the ServiceNow instance as `sys_user_preference` records under `monaco_plus.user_prefs`.
 
