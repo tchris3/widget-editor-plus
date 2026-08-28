@@ -199,6 +199,10 @@ declare global {
                         table: 'sys_properties_category_m2m'
                         id: '13c639171a6b477eb1ed853e6775f213'
                     }
+                    'widget-editor-plus-category-m2m-table-config-sp-angular-provider': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'ef2268c2d8af47bdadd7e7ae90b1e2dc'
+                    }
                     'widget-editor-plus-category-m2m-table-config-sp-page': {
                         table: 'sys_properties_category_m2m'
                         id: 'da8555d14aca492cba2113db60602b96'
@@ -206,6 +210,14 @@ declare global {
                     'widget-editor-plus-category-m2m-table-config-sp-widget': {
                         table: 'sys_properties_category_m2m'
                         id: '7c76eaea18f342f28e1cb67f6e8641b7'
+                    }
+                    'widget-editor-plus-category-m2m-table-config-sys-security-acl': {
+                        table: 'sys_properties_category_m2m'
+                        id: '6c97713c59e24faeb228d496af24d120'
+                    }
+                    'widget-editor-plus-category-m2m-table-config-sys-ui-action': {
+                        table: 'sys_properties_category_m2m'
+                        id: '225488db664742f08bec6bcffc79ae6e'
                     }
                     'widget-editor-plus-category-m2m-table-config-sysevent-email-action': {
                         table: 'sys_properties_category_m2m'
@@ -230,6 +242,18 @@ declare global {
                     'widget-editor-record-limit': {
                         table: 'sys_properties'
                         id: 'ad6ba1d936344db993031b6e49532e2b'
+                    }
+                    'widget-editor-table-config-sp-angular-provider': {
+                        table: 'sys_properties'
+                        id: '5e67c97fe19842bfb26739a64956e969'
+                    }
+                    'widget-editor-table-config-sys-security-acl': {
+                        table: 'sys_properties'
+                        id: '9800142f4e2e4c8abb2beffbd8140fd6'
+                    }
+                    'widget-editor-table-config-sys-ui-action': {
+                        table: 'sys_properties'
+                        id: '84bbec5cb748452480fbc560d8613fda'
                     }
                 }
                 composite: [

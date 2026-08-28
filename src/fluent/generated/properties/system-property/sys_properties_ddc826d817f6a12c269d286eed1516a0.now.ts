@@ -43,10 +43,11 @@ export const tableConfigSpWidgetProperty = Property({
       "relatedMatchField": "id",
       "category": "Embedded Widget"
     }
-  ]
+  ],
+  "pickerFields": ["name", "id"]
 }`,
     description:
-        'Widget Editor+ Assistant table_config rules for sp_widget: linked templates/providers, embedded widget references.',
+        'Widget Editor+ Assistant table_config rules for sp_widget: linked templates/providers, embedded widget references, and record picker field order.',
     ignoreCache: true,
     roles: {
         read: ['sp_admin'],

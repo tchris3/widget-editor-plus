@@ -45,10 +45,11 @@ export const tableConfigSpPageProperty = Property({
         }
       ]
     }
-  ]
+  ],
+  "pickerFields": ["id", "title"]
 }`,
     description:
-        'Widget Editor+ Assistant table_config rules for sp_page: layout hierarchy down to the widgets used on the page.',
+        'Widget Editor+ Assistant table_config rules for sp_page: layout hierarchy down to the widgets used on the page, and record picker field order.',
     ignoreCache: true,
     roles: {
         read: ['sp_admin'],

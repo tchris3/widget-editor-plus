@@ -156,20 +156,27 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
      * Any rule may carry `then`, a nested rule array evaluated against each record the
      * rule resolves — e.g. a child_reference chained into a further reference_field lets
      * one relationship link into another (A -> B -> C) without new code.
+     * The same property also optionally carries `pickerFields`, a field-name array
+     * overriding which columns the record picker shows (and their order) for this table —
+     * see `_getTableColumns`. This lets admins tune picker labels for their own tables
+     * without a code change, alongside the built-in `PICKER_FIELD_OVERRIDES` defaults.
      * @param {string} table - Table name.
-     * @returns {{rules: Array.<Object>}}
+     * @returns {{rules: Array.<Object>, pickerFields: Array.<string>|null}}
      */
     _getTableConfig: function (table) {
         var raw = gs.getProperty(this.TABLE_CONFIG_PROPERTY_PREFIX + table, '');
         if (!raw) {
-            return { rules: [] };
+            return { rules: [], pickerFields: null };
         }
         try {
             var parsed = JSON.parse(raw);
-            return { rules: Array.isArray(parsed.rules) ? parsed.rules : [] };
+            return {
+                rules: Array.isArray(parsed.rules) ? parsed.rules : [],
+                pickerFields: Array.isArray(parsed.pickerFields) ? parsed.pickerFields : null,
+            };
         } catch (e) {
             gs.warn('Widget Editor+ Assistant: failed to parse table_config for ' + table + ': ' + e.message);
-            return { rules: [] };
+            return { rules: [], pickerFields: null };
         }
     },
 
@@ -626,22 +633,17 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     /** Column internal types allowed in the record picker's list-view columns. */
     PICKER_COLUMN_TYPES: { string: true, reference: true, table_name: true },
 
-    /** Explicit picker field order for tables whose default list view doesn't lead with the most useful fields. */
-    PICKER_FIELD_OVERRIDES: {
-        sp_angular_provider: ['name', 'type'],
-        sp_page: ['id', 'title'],
-        sp_widget: ['name', 'id'],
-        sys_security_acl: ['name', 'type', 'operation'],
-        sys_ui_action: ['name', 'table'],
-    },
-
     /**
      * Resolves picker column definitions from a table's default list view.
+     * An admin-configured `pickerFields` array (from `monaco.plus.assistant.table_config.<table>`,
+     * see `_getTableConfig`) takes precedence over the table's own default list view. Every table
+     * with a picker override currently ships one of these properties — there is no code-level
+     * fallback map, so overriding a new table's picker fields only requires a system property.
      * @param {string} table - Table name.
      * @returns {Array.<{field: string, label: string}>}
      */
     _getTableColumns: function (table) {
-        var override = this.PICKER_FIELD_OVERRIDES[table];
+        var override = this._getTableConfig(table).pickerFields;
         if (override) {
             var grOverride = new GlideRecordSecure(table);
             grOverride.initialize();
@@ -651,9 +653,22 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
                 if (!grOverride.isValidField(ofName)) {
                     continue;
                 }
+                var oGlideEl;
+                try {
+                    oGlideEl = grOverride.getElement(ofName);
+                } catch (oe2) {
+                    continue;
+                }
+                var oInternalType = '';
+                try {
+                    oInternalType = String(oGlideEl.getED().getInternalType());
+                } catch (oe3) { }
+                if (!this.PICKER_COLUMN_TYPES[oInternalType]) {
+                    continue;
+                }
                 var oLabel = ofName;
                 try {
-                    oLabel = grOverride.getElement(ofName).getLabel() || ofName;
+                    oLabel = oGlideEl.getLabel() || ofName;
                 } catch (oe) { }
                 overrideCols.push({ field: ofName, label: oLabel });
             }

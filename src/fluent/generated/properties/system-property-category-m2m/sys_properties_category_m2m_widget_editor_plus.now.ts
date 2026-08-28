@@ -12,6 +12,9 @@ import { tableConfigSpPageProperty } from '../system-property/sys_properties_f91
 import { tableConfigSpWidgetProperty } from '../system-property/sys_properties_ddc826d817f6a12c269d286eed1516a0.now'
 import { tableConfigScCatItemProducerProperty } from '../system-property/sys_properties_da811618df6a0d5638a57943ad21bbfe.now'
 import { tableConfigSyseventEmailActionProperty } from '../system-property/sys_properties_8a5c13b3b97552475d762496f01876c2.now'
+import { tableConfigSpAngularProviderProperty } from '../system-property/sys_properties_widget_editor_table_config_sp_angular_provider.now'
+import { tableConfigSysSecurityAclProperty } from '../system-property/sys_properties_widget_editor_table_config_sys_security_acl.now'
+import { tableConfigSysUiActionProperty } from '../system-property/sys_properties_widget_editor_table_config_sys_ui_action.now'
 
 Record({
     $id: Now.ID['widget-editor-plus-category-m2m-record-limit'],
@@ -130,5 +133,35 @@ Record({
         property: tableConfigSyseventEmailActionProperty,
         category: widgetEditorPlusPropertiesCategory,
         order: 1200,
+    },
+})
+
+Record({
+    $id: Now.ID['widget-editor-plus-category-m2m-table-config-sp-angular-provider'],
+    table: 'sys_properties_category_m2m',
+    data: {
+        property: tableConfigSpAngularProviderProperty,
+        category: widgetEditorPlusPropertiesCategory,
+        order: 1300,
+    },
+})
+
+Record({
+    $id: Now.ID['widget-editor-plus-category-m2m-table-config-sys-security-acl'],
+    table: 'sys_properties_category_m2m',
+    data: {
+        property: tableConfigSysSecurityAclProperty,
+        category: widgetEditorPlusPropertiesCategory,
+        order: 1400,
+    },
+})
+
+Record({
+    $id: Now.ID['widget-editor-plus-category-m2m-table-config-sys-ui-action'],
+    table: 'sys_properties_category_m2m',
+    data: {
+        property: tableConfigSysUiActionProperty,
+        category: widgetEditorPlusPropertiesCategory,
+        order: 1500,
     },
 })
