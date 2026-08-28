@@ -175,6 +175,11 @@ declare global {
                         table: 'sys_security_acl'
                         id: '33195917e3c84b1f8afafe10a38f16b0'
                     }
+                    'widget-editor-html-class-stylesheets': {
+                        table: 'sys_properties'
+                        id: 'a66fcbb84e5a4e878ec6e60ec8dd9a5e'
+                        deleted: true
+                    }
                     'widget-editor-plus-category-m2m-css-variables': {
                         table: 'sys_properties_category_m2m'
                         id: 'cc6a3951ebfe4436807bdb9448a21502'
@@ -186,6 +191,11 @@ declare global {
                     'widget-editor-plus-category-m2m-export-blocklist-tables': {
                         table: 'sys_properties_category_m2m'
                         id: '03b221664dfd47c19ca22b4a943023cb'
+                    }
+                    'widget-editor-plus-category-m2m-html-class-stylesheets': {
+                        table: 'sys_properties_category_m2m'
+                        id: '99bb57666b0e4acdaa4831a7b619690d'
+                        deleted: true
                     }
                     'widget-editor-plus-category-m2m-record-limit': {
                         table: 'sys_properties_category_m2m'

@@ -20,6 +20,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
  *
  * Contains:
  *   - DIRECTIVES table — ng-* / sp-* attribute names, snippets, and hover docs
+ *   - class="..." attribute completions from window.MONACO_HTML_CLASS_INDEX
  *   - Custom Monarch tokenizer extending Monaco's built-in HTML tokenizer
  *     ({{ }} interpolation, ng-* / data-* / sp-* attribute highlighting,
  *     embedded <script> / <style>)
@@ -1702,6 +1703,48 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         return !insideDq && !insideSq;
     }
 
+    // Returns { typed, range } when the cursor is inside a class="..." value, else null.
+    function _getClassAttributeValueContext(model, position) {
+        var text = model.getValueInRange({
+            startLineNumber: 1, startColumn: 1,
+            endLineNumber: position.lineNumber, endColumn: position.column
+        });
+        var lastLt = text.lastIndexOf('<');
+        var lastGt = text.lastIndexOf('>');
+        if (lastLt === -1 || lastGt > lastLt) {
+            return null;
+        }
+
+        var tagText = text.substring(lastLt);
+        var classAttrRe = /\\bclass\\s*=\\s*(["'])/g;
+        var match, last = null;
+        while ((match = classAttrRe.exec(tagText)) !== null) {
+            last = match;
+        }
+        if (!last) {
+            return null;
+        }
+
+        var quoteChar = last[1];
+        var valueStart = last.index + last[0].length;
+        var valueSoFar = tagText.slice(valueStart);
+        if (valueSoFar.indexOf(quoteChar) !== -1) {
+            return null; // the attribute value already closed before the cursor
+        }
+
+        var typedMatch = valueSoFar.match(/[\\w-]*$/);
+        var typed = typedMatch ? typedMatch[0] : '';
+        return {
+            typed: typed,
+            range: {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: position.column - typed.length,
+                endColumn: position.column
+            }
+        };
+    }
+
     // Build a Monaco CompletionItem for a directive
     function _toCompletion(directive, range, monaco) {
         var insertText = directive.snippet
@@ -2440,6 +2483,33 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                         return item;
                     });
                 return { suggestions: suggestions.concat(htmlSuggestions) };
+            }
+        });
+
+        // 2b. Completion provider — class="..." suggestions from window.MONACO_HTML_CLASS_INDEX
+        monaco.languages.registerCompletionItemProvider('html', {
+            triggerCharacters: [' ', '"', "'"],
+            provideCompletionItems: function (model, position) {
+                var ctx = _getClassAttributeValueContext(model, position);
+                if (!ctx) {
+                    return { suggestions: [] };
+                }
+                var classNames = window.MONACO_HTML_CLASS_INDEX || [];
+                var typed = ctx.typed;
+                return {
+                    suggestions: classNames
+                        .filter(function (c) {
+                            return !typed || c.indexOf(typed) !== -1;
+                        })
+                        .map(function (c) {
+                            return {
+                                label: c,
+                                kind: monaco.languages.CompletionItemKind.Value,
+                                insertText: c,
+                                range: ctx.range
+                            };
+                        })
+                };
             }
         });
 

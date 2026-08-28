@@ -2937,6 +2937,30 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     LEGACY_USER_PREF_NAME: 'widget_editor.visible_editors',
 
     /**
+     * Lists active portals with their default theme, for the "CSS theme" user preference.
+     * @returns {{success: boolean, portals: Array.<{sys_id: string, title: string,
+     *   url_suffix: string, themeSysId: string, themeTitle: string}>}} Return value.
+     */
+    getPortalsForClassIndex: function () {
+        var portals = [];
+        var gr = new GlideRecordSecure('sp_portal');
+        // inactive is blank on most portals, not explicitly false.
+        gr.addEncodedQuery('inactive=false^ORinactiveISEMPTY');
+        gr.orderBy('title');
+        gr.query();
+        while (gr.next()) {
+            portals.push({
+                sys_id: gr.getValue('sys_id'),
+                title: gr.getValue('title'),
+                url_suffix: gr.getValue('url_suffix'),
+                themeSysId: gr.getValue('theme'),
+                themeTitle: gr.getDisplayValue('theme'),
+            });
+        }
+        return this._answer({ success: true, portals: portals });
+    },
+
+    /**
      * Returns the current user's Monaco+ preference value, falling back to the legacy key.
      * @returns {{success: boolean, value: string|null}} Return value.
      */

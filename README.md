@@ -48,6 +48,7 @@ A full-featured IDE for Service Portal widgets that replaces the standard editor
   - **Table Schema & Inheritance Completion**: Field autocompletions recursively traverse extended table hierarchies (e.g. `incident` inheriting from `task`).
   - **Script Include Dot-Walking**: Live dot-walk autocompletion and JSDoc type inference across Script Includes, including PrototypeJS methods and `this.property` assignments.
   - **Native JSDoc `@typedef` Support**: Type inference and code completion for custom widget data models defined via JSDoc annotations.
+  - **HTML Class-Name Completion**: `class="..."` completions sourced from the user's chosen portal/theme's own compiled CSS bundles, cached client-side and refreshed only when a bundle's `Last-Modified` header changes.
 - **AngularJS Expression Validation & Highlighting**:
   - Real-time syntax checking on `{{ }}` interpolations and `ng-*` directive expressions using AngularJS `$parse`.
   - Rich token syntax highlighting for embedded Angular expressions within HTML templates.

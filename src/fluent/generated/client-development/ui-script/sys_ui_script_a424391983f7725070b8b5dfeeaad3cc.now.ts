@@ -28,6 +28,7 @@ Record({
  *     primitive-type augmentations, fixes the non-constructable
  *     GlideRecordSecure declaration)
  *   - CSS/SCSS custom-property completions & hover
+ *   - HTML class-attribute completion index, from the chosen portal/theme's compiled CSS
  *   - AngularJS widget 'api' object DI-aware typing (client panes)
  *   - Quick-info hover replacement (works around SN's broken JSDoc rendering)
  *   - window.SNMonacoPlus.init(config) — the main per-language entry point
@@ -94,6 +95,7 @@ Record({
         },
         loadCssVariables: function () {},
         loadScssVariables: function () {},
+        loadHtmlClassIndex: function () {},
         loadCssEditorSupport: function () {},
         setUnusedVarsEnabled: function (enabled) {
             _showUnusedVars = !!enabled;
@@ -158,6 +160,11 @@ Record({
     var _scssVarPromise = null; // in-flight XHR promise — deduplicates concurrent requests
     var _scssVarCompletionRegistered = false;
     var _scssVarHoverRegistered = false;
+
+    /* HTML class-name completion index, sourced from monaco.plus.html.class_stylesheets (sp_css sys_ids). */
+    var _htmlClassIndexPromise = null; // in-flight/completed load — deduplicates concurrent triggers for the same portal/theme
+    var _htmlClassIndexContextKey = null; // 'portalUrlSuffix::themeSysId' the current/last promise was resolved for
+    var _htmlClassIndexCacheKey = 'we_html_class_index_cache';
 
     /* Provider registration flags — prevent double-registration on the same page. */
     var _completionRegistered = false;
@@ -3126,6 +3133,225 @@ Record({
         monaco.languages.registerHoverProvider('less', provider);
     }
 
+    // HTML class-name completion index
+    ///////////////////////////////////////////
+
+    /** Extracts unique class-selector names from CSS/SCSS text (top-level and nested alike — no attempt to resolve full nesting context). */
+    function _extractCssClassNames(cssText) {
+        var seen = {};
+        if (!cssText) {
+            return [];
+        }
+        var re = /\\.(-?[a-zA-Z_][\\w-]*)/g;
+        var match;
+        while ((match = re.exec(cssText)) !== null) {
+            var prevChar = match.index > 0 ? cssText.charAt(match.index - 1) : '';
+            if (/[\\w.]/.test(prevChar)) {
+                continue; // decimal number (e.g. 1.5rem) or already part of a longer token
+            }
+            seen[match[1]] = true;
+        }
+        return Object.keys(seen);
+    }
+
+    function _readHtmlClassIndexCache() {
+        try {
+            return JSON.parse(global.localStorage.getItem(_htmlClassIndexCacheKey) || '{}');
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function _writeHtmlClassIndexCache(cache) {
+        try {
+            global.localStorage.setItem(_htmlClassIndexCacheKey, JSON.stringify(cache));
+        } catch (e) {}
+    }
+
+    function _rebuildHtmlClassIndex(bundles) {
+        var seen = {};
+        Object.keys(bundles).forEach(function (key) {
+            (bundles[key].classes || []).forEach(function (c) {
+                seen[c] = true;
+            });
+        });
+        global.MONACO_HTML_CLASS_INDEX = Object.keys(seen).sort();
+    }
+
+    /** HEAD request for a URL's Last-Modified header, without downloading the body. */
+    function _xhrHeadLastModified(url) {
+        return new Promise(function (resolve) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('HEAD', url, true);
+            xhr.onload = function () {
+                resolve(xhr.status === 200 ? xhr.getResponseHeader('Last-Modified') : null);
+            };
+            xhr.onerror = function () {
+                resolve(null);
+            };
+            xhr.send();
+        });
+    }
+
+    function _xhrGetText(url) {
+        return new Promise(function (resolve) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.onload = function () {
+                resolve(xhr.status === 200 ? xhr.responseText : '');
+            };
+            xhr.onerror = function () {
+                resolve('');
+            };
+            xhr.send();
+        });
+    }
+
+    function _xhrGetJson(url) {
+        return new Promise(function (resolve) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.setRequestHeader('X-UserToken', global.g_ck || '');
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.onload = function () {
+                if (xhr.status !== 200) {
+                    resolve(null);
+                    return;
+                }
+                try {
+                    resolve(JSON.parse(xhr.responseText));
+                } catch (e) {
+                    resolve(null);
+                }
+            };
+            xhr.onerror = function () {
+                resolve(null);
+            };
+            xhr.send();
+        });
+    }
+
+    /** Fetches a CSS bundle, skipping the body fetch if its Last-Modified header is unchanged. */
+    function _loadCssBundle(url, cachedEntry) {
+        return _xhrHeadLastModified(url).then(function (lastModified) {
+            if (lastModified && cachedEntry && cachedEntry.lastModified === lastModified) {
+                return cachedEntry;
+            }
+            return _xhrGetText(url).then(function (cssText) {
+                return { lastModified: lastModified, classes: _extractCssClassNames(cssText) };
+            });
+        });
+    }
+
+    /** Resolves a set of sp_css_include sys_ids to their underlying sp_css sys_ids. */
+    function _resolveCssIncludesToSpCss(includeIds) {
+        if (!includeIds.length) {
+            return Promise.resolve([]);
+        }
+        return _xhrGetJson(
+            '/api/now/table/sp_css_include' +
+                '?sysparm_query=sys_idIN' + includeIds.join(',') +
+                '&sysparm_fields=sp_css&sysparm_limit=200'
+        ).then(function (includeData) {
+            var seen = {};
+            ((includeData && includeData.result) || []).forEach(function (r) {
+                var cssSysId = r.sp_css && r.sp_css.value;
+                if (cssSysId) {
+                    seen[cssSysId] = true;
+                }
+            });
+            return Object.keys(seen);
+        });
+    }
+
+    /** sp_css_include sys_ids for a theme (m2m_sp_theme_css_include) and/or widget dependencies (m2m_sp_dependency_css_include). */
+    function _getCssIncludeSysIds(themeSysId, dependencySysIds) {
+        var lookups = [
+            _xhrGetJson(
+                '/api/now/table/m2m_sp_theme_css_include' +
+                    '?sysparm_query=sp_theme=' + encodeURIComponent(themeSysId) +
+                    '&sysparm_fields=sp_css_include&sysparm_limit=200'
+            ),
+        ];
+        if (dependencySysIds && dependencySysIds.length) {
+            lookups.push(
+                _xhrGetJson(
+                    '/api/now/table/m2m_sp_dependency_css_include' +
+                        '?sysparm_query=sp_dependencyIN' + dependencySysIds.join(',') +
+                        '&sysparm_fields=sp_css_include&sysparm_limit=200'
+                )
+            );
+        }
+        return Promise.all(lookups).then(function (results) {
+            var seen = {};
+            // Reference fields come back as {value, display_value, link} objects, not strings.
+            results.forEach(function (data) {
+                ((data && data.result) || []).forEach(function (r) {
+                    var includeId = r.sp_css_include && r.sp_css_include.value;
+                    if (includeId) {
+                        seen[includeId] = true;
+                    }
+                });
+            });
+            return _resolveCssIncludesToSpCss(Object.keys(seen));
+        });
+    }
+
+    /** Loads HTML class-name completions from the chosen portal/theme (and widget dependencies') compiled CSS. */
+    function _loadHtmlClassIndex(context) {
+        var portalSysId = (context && context.portalSysId) || '';
+        var portalUrlSuffix = (context && context.portalUrlSuffix) || '';
+        var themeSysId = (context && context.themeSysId) || '';
+        var dependencySysIds = (context && context.dependencySysIds) || [];
+        var includeStandardCss = !!(context && context.includeStandardCss);
+        var contextKey = portalSysId + '::' + portalUrlSuffix + '::' + themeSysId +
+            '::' + dependencySysIds.slice().sort().join(',') + '::' + includeStandardCss;
+
+        if (_htmlClassIndexPromise && _htmlClassIndexContextKey === contextKey) {
+            return _htmlClassIndexPromise;
+        }
+        _htmlClassIndexContextKey = contextKey;
+
+        if (!portalSysId || !portalUrlSuffix || !themeSysId) {
+            global.MONACO_HTML_CLASS_INDEX = [];
+            _htmlClassIndexPromise = Promise.resolve();
+            return _htmlClassIndexPromise;
+        }
+
+        var stored = _readHtmlClassIndexCache();
+        var cachedBundles = (stored.contextKey === contextKey && stored.bundles) || {};
+
+        _htmlClassIndexPromise = _getCssIncludeSysIds(themeSysId, dependencySysIds).then(function (cssSysIds) {
+            var bundleUrls = {};
+            if (includeStandardCss) {
+                bundleUrls.standard_main = '/styles/css_includes_$sp.css';
+                bundleUrls.standard_later = '/styles/css_includes_$sp_later.css';
+            }
+            cssSysIds.forEach(function (cssSysId) {
+                bundleUrls[cssSysId] = '/' + cssSysId + '.spcssdbx' +
+                    '?portal=' + encodeURIComponent(portalSysId) +
+                    '&theme=' + encodeURIComponent(themeSysId);
+            });
+
+            return Promise.all(
+                Object.keys(bundleUrls).map(function (key) {
+                    return _loadCssBundle(bundleUrls[key], cachedBundles[key]).then(function (entry) {
+                        return { key: key, entry: entry };
+                    });
+                })
+            ).then(function (results) {
+                var nextBundles = {};
+                results.forEach(function (r) {
+                    nextBundles[r.key] = r.entry;
+                });
+                _writeHtmlClassIndexCache({ contextKey: contextKey, bundles: nextBundles });
+                _rebuildHtmlClassIndex(nextBundles);
+            });
+        }).catch(function () {});
+
+        return _htmlClassIndexPromise;
+    }
+
     ///////////////////////////////////////////
     // Providers
     ///////////////////////////////////////////
@@ -4573,6 +4799,11 @@ Record({
      * @param {string}  [config.language] - Editor language: 'javascript' (default), 'html', 'css', 'scss'.
      * @param {boolean} [config.isClient] - When language is 'javascript', load client-side DTS instead of server.
      * @param {string}  [config.appSysId] - Application scope sys_id passed to loadSnTypeDefinitions.
+     * @param {string}  [config.htmlClassPortalSysId] - Portal sys_id for class-completion bundles.
+     * @param {string}  [config.htmlClassPortalUrlSuffix] - Portal url_suffix for class-completion bundles.
+     * @param {string}  [config.htmlClassThemeSysId] - Theme sys_id for class-completion bundles.
+     * @param {Array}   [config.htmlClassDependencySysIds] - sp_dependency sys_ids whose CSS includes should also be indexed.
+     * @param {boolean} [config.htmlClassIncludeStandardCss] - Also index the standard Service Portal base CSS bundle.
      * @param {string}  [config.fieldName] - Form field name the Monaco editor is bound to (informational).
      */
     function init(config) {
@@ -4630,6 +4861,7 @@ Record({
             _api.checkSiExists = _checkSiExists;
             _api.loadCssVariables = _loadCssVariables;
             _api.loadScssVariables = _loadScssVariables;
+            _api.loadHtmlClassIndex = _loadHtmlClassIndex;
             _api.loadCssLanguageDts = loadCssLanguageDts;
             _api.loadCssEditorSupport = function () {
                 loadCssLanguageDts();
@@ -4650,6 +4882,11 @@ Record({
         var _capturedLang = _lang;
         var _capturedIsClient = _isClient;
         var _capturedAppSysId = config.appSysId;
+        var _capturedHtmlClassPortalSysId = config.htmlClassPortalSysId;
+        var _capturedHtmlClassPortalUrlSuffix = config.htmlClassPortalUrlSuffix;
+        var _capturedHtmlClassThemeSysId = config.htmlClassThemeSysId;
+        var _capturedHtmlClassDependencySysIds = config.htmlClassDependencySysIds;
+        var _capturedHtmlClassIncludeStandardCss = config.htmlClassIncludeStandardCss;
 
         _api._waitForMonaco(function () {
             var _isJs =
@@ -4730,6 +4967,13 @@ Record({
             // HTML Monarch: AngularJS ng-* / sp-* tokenizer for HTML editors.
             if (_capturedLang === 'html') {
                 _api.loadHtmlMonarchDts();
+                _api.loadHtmlClassIndex({
+                    portalSysId: _capturedHtmlClassPortalSysId,
+                    portalUrlSuffix: _capturedHtmlClassPortalUrlSuffix,
+                    themeSysId: _capturedHtmlClassThemeSysId,
+                    dependencySysIds: _capturedHtmlClassDependencySysIds,
+                    includeStandardCss: _capturedHtmlClassIncludeStandardCss,
+                });
             }
 
             // ════ Success: Monaco Editor+ is ready ════
