@@ -1701,8 +1701,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                                     <div class="we-picker-item" ng-repeat="t in ctrl.lookup.tableResults" ng-click="ctrl.chooseTable(t)" ng-keydown="ctrl.onTableItemKeydown($event, t)" tabindex="0" role="button" title="{{t.name}}">
                                         <span class="we-picker-item-icon" aria-hidden="true"><i ng-class="ctrl.tableIconClass(t.name)" aria-hidden="true"></i></span>
                                         <div class="we-picker-item-content">
-                                            <span class="we-picker-item-name" ng-bind-html="t.label | weHighlight:ctrl.lookup.tableActiveSearch"></span>
-                                            <span class="we-picker-item-id we-code-font" ng-bind-html="t.name | weHighlight:ctrl.lookup.tableActiveSearch"></span>
+                                            <span class="we-picker-item-name we-code-font" ng-bind-html="t.name | weHighlight:ctrl.lookup.tableActiveSearch"></span>
+                                            <span class="we-picker-item-id" ng-bind-html="t.label | weHighlight:ctrl.lookup.tableActiveSearch"></span>
                                         </div>
                                     </div>
                                     <div class="we-picker-load-more" ng-if="ctrl.lookup.tableLoadingMore"><we-loader></we-loader></div>
