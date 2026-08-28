@@ -1,6 +1,6 @@
 import { Property } from '@servicenow/sdk/core'
 
-Property({
+export const widgetDeprecatedProperty = Property({
     $id: Now.ID['c29658b28358031070b8b5dfeeaad368'],
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.widget.deprecated',

@@ -1,6 +1,6 @@
 import { Property } from '@servicenow/sdk/core'
 
-Property({
+export const recordLimitProperty = Property({
     $id: Now.ID['widget-editor-record-limit'],
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.record_limit',

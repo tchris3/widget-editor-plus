@@ -1,6 +1,6 @@
 import { Property } from '@servicenow/sdk/core'
 
-Property({
+export const tableConfigSpPageProperty = Property({
     $id: Now.ID['f91740c6c1e13b438184f89dcda190f3'],
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.assistant.table_config.sp_page',

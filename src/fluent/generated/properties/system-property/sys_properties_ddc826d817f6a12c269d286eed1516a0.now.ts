@@ -1,6 +1,6 @@
 import { Property } from '@servicenow/sdk/core'
 
-Property({
+export const tableConfigSpWidgetProperty = Property({
     $id: Now.ID['ddc826d817f6a12c269d286eed1516a0'],
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.assistant.table_config.sp_widget',

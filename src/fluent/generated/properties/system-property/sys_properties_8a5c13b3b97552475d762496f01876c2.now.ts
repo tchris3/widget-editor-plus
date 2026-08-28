@@ -1,6 +1,6 @@
 import { Property } from '@servicenow/sdk/core'
 
-Property({
+export const tableConfigSyseventEmailActionProperty = Property({
     $id: Now.ID['8a5c13b3b97552475d762496f01876c2'],
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.assistant.table_config.sysevent_email_action',

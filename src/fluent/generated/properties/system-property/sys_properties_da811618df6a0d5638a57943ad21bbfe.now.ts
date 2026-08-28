@@ -1,6 +1,6 @@
 import { Property } from '@servicenow/sdk/core'
 
-Property({
+export const tableConfigScCatItemProducerProperty = Property({
     $id: Now.ID['da811618df6a0d5638a57943ad21bbfe'],
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.assistant.table_config.sc_cat_item_producer',

@@ -1,6 +1,6 @@
 import { Property } from '@servicenow/sdk/core'
 
-Property({
+export const scssVariablesProperty = Property({
     $id: Now.ID['76c6cf9d8373b25070b8b5dfeeaad332'],
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.scss.variables',
