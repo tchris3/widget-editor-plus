@@ -1,6 +1,6 @@
 import { Property } from '@servicenow/sdk/core'
 
-Property({
+export const exportBlocklistPrefixesProperty = Property({
     $id: Now.ID['e26f703f034ce59c0206c4d0d01dc9ea'],
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.assistant.export_blocklist_prefixes',

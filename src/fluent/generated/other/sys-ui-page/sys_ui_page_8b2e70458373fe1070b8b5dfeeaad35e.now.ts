@@ -3665,6 +3665,19 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                         <option value="off">Off</option>
                                     </select>
                                 </div>
+                                <div class="we-modal-option we-modal-option-row">
+                                    <label class="we-modal-option-label" for="sel-html-class-portal" we-tooltip-title="Portal and theme used to compile CSS for class=&quot;...&quot; completions in the HTML editor.">CSS theme</label>
+                                    <select id="sel-html-class-portal" class="form-control we-pref-select" ng-model="userPrefsEdit.htmlClassPortalSysId">
+                                        <option value="">— None —</option>
+                                        <option ng-repeat="p in classPortals" value="{{p.sys_id}}" ng-bind="p.title + ' (' + p.url_suffix + ') - ' + p.themeTitle"></option>
+                                    </select>
+                                </div>
+                                <div class="we-modal-option" ng-if="userPrefsEdit.htmlClassPortalSysId">
+                                    <span class="input-group-checkbox">
+                                        <input type="checkbox" class="checkbox" id="chk-html-class-include-standard-css" ng-model="userPrefsEdit.htmlClassIncludeStandardCss" />
+                                        <label class="checkbox-label" for="chk-html-class-include-standard-css" we-tooltip-title="Also index the standard Service Portal base CSS bundle for class completions, in addition to the theme's own CSS.">Include standard Service Portal CSS</label>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -5698,6 +5711,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 $scope.recentWidgetsResolved = [];
                 $scope.showUserPrefsModal = false;
                 $scope.userPrefsEdit = {};
+                $scope.classPortals = null; // null = not yet loaded; [] = loaded (possibly empty)
                 $scope.showOptionSchemaModal = false;
                 $scope.optionSchemaLoading = false;
                 $scope.optionSchemaLoadError = null;
@@ -6367,6 +6381,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         }
                     });
                     [
+                        'htmlClassPortalSysId',
+                        'htmlClassPortalUrlSuffix',
+                        'htmlClassThemeSysId',
+                    ].forEach(function (k) {
+                        if (p.hasOwnProperty(k)) {
+                            $scope.userPrefs[k] = p[k];
+                        }
+                    });
+                    [
                         'htmlValidation',
                         'htmlAutoCloseTags',
                         'languageHelpers',
@@ -6379,6 +6402,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         'showRecentlyOpenedWidgets',
                         'showOpenHistory',
                         'showAssistantButton',
+                        'htmlClassIncludeStandardCss',
                     ].forEach(function (k) {
                         if (p.hasOwnProperty(k)) {
                             $scope.userPrefs[k] = !!p[k];
@@ -6437,6 +6461,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             MONACO_LANGUAGE_HTML.setAutoCloseTagsEnabled($scope.userPrefs.htmlAutoCloseTags);
                         }
                     }
+                    // Retrigger now that userPrefs.htmlClassPortal* are populated.
+                    loadHtmlMonarchDts();
                 }
 
                 function init() {
@@ -6804,6 +6830,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }).then(function (d) {
                         if (d.success) {
                             $scope.providers = d.providers;
+                            _syncProviderCompletions();
                         }
                     });
                     ajax('getDependencies', {
@@ -7939,6 +7966,31 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                             }
 
+                            // Track Client Controller editors for Angular Provider api.controller-parameter completions.
+                            // Uses SNMonacoPlusBootstrap directly (not the loadClientMonarchDts(cb) wrapper above,
+                            // whose cb fires immediately without waiting for core to finish loading).
+                            if (!readOnly && isJs && pane.field === 'client_script') {
+                                function _runProviderScan(text) {
+                                    var _bs = window.SNMonacoPlusBootstrap;
+                                    if (!_bs) {
+                                        return;
+                                    }
+                                    _bs.init({ language: 'javascript', isClient: true }).then(function (api) {
+                                        if (api && typeof api.scanAndFetchProviders === 'function') {
+                                            api.scanAndFetchProviders(text);
+                                        }
+                                    });
+                                }
+                                _runProviderScan(value);
+                                var _providerTimer = null;
+                                ed.onDidChangeModelContent(function () {
+                                    clearTimeout(_providerTimer);
+                                    _providerTimer = setTimeout(function () {
+                                        _runProviderScan(ed.getValue());
+                                    }, 800);
+                                });
+                            }
+
                             if (!readOnly && isJs && !$scope.isVersionView) {
                                 _initLintWorker();
                                 _triggerLint(pane.key);
@@ -8770,6 +8822,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                 }
 
+                // Refreshes data-<prop> completions/hover/validation for linked Angular Provider directives.
+                function _syncProviderCompletions() {
+                    if (window.MONACO_LANGUAGE_HTML && typeof MONACO_LANGUAGE_HTML.setProviders === 'function') {
+                        MONACO_LANGUAGE_HTML.setProviders($scope.providers);
+                    }
+                }
+
                 function loadHtmlMonarchDts(cb) {
                     var _bs = window.SNMonacoPlusBootstrap;
                     if (!_bs) {
@@ -8778,12 +8837,35 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         }
                         return;
                     }
-                    _bs.init({ language: 'html' }).then(function (api) {
+                    var _dependencySysIds = ($scope.dependencies || []).map(function (d) { return d.sys_id; });
+                    _bs.init({
+                        language: 'html',
+                        htmlClassPortalSysId: $scope.userPrefs.htmlClassPortalSysId,
+                        htmlClassPortalUrlSuffix: $scope.userPrefs.htmlClassPortalUrlSuffix,
+                        htmlClassThemeSysId: $scope.userPrefs.htmlClassThemeSysId,
+                        htmlClassDependencySysIds: _dependencySysIds,
+                        htmlClassIncludeStandardCss: $scope.userPrefs.htmlClassIncludeStandardCss,
+                    }).then(function (api) {
+                        // Called directly since core's once-only init may have run before userPrefs loaded.
+                        if (api && typeof api.loadHtmlClassIndex === 'function') {
+                            api.loadHtmlClassIndex({
+                                portalSysId: $scope.userPrefs.htmlClassPortalSysId,
+                                portalUrlSuffix: $scope.userPrefs.htmlClassPortalUrlSuffix,
+                                themeSysId: $scope.userPrefs.htmlClassThemeSysId,
+                                dependencySysIds: _dependencySysIds,
+                                includeStandardCss: $scope.userPrefs.htmlClassIncludeStandardCss,
+                            });
+                        }
                         if (
                             api &&
                             typeof api.loadHtmlMonarchDts === 'function'
                         ) {
-                            api.loadHtmlMonarchDts(cb);
+                            api.loadHtmlMonarchDts(function () {
+                                _syncProviderCompletions();
+                                if (typeof cb === 'function') {
+                                    cb();
+                                }
+                            });
                         } else if (typeof cb === 'function') {
                             cb();
                         }
@@ -9908,6 +9990,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     function (d) {
                                         if (d.success) {
                                             $scope.providers = d.providers;
+                                            _syncProviderCompletions();
                                         }
                                     }
                                 );
@@ -10574,6 +10657,14 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.userPrefs.showAssistantButton;
                     prefs.contextMenuMode =
                         $scope.userPrefs.contextMenuMode || 'enhanced';
+                    prefs.htmlClassPortalSysId =
+                        $scope.userPrefs.htmlClassPortalSysId;
+                    prefs.htmlClassPortalUrlSuffix =
+                        $scope.userPrefs.htmlClassPortalUrlSuffix;
+                    prefs.htmlClassThemeSysId =
+                        $scope.userPrefs.htmlClassThemeSysId;
+                    prefs.htmlClassIncludeStandardCss =
+                        !!$scope.userPrefs.htmlClassIncludeStandardCss;
                     prefs.recentWidgets = $scope.userPrefs.recentWidgets;
                     prefs.order = $scope.coreEditorDefs.map(function (d) {
                         return d.key;
@@ -10877,6 +10968,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             function (pd) {
                                 if (pd.success) {
                                     $scope.providers = pd.providers;
+                                    _syncProviderCompletions();
                                 }
                             }
                         );
@@ -11054,6 +11146,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     return p.sys_id !== item.sys_id;
                                 }
                             );
+                            _syncProviderCompletions();
                         }
                         buildVisibleItems();
                     });
@@ -11167,6 +11260,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             function (dd) {
                                 if (dd.success) {
                                     $scope.dependencies = dd.dependencies;
+                                    loadHtmlMonarchDts();
                                 }
                             }
                         );
@@ -11209,6 +11303,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 return dep.sys_id !== pending.sys_id;
                             }
                         );
+                        loadHtmlMonarchDts();
                     });
                 };
 
@@ -11389,6 +11484,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 return p.sys_id !== pending.sys_id;
                             }
                         );
+                        _syncProviderCompletions();
                         // Close the open pane for this provider, if any
                         var idx = extraPanes.findIndex(function (e) {
                             return e.sys_id === pending.sys_id;
@@ -11485,6 +11581,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     $scope.templates = d.templates;
                                 } else {
                                     $scope.providers = d.providers;
+                                    _syncProviderCompletions();
                                 }
                             }
                         });
@@ -12595,13 +12692,31 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             $scope.userPrefs.showAssistantButton,
                         contextMenuMode:
                             $scope.userPrefs.contextMenuMode || 'enhanced',
+                        htmlClassPortalSysId:
+                            $scope.userPrefs.htmlClassPortalSysId || '',
+                        htmlClassIncludeStandardCss:
+                            !!$scope.userPrefs.htmlClassIncludeStandardCss,
                         availableFonts: _getAvailableMonospaceFonts(),
                         googleFonts: _GOOGLE_FONTS,
                     };
+                    _loadClassPortals();
                     $scope.importPrefsStatus = null;
                     $scope.showUserPrefsModal = true;
                     $scope.openDropdown = null;
                 };
+
+                // Lazily loads portals for the "CSS theme" preference dropdown.
+                function _loadClassPortals() {
+                    if ($scope.classPortals !== null) {
+                        return;
+                    }
+                    $scope.classPortals = [];
+                    ajax('getPortalsForClassIndex', {}).then(function (res) {
+                        if (res && res.success && res.portals) {
+                            $scope.classPortals = res.portals;
+                        }
+                    });
+                }
 
                 $scope.saveUserPrefsModal = function () {
                     // Apply order and visibility from modal back to coreEditorDefs
@@ -12672,6 +12787,20 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         !!$scope.userPrefsEdit.showAssistantButton;
                     $scope.userPrefs.contextMenuMode =
                         $scope.userPrefsEdit.contextMenuMode || 'enhanced';
+                    var _selectedClassPortal = ($scope.classPortals || []).filter(function (p) {
+                        return p.sys_id === $scope.userPrefsEdit.htmlClassPortalSysId;
+                    })[0];
+                    $scope.userPrefs.htmlClassPortalSysId = _selectedClassPortal
+                        ? _selectedClassPortal.sys_id
+                        : '';
+                    $scope.userPrefs.htmlClassPortalUrlSuffix = _selectedClassPortal
+                        ? _selectedClassPortal.url_suffix
+                        : '';
+                    $scope.userPrefs.htmlClassThemeSysId = _selectedClassPortal
+                        ? _selectedClassPortal.themeSysId
+                        : '';
+                    $scope.userPrefs.htmlClassIncludeStandardCss =
+                        !!$scope.userPrefsEdit.htmlClassIncludeStandardCss;
                     var ts = parseInt($scope.userPrefsEdit.tabSize, 10);
                     if (ts >= 1 && ts <= 8) {
                         $scope.userPrefs.tabSize = ts;

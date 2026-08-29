@@ -28,6 +28,8 @@ Record({
  *     primitive-type augmentations, fixes the non-constructable
  *     GlideRecordSecure declaration)
  *   - CSS/SCSS custom-property completions & hover
+ *   - HTML class-attribute completion index, from the chosen portal/theme's compiled CSS
+ *   - Angular Provider (service/factory) IntelliSense on api.controller's injected parameters
  *   - AngularJS widget 'api' object DI-aware typing (client panes)
  *   - Quick-info hover replacement (works around SN's broken JSDoc rendering)
  *   - window.SNMonacoPlus.init(config) — the main per-language entry point
@@ -49,7 +51,7 @@ Record({
     };
     var _pollIntervalMs = 200;
     var _maxWaitMs = 10000;
-    var _v = '2026-07-21T12:00';
+    var _v = '2026-08-29T13:00';
     var _definitionUrl =
         'monaco_language_server.jsdbx?sysparm_substitute=false&v=' + _v;
     var _clientDefinitionUrl =
@@ -84,6 +86,7 @@ Record({
             _api.loadCodeActions({ modelId: modelId, isAngular: true });
         },
         scanAndFetchSIs: function () {},
+        scanAndFetchProviders: function () {},
         scanLocalTypedefs: function () {},
         notifyScriptContextFocus: function () {},
         getSiSysId: function () {
@@ -94,6 +97,7 @@ Record({
         },
         loadCssVariables: function () {},
         loadScssVariables: function () {},
+        loadHtmlClassIndex: function () {},
         loadCssEditorSupport: function () {},
         setUnusedVarsEnabled: function (enabled) {
             _showUnusedVars = !!enabled;
@@ -158,6 +162,11 @@ Record({
     var _scssVarPromise = null; // in-flight XHR promise — deduplicates concurrent requests
     var _scssVarCompletionRegistered = false;
     var _scssVarHoverRegistered = false;
+
+    /* HTML class-name completion index, sourced from monaco.plus.html.class_stylesheets (sp_css sys_ids). */
+    var _htmlClassIndexPromise = null; // in-flight/completed load — deduplicates concurrent triggers for the same portal/theme
+    var _htmlClassIndexContextKey = null; // 'portalUrlSuffix::themeSysId' the current/last promise was resolved for
+    var _htmlClassIndexCacheKey = 'we_html_class_index_cache';
 
     /* Provider registration flags — prevent double-registration on the same page. */
     var _completionRegistered = false;
@@ -2215,6 +2224,12 @@ Record({
             ) ||
             /api\\s*\\.\\s*controller\\s*=\\s*(?:\\[[^\\]]*?)?(?:async\\s*)?\\(([^)]*)\\)\\s*=>/.exec(
                 source
+            ) ||
+            // Some (mostly older/OOB) widgets omit 'api.controller =' entirely — the platform
+            // implicitly assigns the whole field content to api.controller either way, so a
+            // bare function as the script's very first statement is an equally valid controller.
+            /^\\s*(?:\\/\\*[\\s\\S]*?\\*\\/\\s*|\\/\\/[^\\n]*\\n\\s*)*(?:async\\s+)?function\\s*[\\w$]*\\s*\\(([^)]*)\\)/.exec(
+                source
             );
         if (!m) {
             return null;
@@ -2832,6 +2847,330 @@ Record({
     }
 
     ///////////////////////////////////////////
+    // Angular Provider (service/factory) IntelliSense — typed api.controller injected parameters
+    ///////////////////////////////////////////
+    // Isolated from the Script Include engine above: own name map, own caches, own DTS URIs.
+    // Directive-type providers are out of scope here — see monaco_language_html for their
+    // data-<prop> HTML completions instead.
+
+    var _providerNameMap = {}; // name -> sys_id ('' = confirmed not a service/factory provider)
+    var _providerMethodCache = {};
+    var _providerPropertyCache = {};
+
+    /** Parses \\\`this.name = function (...) {}\\\` methods from a 'service' provider's script. */
+    function parseServiceMethods(script) {
+        var methods = [];
+        var re =
+            /(\\/\\*\\*(?:(?!\\*\\/)[\\s\\S])*\\*\\/|\\/\\*(?:(?!\\*\\/)[\\s\\S])*\\*\\/)?\\s*\\bthis\\.(\\w+)\\s*=\\s*function\\s*\\(([^)]*)\\)/g;
+        var m;
+        while ((m = re.exec(script)) !== null) {
+            var methodName = m[2];
+            var comment = m[1] || null;
+            var docInfo = parseSiDocComment(comment);
+            var rawParams = m[3]
+                .split(',')
+                .map(function (p) { return p.trim(); })
+                .filter(Boolean);
+            var typedParams = rawParams
+                .map(function (p) {
+                    var info = docInfo.params[p];
+                    return info ? p + (info.optional ? '?' : '') + ': ' + info.type : p + ': any';
+                })
+                .join(', ');
+
+            var docLines = [];
+            if (comment) {
+                var descText = comment
+                    .replace(/^\\/\\*+\\s*/, '')
+                    .replace(/\\s*\\*+\\/$/, '')
+                    .replace(/^\\s*\\*\\s?/gm, '');
+                var descMatch = descText.match(/^([\\s\\S]*?)(?=\\s*@|\\s*$)/);
+                if (descMatch && descMatch[1].trim()) {
+                    docLines.push(descMatch[1].trim());
+                }
+            }
+            rawParams.forEach(function (p) {
+                var info = docInfo.params[p];
+                if (info && info.description) {
+                    docLines.push('*@param* \`' + p + '\` \\u2014 ' + info.description);
+                }
+            });
+            if (docInfo.returns !== 'any') {
+                docLines.push('*@returns* \`' + docInfo.returns + '\`');
+            }
+
+            methods.push({
+                name: methodName,
+                signature: methodName + '(' + typedParams + '): ' + docInfo.returns,
+                documentation: docLines.join('\\n\\n')
+            });
+        }
+        return methods;
+    }
+
+    /** Finds the '}' matching the '{' at openIndex, skipping string/comment contents. */
+    function _findMatchingBraceSkippingStrings(script, openIndex) {
+        var depth = 0;
+        var inStr = null;
+        var n = script.length;
+        for (var j = openIndex; j < n; j++) {
+            var ch = script.charAt(j);
+            if (inStr) {
+                if (ch === '\\\\') { j++; }
+                else if (ch === inStr) { inStr = null; }
+                continue;
+            }
+            if (ch === '"' || ch === "'") { inStr = ch; continue; }
+            if (ch === '/' && script.charAt(j + 1) === '*') {
+                var blockEnd = script.indexOf('*/', j + 2);
+                j = blockEnd === -1 ? n : blockEnd + 1;
+                continue;
+            }
+            if (ch === '/' && script.charAt(j + 1) === '/') {
+                var lineEnd = script.indexOf('\\n', j);
+                j = lineEnd === -1 ? n : lineEnd;
+                continue;
+            }
+            if (ch === '{') {
+                depth++;
+            } else if (ch === '}') {
+                depth--;
+                if (depth === 0) {
+                    return j;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Unwraps a provider DDF's outer \\\`function () { ... }\\\` wrapper, exposing its body
+     * (helper declarations + \\\`return {...}\\\`) as top-level content for member scanning.
+     * Without this, _stripFunctionBodies collapses the whole script from the first
+     * 'function' keyword it finds — which for a provider script is this outer wrapper.
+     */
+    function _unwrapProviderFunctionBody(script) {
+        var idx = script.indexOf('function');
+        if (idx === -1) {
+            return script;
+        }
+        var open = script.indexOf('{', idx);
+        if (open === -1) {
+            return script;
+        }
+        var close = _findMatchingBraceSkippingStrings(script, open);
+        if (close === -1) {
+            return script;
+        }
+        return script.slice(open + 1, close);
+    }
+
+    /**
+     * Resolves \\\`key: identifierName\\\` shorthand exports (a very common revealing-module
+     * pattern: declare a named function, then return \\\`{ key: identifierName }\\\`) to a real
+     * method signature from that function's own declaration, instead of an untyped property.
+     */
+    function _resolveBareRefMethods(body, decls) {
+        var methods = [];
+        var handledKeys = {};
+        var re = /([A-Za-z_$][\\w$]*)\\s*:\\s*([A-Za-z_$][\\w$]*)\\s*(?=[,\\}])/g;
+        var m;
+        while ((m = re.exec(body)) !== null) {
+            var decl = decls[m[2]];
+            if (!decl) {
+                continue;
+            }
+            var docInfo = parseSiDocComment(decl.comment);
+            var rawParams = decl.params
+                .split(',')
+                .map(function (p) { return p.trim(); })
+                .filter(Boolean);
+            var typedParams = rawParams
+                .map(function (p) {
+                    var info = docInfo.params[p];
+                    return info ? p + (info.optional ? '?' : '') + ': ' + info.type : p + ': any';
+                })
+                .join(', ');
+            methods.push({
+                name: m[1],
+                signature: m[1] + '(' + typedParams + '): ' + docInfo.returns,
+                documentation: decl.comment
+                    ? decl.comment.replace(/^\\/\\*+\\s*/, '').replace(/\\s*\\*+\\/$/, '').replace(/^\\s*\\*\\s?/gm, '').trim()
+                    : ''
+            });
+            handledKeys[m[1]] = true;
+        }
+        return { methods: methods, handledKeys: handledKeys };
+    }
+
+    /**
+     * Parses a service/factory provider's script for its public members. Runs every
+     * strategy unconditionally (inline \\\`key: function(){}\\\`, \\\`this.key = ...\\\`, and
+     * shorthand \\\`key: namedFn\\\` exports) rather than branching on the provider's declared
+     * type, since developer code frequently doesn't match the type dropdown's convention.
+     */
+    function parseProviderMembers(script) {
+        var body = _unwrapProviderFunctionBody(script);
+
+        var decls = {};
+        var declRe = /(\\/\\*\\*(?:(?!\\*\\/)[\\s\\S])*\\*\\/\\s*)?function\\s+(\\w+)\\s*\\(([^)]*)\\)/g;
+        var dm;
+        while ((dm = declRe.exec(body)) !== null) {
+            decls[dm[2]] = { comment: dm[1] || null, params: dm[3] };
+        }
+
+        var bareRefs = _resolveBareRefMethods(body, decls);
+        var methods = parseSiMethods(body)
+            .concat(parseServiceMethods(body))
+            .concat(bareRefs.methods);
+        var properties = parseSiProperties(body, null).filter(function (p) {
+            return !bareRefs.handledKeys[p.name];
+        });
+        return { methods: methods, properties: properties };
+    }
+
+    /** Builds and registers a \\\`declare class ProviderName {...}\\\` ambient lib, for typing the matching api.controller parameter as this provider. */
+    function _registerProviderDts(providerName, methods, properties) {
+        if (!window.monaco || !monaco.languages || !monaco.languages.typescript) {
+            return;
+        }
+        if ((!methods || !methods.length) && (!properties || !properties.length)) {
+            return;
+        }
+        var ourUri = 'ts:snlib-provider-plus-' + providerName + '.d.ts';
+        var lines = ['declare class ' + providerName + ' {'];
+        (properties || []).forEach(function (p) {
+            if (p.documentation) {
+                lines.push('    /** ' + p.documentation + ' */');
+            }
+            lines.push('    ' + p.name + ': ' + (p.tsType || 'any') + ';');
+        });
+        (methods || []).forEach(function (m) {
+            if (m.documentation) {
+                lines.push('    /** ' + m.documentation + ' */');
+            }
+            lines.push('    ' + m.signature + ';');
+        });
+        lines.push('}');
+        var content = lines.join('\\n');
+        ['javascriptDefaults', 'typescriptDefaults'].forEach(function (target) {
+            monaco.languages.typescript[target].addExtraLib(content, ourUri);
+        });
+    }
+
+    /** Fetches + parses a service/factory provider's script by name, then registers its DTS. Cached per name. */
+    function fetchProviderMembers(providerName, sysId) {
+        if (_providerMethodCache[providerName]) {
+            return;
+        }
+        var xhr = new XMLHttpRequest();
+        var url = '/api/now/table/sp_angular_provider' +
+            '?sysparm_query=sys_id%3D' + encodeURIComponent(sysId) +
+            '&sysparm_fields=script%2Ctype&sysparm_limit=1';
+        xhr.open('GET', url, true);
+        xhr.setRequestHeader('X-UserToken', window.g_ck || '');
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.onload = function () {
+            try {
+                if (xhr.status !== 200) {
+                    return;
+                }
+                var records = (JSON.parse(xhr.responseText) || {}).result || [];
+                if (!records.length) {
+                    return;
+                }
+                var script = records[0].script || '';
+                var parsed = parseProviderMembers(script);
+                _providerMethodCache[providerName] = parsed.methods;
+                _providerPropertyCache[providerName] = parsed.properties;
+                _registerProviderDts(providerName, parsed.methods, parsed.properties);
+
+                // Type the matching api.controller parameter as this provider, then
+                // force the ambient 'declare var api' signature to pick it up.
+                if (window.MONACO_LANGUAGE_CLIENT_DI) {
+                    window.MONACO_LANGUAGE_CLIENT_DI.types[providerName] = providerName;
+                }
+                _clientDiLastParamsKey = null;
+                if (window.monaco && monaco.editor) {
+                    monaco.editor.getModels().forEach(function (m) {
+                        if (m.getLanguageId() === 'javascript') {
+                            _refreshClientApiLib(m);
+                        }
+                    });
+                }
+            } catch (e) {}
+        };
+        xhr.send();
+    }
+
+    /** Checks candidate names against sp_angular_provider in batches of 50; confirmed service/factory providers trigger a fetch. */
+    function _batchCheckProviderNames(names) {
+        var toCheck = names.filter(function (n) { return _providerNameMap[n] === undefined; });
+        if (!toCheck.length) {
+            return;
+        }
+        var BATCH_SIZE = 50;
+        for (var i = 0; i < toCheck.length; i += BATCH_SIZE) {
+            (function (batch) {
+                var url = '/api/now/table/sp_angular_provider' +
+                    '?sysparm_query=nameIN' + encodeURIComponent(batch.join(',')) +
+                    '%5EtypeINfactory%2Cservice' +
+                    '&sysparm_fields=name%2Csys_id&sysparm_limit=' + batch.length;
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', url, true);
+                xhr.setRequestHeader('X-UserToken', window.g_ck || '');
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.onload = function () {
+                    if (xhr.status !== 200) {
+                        return;
+                    }
+                    try {
+                        var records = (JSON.parse(xhr.responseText) || {}).result || [];
+                        var found = {};
+                        records.forEach(function (r) {
+                            _providerNameMap[r.name] = r.sys_id;
+                            found[r.name] = true;
+                        });
+                        batch.forEach(function (n) {
+                            if (!found[n]) {
+                                _providerNameMap[n] = '';
+                            }
+                        });
+                        records.forEach(function (r) {
+                            fetchProviderMembers(r.name, r.sys_id);
+                        });
+                    } catch (e) {}
+                };
+                xhr.send();
+            })(toCheck.slice(i, i + BATCH_SIZE));
+        }
+    }
+
+    /**
+     * Scans the Client Controller's \\\`api.controller\\\` parameter list (AngularJS injects
+     * services/factories/directives by name as a parameter, never via \\\`new\\\`) and fetches
+     * any matching service/factory provider so it can be typed in DI_TYPES.
+     */
+    function _scanAndFetchProviders(content) {
+        if (!window.monaco) {
+            return;
+        }
+        var params = _parseControllerParams(content);
+        if (!params || !params.length) {
+            return;
+        }
+        // Already-confirmed providers retry here on every scan (fetchProviderMembers itself
+        // no-ops once _providerMethodCache is populated), so a transient fetch failure doesn't
+        // permanently disable IntelliSense for that name.
+        params.forEach(function (n) {
+            if (_providerNameMap[n]) {
+                fetchProviderMembers(n, _providerNameMap[n]);
+            }
+        });
+        _batchCheckProviderNames(params);
+    }
+
+    ///////////////////////////////////////////
     // CSS variable completions
     ///////////////////////////////////////////
 
@@ -3124,6 +3463,239 @@ Record({
 
         monaco.languages.registerHoverProvider('scss', provider);
         monaco.languages.registerHoverProvider('less', provider);
+    }
+
+    // HTML class-name completion index
+    ///////////////////////////////////////////
+
+    /** Extracts unique class-selector names from CSS/SCSS text (top-level and nested alike — no attempt to resolve full nesting context). */
+    function _extractCssClassNames(cssText) {
+        var seen = {};
+        if (!cssText) {
+            return [];
+        }
+        var re = /\\.(-?[a-zA-Z_][\\w-]*)/g;
+        var match;
+        while ((match = re.exec(cssText)) !== null) {
+            var prevChar = match.index > 0 ? cssText.charAt(match.index - 1) : '';
+            if (/[\\w.]/.test(prevChar)) {
+                continue; // decimal number (e.g. 1.5rem) or already part of a longer token
+            }
+            seen[match[1]] = true;
+        }
+        return Object.keys(seen);
+    }
+
+    function _readHtmlClassIndexCache() {
+        try {
+            return JSON.parse(global.localStorage.getItem(_htmlClassIndexCacheKey) || '{}');
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function _writeHtmlClassIndexCache(cache) {
+        try {
+            global.localStorage.setItem(_htmlClassIndexCacheKey, JSON.stringify(cache));
+        } catch (e) {}
+    }
+
+    function _rebuildHtmlClassIndex(bundles) {
+        var sources = {}; // className -> { labelText: true }
+        Object.keys(bundles).forEach(function (key) {
+            var bundle = bundles[key];
+            var label = bundle.label || key;
+            (bundle.classes || []).forEach(function (c) {
+                if (!sources[c]) {
+                    sources[c] = {};
+                }
+                sources[c][label] = true;
+            });
+        });
+        global.MONACO_HTML_CLASS_INDEX = Object.keys(sources).sort().map(function (name) {
+            return { name: name, detail: Object.keys(sources[name]).sort().join(', ') };
+        });
+    }
+
+    /** HEAD request for a URL's Last-Modified header, without downloading the body. */
+    function _xhrHeadLastModified(url) {
+        return new Promise(function (resolve) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('HEAD', url, true);
+            xhr.onload = function () {
+                resolve(xhr.status === 200 ? xhr.getResponseHeader('Last-Modified') : null);
+            };
+            xhr.onerror = function () {
+                resolve(null);
+            };
+            xhr.send();
+        });
+    }
+
+    function _xhrGetText(url) {
+        return new Promise(function (resolve) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.onload = function () {
+                resolve(xhr.status === 200 ? xhr.responseText : '');
+            };
+            xhr.onerror = function () {
+                resolve('');
+            };
+            xhr.send();
+        });
+    }
+
+    function _xhrGetJson(url) {
+        return new Promise(function (resolve) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.setRequestHeader('X-UserToken', global.g_ck || '');
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.onload = function () {
+                if (xhr.status !== 200) {
+                    resolve(null);
+                    return;
+                }
+                try {
+                    resolve(JSON.parse(xhr.responseText));
+                } catch (e) {
+                    resolve(null);
+                }
+            };
+            xhr.onerror = function () {
+                resolve(null);
+            };
+            xhr.send();
+        });
+    }
+
+    /** Fetches a CSS bundle, skipping the body fetch if its Last-Modified header is unchanged. */
+    function _loadCssBundle(url, cachedEntry, label) {
+        return _xhrHeadLastModified(url).then(function (lastModified) {
+            if (lastModified && cachedEntry && cachedEntry.lastModified === lastModified) {
+                return cachedEntry;
+            }
+            return _xhrGetText(url).then(function (cssText) {
+                return { lastModified: lastModified, classes: _extractCssClassNames(cssText), label: label };
+            });
+        });
+    }
+
+    /** Resolves sp_css_include sys_ids to a map of underlying sp_css sys_id -> stylesheet name. */
+    function _resolveCssIncludesToSpCss(includeIds) {
+        if (!includeIds.length) {
+            return Promise.resolve({});
+        }
+        return _xhrGetJson(
+            '/api/now/table/sp_css_include' +
+                '?sysparm_query=sys_idIN' + includeIds.join(',') +
+                '&sysparm_fields=sp_css%2Cname&sysparm_limit=200'
+        ).then(function (includeData) {
+            var map = {};
+            ((includeData && includeData.result) || []).forEach(function (r) {
+                var cssSysId = r.sp_css && r.sp_css.value;
+                if (cssSysId && !map[cssSysId]) {
+                    map[cssSysId] = r.name || cssSysId;
+                }
+            });
+            return map;
+        });
+    }
+
+    /** Resolves to a map of sp_css sys_id -> stylesheet name for a theme and/or widget dependencies. */
+    function _getCssIncludeSysIds(themeSysId, dependencySysIds) {
+        var lookups = [
+            _xhrGetJson(
+                '/api/now/table/m2m_sp_theme_css_include' +
+                    '?sysparm_query=sp_theme=' + encodeURIComponent(themeSysId) +
+                    '&sysparm_fields=sp_css_include&sysparm_limit=200'
+            ),
+        ];
+        if (dependencySysIds && dependencySysIds.length) {
+            lookups.push(
+                _xhrGetJson(
+                    '/api/now/table/m2m_sp_dependency_css_include' +
+                        '?sysparm_query=sp_dependencyIN' + dependencySysIds.join(',') +
+                        '&sysparm_fields=sp_css_include&sysparm_limit=200'
+                )
+            );
+        }
+        return Promise.all(lookups).then(function (results) {
+            var seen = {};
+            // Reference fields come back as {value, display_value, link} objects, not strings.
+            results.forEach(function (data) {
+                ((data && data.result) || []).forEach(function (r) {
+                    var includeId = r.sp_css_include && r.sp_css_include.value;
+                    if (includeId) {
+                        seen[includeId] = true;
+                    }
+                });
+            });
+            return _resolveCssIncludesToSpCss(Object.keys(seen));
+        });
+    }
+
+    /** Loads HTML class-name completions from the chosen portal/theme (and widget dependencies') compiled CSS. */
+    function _loadHtmlClassIndex(context) {
+        var portalSysId = (context && context.portalSysId) || '';
+        var portalUrlSuffix = (context && context.portalUrlSuffix) || '';
+        var themeSysId = (context && context.themeSysId) || '';
+        var dependencySysIds = (context && context.dependencySysIds) || [];
+        var includeStandardCss = !!(context && context.includeStandardCss);
+        var contextKey = portalSysId + '::' + portalUrlSuffix + '::' + themeSysId +
+            '::' + dependencySysIds.slice().sort().join(',') + '::' + includeStandardCss;
+
+        if (_htmlClassIndexPromise && _htmlClassIndexContextKey === contextKey) {
+            return _htmlClassIndexPromise;
+        }
+        _htmlClassIndexContextKey = contextKey;
+
+        if (!portalSysId || !portalUrlSuffix || !themeSysId) {
+            global.MONACO_HTML_CLASS_INDEX = [];
+            _htmlClassIndexPromise = Promise.resolve();
+            return _htmlClassIndexPromise;
+        }
+
+        var stored = _readHtmlClassIndexCache();
+        var cachedBundles = (stored.contextKey === contextKey && stored.bundles) || {};
+
+        _htmlClassIndexPromise = _getCssIncludeSysIds(themeSysId, dependencySysIds).then(function (cssNamesBySysId) {
+            var bundleUrls = {};
+            var bundleLabels = {};
+            if (includeStandardCss) {
+                bundleUrls.standard_main = '/styles/css_includes_$sp.css';
+                bundleUrls.standard_later = '/styles/css_includes_$sp_later.css';
+                bundleLabels.standard_main = 'Service Portal (base)';
+                bundleLabels.standard_later = 'Service Portal (deferred)';
+            }
+            Object.keys(cssNamesBySysId).forEach(function (cssSysId) {
+                bundleUrls[cssSysId] = '/' + cssSysId + '.spcssdbx' +
+                    '?portal=' + encodeURIComponent(portalSysId) +
+                    '&theme=' + encodeURIComponent(themeSysId);
+                bundleLabels[cssSysId] = cssNamesBySysId[cssSysId];
+            });
+
+            return Promise.all(
+                Object.keys(bundleUrls).map(function (key) {
+                    return _loadCssBundle(bundleUrls[key], cachedBundles[key], bundleLabels[key]).then(function (entry) {
+                        return { key: key, entry: entry };
+                    });
+                })
+            ).then(function (results) {
+                var nextBundles = {};
+                results.forEach(function (r) {
+                    nextBundles[r.key] = r.entry;
+                });
+                if (_htmlClassIndexContextKey !== contextKey) {
+                    return;
+                }
+                _writeHtmlClassIndexCache({ contextKey: contextKey, bundles: nextBundles });
+                _rebuildHtmlClassIndex(nextBundles);
+            });
+        }).catch(function () {});
+
+        return _htmlClassIndexPromise;
     }
 
     ///////////////////////////////////////////
@@ -4573,6 +5145,11 @@ Record({
      * @param {string}  [config.language] - Editor language: 'javascript' (default), 'html', 'css', 'scss'.
      * @param {boolean} [config.isClient] - When language is 'javascript', load client-side DTS instead of server.
      * @param {string}  [config.appSysId] - Application scope sys_id passed to loadSnTypeDefinitions.
+     * @param {string}  [config.htmlClassPortalSysId] - Portal sys_id for class-completion bundles.
+     * @param {string}  [config.htmlClassPortalUrlSuffix] - Portal url_suffix for class-completion bundles.
+     * @param {string}  [config.htmlClassThemeSysId] - Theme sys_id for class-completion bundles.
+     * @param {Array}   [config.htmlClassDependencySysIds] - sp_dependency sys_ids whose CSS includes should also be indexed.
+     * @param {boolean} [config.htmlClassIncludeStandardCss] - Also index the standard Service Portal base CSS bundle.
      * @param {string}  [config.fieldName] - Form field name the Monaco editor is bound to (informational).
      */
     function init(config) {
@@ -4622,6 +5199,7 @@ Record({
             _api.loadHtmlMonarchDts = loadHtmlMonarchDts;
             _api.loadCodeActions = loadCodeActions;
             _api.scanAndFetchSIs = _scanAndFetchSIs;
+            _api.scanAndFetchProviders = _scanAndFetchProviders;
             _api.scanLocalTypedefs = _registerLocalTypedefs;
             _api.notifyScriptContextFocus = notifyScriptContextFocus;
             _api.getSiSysId = function (name) {
@@ -4630,6 +5208,7 @@ Record({
             _api.checkSiExists = _checkSiExists;
             _api.loadCssVariables = _loadCssVariables;
             _api.loadScssVariables = _loadScssVariables;
+            _api.loadHtmlClassIndex = _loadHtmlClassIndex;
             _api.loadCssLanguageDts = loadCssLanguageDts;
             _api.loadCssEditorSupport = function () {
                 loadCssLanguageDts();
@@ -4650,6 +5229,11 @@ Record({
         var _capturedLang = _lang;
         var _capturedIsClient = _isClient;
         var _capturedAppSysId = config.appSysId;
+        var _capturedHtmlClassPortalSysId = config.htmlClassPortalSysId;
+        var _capturedHtmlClassPortalUrlSuffix = config.htmlClassPortalUrlSuffix;
+        var _capturedHtmlClassThemeSysId = config.htmlClassThemeSysId;
+        var _capturedHtmlClassDependencySysIds = config.htmlClassDependencySysIds;
+        var _capturedHtmlClassIncludeStandardCss = config.htmlClassIncludeStandardCss;
 
         _api._waitForMonaco(function () {
             var _isJs =
@@ -4730,6 +5314,13 @@ Record({
             // HTML Monarch: AngularJS ng-* / sp-* tokenizer for HTML editors.
             if (_capturedLang === 'html') {
                 _api.loadHtmlMonarchDts();
+                _api.loadHtmlClassIndex({
+                    portalSysId: _capturedHtmlClassPortalSysId,
+                    portalUrlSuffix: _capturedHtmlClassPortalUrlSuffix,
+                    themeSysId: _capturedHtmlClassThemeSysId,
+                    dependencySysIds: _capturedHtmlClassDependencySysIds,
+                    includeStandardCss: _capturedHtmlClassIncludeStandardCss,
+                });
             }
 
             // ════ Success: Monaco Editor+ is ready ════

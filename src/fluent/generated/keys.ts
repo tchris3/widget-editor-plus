@@ -175,9 +175,95 @@ declare global {
                         table: 'sys_security_acl'
                         id: '33195917e3c84b1f8afafe10a38f16b0'
                     }
+                    'widget-editor-html-class-stylesheets': {
+                        table: 'sys_properties'
+                        id: 'a66fcbb84e5a4e878ec6e60ec8dd9a5e'
+                        deleted: true
+                    }
+                    'widget-editor-plus-category-m2m-css-variables': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'cc6a3951ebfe4436807bdb9448a21502'
+                    }
+                    'widget-editor-plus-category-m2m-export-blocklist-prefixes': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'd64eca4b99cb4d69b67bc92b7e24c555'
+                    }
+                    'widget-editor-plus-category-m2m-export-blocklist-tables': {
+                        table: 'sys_properties_category_m2m'
+                        id: '03b221664dfd47c19ca22b4a943023cb'
+                    }
+                    'widget-editor-plus-category-m2m-html-class-stylesheets': {
+                        table: 'sys_properties_category_m2m'
+                        id: '99bb57666b0e4acdaa4831a7b619690d'
+                        deleted: true
+                    }
+                    'widget-editor-plus-category-m2m-record-limit': {
+                        table: 'sys_properties_category_m2m'
+                        id: '153b9b714d33438990830c21b8d601ae'
+                    }
+                    'widget-editor-plus-category-m2m-scss-variables': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'e3f3dc3f136545dba08b98517fbb6d72'
+                    }
+                    'widget-editor-plus-category-m2m-table-config-sc-cat-item-producer': {
+                        table: 'sys_properties_category_m2m'
+                        id: '13c639171a6b477eb1ed853e6775f213'
+                    }
+                    'widget-editor-plus-category-m2m-table-config-sp-angular-provider': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'ef2268c2d8af47bdadd7e7ae90b1e2dc'
+                    }
+                    'widget-editor-plus-category-m2m-table-config-sp-page': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'da8555d14aca492cba2113db60602b96'
+                    }
+                    'widget-editor-plus-category-m2m-table-config-sp-widget': {
+                        table: 'sys_properties_category_m2m'
+                        id: '7c76eaea18f342f28e1cb67f6e8641b7'
+                    }
+                    'widget-editor-plus-category-m2m-table-config-sys-security-acl': {
+                        table: 'sys_properties_category_m2m'
+                        id: '6c97713c59e24faeb228d496af24d120'
+                    }
+                    'widget-editor-plus-category-m2m-table-config-sys-ui-action': {
+                        table: 'sys_properties_category_m2m'
+                        id: '225488db664742f08bec6bcffc79ae6e'
+                    }
+                    'widget-editor-plus-category-m2m-table-config-sysevent-email-action': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'eac6635213da4c738ab86165ada83a33'
+                    }
+                    'widget-editor-plus-category-m2m-widget-deprecated': {
+                        table: 'sys_properties_category_m2m'
+                        id: '6540e0146e7c42f18102d7dd59d51c6c'
+                    }
+                    'widget-editor-plus-category-m2m-widget-fields': {
+                        table: 'sys_properties_category_m2m'
+                        id: '548cb5803ed94dc4904ada2c758321e6'
+                    }
+                    'widget-editor-plus-category-m2m-widget-related-list-exclusions': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'af570c6ebf8b49fa8429df90a5e72f1d'
+                    }
+                    'widget-editor-plus-properties-category': {
+                        table: 'sys_properties_category'
+                        id: '120d01222f6e41e8bf4eaf0c4b73490a'
+                    }
                     'widget-editor-record-limit': {
                         table: 'sys_properties'
                         id: 'ad6ba1d936344db993031b6e49532e2b'
+                    }
+                    'widget-editor-table-config-sp-angular-provider': {
+                        table: 'sys_properties'
+                        id: '5e67c97fe19842bfb26739a64956e969'
+                    }
+                    'widget-editor-table-config-sys-security-acl': {
+                        table: 'sys_properties'
+                        id: '9800142f4e2e4c8abb2beffbd8140fd6'
+                    }
+                    'widget-editor-table-config-sys-ui-action': {
+                        table: 'sys_properties'
+                        id: '84bbec5cb748452480fbc560d8613fda'
                     }
                 }
                 composite: [

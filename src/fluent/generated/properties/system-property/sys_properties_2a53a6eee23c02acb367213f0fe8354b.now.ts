@@ -1,6 +1,6 @@
 import { Property } from '@servicenow/sdk/core'
 
-Property({
+export const exportBlocklistTablesProperty = Property({
     $id: Now.ID['2a53a6eee23c02acb367213f0fe8354b'],
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.assistant.export_blocklist_tables',

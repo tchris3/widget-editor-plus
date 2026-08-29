@@ -1,6 +1,6 @@
 import { Property } from '@servicenow/sdk/core'
 
-Property({
+export const tableConfigSpPageProperty = Property({
     $id: Now.ID['f91740c6c1e13b438184f89dcda190f3'],
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.assistant.table_config.sp_page',
@@ -45,10 +45,11 @@ Property({
         }
       ]
     }
-  ]
+  ],
+  "pickerFields": ["id", "title"]
 }`,
     description:
-        'Widget Editor+ Assistant table_config rules for sp_page: layout hierarchy down to the widgets used on the page.',
+        'Widget Editor+ Assistant table_config rules for sp_page: layout hierarchy down to the widgets used on the page, and record picker field order.',
     ignoreCache: true,
     roles: {
         read: ['sp_admin'],

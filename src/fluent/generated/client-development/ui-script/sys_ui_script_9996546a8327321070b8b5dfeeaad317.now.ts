@@ -20,6 +20,8 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
  *
  * Contains:
  *   - DIRECTIVES table — ng-* / sp-* attribute names, snippets, and hover docs
+ *   - class="..." attribute completions from window.MONACO_HTML_CLASS_INDEX
+ *   - Angular Provider directive data-<prop> completions/hover/binding validation (setProviders)
  *   - Custom Monarch tokenizer extending Monaco's built-in HTML tokenizer
  *     ({{ }} interpolation, ng-* / data-* / sp-* attribute highlighting,
  *     embedded <script> / <style>)
@@ -1702,6 +1704,48 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         return !insideDq && !insideSq;
     }
 
+    // Returns { typed, range } when the cursor is inside a class="..." value, else null.
+    function _getClassAttributeValueContext(model, position) {
+        var text = model.getValueInRange({
+            startLineNumber: 1, startColumn: 1,
+            endLineNumber: position.lineNumber, endColumn: position.column
+        });
+        var lastLt = text.lastIndexOf('<');
+        var lastGt = text.lastIndexOf('>');
+        if (lastLt === -1 || lastGt > lastLt) {
+            return null;
+        }
+
+        var tagText = text.substring(lastLt);
+        var classAttrRe = /\\bclass\\s*=\\s*(["'])/g;
+        var match, last = null;
+        while ((match = classAttrRe.exec(tagText)) !== null) {
+            last = match;
+        }
+        if (!last) {
+            return null;
+        }
+
+        var quoteChar = last[1];
+        var valueStart = last.index + last[0].length;
+        var valueSoFar = tagText.slice(valueStart);
+        if (valueSoFar.indexOf(quoteChar) !== -1) {
+            return null; // the attribute value already closed before the cursor
+        }
+
+        var typedMatch = valueSoFar.match(/[\\w-]*$/);
+        var typed = typedMatch ? typedMatch[0] : '';
+        return {
+            typed: typed,
+            range: {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: position.column - typed.length,
+                endColumn: position.column
+            }
+        };
+    }
+
     // Build a Monaco CompletionItem for a directive
     function _toCompletion(directive, range, monaco) {
         var insertText = directive.snippet
@@ -1718,6 +1762,309 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 : 0,
             range:           range
         };
+    }
+
+    // Angular Provider directive scope-property completions, hover, and binding validation.
+    ///////////////////////////////////////////
+
+    var _providerDirectives = {}; // kebab directive name -> { name, restrict, scopeProps }
+    var _angularParse = null;
+
+    function _camelToKebab(str) {
+        return String(str).replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+    }
+
+    // Returns the index of the '}' matching the '{' at openIndex, or -1. Skips string/comment contents.
+    function _findMatchingBrace(text, openIndex) {
+        var depth = 0;
+        var inStr = null;
+        var n = text.length;
+        for (var i = openIndex; i < n; i++) {
+            var ch = text.charAt(i);
+            if (inStr) {
+                if (ch === '\\\\') { i++; }
+                else if (ch === inStr) { inStr = null; }
+                continue;
+            }
+            if (ch === '"' || ch === "'") { inStr = ch; continue; }
+            if (ch === '/' && text.charAt(i + 1) === '*') {
+                var blockEnd = text.indexOf('*/', i + 2);
+                i = blockEnd === -1 ? n : blockEnd + 1;
+                continue;
+            }
+            if (ch === '/' && text.charAt(i + 1) === '/') {
+                var lineEnd = text.indexOf('\\n', i);
+                i = lineEnd === -1 ? n : lineEnd;
+                continue;
+            }
+            if (ch === '{') {
+                depth++;
+            } else if (ch === '}') {
+                depth--;
+                if (depth === 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    // Parses a directive's DDF (\`function () { return { restrict, scope: {...} }; }\`) for restrict + scope bindings.
+    function _parseDirectiveScript(script) {
+        if (!script) {
+            return null;
+        }
+        var returnMatch = /return\\s*\\{/.exec(script);
+        if (!returnMatch) {
+            return null;
+        }
+        var openIdx = returnMatch.index + returnMatch[0].length - 1;
+        var closeIdx = _findMatchingBrace(script, openIdx);
+        if (closeIdx === -1) {
+            return null;
+        }
+        var body = script.slice(openIdx, closeIdx + 1);
+
+        var restrictMatch = /restrict\\s*:\\s*['"]([^'"]*)['"]/.exec(body);
+        var restrict = restrictMatch ? restrictMatch[1] : '';
+
+        var scopeProps = [];
+        var scopeMatch = /scope\\s*:\\s*\\{/.exec(body);
+        if (scopeMatch) {
+            var scopeOpenIdx = scopeMatch.index + scopeMatch[0].length - 1;
+            var scopeCloseIdx = _findMatchingBrace(body, scopeOpenIdx);
+            if (scopeCloseIdx !== -1) {
+                var scopeBody = body.slice(scopeOpenIdx + 1, scopeCloseIdx);
+                var propRe = /(?:\\/\\*\\*([\\s\\S]*?)\\*\\/\\s*)?([A-Za-z_$][\\w$]*)\\s*:\\s*['"]([@=<&])(\\??)([A-Za-z_$][\\w$]*)?['"]/g;
+                var m;
+                while ((m = propRe.exec(scopeBody)) !== null) {
+                    var comment = m[1] ? m[1].replace(/^\\s*\\*\\s?/gm, '').trim() : '';
+                    var propName = m[2];
+                    var attrName = m[5] || propName;
+                    scopeProps.push({
+                        propName: propName,
+                        attrName: attrName,
+                        kebabAttrName: _camelToKebab(attrName),
+                        bindingType: m[3],
+                        optional: m[4] === '?',
+                        comment: comment
+                    });
+                }
+            }
+        }
+        return { restrict: restrict, scopeProps: scopeProps };
+    }
+
+    // Rebuilds the directive index from the widget's linked Angular Providers; call whenever that list changes.
+    function setProviders(providers) {
+        _providerDirectives = {};
+        (providers || []).forEach(function (p) {
+            if (!p || p.type !== 'directive' || !p.name) {
+                return;
+            }
+            var parsed = _parseDirectiveScript(p.script);
+            if (!parsed) {
+                return;
+            }
+            _providerDirectives[_camelToKebab(p.name)] = {
+                name: p.name,
+                restrict: parsed.restrict,
+                scopeProps: parsed.scopeProps
+            };
+        });
+        _htmlTrackedModels.forEach(function (entry) {
+            if (!entry.model.isDisposed()) {
+                _scheduleHtmlValidation(entry.model, entry.monacoRef);
+            }
+        });
+    }
+
+    function _bindingTypeLabel(t) {
+        if (t === '@') return 'One-way string binding';
+        if (t === '=') return 'Two-way binding';
+        if (t === '<') return 'One-way binding';
+        if (t === '&') return 'Function binding';
+        return '';
+    }
+
+    // Tag name + already-present attribute names (data- stripped) for the tag enclosing the cursor.
+    function _getCurrentTagInfo(model, position) {
+        var text = model.getValueInRange({
+            startLineNumber: 1, startColumn: 1,
+            endLineNumber: position.lineNumber, endColumn: position.column
+        });
+        var lastLt = text.lastIndexOf('<');
+        var lastGt = text.lastIndexOf('>');
+        if (lastLt === -1 || lastGt > lastLt) {
+            return null;
+        }
+        var tagText = text.slice(lastLt);
+        var tagNameMatch = /^<\\s*([\\w:-]+)/.exec(tagText);
+        if (!tagNameMatch) {
+            return null;
+        }
+        return { tagName: tagNameMatch[1].toLowerCase(), attrNames: _extractAttrNames(tagText.slice(tagNameMatch[0].length)) };
+    }
+
+    // Extracts attribute names (data- stripped, lowercased) from raw tag-attribute text.
+    function _extractAttrNames(attrsText) {
+        var names = [];
+        var attrRe = /([\\w-]+)\\s*(?:=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]*))?/g;
+        var am;
+        while ((am = attrRe.exec(attrsText)) !== null) {
+            if (am[1]) {
+                names.push(am[1].toLowerCase().replace(/^data-/, ''));
+            }
+        }
+        return names;
+    }
+
+    // Directives active on a tag (as an element name and/or via one of its attributes), respecting restrict.
+    function _getActiveDirectivesForTag(tagInfo) {
+        if (!tagInfo) {
+            return [];
+        }
+        var active = [];
+        Object.keys(_providerDirectives).forEach(function (kebabName) {
+            var dir = _providerDirectives[kebabName];
+            var allowsElement = !dir.restrict || dir.restrict.indexOf('E') !== -1;
+            var allowsAttribute = !dir.restrict || dir.restrict.indexOf('A') !== -1;
+            var usedAsElement = allowsElement && tagInfo.tagName === kebabName;
+            var usedAsAttribute = allowsAttribute && tagInfo.attrNames.indexOf(kebabName) !== -1;
+            if (usedAsElement || usedAsAttribute) {
+                active.push(dir);
+            }
+        });
+        return active;
+    }
+
+    // Finds a scope property by its data-<kebab> attribute name across all known directives (for hover).
+    function _findProviderScopeProp(kebabName) {
+        var found = null;
+        Object.keys(_providerDirectives).some(function (key) {
+            var dir = _providerDirectives[key];
+            var prop = dir.scopeProps.filter(function (p) { return p.kebabAttrName === kebabName; })[0];
+            if (prop) {
+                found = { dir: dir, prop: prop };
+                return true;
+            }
+            return false;
+        });
+        return found;
+    }
+
+    // Lazily creates a standalone AngularJS $parse (no app bootstrap needed) for expression syntax validation.
+    function _getAngularParse() {
+        if (_angularParse) {
+            return _angularParse;
+        }
+        try {
+            if (typeof angular !== 'undefined' && angular.injector) {
+                _angularParse = angular.injector(['ng']).get('$parse');
+            }
+        } catch (e) {}
+        return _angularParse;
+    }
+
+    // Validates one data-<prop> attribute's value against its binding type; returns an error message, or null if valid.
+    function _validateBindingValue(prop, value, $parse) {
+        if (value === '') {
+            return null;
+        }
+        if (prop.bindingType === '@') {
+            var interpMatches = value.match(/\\{\\{[\\s\\S]*?\\}\\}/g);
+            if (interpMatches) {
+                for (var i = 0; i < interpMatches.length; i++) {
+                    try {
+                        $parse(interpMatches[i].slice(2, -2));
+                    } catch (e) {
+                        return 'Invalid AngularJS expression in {{ }}: ' + e.message;
+                    }
+                }
+            }
+            return null;
+        }
+        if (/\\{\\{[\\s\\S]*\\}\\}/.test(value)) {
+            return 'data-' + prop.kebabAttrName + ' is bound (' + prop.bindingType + ') \\u2014 use a raw expression, not {{ }}.';
+        }
+        try {
+            $parse(value);
+        } catch (e) {
+            return 'Invalid AngularJS expression for data-' + prop.kebabAttrName + ': ' + e.message;
+        }
+        return null;
+    }
+
+    // Scans all tags for active directives and validates their data-<prop> attribute values, appending to markers.
+    function _validateProviderBindings(model, text, markers, monacoRef) {
+        if (!Object.keys(_providerDirectives).length) {
+            return;
+        }
+        var $parse = _getAngularParse();
+        if (!$parse) {
+            return;
+        }
+        var tagRe = /<([\\w:-]+)((?:[^"'>]|"[^"]*"|'[^']*')*?)\\/?>/g;
+        var tagMatch;
+        while ((tagMatch = tagRe.exec(text)) !== null) {
+            var tagName = tagMatch[1].toLowerCase();
+            var attrsText = tagMatch[2];
+            var attrOffsetBase = tagMatch.index + 1 + tagMatch[1].length;
+
+            var occurrences = [];
+            var attrValRe = /([\\w-]+)\\s*=\\s*("([^"]*)"|'([^']*)')/g;
+            var am;
+            while ((am = attrValRe.exec(attrsText)) !== null) {
+                var value = am[3] !== undefined ? am[3] : am[4];
+                var valueStart = attrOffsetBase + am.index + am[0].indexOf(am[2]) + 1;
+                occurrences.push({
+                    rawName: am[1],
+                    kebabName: am[1].toLowerCase().replace(/^data-/, ''),
+                    value: value,
+                    valueStart: valueStart
+                });
+            }
+
+            var activeDirectives = _getActiveDirectivesForTag({
+                tagName: tagName,
+                attrNames: _extractAttrNames(attrsText)
+            });
+            if (!activeDirectives.length) {
+                continue;
+            }
+
+            occurrences.forEach(function (occ) {
+                if (occ.rawName.toLowerCase().indexOf('data-') !== 0) {
+                    return;
+                }
+                var match = null;
+                activeDirectives.some(function (dir) {
+                    var p = dir.scopeProps.filter(function (sp) { return sp.kebabAttrName === occ.kebabName; })[0];
+                    if (p) {
+                        match = p;
+                        return true;
+                    }
+                    return false;
+                });
+                if (!match) {
+                    return;
+                }
+                var errorMsg = _validateBindingValue(match, occ.value, $parse);
+                if (!errorMsg) {
+                    return;
+                }
+                var sPos = model.getPositionAt(occ.valueStart);
+                var ePos = model.getPositionAt(occ.valueStart + occ.value.length);
+                markers.push({
+                    severity: monacoRef.MarkerSeverity.Error,
+                    message: errorMsg,
+                    startLineNumber: sPos.lineNumber,
+                    startColumn: sPos.column,
+                    endLineNumber: ePos.lineNumber,
+                    endColumn: ePos.column
+                });
+            });
+        }
     }
 
     // Debounced tag-stack walk reporting mismatched/unclosed tags via monaco.editor.setModelMarkers('LINT_MARKER').
@@ -1857,6 +2204,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
             });
         }
 
+        _validateProviderBindings(model, text, markers, monacoRef);
         monacoRef.editor.setModelMarkers(model, 'LINT_MARKER', markers);
     }
 
@@ -2439,7 +2787,53 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                         item.sortText = '~' + a.name;
                         return item;
                     });
-                return { suggestions: suggestions.concat(htmlSuggestions) };
+                var providerSuggestions = [];
+                _getActiveDirectivesForTag(_getCurrentTagInfo(model, position)).forEach(function (dir) {
+                    dir.scopeProps.forEach(function (prop) {
+                        var label = 'data-' + prop.kebabAttrName;
+                        if (typed && label.indexOf(typed) === -1) {
+                            return;
+                        }
+                        providerSuggestions.push({
+                            label: label,
+                            kind: monaco.languages.CompletionItemKind.Property,
+                            detail: _bindingTypeLabel(prop.bindingType) + (prop.optional ? ' (optional)' : '') + ' \\u2014 ' + dir.name,
+                            documentation: prop.comment ? { value: prop.comment } : undefined,
+                            insertText: label + '="$1"',
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            range: range
+                        });
+                    });
+                });
+                return { suggestions: suggestions.concat(htmlSuggestions).concat(providerSuggestions) };
+            }
+        });
+
+        // 2b. Completion provider — class="..." suggestions from window.MONACO_HTML_CLASS_INDEX
+        monaco.languages.registerCompletionItemProvider('html', {
+            triggerCharacters: [' ', '"', "'"],
+            provideCompletionItems: function (model, position) {
+                var ctx = _getClassAttributeValueContext(model, position);
+                if (!ctx) {
+                    return { suggestions: [] };
+                }
+                var entries = window.MONACO_HTML_CLASS_INDEX || [];
+                var typed = ctx.typed;
+                return {
+                    suggestions: entries
+                        .filter(function (e) {
+                            return !typed || e.name.indexOf(typed) !== -1;
+                        })
+                        .map(function (e) {
+                            return {
+                                label: e.name,
+                                detail: e.detail,
+                                kind: monaco.languages.CompletionItemKind.Value,
+                                insertText: e.name,
+                                range: ctx.range
+                            };
+                        })
+                };
             }
         });
 
@@ -2468,20 +2862,33 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
 
                 var attrName = line.substring(start, end).replace(/^data-/, '');
                 var directive = DIRECTIVE_MAP[attrName];
-                if (!directive) {
-                    return null;
+                var range = new monaco.Range(
+                    position.lineNumber, start + 1,
+                    position.lineNumber, end + 1
+                );
+
+                if (directive) {
+                    return {
+                        range: range,
+                        contents: [
+                            { value: '**\`' + directive.name + '\`** — ' + directive.detail },
+                            { value: directive.description }
+                        ]
+                    };
                 }
 
-                return {
-                    range: new monaco.Range(
-                        position.lineNumber, start + 1,
-                        position.lineNumber, end + 1
-                    ),
-                    contents: [
-                        { value: '**\`' + directive.name + '\`** — ' + directive.detail },
-                        { value: directive.description }
-                    ]
-                };
+                var provHit = _findProviderScopeProp(attrName);
+                if (!provHit) {
+                    return null;
+                }
+                var contents = [
+                    { value: '**\`data-' + provHit.prop.kebabAttrName + '\`** — ' + _bindingTypeLabel(provHit.prop.bindingType) +
+                        (provHit.prop.optional ? ' (optional)' : '') + ' on \`<' + provHit.dir.name + '>\`' }
+                ];
+                if (provHit.prop.comment) {
+                    contents.push({ value: provHit.prop.comment });
+                }
+                return { range: range, contents: contents };
             }
         });
 
@@ -2664,6 +3071,9 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         directives: DIRECTIVES,
         tokenizer:  TOKENIZER,
         register:   register,
+
+        /** Rebuilds Angular Provider directive scope-property completions/hover/validation. @param {Array} providers - {sys_id, name, type, script}[] */
+        setProviders: setProviders,
 
         /**
          * Enable or disable HTML tag validation (mismatched/unclosed tag diagnostics).

@@ -48,6 +48,9 @@ A full-featured IDE for Service Portal widgets that replaces the standard editor
   - **Table Schema & Inheritance Completion**: Field autocompletions recursively traverse extended table hierarchies (e.g. `incident` inheriting from `task`).
   - **Script Include Dot-Walking**: Live dot-walk autocompletion and JSDoc type inference across Script Includes, including PrototypeJS methods and `this.property` assignments.
   - **Native JSDoc `@typedef` Support**: Type inference and code completion for custom widget data models defined via JSDoc annotations.
+  - **HTML Class-Name Completion**: `class="..."` completions sourced from the user's chosen portal/theme's own compiled CSS bundles, cached client-side and refreshed only when a bundle's `Last-Modified` header changes.
+  - **Angular Provider Directive IntelliSense**: `data-<prop>` completions, hover docs, and AngularJS expression validation for a linked directive's `scope` bindings, parsed from the provider's own script (JSDoc comments above each scope property become the hover documentation).
+  - **Angular Provider Service/Factory IntelliSense**: an `api.controller` parameter named after a service/factory provider (AngularJS DI, e.g. `function(myFactory) {...}`) is typed from that provider's own script, giving method/property completions — independent of whether it's linked to the current widget.
 - **AngularJS Expression Validation & Highlighting**:
   - Real-time syntax checking on `{{ }}` interpolations and `ng-*` directive expressions using AngularJS `$parse`.
   - Rich token syntax highlighting for embedded Angular expressions within HTML templates.
@@ -192,6 +195,33 @@ All system properties are managed under the `monaco.plus.*` namespace:
 | `monaco_language_css` | Completion provider for CSS/SCSS at-rules and style descriptors. |
 | `monaco_code_actions` | Built-in code actions for JavaScript (JSDoc generation) and SCSS (`px` to `rem` conversion). |
 | `monaco_custom_code_actions` | Extension point for custom per-language code actions. |
+
+#### Embedding Monaco on Any Form Field
+
+`monaco_plus_bootstrap` isn't limited to Widget Editor+ itself — add it as a UI Script dependency on an `onLoad` Client Script for any table/field to mount a full Monaco editor in place of the native textarea, in whatever language you choose:
+
+```javascript
+function onLoad() {
+    if (typeof SNMonacoPlusBootstrap === 'undefined') {
+        return;
+    }
+    SNMonacoPlusBootstrap.upgradeEditor({
+        gForm: g_form,
+        field: 'my_json_field',
+        language: 'json',
+        editorOptions: {
+            minimap: { enabled: true },
+            tabSize: 4,
+        },
+    });
+}
+```
+
+- `field` / `language` — the form field to mount on, and the Monaco language id (`json`, `javascript`, `css`, `scss`, `html`, etc.).
+- `editorOptions` — any [`IStandaloneEditorConstructionOptions`](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor_editor_api.editor.IStandaloneEditorConstructionOptions.html) accepted by `monaco.editor.create()`, applied before the editor is created and taking precedence over the user's synced editor preferences.
+- `onEditorReady(editor)` — optional callback given the created Monaco editor instance for further customisation.
+
+The bootstrap script lazy-loads `monaco_plus_core` on demand, so completions/IntelliSense for the chosen `language` come free without any additional wiring.
 
 ### User Preferences
 User preferences (including editor themes, Assistant visibility, and Debug Menu settings) persist in `localStorage` and synchronise to the ServiceNow instance as `sys_user_preference` records under `monaco_plus.user_prefs`.

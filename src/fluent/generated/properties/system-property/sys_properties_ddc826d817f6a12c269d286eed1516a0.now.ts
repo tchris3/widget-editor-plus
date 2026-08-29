@@ -1,6 +1,6 @@
 import { Property } from '@servicenow/sdk/core'
 
-Property({
+export const tableConfigSpWidgetProperty = Property({
     $id: Now.ID['ddc826d817f6a12c269d286eed1516a0'],
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.assistant.table_config.sp_widget',
@@ -43,10 +43,11 @@ Property({
       "relatedMatchField": "id",
       "category": "Embedded Widget"
     }
-  ]
+  ],
+  "pickerFields": ["name", "id"]
 }`,
     description:
-        'Widget Editor+ Assistant table_config rules for sp_widget: linked templates/providers, embedded widget references.',
+        'Widget Editor+ Assistant table_config rules for sp_widget: linked templates/providers, embedded widget references, and record picker field order.',
     ignoreCache: true,
     roles: {
         read: ['sp_admin'],
