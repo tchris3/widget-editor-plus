@@ -2224,6 +2224,12 @@ Record({
             ) ||
             /api\\s*\\.\\s*controller\\s*=\\s*(?:\\[[^\\]]*?)?(?:async\\s*)?\\(([^)]*)\\)\\s*=>/.exec(
                 source
+            ) ||
+            // Some (mostly older/OOB) widgets omit 'api.controller =' entirely — the platform
+            // implicitly assigns the whole field content to api.controller either way, so a
+            // bare function as the script's very first statement is an equally valid controller.
+            /^\\s*(?:\\/\\*[\\s\\S]*?\\*\\/\\s*|\\/\\/[^\\n]*\\n\\s*)*(?:async\\s+)?function\\s*[\\w$]*\\s*\\(([^)]*)\\)/.exec(
+                source
             );
         if (!m) {
             return null;
