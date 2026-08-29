@@ -51,7 +51,7 @@ Record({
     };
     var _pollIntervalMs = 200;
     var _maxWaitMs = 10000;
-    var _v = '2026-08-29T13:00';
+    var _v = '2026-08-29T14:00';
     var _definitionUrl =
         'monaco_language_server.jsdbx?sysparm_substitute=false&v=' + _v;
     var _clientDefinitionUrl =
@@ -167,6 +167,7 @@ Record({
     var _htmlClassIndexPromise = null; // in-flight/completed load — deduplicates concurrent triggers for the same portal/theme
     var _htmlClassIndexContextKey = null; // 'portalUrlSuffix::themeSysId' the current/last promise was resolved for
     var _htmlClassIndexCacheKey = 'we_html_class_index_cache';
+    var _htmlClassIndexHasRealContext = false; // true once any call has carried a real portal/theme
 
     /* Provider registration flags — prevent double-registration on the same page. */
     var _completionRegistered = false;
@@ -3649,13 +3650,25 @@ Record({
         if (_htmlClassIndexPromise && _htmlClassIndexContextKey === contextKey) {
             return _htmlClassIndexPromise;
         }
+
+        var isEmptyContext = !portalSysId || !portalUrlSuffix || !themeSysId;
+        if (isEmptyContext && _htmlClassIndexHasRealContext) {
+            // A real portal/theme has already been supplied by some caller (or is still
+            // resolving) — ignore this no-context call instead of wiping/cancelling that
+            // work. Callers race an early call before user preferences finish loading
+            // against a retrigger once they do; preferences never revert to unset once
+            // loaded, so a later no-context call here is a caller that simply doesn't
+            // have them, not a legitimate "preference cleared" signal.
+            return _htmlClassIndexPromise || Promise.resolve();
+        }
         _htmlClassIndexContextKey = contextKey;
 
-        if (!portalSysId || !portalUrlSuffix || !themeSysId) {
+        if (isEmptyContext) {
             global.MONACO_HTML_CLASS_INDEX = [];
             _htmlClassIndexPromise = Promise.resolve();
             return _htmlClassIndexPromise;
         }
+        _htmlClassIndexHasRealContext = true;
 
         var stored = _readHtmlClassIndexCache();
         var cachedBundles = (stored.contextKey === contextKey && stored.bundles) || {};
