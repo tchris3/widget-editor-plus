@@ -3497,13 +3497,20 @@ Record({
     }
 
     function _rebuildHtmlClassIndex(bundles) {
-        var seen = {};
+        var sources = {}; // className -> { labelText: true }
         Object.keys(bundles).forEach(function (key) {
-            (bundles[key].classes || []).forEach(function (c) {
-                seen[c] = true;
+            var bundle = bundles[key];
+            var label = bundle.label || key;
+            (bundle.classes || []).forEach(function (c) {
+                if (!sources[c]) {
+                    sources[c] = {};
+                }
+                sources[c][label] = true;
             });
         });
-        global.MONACO_HTML_CLASS_INDEX = Object.keys(seen).sort();
+        global.MONACO_HTML_CLASS_INDEX = Object.keys(sources).sort().map(function (name) {
+            return { name: name, detail: Object.keys(sources[name]).sort().join(', ') };
+        });
     }
 
     /** HEAD request for a URL's Last-Modified header, without downloading the body. */
@@ -3560,39 +3567,39 @@ Record({
     }
 
     /** Fetches a CSS bundle, skipping the body fetch if its Last-Modified header is unchanged. */
-    function _loadCssBundle(url, cachedEntry) {
+    function _loadCssBundle(url, cachedEntry, label) {
         return _xhrHeadLastModified(url).then(function (lastModified) {
             if (lastModified && cachedEntry && cachedEntry.lastModified === lastModified) {
                 return cachedEntry;
             }
             return _xhrGetText(url).then(function (cssText) {
-                return { lastModified: lastModified, classes: _extractCssClassNames(cssText) };
+                return { lastModified: lastModified, classes: _extractCssClassNames(cssText), label: label };
             });
         });
     }
 
-    /** Resolves a set of sp_css_include sys_ids to their underlying sp_css sys_ids. */
+    /** Resolves sp_css_include sys_ids to a map of underlying sp_css sys_id -> stylesheet name. */
     function _resolveCssIncludesToSpCss(includeIds) {
         if (!includeIds.length) {
-            return Promise.resolve([]);
+            return Promise.resolve({});
         }
         return _xhrGetJson(
             '/api/now/table/sp_css_include' +
                 '?sysparm_query=sys_idIN' + includeIds.join(',') +
-                '&sysparm_fields=sp_css&sysparm_limit=200'
+                '&sysparm_fields=sp_css%2Cname&sysparm_limit=200'
         ).then(function (includeData) {
-            var seen = {};
+            var map = {};
             ((includeData && includeData.result) || []).forEach(function (r) {
                 var cssSysId = r.sp_css && r.sp_css.value;
-                if (cssSysId) {
-                    seen[cssSysId] = true;
+                if (cssSysId && !map[cssSysId]) {
+                    map[cssSysId] = r.name || cssSysId;
                 }
             });
-            return Object.keys(seen);
+            return map;
         });
     }
 
-    /** sp_css_include sys_ids for a theme (m2m_sp_theme_css_include) and/or widget dependencies (m2m_sp_dependency_css_include). */
+    /** Resolves to a map of sp_css sys_id -> stylesheet name for a theme and/or widget dependencies. */
     function _getCssIncludeSysIds(themeSysId, dependencySysIds) {
         var lookups = [
             _xhrGetJson(
@@ -3649,21 +3656,25 @@ Record({
         var stored = _readHtmlClassIndexCache();
         var cachedBundles = (stored.contextKey === contextKey && stored.bundles) || {};
 
-        _htmlClassIndexPromise = _getCssIncludeSysIds(themeSysId, dependencySysIds).then(function (cssSysIds) {
+        _htmlClassIndexPromise = _getCssIncludeSysIds(themeSysId, dependencySysIds).then(function (cssNamesBySysId) {
             var bundleUrls = {};
+            var bundleLabels = {};
             if (includeStandardCss) {
                 bundleUrls.standard_main = '/styles/css_includes_$sp.css';
                 bundleUrls.standard_later = '/styles/css_includes_$sp_later.css';
+                bundleLabels.standard_main = 'Service Portal (base)';
+                bundleLabels.standard_later = 'Service Portal (deferred)';
             }
-            cssSysIds.forEach(function (cssSysId) {
+            Object.keys(cssNamesBySysId).forEach(function (cssSysId) {
                 bundleUrls[cssSysId] = '/' + cssSysId + '.spcssdbx' +
                     '?portal=' + encodeURIComponent(portalSysId) +
                     '&theme=' + encodeURIComponent(themeSysId);
+                bundleLabels[cssSysId] = cssNamesBySysId[cssSysId];
             });
 
             return Promise.all(
                 Object.keys(bundleUrls).map(function (key) {
-                    return _loadCssBundle(bundleUrls[key], cachedBundles[key]).then(function (entry) {
+                    return _loadCssBundle(bundleUrls[key], cachedBundles[key], bundleLabels[key]).then(function (entry) {
                         return { key: key, entry: entry };
                     });
                 })

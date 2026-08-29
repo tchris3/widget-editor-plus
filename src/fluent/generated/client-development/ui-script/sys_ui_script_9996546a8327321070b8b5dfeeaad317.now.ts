@@ -2798,18 +2798,19 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 if (!ctx) {
                     return { suggestions: [] };
                 }
-                var classNames = window.MONACO_HTML_CLASS_INDEX || [];
+                var entries = window.MONACO_HTML_CLASS_INDEX || [];
                 var typed = ctx.typed;
                 return {
-                    suggestions: classNames
-                        .filter(function (c) {
-                            return !typed || c.indexOf(typed) !== -1;
+                    suggestions: entries
+                        .filter(function (e) {
+                            return !typed || e.name.indexOf(typed) !== -1;
                         })
-                        .map(function (c) {
+                        .map(function (e) {
                             return {
-                                label: c,
+                                label: e.name,
+                                detail: e.detail,
                                 kind: monaco.languages.CompletionItemKind.Value,
-                                insertText: c,
+                                insertText: e.name,
                                 range: ctx.range
                             };
                         })
