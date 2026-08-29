@@ -6830,6 +6830,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }).then(function (d) {
                         if (d.success) {
                             $scope.providers = d.providers;
+                            _syncProviderCompletions();
                         }
                     });
                     ajax('getDependencies', {
@@ -8796,6 +8797,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                 }
 
+                // Refreshes data-<prop> completions/hover/validation for linked Angular Provider directives.
+                function _syncProviderCompletions() {
+                    if (window.MONACO_LANGUAGE_HTML && typeof MONACO_LANGUAGE_HTML.setProviders === 'function') {
+                        MONACO_LANGUAGE_HTML.setProviders($scope.providers);
+                    }
+                }
+
                 function loadHtmlMonarchDts(cb) {
                     var _bs = window.SNMonacoPlusBootstrap;
                     if (!_bs) {
@@ -8827,7 +8835,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             api &&
                             typeof api.loadHtmlMonarchDts === 'function'
                         ) {
-                            api.loadHtmlMonarchDts(cb);
+                            api.loadHtmlMonarchDts(function () {
+                                _syncProviderCompletions();
+                                if (typeof cb === 'function') {
+                                    cb();
+                                }
+                            });
                         } else if (typeof cb === 'function') {
                             cb();
                         }
@@ -9952,6 +9965,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     function (d) {
                                         if (d.success) {
                                             $scope.providers = d.providers;
+                                            _syncProviderCompletions();
                                         }
                                     }
                                 );
@@ -10929,6 +10943,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             function (pd) {
                                 if (pd.success) {
                                     $scope.providers = pd.providers;
+                                    _syncProviderCompletions();
                                 }
                             }
                         );
@@ -11106,6 +11121,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     return p.sys_id !== item.sys_id;
                                 }
                             );
+                            _syncProviderCompletions();
                         }
                         buildVisibleItems();
                     });
@@ -11443,6 +11459,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 return p.sys_id !== pending.sys_id;
                             }
                         );
+                        _syncProviderCompletions();
                         // Close the open pane for this provider, if any
                         var idx = extraPanes.findIndex(function (e) {
                             return e.sys_id === pending.sys_id;
@@ -11539,6 +11556,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     $scope.templates = d.templates;
                                 } else {
                                     $scope.providers = d.providers;
+                                    _syncProviderCompletions();
                                 }
                             }
                         });
