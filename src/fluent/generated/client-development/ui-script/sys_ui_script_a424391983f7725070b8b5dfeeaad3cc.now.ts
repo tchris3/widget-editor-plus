@@ -29,6 +29,7 @@ Record({
  *     GlideRecordSecure declaration)
  *   - CSS/SCSS custom-property completions & hover
  *   - HTML class-attribute completion index, from the chosen portal/theme's compiled CSS
+ *   - Angular Provider (service/factory) IntelliSense on api.controller's injected parameters
  *   - AngularJS widget 'api' object DI-aware typing (client panes)
  *   - Quick-info hover replacement (works around SN's broken JSDoc rendering)
  *   - window.SNMonacoPlus.init(config) — the main per-language entry point
@@ -85,6 +86,7 @@ Record({
             _api.loadCodeActions({ modelId: modelId, isAngular: true });
         },
         scanAndFetchSIs: function () {},
+        scanAndFetchProviders: function () {},
         scanLocalTypedefs: function () {},
         notifyScriptContextFocus: function () {},
         getSiSysId: function () {
@@ -2839,6 +2841,326 @@ Record({
     }
 
     ///////////////////////////////////////////
+    // Angular Provider (service/factory) IntelliSense — typed api.controller injected parameters
+    ///////////////////////////////////////////
+    // Isolated from the Script Include engine above: own name map, own caches, own DTS URIs.
+    // Directive-type providers are out of scope here — see monaco_language_html for their
+    // data-<prop> HTML completions instead.
+
+    var _providerNameMap = {}; // name -> sys_id ('' = confirmed not a service/factory provider)
+    var _providerFetched = {};
+    var _providerMethodCache = {};
+    var _providerPropertyCache = {};
+
+    /** Parses \\\`this.name = function (...) {}\\\` methods from a 'service' provider's script. */
+    function parseServiceMethods(script) {
+        var methods = [];
+        var re =
+            /(\\/\\*\\*(?:(?!\\*\\/)[\\s\\S])*\\*\\/|\\/\\*(?:(?!\\*\\/)[\\s\\S])*\\*\\/)?\\s*\\bthis\\.(\\w+)\\s*=\\s*function\\s*\\(([^)]*)\\)/g;
+        var m;
+        while ((m = re.exec(script)) !== null) {
+            var methodName = m[2];
+            var comment = m[1] || null;
+            var docInfo = parseSiDocComment(comment);
+            var rawParams = m[3]
+                .split(',')
+                .map(function (p) { return p.trim(); })
+                .filter(Boolean);
+            var typedParams = rawParams
+                .map(function (p) {
+                    var info = docInfo.params[p];
+                    return info ? p + (info.optional ? '?' : '') + ': ' + info.type : p + ': any';
+                })
+                .join(', ');
+
+            var docLines = [];
+            if (comment) {
+                var descText = comment
+                    .replace(/^\\/\\*+\\s*/, '')
+                    .replace(/\\s*\\*+\\/$/, '')
+                    .replace(/^\\s*\\*\\s?/gm, '');
+                var descMatch = descText.match(/^([\\s\\S]*?)(?=\\s*@|\\s*$)/);
+                if (descMatch && descMatch[1].trim()) {
+                    docLines.push(descMatch[1].trim());
+                }
+            }
+            rawParams.forEach(function (p) {
+                var info = docInfo.params[p];
+                if (info && info.description) {
+                    docLines.push('*@param* \`' + p + '\` \\u2014 ' + info.description);
+                }
+            });
+            if (docInfo.returns !== 'any') {
+                docLines.push('*@returns* \`' + docInfo.returns + '\`');
+            }
+
+            methods.push({
+                name: methodName,
+                signature: methodName + '(' + typedParams + '): ' + docInfo.returns,
+                documentation: docLines.join('\\n\\n')
+            });
+        }
+        return methods;
+    }
+
+    /** Finds the '}' matching the '{' at openIndex, skipping string/comment contents. */
+    function _findMatchingBraceSkippingStrings(script, openIndex) {
+        var depth = 0;
+        var inStr = null;
+        var n = script.length;
+        for (var j = openIndex; j < n; j++) {
+            var ch = script.charAt(j);
+            if (inStr) {
+                if (ch === '\\\\') { j++; }
+                else if (ch === inStr) { inStr = null; }
+                continue;
+            }
+            if (ch === '"' || ch === "'") { inStr = ch; continue; }
+            if (ch === '/' && script.charAt(j + 1) === '*') {
+                var blockEnd = script.indexOf('*/', j + 2);
+                j = blockEnd === -1 ? n : blockEnd + 1;
+                continue;
+            }
+            if (ch === '/' && script.charAt(j + 1) === '/') {
+                var lineEnd = script.indexOf('\\n', j);
+                j = lineEnd === -1 ? n : lineEnd;
+                continue;
+            }
+            if (ch === '{') {
+                depth++;
+            } else if (ch === '}') {
+                depth--;
+                if (depth === 0) {
+                    return j;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Unwraps a provider DDF's outer \\\`function () { ... }\\\` wrapper, exposing its body
+     * (helper declarations + \\\`return {...}\\\`) as top-level content for member scanning.
+     * Without this, _stripFunctionBodies collapses the whole script from the first
+     * 'function' keyword it finds — which for a provider script is this outer wrapper.
+     */
+    function _unwrapProviderFunctionBody(script) {
+        var idx = script.indexOf('function');
+        if (idx === -1) {
+            return script;
+        }
+        var open = script.indexOf('{', idx);
+        if (open === -1) {
+            return script;
+        }
+        var close = _findMatchingBraceSkippingStrings(script, open);
+        if (close === -1) {
+            return script;
+        }
+        return script.slice(open + 1, close);
+    }
+
+    /**
+     * Resolves \\\`key: identifierName\\\` shorthand exports (a very common revealing-module
+     * pattern: declare a named function, then return \\\`{ key: identifierName }\\\`) to a real
+     * method signature from that function's own declaration, instead of an untyped property.
+     */
+    function _resolveBareRefMethods(body, decls) {
+        var methods = [];
+        var handledKeys = {};
+        var re = /([A-Za-z_$][\\w$]*)\\s*:\\s*([A-Za-z_$][\\w$]*)\\s*(?=[,\\}])/g;
+        var m;
+        while ((m = re.exec(body)) !== null) {
+            var decl = decls[m[2]];
+            if (!decl) {
+                continue;
+            }
+            var docInfo = parseSiDocComment(decl.comment);
+            var rawParams = decl.params
+                .split(',')
+                .map(function (p) { return p.trim(); })
+                .filter(Boolean);
+            var typedParams = rawParams
+                .map(function (p) {
+                    var info = docInfo.params[p];
+                    return info ? p + (info.optional ? '?' : '') + ': ' + info.type : p + ': any';
+                })
+                .join(', ');
+            methods.push({
+                name: m[1],
+                signature: m[1] + '(' + typedParams + '): ' + docInfo.returns,
+                documentation: decl.comment
+                    ? decl.comment.replace(/^\\/\\*+\\s*/, '').replace(/\\s*\\*+\\/$/, '').replace(/^\\s*\\*\\s?/gm, '').trim()
+                    : ''
+            });
+            handledKeys[m[1]] = true;
+        }
+        return { methods: methods, handledKeys: handledKeys };
+    }
+
+    /**
+     * Parses a service/factory provider's script for its public members. Runs every
+     * strategy unconditionally (inline \\\`key: function(){}\\\`, \\\`this.key = ...\\\`, and
+     * shorthand \\\`key: namedFn\\\` exports) rather than branching on the provider's declared
+     * type, since developer code frequently doesn't match the type dropdown's convention.
+     */
+    function parseProviderMembers(script) {
+        var body = _unwrapProviderFunctionBody(script);
+
+        var decls = {};
+        var declRe = /(\\/\\*\\*(?:(?!\\*\\/)[\\s\\S])*\\*\\/\\s*)?function\\s+(\\w+)\\s*\\(([^)]*)\\)/g;
+        var dm;
+        while ((dm = declRe.exec(body)) !== null) {
+            decls[dm[2]] = { comment: dm[1] || null, params: dm[3] };
+        }
+
+        var bareRefs = _resolveBareRefMethods(body, decls);
+        var methods = parseSiMethods(body)
+            .concat(parseServiceMethods(body))
+            .concat(bareRefs.methods);
+        var properties = parseSiProperties(body, null).filter(function (p) {
+            return !bareRefs.handledKeys[p.name];
+        });
+        return { methods: methods, properties: properties };
+    }
+
+    /** Builds and registers a \\\`declare class ProviderName {...}\\\` ambient lib, for typing the matching api.controller parameter as this provider. */
+    function _registerProviderDts(providerName, methods, properties) {
+        if (!window.monaco || !monaco.languages || !monaco.languages.typescript) {
+            return;
+        }
+        if ((!methods || !methods.length) && (!properties || !properties.length)) {
+            return;
+        }
+        var ourUri = 'ts:snlib-provider-plus-' + providerName + '.d.ts';
+        var lines = ['declare class ' + providerName + ' {'];
+        (properties || []).forEach(function (p) {
+            if (p.documentation) {
+                lines.push('    /** ' + p.documentation + ' */');
+            }
+            lines.push('    ' + p.name + ': ' + (p.tsType || 'any') + ';');
+        });
+        (methods || []).forEach(function (m) {
+            if (m.documentation) {
+                lines.push('    /** ' + m.documentation + ' */');
+            }
+            lines.push('    ' + m.signature + ';');
+        });
+        lines.push('}');
+        var content = lines.join('\\n');
+        ['javascriptDefaults', 'typescriptDefaults'].forEach(function (target) {
+            monaco.languages.typescript[target].addExtraLib(content, ourUri);
+        });
+    }
+
+    /** Fetches + parses a service/factory provider's script by name, then registers its DTS. Cached per name. */
+    function fetchProviderMembers(providerName, sysId) {
+        if (_providerMethodCache[providerName]) {
+            return;
+        }
+        var xhr = new XMLHttpRequest();
+        var url = '/api/now/table/sp_angular_provider' +
+            '?sysparm_query=sys_id%3D' + encodeURIComponent(sysId) +
+            '&sysparm_fields=script%2Ctype&sysparm_limit=1';
+        xhr.open('GET', url, true);
+        xhr.setRequestHeader('X-UserToken', window.g_ck || '');
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.onload = function () {
+            try {
+                if (xhr.status !== 200) {
+                    return;
+                }
+                var records = (JSON.parse(xhr.responseText) || {}).result || [];
+                if (!records.length) {
+                    return;
+                }
+                var script = records[0].script || '';
+                var parsed = parseProviderMembers(script);
+                _providerMethodCache[providerName] = parsed.methods;
+                _providerPropertyCache[providerName] = parsed.properties;
+                _registerProviderDts(providerName, parsed.methods, parsed.properties);
+
+                // Type the matching api.controller parameter as this provider, then
+                // force the ambient 'declare var api' signature to pick it up.
+                if (window.MONACO_LANGUAGE_CLIENT_DI) {
+                    window.MONACO_LANGUAGE_CLIENT_DI.types[providerName] = providerName;
+                }
+                _clientDiLastParamsKey = null;
+                if (window.monaco && monaco.editor) {
+                    monaco.editor.getModels().forEach(function (m) {
+                        if (m.getLanguageId() === 'javascript') {
+                            _refreshClientApiLib(m);
+                        }
+                    });
+                }
+            } catch (e) {}
+        };
+        xhr.send();
+    }
+
+    /** Checks candidate names against sp_angular_provider in batches of 50; confirmed service/factory providers trigger a fetch. */
+    function _batchCheckProviderNames(names) {
+        var toCheck = names.filter(function (n) { return _providerNameMap[n] === undefined; });
+        if (!toCheck.length) {
+            return;
+        }
+        var BATCH_SIZE = 50;
+        for (var i = 0; i < toCheck.length; i += BATCH_SIZE) {
+            (function (batch) {
+                var url = '/api/now/table/sp_angular_provider' +
+                    '?sysparm_query=nameIN' + encodeURIComponent(batch.join(',')) +
+                    '%5EtypeINfactory%2Cservice' +
+                    '&sysparm_fields=name%2Csys_id&sysparm_limit=' + batch.length;
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', url, true);
+                xhr.setRequestHeader('X-UserToken', window.g_ck || '');
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.onload = function () {
+                    if (xhr.status !== 200) {
+                        return;
+                    }
+                    try {
+                        var records = (JSON.parse(xhr.responseText) || {}).result || [];
+                        var found = {};
+                        records.forEach(function (r) {
+                            _providerNameMap[r.name] = r.sys_id;
+                            found[r.name] = true;
+                        });
+                        batch.forEach(function (n) {
+                            if (!found[n]) {
+                                _providerNameMap[n] = '';
+                            }
+                        });
+                        records.forEach(function (r) {
+                            if (!_providerFetched[r.name]) {
+                                _providerFetched[r.name] = true;
+                                fetchProviderMembers(r.name, r.sys_id);
+                            }
+                        });
+                    } catch (e) {}
+                };
+                xhr.send();
+            })(toCheck.slice(i, i + BATCH_SIZE));
+        }
+    }
+
+    /**
+     * Scans the Client Controller's \\\`api.controller\\\` parameter list (AngularJS injects
+     * services/factories/directives by name as a parameter, never via \\\`new\\\`) and fetches
+     * any matching service/factory provider so it can be typed in DI_TYPES.
+     */
+    function _scanAndFetchProviders(content) {
+        if (!window.monaco) {
+            return;
+        }
+        var params = _parseControllerParams(content);
+        if (!params || !params.length) {
+            return;
+        }
+        _batchCheckProviderNames(params);
+    }
+
+    ///////////////////////////////////////////
     // CSS variable completions
     ///////////////////////////////////////////
 
@@ -4853,6 +5175,7 @@ Record({
             _api.loadHtmlMonarchDts = loadHtmlMonarchDts;
             _api.loadCodeActions = loadCodeActions;
             _api.scanAndFetchSIs = _scanAndFetchSIs;
+            _api.scanAndFetchProviders = _scanAndFetchProviders;
             _api.scanLocalTypedefs = _registerLocalTypedefs;
             _api.notifyScriptContextFocus = notifyScriptContextFocus;
             _api.getSiSysId = function (name) {

@@ -7966,6 +7966,31 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                 });
                             }
 
+                            // Track Client Controller editors for Angular Provider api.controller-parameter completions.
+                            // Uses SNMonacoPlusBootstrap directly (not the loadClientMonarchDts(cb) wrapper above,
+                            // whose cb fires immediately without waiting for core to finish loading).
+                            if (!readOnly && isJs && pane.field === 'client_script') {
+                                function _runProviderScan(text) {
+                                    var _bs = window.SNMonacoPlusBootstrap;
+                                    if (!_bs) {
+                                        return;
+                                    }
+                                    _bs.init({ language: 'javascript', isClient: true }).then(function (api) {
+                                        if (api && typeof api.scanAndFetchProviders === 'function') {
+                                            api.scanAndFetchProviders(text);
+                                        }
+                                    });
+                                }
+                                _runProviderScan(value);
+                                var _providerTimer = null;
+                                ed.onDidChangeModelContent(function () {
+                                    clearTimeout(_providerTimer);
+                                    _providerTimer = setTimeout(function () {
+                                        _runProviderScan(ed.getValue());
+                                    }, 800);
+                                });
+                            }
+
                             if (!readOnly && isJs && !$scope.isVersionView) {
                                 _initLintWorker();
                                 _triggerLint(pane.key);
