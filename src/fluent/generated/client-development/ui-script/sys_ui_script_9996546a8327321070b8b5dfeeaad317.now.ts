@@ -1774,13 +1774,32 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         return String(str).replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
     }
 
-    // Returns the index of the '}' matching the '{' at openIndex, or -1.
+    // Returns the index of the '}' matching the '{' at openIndex, or -1. Skips string/comment contents.
     function _findMatchingBrace(text, openIndex) {
         var depth = 0;
-        for (var i = openIndex; i < text.length; i++) {
-            if (text[i] === '{') {
+        var inStr = null;
+        var n = text.length;
+        for (var i = openIndex; i < n; i++) {
+            var ch = text.charAt(i);
+            if (inStr) {
+                if (ch === '\\\\') { i++; }
+                else if (ch === inStr) { inStr = null; }
+                continue;
+            }
+            if (ch === '"' || ch === "'") { inStr = ch; continue; }
+            if (ch === '/' && text.charAt(i + 1) === '*') {
+                var blockEnd = text.indexOf('*/', i + 2);
+                i = blockEnd === -1 ? n : blockEnd + 1;
+                continue;
+            }
+            if (ch === '/' && text.charAt(i + 1) === '/') {
+                var lineEnd = text.indexOf('\\n', i);
+                i = lineEnd === -1 ? n : lineEnd;
+                continue;
+            }
+            if (ch === '{') {
                 depth++;
-            } else if (text[i] === '}') {
+            } else if (ch === '}') {
                 depth--;
                 if (depth === 0) {
                     return i;
@@ -2008,7 +2027,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
 
             var activeDirectives = _getActiveDirectivesForTag({
                 tagName: tagName,
-                attrNames: occurrences.map(function (o) { return o.kebabName; })
+                attrNames: _extractAttrNames(attrsText)
             });
             if (!activeDirectives.length) {
                 continue;

@@ -51,7 +51,7 @@ Record({
     };
     var _pollIntervalMs = 200;
     var _maxWaitMs = 10000;
-    var _v = '2026-08-29T12:00';
+    var _v = '2026-08-29T13:00';
     var _definitionUrl =
         'monaco_language_server.jsdbx?sysparm_substitute=false&v=' + _v;
     var _clientDefinitionUrl =
@@ -2854,7 +2854,6 @@ Record({
     // data-<prop> HTML completions instead.
 
     var _providerNameMap = {}; // name -> sys_id ('' = confirmed not a service/factory provider)
-    var _providerFetched = {};
     var _providerMethodCache = {};
     var _providerPropertyCache = {};
 
@@ -3138,10 +3137,7 @@ Record({
                             }
                         });
                         records.forEach(function (r) {
-                            if (!_providerFetched[r.name]) {
-                                _providerFetched[r.name] = true;
-                                fetchProviderMembers(r.name, r.sys_id);
-                            }
+                            fetchProviderMembers(r.name, r.sys_id);
                         });
                     } catch (e) {}
                 };
@@ -3163,6 +3159,14 @@ Record({
         if (!params || !params.length) {
             return;
         }
+        // Already-confirmed providers retry here on every scan (fetchProviderMembers itself
+        // no-ops once _providerMethodCache is populated), so a transient fetch failure doesn't
+        // permanently disable IntelliSense for that name.
+        params.forEach(function (n) {
+            if (_providerNameMap[n]) {
+                fetchProviderMembers(n, _providerNameMap[n]);
+            }
+        });
         _batchCheckProviderNames(params);
     }
 
@@ -3683,6 +3687,9 @@ Record({
                 results.forEach(function (r) {
                     nextBundles[r.key] = r.entry;
                 });
+                if (_htmlClassIndexContextKey !== contextKey) {
+                    return;
+                }
                 _writeHtmlClassIndexCache({ contextKey: contextKey, bundles: nextBundles });
                 _rebuildHtmlClassIndex(nextBundles);
             });

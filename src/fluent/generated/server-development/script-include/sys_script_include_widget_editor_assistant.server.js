@@ -159,7 +159,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
      * The same property also optionally carries `pickerFields`, a field-name array
      * overriding which columns the record picker shows (and their order) for this table —
      * see `_getTableColumns`. This lets admins tune picker labels for their own tables
-     * without a code change, alongside the built-in `PICKER_FIELD_OVERRIDES` defaults.
+     * without a code change.
      * @param {string} table - Table name.
      * @returns {{rules: Array.<Object>, pickerFields: Array.<string>|null}}
      */
