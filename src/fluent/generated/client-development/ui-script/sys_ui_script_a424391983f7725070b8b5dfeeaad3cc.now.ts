@@ -5250,9 +5250,8 @@ Record({
 
         _api._waitForMonaco(function () {
             var _isJs =
-                _capturedLang !== 'html' &&
-                _capturedLang !== 'css' &&
-                _capturedLang !== 'scss';
+                _capturedLang === 'javascript' ||
+                _capturedLang === 'typescript';
 
             // One-time global setup — providers, compiler options.
             // Always runs from the first init() call's closure where these functions are accessible.
