@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 
 function escapeXml(str) {
     return str
@@ -34,6 +35,41 @@ function getJavaHashCode(str) {
         hash |= 0;
     }
     return hash;
+}
+
+// Maps a dist XML basename (e.g. "sys_properties_2a53...") to its tracked source
+// .now.ts file, so we can read that file's real git history.
+function indexSourceFiles(srcRoot) {
+    const index = {};
+    function walkSrc(dir) {
+        for (const entry of fs.readdirSync(dir)) {
+            const full = path.join(dir, entry);
+            const stat = fs.statSync(full);
+            if (stat.isDirectory()) {
+                walkSrc(full);
+            } else if (entry.endsWith('.now.ts')) {
+                index[entry.slice(0, -'.now.ts'.length)] = full;
+            }
+        }
+    }
+    walkSrc(srcRoot);
+    return index;
+}
+
+// Last commit date for a tracked file, so a shipped record's sys_updated_on reflects
+// when it actually last changed — not the build time — letting ServiceNow's Update Set
+// Preview flag a local customization as a collision instead of silently overwriting it.
+function getLastGitCommitIso(rootDir, filePath) {
+    try {
+        const out = execFileSync(
+            'git',
+            ['log', '-1', '--format=%aI', '--', filePath],
+            { cwd: rootDir, encoding: 'utf8' }
+        ).trim();
+        return out || null;
+    } catch (e) {
+        return null;
+    }
 }
 
 const TABLE_TYPE_MAP = {
@@ -129,9 +165,26 @@ function main() {
     const xmlFiles = walk(distAppDir);
     console.log(`Generating Update Set XML from ${xmlFiles.length} dist records...`);
 
+    const sourceFileIndex = indexSourceFiles(path.join(rootDir, 'src', 'fluent', 'generated'));
+
     xmlFiles.forEach(file => {
         let content = fs.readFileSync(file, 'utf8').trim();
-        
+
+        // Every record ships with its real last-git-commit date rather than the build time,
+        // so a local customization made after that date shows up as a Preview collision on
+        // re-import instead of being silently overwritten. Falls back to build time if the
+        // source file has no git history (e.g. new/untracked).
+        const basename = path.basename(file, '.xml');
+        const srcFile = sourceFileIndex[basename];
+        const gitDate = srcFile ? getLastGitCommitIso(rootDir, srcFile) : null;
+        const recordDate = gitDate
+            ? new Date(gitDate).toISOString().replace('T', ' ').substring(0, 19)
+            : formattedDate;
+        content = content.replace(
+            /(<sys_id>[^<]*<\/sys_id>)/,
+            `$1\n    <sys_created_on>${recordDate}</sys_created_on>\n    <sys_updated_on>${recordDate}</sys_updated_on>`
+        );
+
         const updateNameMatch = content.match(/<sys_update_name>(.*?)<\/sys_update_name>/);
         const sysNameMatch = content.match(/<sys_name>(.*?)<\/sys_name>/) || content.match(/<name>(.*?)<\/name>/);
         const tableMatch = content.match(/<record_update table="([^"]+)">/);
@@ -155,12 +208,12 @@ function main() {
         xml += `<remote_update_set display_value="${appName} (${appVersion})">${updateSetSysId}</remote_update_set>\n`;
         xml += `<replace_on_upgrade>false</replace_on_upgrade>\n`;
         xml += `<sys_created_by>admin</sys_created_by>\n`;
-        xml += `<sys_created_on>${formattedDate}</sys_created_on>\n`;
+        xml += `<sys_created_on>${recordDate}</sys_created_on>\n`;
         xml += `<sys_id>${entrySysId}</sys_id>\n`;
         xml += `<sys_mod_count>0</sys_mod_count>\n`;
         xml += `<sys_recorded_at>19f7fb59e130000001</sys_recorded_at>\n`;
         xml += `<sys_updated_by>admin</sys_updated_by>\n`;
-        xml += `<sys_updated_on>${formattedDate}</sys_updated_on>\n`;
+        xml += `<sys_updated_on>${recordDate}</sys_updated_on>\n`;
         xml += `<table/>\n`;
         xml += `<target_name>${escapeXml(targetName)}</target_name>\n`;
         xml += `<type>${escapeXml(type)}</type>\n`;

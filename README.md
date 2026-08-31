@@ -218,7 +218,7 @@ function onLoad() {
 ```
 
 - `field` / `language` — the form field to mount on, and the Monaco language id (`json`, `javascript`, `css`, `scss`, `html`, etc.).
-- By default the editor auto-grows with content, like a native expanding textarea, starting from the replaced textarea's rendered height (falling back to `200px` if that can't be measured, e.g. a hidden/collapsed field) and capped at `maxHeight` (default `'80vh'`) before it scrolls internally.
+- By default the editor auto-grows with content, like a native expanding textarea, starting from the replaced textarea's rendered height (floored at `125px` — enough room for Monaco's quick-input widget, e.g. F1 — even for a short or hidden/collapsed field) and capped at `maxHeight` (default `'80vh'`) before it scrolls internally.
 - `height` — pass a fixed height (a number is treated as px, or a CSS size string like `'40vh'`) to opt out of auto-grow entirely.
 - `maxHeight` — override the auto-grow cap (ignored once `height` or `containerStyle` is set).
 - `showToggle` — set `false` to omit the toggle-syntax-editor button (default: `true`).

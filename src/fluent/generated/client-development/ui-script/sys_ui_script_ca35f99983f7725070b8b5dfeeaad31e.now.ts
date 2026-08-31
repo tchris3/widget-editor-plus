@@ -440,15 +440,17 @@ Record({
         var maxHeight = config.maxHeight || '80vh';
 
         // Auto-size the initial/minimum height from the textarea being replaced, unless the caller overrides.
+        // Floored at MIN_HEIGHT_PX so short/empty fields still have room for Monaco's quick-input widget (F1),
+        // which sizes itself against the editor's own container rather than the viewport.
+        var MIN_HEIGHT_PX = 125;
         var height;
-        var minHeightPx = 200;
+        var minHeightPx = MIN_HEIGHT_PX;
         if (explicitHeight) {
             height = typeof explicitHeight === 'number' ? explicitHeight + 'px' : explicitHeight;
         } else {
             var measuredHeight =
                 measureEl.getBoundingClientRect().height || measureEl.offsetHeight;
-            // Floor so a hidden/collapsed textarea (rect reads 0) doesn't produce an unusable box.
-            minHeightPx = measuredHeight >= 60 ? measuredHeight : 200;
+            minHeightPx = Math.max(measuredHeight, MIN_HEIGHT_PX);
             height = minHeightPx + 'px';
         }
 
@@ -578,6 +580,7 @@ Record({
                             scrollBeyondLastLine: false,
                             wordWrap: 'on',
                             padding: { top: 6, bottom: 6 },
+                            fixedOverflowWidgets: true,
                             readOnly: !!readonlyShadow,
                         });
                         for (var optKey in config.editorOptions) {
