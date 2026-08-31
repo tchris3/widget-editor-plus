@@ -400,8 +400,10 @@ Record({
      * @param {Object}   config.gForm            - The ServiceNow GlideForm (g_form).
      * @param {string}   config.field            - Field name to mount the editor on.
      * @param {string}   [config.language]       - Monaco language id (default: 'javascript').
-     * @param {string|number} [config.height]    - Editor height (number treated as px); defaults to the replaced textarea's rendered height.
-     * @param {string}   [config.containerStyle] - Inline CSS for the editor container div; overrides config.height when both are given.
+     * @param {string|number} [config.height]    - Fixed editor height (number treated as px); disables auto-grow. Defaults to the replaced textarea's rendered height as the auto-grow starting point.
+     * @param {string}   [config.maxHeight]      - Cap for auto-grow (default '80vh'); ignored when config.height or config.containerStyle is set.
+     * @param {string}   [config.containerStyle] - Inline CSS for the editor container div; overrides config.height/maxHeight and disables auto-grow when given.
+     * @param {boolean}  [config.showToggle]     - Set false to omit the "toggle syntax editor" button (default: true).
      * @param {Function} [config.resolveTheme]   - Returns a Monaco theme id; defaults to auto-detect.
      * @param {Object}   [config.editorOptions]  - monaco.editor.create options, applied before create (wins over user prefs).
      * @param {Function} [config.onEditorReady]  - Called with the created editor instance.
@@ -426,21 +428,34 @@ Record({
 
         var parent = textarea.parentElement;
 
-        // Auto-size from the textarea being replaced, unless the caller overrides.
-        var height = config.height;
-        if (!height) {
+        // Protection-policy read-only fields display via a separate "sys_readonly.<field>" element, not the real control.
+        var readonlyShadow = global.document.getElementById(
+            'sys_readonly.' + textarea.id
+        );
+        var measureEl = readonlyShadow || textarea;
+
+        // Grows with content up to maxHeight, like a native auto-expanding textarea; opt out with an explicit height or containerStyle.
+        var explicitHeight = config.height;
+        var autoGrow = !config.containerStyle && explicitHeight === undefined;
+        var maxHeight = config.maxHeight || '80vh';
+
+        // Auto-size the initial/minimum height from the textarea being replaced, unless the caller overrides.
+        var height;
+        var minHeightPx = 200;
+        if (explicitHeight) {
+            height = typeof explicitHeight === 'number' ? explicitHeight + 'px' : explicitHeight;
+        } else {
             var measuredHeight =
-                textarea.getBoundingClientRect().height || textarea.offsetHeight;
+                measureEl.getBoundingClientRect().height || measureEl.offsetHeight;
             // Floor so a hidden/collapsed textarea (rect reads 0) doesn't produce an unusable box.
-            height = (measuredHeight >= 60 ? measuredHeight : 200) + 'px';
-        } else if (typeof height === 'number') {
-            height = height + 'px';
+            minHeightPx = measuredHeight >= 60 ? measuredHeight : 200;
+            height = minHeightPx + 'px';
         }
 
         /* SN border tokens are RGB triplets, so they must be wrapped in rgb(). */
         var containerStyle =
             config.containerStyle ||
-            'width:100%;height:' + height + ';max-height:' + height + ';' +
+            'width:100%;height:' + height + ';max-height:' + (autoGrow ? maxHeight : height) + ';' +
                 'border:1px solid rgb(var(--now-form-field--border-color, var(--now-color_border--primary)));';
 
         function install() {
@@ -464,12 +479,6 @@ Record({
 
             textarea.style.display = 'none';
 
-            // Protection-policy read-only fields render a separate display
-            // element (id "sys_readonly.<field>") instead of the real control,
-            // which stays visible above the editor unless hidden too.
-            var readonlyShadow = global.document.getElementById(
-                'sys_readonly.' + textarea.id
-            );
             if (readonlyShadow) {
                 readonlyShadow.style.display = 'none';
             }
@@ -489,6 +498,62 @@ Record({
                 container.id = containerId;
                 container.style.cssText = containerStyle;
                 parent.appendChild(container);
+            }
+
+            // Mirrors ServiceNow's own "Toggle syntax editor" button (e.g. "js_editor_true.<table>.<field>").
+            var TOGGLE_TITLE_ON = 'Click to disable syntax highlighting and script formatting';
+            var TOGGLE_TITLE_OFF = 'Click to enable syntax highlighting and script formatting';
+            var editorInstance = null;
+            var plainEl = readonlyShadow || textarea;
+            if (
+                config.showToggle !== false &&
+                !parent.querySelector('[data-sn-monaco-toggle="' + field + '"]')
+            ) {
+                var toggleBtn = global.document.createElement('a');
+                toggleBtn.href = '#';
+                toggleBtn.className = 'btn btn-sm btn-default toolbar-button';
+                toggleBtn.title = TOGGLE_TITLE_ON;
+                toggleBtn.setAttribute('data-sn-monaco-toggle', field);
+                toggleBtn.innerHTML =
+                    '<span class="icon-edit-syntax"></span>' +
+                    '<span class="sr-only">' + TOGGLE_TITLE_ON + '</span>';
+                var editorShown = true;
+                toggleBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    editorShown = !editorShown;
+                    var title = editorShown ? TOGGLE_TITLE_ON : TOGGLE_TITLE_OFF;
+                    toggleBtn.title = title;
+                    toggleBtn.querySelector('.sr-only').textContent = title;
+                    if (editorShown) {
+                        if (editorInstance) {
+                            editorInstance.setValue(plainEl.value);
+                        }
+                        plainEl.style.display = 'none';
+                        container.style.display = '';
+                    } else {
+                        if (editorInstance) {
+                            plainEl.value = editorInstance.getValue();
+                        }
+                        container.style.display = 'none';
+                        plainEl.style.display = '';
+                    }
+                });
+
+                var toolbarGroup = global.document.createElement('span');
+                toolbarGroup.className = 'btn-group btn-group-sm script-editor-toolbar';
+                toolbarGroup.appendChild(toggleBtn);
+
+                var toolbarColumn = global.document.createElement('div');
+                toolbarColumn.className =
+                    'col-lg-10 col-md-10 col-sm-10 col-xs-10';
+                toolbarColumn.appendChild(toolbarGroup);
+
+                var toolbarRow = global.document.createElement('div');
+                toolbarRow.className = 'row';
+                toolbarRow.style.cssText = 'margin-bottom:6px;';
+                toolbarRow.appendChild(toolbarColumn);
+
+                parent.insertBefore(toolbarRow, parent.firstChild);
             }
 
             return new Promise(function (resolve) {
@@ -512,6 +577,7 @@ Record({
                             minimap: { enabled: false },
                             scrollBeyondLastLine: false,
                             wordWrap: 'on',
+                            padding: { top: 6, bottom: 6 },
                             readOnly: !!readonlyShadow,
                         });
                         for (var optKey in config.editorOptions) {
@@ -520,7 +586,19 @@ Record({
                             }
                         }
                         var editor = global.monaco.editor.create(container, options);
+                        editorInstance = editor;
                         global.monaco.editor.setTheme(theme);
+
+                        if (autoGrow) {
+                            // container's CSS max-height (maxHeight) clamps the rendered box; automaticLayout's
+                            // resize observer picks up the clamped size and Monaco scrolls internally past that.
+                            var updateGrowHeight = function () {
+                                var target = Math.max(minHeightPx, editor.getContentHeight());
+                                container.style.height = target + 'px';
+                            };
+                            editor.onDidContentSizeChange(updateGrowHeight);
+                            updateGrowHeight();
+                        }
 
                         editor.onDidChangeModelContent(function () {
                             textarea.value = editor.getValue();
