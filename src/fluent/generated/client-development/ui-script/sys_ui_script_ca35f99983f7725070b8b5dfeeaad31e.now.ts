@@ -427,6 +427,10 @@ Record({
         }
 
         var parent = textarea.parentElement;
+        var textareaId = textarea.id;
+        function _liveTextarea() { // CodeMirror teardown can replace the node, so re-resolve instead of trusting a held reference
+            return global.document.getElementById(textareaId) || textarea;
+        }
 
         // Protection-policy read-only fields display via a separate "sys_readonly.<field>" element, not the real control.
         var readonlyShadow = global.document.getElementById(
@@ -472,11 +476,38 @@ Record({
                 ? cmInstance.getValue()
                 : textarea.value || '';
 
-            if (cmInstance && typeof cmInstance.toTextArea === 'function') {
-                cmInstance.toTextArea();
+            var showEditor = true; // shared with the toggle button below
+            if (cmInstance) {
+                cmEl.style.display = 'none'; // kept alive (not destroyed) so it can be restored as the "plain" view later
             }
 
-            textarea.style.display = 'none';
+            // ServiceNow may init its own CodeMirror asynchronously after this point (once); capture and reuse it rather than destroying it.
+            var cmObserver = new MutationObserver(function () {
+                if (cmInstance) {
+                    return;
+                }
+                var lateCmEl = parent.querySelector('.CodeMirror');
+                var lateCm = lateCmEl && lateCmEl.CodeMirror;
+                if (!lateCm) {
+                    return;
+                }
+                cmInstance = lateCm;
+                cmEl = lateCmEl;
+                if (showEditor) {
+                    cmEl.style.display = 'none';
+                } else {
+                    if (editorInstance) {
+                        cmInstance.setValue(editorInstance.getValue());
+                    }
+                    cmEl.style.display = '';
+                    if (typeof cmInstance.refresh === 'function') {
+                        cmInstance.refresh();
+                    }
+                }
+            });
+            cmObserver.observe(parent, { childList: true, subtree: true });
+
+            _liveTextarea().style.display = 'none';
 
             if (readonlyShadow) {
                 readonlyShadow.style.display = 'none';
@@ -503,7 +534,33 @@ Record({
             var TOGGLE_TITLE_ON = 'Click to disable syntax highlighting and script formatting';
             var TOGGLE_TITLE_OFF = 'Click to enable syntax highlighting and script formatting';
             var editorInstance = null;
-            var plainEl = readonlyShadow || textarea;
+            function _showPlain() {
+                if (cmInstance) {
+                    cmEl.style.display = '';
+                    if (typeof cmInstance.refresh === 'function') {
+                        cmInstance.refresh();
+                    }
+                } else {
+                    (readonlyShadow || _liveTextarea()).style.display = '';
+                }
+            }
+            function _hidePlain() {
+                if (cmInstance) {
+                    cmEl.style.display = 'none';
+                } else {
+                    (readonlyShadow || _liveTextarea()).style.display = 'none';
+                }
+            }
+            function _getPlainValue() {
+                return cmInstance ? cmInstance.getValue() : (readonlyShadow || _liveTextarea()).value;
+            }
+            function _setPlainValue(v) {
+                if (cmInstance) {
+                    cmInstance.setValue(v);
+                } else {
+                    (readonlyShadow || _liveTextarea()).value = v;
+                }
+            }
             if (
                 config.showToggle !== false &&
                 !parent.querySelector('[data-sn-monaco-toggle="' + field + '"]')
@@ -516,25 +573,24 @@ Record({
                 toggleBtn.innerHTML =
                     '<span class="icon-edit-syntax"></span>' +
                     '<span class="sr-only">' + TOGGLE_TITLE_ON + '</span>';
-                var editorShown = true;
                 toggleBtn.addEventListener('click', function (e) {
                     e.preventDefault();
-                    editorShown = !editorShown;
-                    var title = editorShown ? TOGGLE_TITLE_ON : TOGGLE_TITLE_OFF;
+                    showEditor = !showEditor;
+                    var title = showEditor ? TOGGLE_TITLE_ON : TOGGLE_TITLE_OFF;
                     toggleBtn.title = title;
                     toggleBtn.querySelector('.sr-only').textContent = title;
-                    if (editorShown) {
+                    if (showEditor) {
                         if (editorInstance) {
-                            editorInstance.setValue(plainEl.value);
+                            editorInstance.setValue(_getPlainValue());
                         }
-                        plainEl.style.display = 'none';
+                        _hidePlain();
                         container.style.display = '';
                     } else {
                         if (editorInstance) {
-                            plainEl.value = editorInstance.getValue();
+                            _setPlainValue(editorInstance.getValue());
                         }
                         container.style.display = 'none';
-                        plainEl.style.display = '';
+                        _showPlain();
                     }
                 });
 
@@ -542,17 +598,40 @@ Record({
                 toolbarGroup.className = 'btn-group btn-group-sm script-editor-toolbar';
                 toolbarGroup.appendChild(toggleBtn);
 
-                var toolbarColumn = global.document.createElement('div');
-                toolbarColumn.className =
-                    'col-lg-10 col-md-10 col-sm-10 col-xs-10';
-                toolbarColumn.appendChild(toolbarGroup);
+                // Prefer dropping into ServiceNow's own toolbar (the help-icon group) if this field already has one.
+                var inputControls = parent.closest && parent.closest('.input_controls');
+                var instructionalSpan = inputControls && inputControls.querySelector('.toolbar-instructional-info');
+                if (instructionalSpan) {
+                    instructionalSpan.insertAdjacentElement('afterend', toolbarGroup);
+                    var instructionalRow = instructionalSpan.closest('.row');
+                    if (instructionalRow) {
+                        instructionalRow.style.marginBottom = '6px';
+                    }
+                } else {
+                    var toolbarColumn = global.document.createElement('div');
+                    toolbarColumn.className =
+                        'col-lg-10 col-md-10 col-sm-10 col-xs-10';
+                    toolbarColumn.appendChild(toolbarGroup);
 
-                var toolbarRow = global.document.createElement('div');
-                toolbarRow.className = 'row';
-                toolbarRow.style.cssText = 'margin-bottom:6px;';
-                toolbarRow.appendChild(toolbarColumn);
-
-                parent.insertBefore(toolbarRow, parent.firstChild);
+                    var toolbarHost = inputControls || parent;
+                    var existingRow = null;
+                    for (var i = 0; i < toolbarHost.children.length; i++) {
+                        if (toolbarHost.children[i].classList.contains('row')) {
+                            existingRow = toolbarHost.children[i];
+                            break;
+                        }
+                    }
+                    if (existingRow) {
+                        existingRow.style.marginBottom = '6px';
+                        existingRow.appendChild(toolbarColumn);
+                    } else {
+                        var toolbarRow = global.document.createElement('div');
+                        toolbarRow.className = 'row';
+                        toolbarRow.style.cssText = 'margin-bottom:6px;';
+                        toolbarRow.appendChild(toolbarColumn);
+                        toolbarHost.insertBefore(toolbarRow, toolbarHost.firstChild);
+                    }
+                }
             }
 
             return new Promise(function (resolve) {
@@ -600,12 +679,13 @@ Record({
                         }
 
                         editor.onDidChangeModelContent(function () {
-                            textarea.value = editor.getValue();
+                            var liveTextarea = _liveTextarea();
+                            liveTextarea.value = editor.getValue();
                             try {
-                                textarea.dispatchEvent(
+                                liveTextarea.dispatchEvent(
                                     new Event('input', { bubbles: true })
                                 );
-                                textarea.dispatchEvent(
+                                liveTextarea.dispatchEvent(
                                     new Event('change', { bubbles: true })
                                 );
                             } catch (e) {}
