@@ -439,10 +439,7 @@ Record({
         var autoGrow = !config.containerStyle && explicitHeight === undefined;
         var maxHeight = config.maxHeight || '80vh';
 
-        // Auto-size the initial/minimum height from the textarea being replaced, unless the caller overrides.
-        // Floored at MIN_HEIGHT_PX so short/empty fields still have room for Monaco's quick-input widget (F1),
-        // which sizes itself against the editor's own container rather than the viewport.
-        var MIN_HEIGHT_PX = 125;
+        var MIN_HEIGHT_PX = 125; // floor gives Monaco's quick-input widget (F1) enough room to render
         var height;
         var minHeightPx = MIN_HEIGHT_PX;
         if (explicitHeight) {
@@ -583,6 +580,7 @@ Record({
                             fixedOverflowWidgets: true,
                             readOnly: !!readonlyShadow,
                         });
+                        options.fontSize = 12; // matches ServiceNow's native Monaco field editors
                         for (var optKey in config.editorOptions) {
                             if (Object.prototype.hasOwnProperty.call(config.editorOptions, optKey)) {
                                 options[optKey] = config.editorOptions[optKey];
@@ -593,9 +591,7 @@ Record({
                         global.monaco.editor.setTheme(theme);
 
                         if (autoGrow) {
-                            // container's CSS max-height (maxHeight) clamps the rendered box; automaticLayout's
-                            // resize observer picks up the clamped size and Monaco scrolls internally past that.
-                            var updateGrowHeight = function () {
+                            var updateGrowHeight = function () { // container's CSS max-height clamps the rendered box; Monaco scrolls internally past that
                                 var target = Math.max(minHeightPx, editor.getContentHeight());
                                 container.style.height = target + 'px';
                             };
@@ -639,9 +635,7 @@ Record({
             });
         }
 
-        // Monaco preloaded by ServiceNow — _loadScript will return immediately since
-        // the bundle is already present; install() handles the .monaco-editor check.
-        return install();
+        return install(); // _loadScript returns immediately if Monaco is already preloaded
     }
 
     global.SNMonacoPlusBootstrap = {
