@@ -218,8 +218,11 @@ function onLoad() {
 ```
 
 - `field` / `language` — the form field to mount on, and the Monaco language id (`json`, `javascript`, `css`, `scss`, `html`, etc.).
+- `height` — optional editor height (a number is treated as px, or pass a CSS size string like `'40vh'`). Defaults to the replaced textarea's rendered height, falling back to `200px` if that can't be measured (e.g. a hidden/collapsed field).
 - `editorOptions` — any [`IStandaloneEditorConstructionOptions`](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor_editor_api.editor.IStandaloneEditorConstructionOptions.html) accepted by `monaco.editor.create()`, applied before the editor is created and taking precedence over the user's synced editor preferences.
 - `onEditorReady(editor)` — optional callback given the created Monaco editor instance for further customisation.
+
+Need full control over the container instead? Pass `containerStyle` (a CSS string) — it overrides `height` when both are given.
 
 The bootstrap script lazy-loads `monaco_plus_core` on demand, so completions/IntelliSense for the chosen `language` come free without any additional wiring.
 

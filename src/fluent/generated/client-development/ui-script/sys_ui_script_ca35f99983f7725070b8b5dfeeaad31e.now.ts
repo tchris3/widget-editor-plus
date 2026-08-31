@@ -65,7 +65,7 @@ Record({
         return;
     }
 
-    var _v = '2026-08-29T14:00';
+    var _v = '2026-08-31T00:00';
     var CORE_UI_SCRIPT_URL = '/monaco_plus_core.jsdbx?sysparm_substitute=false&v=' + _v;
     var MONACO_BUNDLE_URL =
         '/scripts/snc-code-editor/monaco.bundle.min.jsx?sysparm_substitute=false';
@@ -326,10 +326,18 @@ Record({
             global.MonacoEnvironment = {};
         }
         global.MonacoEnvironment.getWorker = function (_moduleId, label) {
-            var file =
-                label === 'css' || label === 'scss' || label === 'less'
-                    ? 'css.worker.bundle.min.jsx'
-                    : 'editor.worker.bundle.min.jsx';
+            var file;
+            if (label === 'css' || label === 'scss' || label === 'less') {
+                file = 'css.worker.bundle.min.jsx';
+            } else if (label === 'json') {
+                file = 'json.worker.bundle.min.jsx';
+            } else if (label === 'typescript' || label === 'javascript') {
+                file = 'ts.worker.bundle.min.jsx';
+            } else if (label === 'html' || label === 'handlebars' || label === 'razor') {
+                file = 'html.worker.bundle.min.jsx';
+            } else {
+                file = 'editor.worker.bundle.min.jsx';
+            }
             return new Worker(
                 MONACO_WORKER_BASE + file + '?sysparm_substitute=false'
             );
@@ -392,7 +400,8 @@ Record({
      * @param {Object}   config.gForm            - The ServiceNow GlideForm (g_form).
      * @param {string}   config.field            - Field name to mount the editor on.
      * @param {string}   [config.language]       - Monaco language id (default: 'javascript').
-     * @param {string}   [config.containerStyle] - Inline CSS for the editor container div.
+     * @param {string|number} [config.height]    - Editor height (number treated as px); defaults to the replaced textarea's rendered height.
+     * @param {string}   [config.containerStyle] - Inline CSS for the editor container div; overrides config.height when both are given.
      * @param {Function} [config.resolveTheme]   - Returns a Monaco theme id; defaults to auto-detect.
      * @param {Object}   [config.editorOptions]  - monaco.editor.create options, applied before create (wins over user prefs).
      * @param {Function} [config.onEditorReady]  - Called with the created editor instance.
@@ -405,11 +414,6 @@ Record({
         var field = config.field;
         var language = config.language || 'javascript';
         var resolveTheme = config.resolveTheme || _getDefaultTheme;
-        /* SN border tokens are RGB triplets, so they must be wrapped in rgb(). */
-        var containerStyle =
-            config.containerStyle ||
-            'width:100%;height:80vh;max-height:80vh;' +
-                'border:1px solid rgb(var(--now-form-field--border-color, var(--now-color_border--primary)));';
 
         if (!gForm || !field) {
             return Promise.resolve(null);
@@ -421,6 +425,23 @@ Record({
         }
 
         var parent = textarea.parentElement;
+
+        // Auto-size from the textarea being replaced, unless the caller overrides.
+        var height = config.height;
+        if (!height) {
+            var measuredHeight =
+                textarea.getBoundingClientRect().height || textarea.offsetHeight;
+            // Floor so a hidden/collapsed textarea (rect reads 0) doesn't produce an unusable box.
+            height = (measuredHeight >= 60 ? measuredHeight : 200) + 'px';
+        } else if (typeof height === 'number') {
+            height = height + 'px';
+        }
+
+        /* SN border tokens are RGB triplets, so they must be wrapped in rgb(). */
+        var containerStyle =
+            config.containerStyle ||
+            'width:100%;height:' + height + ';max-height:' + height + ';' +
+                'border:1px solid rgb(var(--now-form-field--border-color, var(--now-color_border--primary)));';
 
         function install() {
             /* Monaco already mounted — just enhance with core features */
@@ -442,6 +463,16 @@ Record({
             }
 
             textarea.style.display = 'none';
+
+            // Protection-policy read-only fields render a separate display
+            // element (id "sys_readonly.<field>") instead of the real control,
+            // which stays visible above the editor unless hidden too.
+            var readonlyShadow = global.document.getElementById(
+                'sys_readonly.' + textarea.id
+            );
+            if (readonlyShadow) {
+                readonlyShadow.style.display = 'none';
+            }
 
             // Reuse an existing container if mountFieldEditor was called before
             var containerId =
@@ -481,6 +512,7 @@ Record({
                             minimap: { enabled: false },
                             scrollBeyondLastLine: false,
                             wordWrap: 'on',
+                            readOnly: !!readonlyShadow,
                         });
                         for (var optKey in config.editorOptions) {
                             if (Object.prototype.hasOwnProperty.call(config.editorOptions, optKey)) {
