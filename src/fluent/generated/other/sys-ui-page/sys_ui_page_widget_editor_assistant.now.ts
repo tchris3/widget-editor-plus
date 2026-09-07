@@ -1488,7 +1488,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 <!-- Unified Rows: Row 0 is Primary (or a placeholder prompting selection), Remaining Rows Grouped by Type -->
                                 <tr ng-repeat-start="row in ctrl.visibleRows track by (row.placeholder ? 'ph' : (row.table + ':' + row.sys_id))" ng-if="row.placeholder" class="we-primary-row" data-row-key="ph">
                                     <td colspan="5" style="text-align: center; padding: 1.5rem 1rem;">
-                                        <button type="button" class="btn btn-primary" ng-click="ctrl.openLookup('primary')" ng-disabled="ctrl.addingUpdateSet">
+                                        <button type="button" class="btn btn-primary" ng-if="!ctrl.updateSets.length" ng-click="ctrl.openLookup('primary')" ng-disabled="ctrl.addingUpdateSet">
                                             <i class="icon-add" style="margin-right: 0.375rem;"></i>
                                             <span>Select record</span>
                                         </button>
@@ -1503,7 +1503,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 </tr>
                                 <tr ng-repeat-end="ng-repeat-end" ng-if="!row.placeholder" ng-class="{'we-primary-row': row.primary, 'we-row-just-added': row._justAdded}" style="--we-sticky-top: {{2.75 + ctrl.updateSets.length * 2.75}}rem;" data-row-key="{{row.table}}:{{row.sys_id}}">
                                     <td class="we-cell-check">
-                                        <input type="checkbox" class="we-checkbox" ng-model="row.checked" ng-disabled="row.primary || ctrl.isExportBlocked(row.table)" ng-change="ctrl.onSelectionChange()" />
+                                        <input type="checkbox" class="we-checkbox" ng-model="row.checked" ng-disabled="row.primary || ctrl.isExportBlocked(row.table, row)" ng-change="ctrl.onSelectionChange()" />
                                     </td>
                                     <td>
                                         <span ng-class="{'we-lookup-link': !(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; !row.updateSetSysId, 'we-record-name-deleted': row.updateSetAction === 'DELETE'}" ng-click="!(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; !row.updateSetSysId &amp;&amp; ctrl.openLookupForRow(row, 'table')" title="{{((row.primary &amp;&amp; ctrl.embeddedInModal) || row.updateSetSysId) ? '' : 'Click to change table'}}">
@@ -1516,7 +1516,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                             {{row.label}}
                                         </span>
                                         <span class="we-pill-primary" ng-if="row.primary">Primary</span>
-                                        <span class="we-pill-blocked" ng-if="ctrl.isExportBlocked(row.table)" title="Table structure can be exported, but record data from this table is never included.">
+                                        <span class="we-pill-blocked" ng-if="ctrl.isExportBlocked(row.table, row)" title="Table structure can be exported, but record data from this table is never included.">
                                             <i class="icon-locked" aria-hidden="true"></i>
                                             <span>Blocked</span>
                                         </span>
@@ -2987,7 +2987,10 @@ export const widgetEditorAssistantUiPage = UiPage({
 
             ctrl.tableIconClass = tableIconClass;
 
-            ctrl.isExportBlocked = function (table) {
+            // Update-set members are never blocked — an update set already scopes what's
+            // being exported, so nothing it touches is excluded.
+            ctrl.isExportBlocked = function (table, row) {
+                if (row && row.updateSetSysId) { return false; }
                 return isTableExportBlocked(table);
             };
 
@@ -3304,7 +3307,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             ctrl.isUpdateSetChecked = function (us) {
-                var rows = ctrl.related.filter(function (r) { return r.updateSetSysId === us.sys_id && !ctrl.isExportBlocked(r.table); });
+                var rows = ctrl.related.filter(function (r) { return r.updateSetSysId === us.sys_id; });
                 if (rows.length === 0) return false;
                 return rows.every(function (r) { return r.checked; });
             };
@@ -3313,7 +3316,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             ctrl.toggleUpdateSetChecked = function (us) {
                 var target = !ctrl.isUpdateSetChecked(us);
                 ctrl.related.forEach(function (r) {
-                    if (r.updateSetSysId === us.sys_id && !ctrl.isExportBlocked(r.table)) {
+                    if (r.updateSetSysId === us.sys_id) {
                         r.checked = target;
                     }
                 });
@@ -3399,7 +3402,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return Math.round((ctrl.progress.done / ctrl.progress.total) * 100);
             };
 
-            // localStorage remembers only table+sys_id and checked state, never name/updated-on.
+            // localStorage remembers only table+sys_id and checked state, never name/updated-on —
+            // except for DELETE-action update-set members, whose label is persisted since the
+            // underlying record is gone and can never be freshly re-resolved on reload.
             ctrl.saveSelections = function () {
                 try {
                     var manual = ctrl.related.filter(function (r) { return r.manual; })
@@ -3409,6 +3414,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             return {
                                 table: r.table,
                                 sys_id: r.sys_id,
+                                label: r.updateSetAction === 'DELETE' ? (r.label || '') : '',
                                 updateSetSysId: r.updateSetSysId,
                                 updateSetName: r.updateSetName,
                                 updateSetAction: r.updateSetAction,
@@ -3473,7 +3479,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                     var row = {
                         table: m.table,
                         sys_id: m.sys_id,
-                        label: '',
+                        label: m.updateSetAction === 'DELETE' ? (m.label || '') : '',
                         tableLabel: tableLabel(m.table),
                         category: 'Update Set',
                         manual: false,
@@ -3499,7 +3505,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                     }
                 }
 
-                return validateRowsNeedingLabel(function (r) { return r.manual || r.updateSetSysId; }).then(function () {
+                return validateRowsNeedingLabel(function (r) {
+                    return (r.manual || r.updateSetSysId) && r.updateSetAction !== 'DELETE';
+                }).then(function () {
                     if (ctrl.includePreviousUpdates && restoredUpdateSetRows.length) {
                         return refreshPreviousVersions(restoredUpdateSetRows);
                     }
@@ -3519,7 +3527,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                         ctrl.related = ctrl.related.filter(function (x) { return x !== r; });
                         return $q.resolve();
                     }
-                    return ajax('getRecordLabel', { table: r.table, sys_id: r.sys_id }).then(function (res) {
+                    // Update-set members are never export-blocklisted — the update set already
+                    // scopes what's being exported, so unblock label resolution for those rows.
+                    var params = { table: r.table, sys_id: r.sys_id };
+                    if (r.updateSetSysId) { params.unblocked = 'true'; }
+                    return ajax('getRecordLabel', params).then(function (res) {
                         if (!res || !res.success || !res.label) {
                             ctrl.related = ctrl.related.filter(function (x) { return x !== r; });
                         } else {
@@ -3629,7 +3641,8 @@ export const widgetEditorAssistantUiPage = UiPage({
             }
 
             ctrl.openLookup = function (mode) {
-                if (mode === 'primary' && ctrl.embeddedInModal) return;
+                // A bundle can't mix a primary record with an update set.
+                if (mode === 'primary' && (ctrl.embeddedInModal || ctrl.updateSets.length)) return;
                 ctrl.lookup.open = true;
                 ctrl.lookup.mode = mode;
                 ctrl.lookup.targetRow = null;
@@ -4295,7 +4308,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         }
                         if (changeType) entryEl.setAttribute('change_type', changeType);
                     }
-                    if (isTableExportBlocked(row.table)) {
+                    if (!row.updateSetSysId && isTableExportBlocked(row.table)) {
                         entryEl.setAttribute('blocked', 'true');
                     }
                     manifestEl.appendChild(entryEl);
@@ -4351,8 +4364,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 redactRecordElement(schemaEl);
                                 destContainer.appendChild(combinedDoc.importNode(schemaEl, true));
                             }
-                        } else if (isTableExportBlocked(row.table)) {
+                        } else if (!row.updateSetSysId && isTableExportBlocked(row.table)) {
                             // Structure export (above) is fine; record data from this table is never exported.
+                            // Update-set members skip this check entirely — the update set already
+                            // scopes what's being exported, so nothing it touches is withheld.
                             var blockedEl = combinedDoc.createElement('blocked_record');
                             blockedEl.setAttribute('table', row.table);
                             blockedEl.setAttribute('sys_id', row.sys_id);

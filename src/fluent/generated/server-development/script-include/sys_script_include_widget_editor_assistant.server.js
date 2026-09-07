@@ -764,12 +764,15 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     /**
      * Resolves the display label for a single record, used to re-validate/re-label
      * selections restored from localStorage.
-     * Accepts `table`, `sys_id`.
+     * Accepts `table`, `sys_id`, and optional `unblocked` ('true' to skip the export
+     * blocklist check — passed for update-set members, which are never blocklisted since
+     * the update set already scopes what's being exported).
      * @returns {{success: boolean, label: string, updatedOn: string}} Return value.
      */
     getRecordLabel: function () {
         var table = this.getParameter('table');
         var sysId = this.getParameter('sys_id');
+        var unblocked = this.getParameter('unblocked') === 'true';
         if (!table || !sysId) {
             return this._answer({ success: false, label: '', tableLabel: '', updatedOn: '' });
         }
@@ -778,7 +781,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             return this._answer({ success: false, label: '', tableLabel: '', updatedOn: '' });
         }
         var tableLabel = this._getTableLabel(table);
-        if (this._isTableExportBlocked(table)) {
+        if (!unblocked && this._isTableExportBlocked(table)) {
             // Confirm the record exists without leaking its display value (e.g. a person's name).
             return this._answer({ success: true, label: sysId, tableLabel: tableLabel, updatedOn: gr.getDisplayValue('sys_updated_on'), blocked: true });
         }
@@ -1061,7 +1064,9 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
      * splitting the `name` field (which is `table + '_' + sys_id` but table names can themselves
      * contain underscores).
      * @param {GlideRecordSecure} gr - A queried sys_update_xml GlideRecordSecure.
-     * @returns {?Object} null if the payload couldn't be parsed or the table is export-blocklisted.
+     * @returns {?Object} null if the payload couldn't be parsed. Unlike manually-added records,
+     *   update-set members are never export-blocklisted — an update set is an explicit,
+     *   already-scoped bundle of changes, so every member it touches is included.
      */
     _parseUpdateXmlMember: function (gr) {
         var payload = gr.getValue('payload') || '';
@@ -1070,7 +1075,6 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         if (!tableMatch || !idMatch) return null;
         var table = tableMatch[1];
         var sysId = idMatch[1];
-        if (this._isTableExportBlocked(table)) return null;
 
         var label = sysId;
         try {
