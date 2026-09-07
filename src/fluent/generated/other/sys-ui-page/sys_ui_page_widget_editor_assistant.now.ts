@@ -1414,7 +1414,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 <i class="icon-refresh" ng-class="{'we-spin': ctrl.refreshingAll}" style="margin-right: 0.375rem;"></i>
                                 <span>Refresh</span>
                             </button>
-                            <button type="button" class="btn btn-default" ng-if="ctrl.primary.sysId || ctrl.related.length || ctrl.updateSets.length" ng-click="ctrl.clearAll()" ng-disabled="ctrl.addingUpdateSet" title="Reset records">
+                            <button type="button" class="btn btn-default" ng-if="(ctrl.primary.sysId &amp;&amp; !ctrl.embeddedInModal) || ctrl.related.length || ctrl.updateSets.length" ng-click="ctrl.clearAll()" ng-disabled="ctrl.addingUpdateSet" title="Reset records">
                                 <i class="icon-cross"></i>
                             </button>
                             <button class="btn btn-primary" ng-click="ctrl.openLookup('add')" ng-disabled="ctrl.addingUpdateSet" title="Add a record to the bundle">
@@ -3326,6 +3326,12 @@ export const widgetEditorAssistantUiPage = UiPage({
                     dismissedSuggestionKeys[rowKey(row)] = true;
                 }
                 ctrl.related = ctrl.related.filter(function (r) { return r !== row; });
+                // Drop the update set's own summary row too once its last member row is gone.
+                if (row.updateSetSysId) {
+                    ctrl.updateSets = ctrl.updateSets.filter(function (u) {
+                        return u.sys_id !== row.updateSetSysId || ctrl.updateSetRecordCount(u) > 0;
+                    });
+                }
                 ctrl.saveSelections();
                 rebuildRows();
             };
@@ -4206,7 +4212,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                             sys_id: row.sys_id,
                             before: row.updateSetMemberCreatedOnValue || '',
                         });
-                        if (!res || !res.success) return;
+                        if (!res || !res.success) {
+                            row.previousVersionBytes = 0;
+                            return;
+                        }
                         row.isNewInUpdateSet = !res.found;
                         row.previousVersion = res.found ? {
                             payload: res.payload,
@@ -4217,7 +4226,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                         } : null;
                         // Cached once here (not recomputed per digest) since it feeds the token estimate.
                         row.previousVersionBytes = res.found ? new Blob([res.payload || '']).size : 0;
-                    } catch (e) {}
+                    } catch (e) {
+                        // Fall back to 0 so a failed lookup doesn't leave sizesPending() stuck true forever.
+                        row.previousVersionBytes = 0;
+                    }
                     $timeout(angular.noop);
                 }, 4);
                 _pendingPreviousVersionFetches--;

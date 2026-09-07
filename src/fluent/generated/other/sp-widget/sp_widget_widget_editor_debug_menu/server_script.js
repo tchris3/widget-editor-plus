@@ -35,52 +35,11 @@
         return;
     }
 
-    // Resolves the sp_page (id/title) that an sp_instance record is placed on by
-    // walking sp_instance -> sp_column -> sp_row -> sp_container -> sp_page. A row's
-    // container is blank when the row is nested inside another column instead of
-    // sitting directly under a container, so that case walks back up via sp_column.
-    var MAX_NESTING_DEPTH = 20;
-    var resolveContainerForRow = function (rowSysId, depth) {
-        if (!rowSysId || depth > MAX_NESTING_DEPTH) {
-            return null;
-        }
-        var grRow = new GlideRecordSecure('sp_row');
-        if (!grRow.get(rowSysId)) {
-            return null;
-        }
-        var containerSysId = grRow.getValue('sp_container');
-        if (containerSysId) {
-            return containerSysId;
-        }
-        var parentColumnSysId = grRow.getValue('sp_column');
-        if (!parentColumnSysId) {
-            return null;
-        }
-        var grParentColumn = new GlideRecordSecure('sp_column');
-        if (!grParentColumn.get(parentColumnSysId)) {
-            return null;
-        }
-        return resolveContainerForRow(grParentColumn.getValue('sp_row'), depth + 1);
-    };
-
+    // sp_instance -> sp_page resolution is shared with WidgetEditorAjax, which already
+    // implements the sp_row/sp_column nesting walk.
+    var widgetEditorAjax = new WidgetEditorAjax();
     var resolvePageForInstance = function (grInstance) {
-        var grColumn = new GlideRecordSecure('sp_column');
-        if (!grColumn.get(grInstance.getValue('sp_column'))) {
-            return null;
-        }
-        var containerSysId = resolveContainerForRow(grColumn.getValue('sp_row'), 0);
-        if (!containerSysId) {
-            return null;
-        }
-        var grContainer = new GlideRecordSecure('sp_container');
-        if (!grContainer.get(containerSysId)) {
-            return null;
-        }
-        var grPage = new GlideRecordSecure('sp_page');
-        if (!grPage.get(grContainer.getValue('sp_page'))) {
-            return null;
-        }
-        return { id: grPage.getValue('id'), sysId: grPage.getValue('sys_id'), title: grPage.getValue('title') };
+        return widgetEditorAjax._resolvePageForInstance(grInstance);
     };
 
     if (input && input.action === 'getOpenPageOptions') {
@@ -168,7 +127,7 @@
     data.showAssistantButton = false;
     var grMainPrefs = new GlideRecord('sys_user_preference');
     grMainPrefs.addQuery('user', realUserId);
-    grMainPrefs.addQuery('name', new WidgetEditorAjax().USER_PREF_NAME);
+    grMainPrefs.addQuery('name', widgetEditorAjax.USER_PREF_NAME);
     grMainPrefs.query();
     if (grMainPrefs.next()) {
         try {
