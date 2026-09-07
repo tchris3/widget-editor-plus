@@ -3653,6 +3653,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                     instances.push({
                         instanceSysId: grInstances.getValue('sys_id'),
                         pageId: page.id,
+                        pageSysId: page.sysId,
                         pageTitle: page.title
                     });
                 }
@@ -3691,19 +3692,49 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         if (!grColumn.get(grInstance.getValue('sp_column'))) {
             return null;
         }
-        var grRow = new GlideRecordSecure('sp_row');
-        if (!grRow.get(grColumn.getValue('sp_row'))) {
+        var containerSysId = this._resolveContainerForRow(grColumn.getValue('sp_row'), 0);
+        if (!containerSysId) {
             return null;
         }
         var grContainer = new GlideRecordSecure('sp_container');
-        if (!grContainer.get(grRow.getValue('sp_container'))) {
+        if (!grContainer.get(containerSysId)) {
             return null;
         }
         var grPage = new GlideRecordSecure('sp_page');
         if (!grPage.get(grContainer.getValue('sp_page'))) {
             return null;
         }
-        return { id: grPage.getValue('id'), title: grPage.getValue('title') };
+        return { id: grPage.getValue('id'), sysId: grPage.getValue('sys_id'), title: grPage.getValue('title') };
+    },
+
+    /**
+     * Walks up from a row to the container it sits in, following sp_column parents
+     * when the row is nested inside another column instead of a container directly.
+     * @param {string} rowSysId - sp_row sys_id to resolve a container for.
+     * @param {number} depth - Recursion guard against unexpectedly deep nesting.
+     * @returns {string|null} sp_container sys_id, or null if unresolved.
+     */
+    _resolveContainerForRow: function (rowSysId, depth) {
+        if (!rowSysId || depth > 20) {
+            return null;
+        }
+        var grRow = new GlideRecordSecure('sp_row');
+        if (!grRow.get(rowSysId)) {
+            return null;
+        }
+        var containerSysId = grRow.getValue('sp_container');
+        if (containerSysId) {
+            return containerSysId;
+        }
+        var parentColumnSysId = grRow.getValue('sp_column');
+        if (!parentColumnSysId) {
+            return null;
+        }
+        var grParentColumn = new GlideRecordSecure('sp_column');
+        if (!grParentColumn.get(parentColumnSysId)) {
+            return null;
+        }
+        return this._resolveContainerForRow(grParentColumn.getValue('sp_row'), depth + 1);
     },
 
     /**
