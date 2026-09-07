@@ -3312,8 +3312,7 @@ UiPage({
                 enableSplitViewResizing: true,
                 readOnly: true,
                 scrollBeyondLastLine: false,
-                wordWrap: ctrl.wordWrap ? 'on' : 'off',
-                renderOverviewRuler: false
+                wordWrap: ctrl.wordWrap ? 'on' : 'off'
             });
             diffEditor.setModel({
                 original: monaco.editor.createModel(lf[key] || '', lang),
@@ -3787,8 +3786,7 @@ UiPage({
                 readOnly: true,
                 scrollBeyondLastLine: false,
                 wordWrap: ctrl.wordWrap ? 'on' : 'off',
-                minimap: { enabled: false },
-                renderOverviewRuler: false
+                minimap: { enabled: false }
             });
             diffEditor.setModel({
                 original: monaco.editor.createModel(ctrl.leftFields[fDef.key]  || '', _langForEditor(fDef.language)),
@@ -3828,8 +3826,7 @@ UiPage({
                 readOnly: true,
                 scrollBeyondLastLine: false,
                 wordWrap: ctrl.wordWrap ? 'on' : 'off',
-                minimap: { enabled: false },
-                renderOverviewRuler: false
+                minimap: { enabled: false }
             });
             diffEditor.setModel({
                 original: monaco.editor.createModel(ctrl.extraLeftFields[fDef.key]  || '', _langForEditor(fDef.language)),
