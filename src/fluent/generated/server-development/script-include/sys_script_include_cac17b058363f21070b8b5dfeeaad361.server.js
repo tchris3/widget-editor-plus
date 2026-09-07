@@ -781,7 +781,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                 label = demoGr[fname].getLabel() || fname;
             } catch (e) {}
             var renderAs = 'text';
-            if (fieldType === 'conditions' || fieldType === 'rebuilt_conditions') {
+            if (fieldType === 'conditions' || fieldType === 'rebuilt_conditions' || fieldType === 'variable_conditions') {
                 renderAs = 'conditions';
             } else if (fieldType === 'boolean') {
                 renderAs = 'boolean';
@@ -1226,6 +1226,111 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                     var dVal = gr.getDisplayValue(f);
                     results[key] = dVal || val;
                 }
+            } catch (ex) {
+                results[key] = val;
+            }
+        }
+
+        return this._answer({ success: true, results: results });
+    },
+
+    /**
+     * Returns label/type metadata for a set of catalog item variables (item_option_new), for
+     * rendering variable_conditions fields with the same builder used for table-field conditions.
+     * Accepts `variables` (JSON string array of item_option_new Sys IDs).
+     * @returns {{success: boolean, variables: Object}} Return value.
+     */
+    getVariableLabels: function () {
+        var variablesJson = String(this.getParameter('variables') || '[]');
+        var variableIds = [];
+        try {
+            variableIds = JSON.parse(variablesJson);
+        } catch (e) {
+            return this._answer({ success: false, error: 'Invalid variables JSON' });
+        }
+        variableIds = variableIds.filter(function (id) { return /^[0-9a-f]{32}$/i.test(id); });
+        if (!variableIds.length) {
+            return this._answer({ success: true, variables: {} });
+        }
+
+        var variables = {};
+        var gr = new GlideRecordSecure('item_option_new');
+        gr.addQuery('sys_id', 'IN', variableIds.join(','));
+        gr.query();
+        while (gr.next()) {
+            var id = gr.getUniqueValue();
+            var choiceGr = new GlideRecordSecure('question_choice');
+            choiceGr.addQuery('question', id);
+            choiceGr.setLimit(1);
+            choiceGr.query();
+            variables[id] = {
+                label: gr.getValue('question_text') || gr.getValue('name') || id,
+                name: gr.getValue('name') || '',
+                type: gr.getValue('type') || '',
+                reference: gr.getValue('reference') || '',
+                isChoice: choiceGr.hasNext(),
+            };
+        }
+        return this._answer({ success: true, variables: variables });
+    },
+
+    /**
+     * Resolves raw variable_conditions values (question_choice values or reference Sys IDs) to
+     * human-readable display values, mirroring resolveConditionDisplayValues for table fields.
+     * Accepts `pairs` (JSON string array of {variable, value} objects).
+     * @returns {{success: boolean, results: Object}} Return value.
+     */
+    resolveVariableConditionDisplayValues: function () {
+        var pairsJson = String(this.getParameter('pairs') || '[]');
+        var pairs = [];
+        try {
+            pairs = JSON.parse(pairsJson);
+        } catch (e) {
+            return this._answer({ success: false, error: 'Invalid pairs JSON' });
+        }
+
+        var results = {};
+        for (var i = 0; i < pairs.length; i++) {
+            var item = pairs[i];
+            var variableId = item.variable;
+            var val = item.value;
+            if (!variableId || val === undefined || val === null || val === '') {
+                continue;
+            }
+            var key = variableId + '|||' + val;
+            if (results[key]) {
+                continue;
+            }
+
+            try {
+                var varGr = new GlideRecordSecure('item_option_new');
+                if (!varGr.get(variableId)) {
+                    results[key] = val;
+                    continue;
+                }
+                var refTable = varGr.getValue('reference') || '';
+
+                if (refTable) {
+                    var valParts = val.split(',');
+                    var displayParts = [];
+                    for (var p = 0; p < valParts.length; p++) {
+                        var part = valParts[p].trim();
+                        if (/^[0-9a-f]{32}$/i.test(part)) {
+                            var refGr = new GlideRecordSecure(refTable);
+                            displayParts.push(refGr.get(part) ? (refGr.getDisplayValue() || part) : part);
+                        } else {
+                            displayParts.push(part);
+                        }
+                    }
+                    results[key] = displayParts.join(', ');
+                    continue;
+                }
+
+                var choiceGr = new GlideRecordSecure('question_choice');
+                choiceGr.addQuery('question', variableId);
+                choiceGr.addQuery('value', val);
+                choiceGr.query();
+                results[key] = choiceGr.next() ? (choiceGr.getValue('text') || val) : val;
             } catch (ex) {
                 results[key] = val;
             }
