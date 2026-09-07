@@ -764,12 +764,15 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     /**
      * Resolves the display label for a single record, used to re-validate/re-label
      * selections restored from localStorage.
-     * Accepts `table`, `sys_id`.
+     * Accepts `table`, `sys_id`, and optional `unblocked` ('true' to skip the export
+     * blocklist check — passed for update-set members, which are never blocklisted since
+     * the update set already scopes what's being exported).
      * @returns {{success: boolean, label: string, updatedOn: string}} Return value.
      */
     getRecordLabel: function () {
         var table = this.getParameter('table');
         var sysId = this.getParameter('sys_id');
+        var unblocked = this.getParameter('unblocked') === 'true';
         if (!table || !sysId) {
             return this._answer({ success: false, label: '', tableLabel: '', updatedOn: '' });
         }
@@ -778,7 +781,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             return this._answer({ success: false, label: '', tableLabel: '', updatedOn: '' });
         }
         var tableLabel = this._getTableLabel(table);
-        if (this._isTableExportBlocked(table)) {
+        if (!unblocked && this._isTableExportBlocked(table)) {
             // Confirm the record exists without leaking its display value (e.g. a person's name).
             return this._answer({ success: true, label: sysId, tableLabel: tableLabel, updatedOn: gr.getDisplayValue('sys_updated_on'), blocked: true });
         }
@@ -947,6 +950,199 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             gr.insert();
         }
         return this._answer({ success: true });
+    },
+
+    ////////////////////////////////////////////////////////////
+    // Update set picker
+    ////////////////////////////////////////////////////////////
+
+    /**
+     * Searches sys_update_set by name for the update set picker. The session's current update
+     * set (gs.getPreference('sys_update_set') — same source used elsewhere to detect update-set
+     * mismatches) is returned separately as `current` so the client can always pin it at the top,
+     * and is excluded from the paginated `updateSets` list so it's never shown twice.
+     * Accepts `query`, `offset` (default 0).
+     * @returns {{success: boolean, current: ?Object, updateSets: Array.<Object>,
+     *   total: number, offset: number, hasMore: boolean}} Return value.
+     */
+    searchUpdateSets: function () {
+        var query = this.getParameter('query') || '';
+        var offset = parseInt(this.getParameter('offset'), 10) || 0;
+        var currentId = gs.getPreference('sys_update_set') || '';
+
+        var countGa = new GlideAggregate('sys_update_set');
+        if (currentId) countGa.addQuery('sys_id', '!=', currentId);
+        if (query) countGa.addQuery('name', 'CONTAINS', query);
+        countGa.addAggregate('COUNT');
+        countGa.query();
+        var total = countGa.next() ? parseInt(countGa.getAggregate('COUNT'), 10) || 0 : 0;
+
+        var gr = new GlideRecordSecure('sys_update_set');
+        if (currentId) gr.addQuery('sys_id', '!=', currentId);
+        if (query) gr.addQuery('name', 'CONTAINS', query);
+        gr.orderByDesc('sys_updated_on');
+        gr.chooseWindow(offset, offset + this.RECORD_LIMIT);
+        gr.query();
+        var updateSets = [];
+        while (gr.next()) {
+            updateSets.push(this._updateSetSummary(gr));
+        }
+
+        var current = null;
+        if (currentId && offset === 0) {
+            var curGr = new GlideRecordSecure('sys_update_set');
+            if (curGr.get(currentId) && (!query || curGr.getValue('name').toLowerCase().indexOf(query.toLowerCase()) !== -1)) {
+                current = this._updateSetSummary(curGr);
+            }
+        }
+
+        return this._answer({
+            current: current,
+            hasMore: (offset + updateSets.length) < total,
+            offset: offset,
+            success: true,
+            total: total,
+            updateSets: updateSets,
+        });
+    },
+
+    /**
+     * Summarizes one sys_update_set row for the picker/manifest.
+     * @param {GlideRecordSecure} gr - A queried sys_update_set GlideRecordSecure.
+     * @returns {{sys_id: string, name: string, state: string, stateLabel: string,
+     *   description: string, updatedOn: string}} Return value.
+     */
+    _updateSetSummary: function (gr) {
+        return {
+            description: gr.getValue('description') || '',
+            name: gr.getValue('name'),
+            state: gr.getValue('state'),
+            stateLabel: gr.getDisplayValue('state'),
+            sys_id: gr.getUniqueValue(),
+            updatedOn: gr.getDisplayValue('sys_updated_on'),
+        };
+    },
+
+    /**
+     * Lists the distinct records touched by an update set, extracted from its sys_update_xml
+     * entries. Dedupes by table+sys_id, keeping the earliest entry so `sysCreatedOnValue` is a
+     * safe lower bound for a later "what existed before this update set" lookup.
+     * Accepts `update_set`.
+     * @returns {{success: boolean, members: Array.<{table: string, sys_id: string, action: string,
+     *   label: string, tableLabel: string, updatedOn: string, sysCreatedOnValue: string}>,
+     *   total: number}} Return value.
+     */
+    getUpdateSetMembers: function () {
+        var updateSetId = this.getParameter('update_set');
+        if (!updateSetId) {
+            return this._answer({ success: false, error: 'No update set provided', members: [], total: 0 });
+        }
+
+        var gr = new GlideRecordSecure('sys_update_xml');
+        gr.addQuery('update_set', updateSetId);
+        gr.orderBy('sys_created_on');
+        gr.query();
+
+        var seen = {};
+        var members = [];
+        while (gr.next()) {
+            var parsed = this._parseUpdateXmlMember(gr);
+            if (!parsed) continue;
+            var key = parsed.table + ':' + parsed.sys_id;
+            if (seen[key]) continue;
+            seen[key] = true;
+            members.push(parsed);
+        }
+        return this._answer({ success: true, members: members, total: members.length });
+    },
+
+    /**
+     * Extracts {table, sys_id, action, label, tableLabel, updatedOn, sysCreatedOnValue} from one
+     * sys_update_xml row by parsing its payload. A payload is shaped like
+     * `<record_update table="the_table"><the_table action="..."><sys_id>...</sys_id>...` —
+     * the table name is a root attribute and sys_id a child element, both more reliable than
+     * splitting the `name` field (which is `table + '_' + sys_id` but table names can themselves
+     * contain underscores).
+     * @param {GlideRecordSecure} gr - A queried sys_update_xml GlideRecordSecure.
+     * @returns {?Object} null if the payload couldn't be parsed. Unlike manually-added records,
+     *   update-set members are never export-blocklisted — an update set is an explicit,
+     *   already-scoped bundle of changes, so every member it touches is included.
+     */
+    _parseUpdateXmlMember: function (gr) {
+        var payload = gr.getValue('payload') || '';
+        var tableMatch = payload.match(/<record_update[^>]*\btable="([^"]+)"/);
+        var idMatch = payload.match(/<sys_id>([0-9a-f]{32})<\/sys_id>/);
+        if (!tableMatch || !idMatch) return null;
+        var table = tableMatch[1];
+        var sysId = idMatch[1];
+
+        var label = sysId;
+        try {
+            var recGr = new GlideRecordSecure(table);
+            if (recGr.isValid() && recGr.get(sysId)) {
+                label = recGr.getDisplayValue() || sysId;
+            }
+        } catch (e) {
+            // Table may no longer exist, or the record itself may have since been deleted.
+        }
+
+        return {
+            action: gr.getValue('action'),
+            label: label,
+            sys_id: sysId,
+            sysCreatedOnValue: gr.getValue('sys_created_on'),
+            table: table,
+            tableLabel: this._getTableLabel(table),
+            updatedOn: gr.getDisplayValue('sys_created_on'),
+        };
+    },
+
+    /**
+     * Finds the latest sys_update_xml payload for a record recorded strictly before `before`
+     * (a sys_created_on value), regardless of which update set it belongs to — the version that
+     * existed immediately prior to the update set currently being added. Reuses the same
+     * `name = table + '_' + sys_id` lookup already used elsewhere to resolve a record's owning
+     * update set.
+     * Accepts `table`, `sys_id`, `before`.
+     * @returns {{success: boolean, found: boolean, payload: ?string, action: ?string,
+     *   updateSetSysId: ?string, updateSetName: ?string, updatedOn: ?string}} Return value.
+     */
+    getPreviousUpdateXml: function () {
+        var table = this.getParameter('table');
+        var sysId = this.getParameter('sys_id');
+        var before = this.getParameter('before');
+        if (!table || !sysId) {
+            return this._answer({ success: false, found: false });
+        }
+
+        var gr = new GlideRecordSecure('sys_update_xml');
+        gr.addQuery('name', table + '_' + sysId);
+        if (before) gr.addQuery('sys_created_on', '<', before);
+        gr.orderByDesc('sys_created_on');
+        gr.setLimit(1);
+        gr.query();
+        if (!gr.next()) {
+            return this._answer({ success: true, found: false });
+        }
+
+        var updateSetId = gr.getValue('update_set');
+        var updateSetName = '';
+        if (updateSetId) {
+            var usGr = new GlideRecordSecure('sys_update_set');
+            if (usGr.get(updateSetId)) {
+                updateSetName = usGr.getValue('name');
+            }
+        }
+
+        return this._answer({
+            action: gr.getValue('action'),
+            found: true,
+            payload: gr.getValue('payload'),
+            success: true,
+            updatedOn: gr.getDisplayValue('sys_created_on'),
+            updateSetName: updateSetName,
+            updateSetSysId: updateSetId,
+        });
     },
 
     ////////////////////////////////////////////////////////////

@@ -35,26 +35,11 @@
         return;
     }
 
-    // Resolves the sp_page (id/title) that an sp_instance record is placed on by
-    // walking sp_instance -> sp_column -> sp_row -> sp_container -> sp_page.
+    // sp_instance -> sp_page resolution is shared with WidgetEditorAjax, which already
+    // implements the sp_row/sp_column nesting walk.
+    var widgetEditorAjax = new WidgetEditorAjax();
     var resolvePageForInstance = function (grInstance) {
-        var grColumn = new GlideRecordSecure('sp_column');
-        if (!grColumn.get(grInstance.getValue('sp_column'))) {
-            return null;
-        }
-        var grRow = new GlideRecordSecure('sp_row');
-        if (!grRow.get(grColumn.getValue('sp_row'))) {
-            return null;
-        }
-        var grContainer = new GlideRecordSecure('sp_container');
-        if (!grContainer.get(grRow.getValue('sp_container'))) {
-            return null;
-        }
-        var grPage = new GlideRecordSecure('sp_page');
-        if (!grPage.get(grContainer.getValue('sp_page'))) {
-            return null;
-        }
-        return { id: grPage.getValue('id'), title: grPage.getValue('title') };
+        return widgetEditorAjax._resolvePageForInstance(grInstance);
     };
 
     if (input && input.action === 'getOpenPageOptions') {
@@ -75,6 +60,7 @@
                     result.instances.push({
                         instanceSysId: grInstances.getValue('sys_id'),
                         pageId: page.id,
+                        pageSysId: page.sysId,
                         pageTitle: page.title
                     });
                 }
@@ -141,7 +127,7 @@
     data.showAssistantButton = false;
     var grMainPrefs = new GlideRecord('sys_user_preference');
     grMainPrefs.addQuery('user', realUserId);
-    grMainPrefs.addQuery('name', new WidgetEditorAjax().USER_PREF_NAME);
+    grMainPrefs.addQuery('name', widgetEditorAjax.USER_PREF_NAME);
     grMainPrefs.query();
     if (grMainPrefs.next()) {
         try {

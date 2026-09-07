@@ -302,7 +302,9 @@ export const widgetEditorAssistantUiPage = UiPage({
         }
         table.we-main-table tbody tr.we-primary-row td {
             position: sticky;
-            top: 2.75rem;
+            /* Overridden per-row (via inline --we-sticky-top) so the primary row and any applied
+               update-set rows stack below the header instead of all sticking at the same offset. */
+            top: var(--we-sticky-top, 2.75rem);
             z-index: 8;
             background: rgb(var(--now-color--primary-0, 0 118 204));
             border-bottom: 1px solid rgba(var(--now-color--primary-1, 0 118 204), 0.25);
@@ -353,7 +355,8 @@ export const widgetEditorAssistantUiPage = UiPage({
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
-        .we-checkbox {
+        input[type="checkbox"].we-checkbox {
+            margin: 0;
             cursor: pointer;
             width: 1rem;
             height: 1rem;
@@ -441,6 +444,112 @@ export const widgetEditorAssistantUiPage = UiPage({
             white-space: nowrap;
         }
 
+        /* Update-set origin pill: shown in full (no truncation) since the whole name matters for
+           telling update sets apart; sits on its own line via .we-record-pill-stack below. */
+        .we-pill-update-set {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            max-width: 100%;
+            vertical-align: middle;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.125rem 0.45rem;
+            border-radius: 9999px;
+            background: rgba(var(--now-color_text--secondary, 96 100 108), 0.12);
+            color: rgb(var(--now-color_text--secondary, 96 100 108));
+            cursor: default;
+        }
+        .we-pill-update-set i {
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+        .we-pill-update-set-text {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+        /* Previous-version pill: dashed outline distinguishes it from the current/filled pill above it */
+        .we-pill-update-set--previous {
+            background: transparent;
+            border: 1px dashed rgba(var(--now-color_text--secondary, 96 100 108), 0.5);
+        }
+
+        /* Stacks the current/previous update-set pills below the record name, one per line */
+        .we-record-pill-stack {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            min-width: 0;
+            max-width: 100%;
+            gap: 0.25rem;
+            margin-top: 0.3rem;
+        }
+        .we-record-pill-line {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            max-width: 100%;
+            gap: 0.375rem;
+            flex-wrap: wrap;
+        }
+
+        /* Applied-update-set summary row — reuses .we-primary-row's sticky highlighted styling */
+        .we-update-set-summary-name {
+            font-weight: 700;
+            margin-right: 0.5rem;
+        }
+
+        /* "New" pill: same filled positive styling as the Primary pill */
+        .we-pill-new {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.125rem 0.45rem;
+            border-radius: 9999px;
+            background: rgb(var(--now-alert--positive--background-color, var(--now-color_alert--positive-0, 201 224 202)));
+            color: rgb(var(--now-badge--secondary_positive--color, var(--now-color_alert--positive-5, 15 52 17)));
+            vertical-align: middle;
+            cursor: default;
+        }
+
+        /* "Deleted" pill: same filled critical styling as the Blocked pill, for update-set
+           members whose action is DELETE. */
+        .we-pill-deleted {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.125rem 0.45rem;
+            border-radius: 9999px;
+            background: rgb(var(--now-alert--critical--background-color, var(--now-color_alert--critical-0, 255 235 235)));
+            color: rgb(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 168 30 30)));
+            vertical-align: middle;
+            cursor: default;
+        }
+
+        /* Update Set sidebar options (Include previous version), sits above the Estimated Context Size card */
+        .we-update-set-options {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .we-sidebar-checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: rgb(var(--now-color_text--primary, 29 29 29));
+            cursor: pointer;
+        }
+        .we-update-set-options-help {
+            font-size: 0.875rem;
+            color: rgb(var(--now-color_text--secondary, 96 100 108));
+            cursor: help;
+        }
+
         /* Inline Table and Record Lookup Triggers */
         .we-lookup-link {
             color: rgb(var(--now-color--primary-2, 0 118 204));
@@ -452,6 +561,11 @@ export const widgetEditorAssistantUiPage = UiPage({
         .we-lookup-link:hover {
             color: rgb(var(--now-color--primary-1, 0 90 156));
             text-decoration: underline;
+        }
+        /* Record name for a DELETE-action update-set row */
+        .we-record-name-deleted {
+            text-decoration: line-through;
+            color: rgb(var(--now-color_text--secondary, 96 100 108));
         }
 
         .we-sidebar-stat-row {
@@ -1300,9 +1414,17 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 <i class="icon-refresh" ng-class="{'we-spin': ctrl.refreshingAll}" style="margin-right: 0.375rem;"></i>
                                 <span>Refresh</span>
                             </button>
-                            <button class="btn btn-primary" ng-click="ctrl.openLookup('add')" title="Add a record to the bundle">
+                            <button type="button" class="btn btn-default" ng-if="(ctrl.primary.sysId &amp;&amp; !ctrl.embeddedInModal) || ctrl.related.length || ctrl.updateSets.length" ng-click="ctrl.clearAll()" ng-disabled="ctrl.addingUpdateSet" title="Reset records">
+                                <i class="icon-cross"></i>
+                            </button>
+                            <button class="btn btn-primary" ng-click="ctrl.openLookup('add')" ng-disabled="ctrl.addingUpdateSet" title="Add a record to the bundle">
                                 <i class="icon-add" style="margin-right: 0.375rem;"></i>
                                 <span>Add Record</span>
+                            </button>
+                            <button class="btn btn-default" ng-if="!ctrl.primary.sysId" ng-click="ctrl.openUpdateSetPicker()" ng-disabled="ctrl.addingUpdateSet" title="Add every record from an update set">
+                                <we-loader ng-if="ctrl.addingUpdateSet" ></we-loader>
+                                <i class="icon-add" ng-if="!ctrl.addingUpdateSet"></i>
+                                <span style="margin-left: 0.375rem;">{{ctrl.addingUpdateSet ? 'Adding…' : 'Add Update Set'}}</span>
                             </button>
                         </div>
                     </div>
@@ -1334,34 +1456,67 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 </tr>
                             </thead>
                             <tbody>
+                                <!-- Applied update sets — pinned as the first rows, right below the header, using the
+                                     same column layout as every other row (checkbox, open-in-new-tab, remove). -->
+                                <tr class="we-primary-row we-update-set-summary-row" ng-repeat="us in ctrl.updateSets" style="--we-sticky-top: {{2.75 + $index * 2.75}}rem;" data-update-set-key="{{us.sys_id}}">
+                                    <td class="we-cell-check">
+                                        <input type="checkbox" class="we-checkbox" ng-checked="ctrl.isUpdateSetChecked(us)" ng-click="ctrl.toggleUpdateSetChecked(us)" title="Select / deselect all records from this update set" />
+                                    </td>
+                                    <td>
+                                        <strong>Update Set</strong>
+                                        <i class="icon-document-multiple" style="margin-left: 0.25em" aria-hidden="true"></i>
+                                    </td>
+                                    <td>
+                                        <span class="we-update-set-summary-name">{{us.name}}</span>
+                                        <span class="we-type-count-pill" ng-bind="ctrl.updateSetRecordCount(us)"></span>
+                                    </td>
+                                    <td>
+                                        <span class="we-updated-text" ng-bind="us.updatedOn || '—'"></span>
+                                    </td>
+                                    <td class="we-cell-actions">
+                                        <button type="button" class="btn btn-default" ng-click="ctrl.refreshUpdateSet(us)" ng-disabled="ctrl.refreshingUpdateSets[us.sys_id]" title="Refresh update set's records">
+                                            <i class="icon-refresh" ng-class="{'we-spin': ctrl.refreshingUpdateSets[us.sys_id]}"></i>
+                                        </button>
+                                        <a class="btn btn-default" ng-href="/nav_to.do?uri=sys_update_set.do%3Fsys_id%3D{{us.sys_id}}" target="_blank" title="Open update set in platform">
+                                            <i class="icon-open-document-new-tab"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-default" ng-click="ctrl.removeUpdateSet(us)" title="Remove this update set's records">
+                                            <i class="icon-cross"></i>
+                                        </button>
+                                    </td>
+                                </tr>
                                 <!-- Unified Rows: Row 0 is Primary (or a placeholder prompting selection), Remaining Rows Grouped by Type -->
                                 <tr ng-repeat-start="row in ctrl.visibleRows track by (row.placeholder ? 'ph' : (row.table + ':' + row.sys_id))" ng-if="row.placeholder" class="we-primary-row" data-row-key="ph">
                                     <td colspan="5" style="text-align: center; padding: 1.5rem 1rem;">
-                                        <button type="button" class="btn btn-primary" ng-click="ctrl.openLookup('primary')">
+                                        <button type="button" class="btn btn-primary" ng-if="!ctrl.updateSets.length" ng-click="ctrl.openLookup('primary')" ng-disabled="ctrl.addingUpdateSet">
                                             <i class="icon-add" style="margin-right: 0.375rem;"></i>
                                             <span>Select record</span>
                                         </button>
+                                        <button type="button" class="btn btn-default" ng-if="!ctrl.updateSets.length" ng-click="ctrl.openUpdateSetPicker()" ng-disabled="ctrl.addingUpdateSet" style="margin-left: 0.75rem;">
+                                            <i class="icon-add" style="margin-right: 0.375rem;"></i>
+                                            <span>Select Update Set</span>
+                                        </button>
                                         <div style="margin-top: 1.5rem; font-size: var(--now-global-font-size--md, 14px); color: rgb(var(--now-color_text--secondary, 96 100 108));">
-                                            Choose a primary record.
+                                            Choose a primary record or update set.
                                         </div>
                                     </td>
                                 </tr>
-                                <tr ng-repeat-end="ng-repeat-end" ng-if="!row.placeholder" ng-class="{'we-primary-row': row.primary, 'we-row-just-added': row._justAdded}" data-row-key="{{row.table}}:{{row.sys_id}}">
+                                <tr ng-repeat-end="ng-repeat-end" ng-if="!row.placeholder" ng-class="{'we-primary-row': row.primary, 'we-row-just-added': row._justAdded}" style="--we-sticky-top: {{2.75 + ctrl.updateSets.length * 2.75}}rem;" data-row-key="{{row.table}}:{{row.sys_id}}">
                                     <td class="we-cell-check">
-                                        <input type="checkbox" class="we-checkbox" ng-model="row.checked" ng-disabled="row.primary || ctrl.isExportBlocked(row.table)" ng-change="ctrl.onSelectionChange()" />
+                                        <input type="checkbox" class="we-checkbox" ng-model="row.checked" ng-disabled="row.primary || ctrl.isExportBlocked(row.table, row)" ng-change="ctrl.onSelectionChange()" />
                                     </td>
                                     <td>
-                                        <span ng-class="{'we-lookup-link': !(row.primary &amp;&amp; ctrl.embeddedInModal)}" ng-click="!(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; ctrl.openLookupForRow(row, 'table')" title="{{(row.primary &amp;&amp; ctrl.embeddedInModal) ? '' : 'Click to change table'}}">
+                                        <span ng-class="{'we-lookup-link': !(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; !row.updateSetSysId, 'we-record-name-deleted': row.updateSetAction === 'DELETE'}" ng-click="!(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; !row.updateSetSysId &amp;&amp; ctrl.openLookupForRow(row, 'table')" title="{{((row.primary &amp;&amp; ctrl.embeddedInModal) || row.updateSetSysId) ? '' : 'Click to change table'}}">
                                             {{row.tableLabel || row.table}}
                                             <i ng-class="ctrl.tableIconClass(row.table)" style="margin-left: 0.25em" aria-hidden="true"></i>
                                         </span>
                                     </td>
                                     <td>
-                                        <span ng-class="{'we-lookup-link': !(row.primary &amp;&amp; ctrl.embeddedInModal)}" ng-click="!(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; ctrl.openLookupForRow(row, 'record')" title="{{(row.primary &amp;&amp; ctrl.embeddedInModal) ? '' : 'Click to change record'}}">
+                                        <span ng-class="{'we-lookup-link': !(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; !row.updateSetSysId, 'we-record-name-deleted': row.updateSetAction === 'DELETE'}" ng-click="!(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; !row.updateSetSysId &amp;&amp; ctrl.openLookupForRow(row, 'record')" title="{{((row.primary &amp;&amp; ctrl.embeddedInModal) || row.updateSetSysId) ? '' : 'Click to change record'}}">
                                             {{row.label}}
                                         </span>
                                         <span class="we-pill-primary" ng-if="row.primary">Primary</span>
-                                        <span class="we-pill-blocked" ng-if="ctrl.isExportBlocked(row.table)" title="Table structure can be exported, but record data from this table is never included.">
+                                        <span class="we-pill-blocked" ng-if="ctrl.isExportBlocked(row.table, row)" title="Table structure can be exported, but record data from this table is never included.">
                                             <i class="icon-locked" aria-hidden="true"></i>
                                             <span>Blocked</span>
                                         </span>
@@ -1373,6 +1528,21 @@ export const widgetEditorAssistantUiPage = UiPage({
                                             <span class="we-pill-favourite-text">{{row.favouriteGroupName}}</span>
                                             <i class="icon-star" aria-hidden="true"></i>
                                         </span>
+                                        <div class="we-record-pill-stack" ng-if="row.updateSetSysId">
+                                            <div class="we-record-pill-line">
+                                                <span class="we-pill-update-set" title="{{row.updateSetName}}">
+                                                    <i class="icon-document-code" aria-hidden="true"></i>
+                                                    <span class="we-pill-update-set-text">{{row.updateSetName}}</span>
+                                                </span>
+                                                <span class="we-pill-new" ng-if="ctrl.includePreviousUpdates &amp;&amp; row.isNewInUpdateSet" title="No earlier version of this record exists before this update set">New</span>
+                                                <span class="we-pill-deleted" ng-if="row.updateSetAction === 'DELETE'" title="This update set deletes this record">Deleted</span>
+                                            </div>
+                                            <div class="we-record-pill-line" ng-if="ctrl.includePreviousUpdates &amp;&amp; !row.isNewInUpdateSet &amp;&amp; row.previousVersion">
+                                                <span class="we-pill-update-set we-pill-update-set--previous" title="{{'Previous Update Set: ' + row.previousVersion.updateSetName}}">
+                                                    <span class="we-pill-update-set-text">{{row.previousVersion.updateSetName}}</span>
+                                                </span>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td>
                                         <span class="we-updated-text" ng-bind="row.updatedOn || '—'"></span>
@@ -1417,6 +1587,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                                     <div class="we-skeleton-bar we-skeleton-count-row"></div>
                                 </div>
 
+                                <!-- Update Sets — toggles all of an update set's records in/out of the export at once -->
+                                <div class="we-type-counts-list" ng-if="!ctrl.loadingInitial &amp;&amp; ctrl.updateSets.length &gt; 0">
+                                    <div class="we-type-count-item" ng-repeat="us in ctrl.updateSets" ng-class="{'active': ctrl.isUpdateSetChecked(us)}" ng-click="ctrl.toggleUpdateSetChecked(us)" ng-keydown="($event.key === 'Enter' || $event.key === ' ') &amp;&amp; ($event.preventDefault() || ctrl.toggleUpdateSetChecked(us))" tabindex="0" role="button" aria-pressed="{{ctrl.isUpdateSetChecked(us)}}" title="{{us.name}}">
+                                        <span class="we-sidebar-item-label" ng-bind="us.name"></span>
+                                        <span class="we-type-count-pill" ng-bind="ctrl.updateSetRecordCount(us)"></span>
+                                    </div>
+                                </div>
+
                                 <!-- Record Type Counts (when loaded) -->
                                 <div class="we-type-counts-list" ng-if="!ctrl.loadingInitial &amp;&amp; ctrl.typeCountsList.length &gt; 0">
                                     <div class="we-type-count-item" ng-repeat="tc in ctrl.typeCountsList" ng-class="{'active': ctrl.activeTypeFilters[tc.label]}" ng-click="ctrl.toggleTypeFilter(tc.label)" ng-keydown="($event.key === 'Enter' || $event.key === ' ') &amp;&amp; ($event.preventDefault() || ctrl.toggleTypeFilter(tc.label))" tabindex="0" role="button" aria-pressed="{{!!ctrl.activeTypeFilters[tc.label]}}" title="{{ctrl.activeTypeFilters[tc.label] ? 'Click to stop filtering to ' + tc.label : 'Click to show only ' + tc.label}}">
@@ -1424,10 +1602,20 @@ export const widgetEditorAssistantUiPage = UiPage({
                                         <span class="we-type-count-pill" ng-bind="tc.selectedCount"></span>
                                     </div>
                                 </div>
+
                             </div>
 
                             <!-- Bottom: Token Estimate, Export Button, Progress — always visible -->
                             <div class="we-sidebar-footer">
+                                <!-- Update Set Options — only relevant once at least one update set has been added -->
+                                <div class="we-update-set-options" ng-if="ctrl.updateSets.length">
+                                    <label class="we-sidebar-checkbox-row">
+                                        <input type="checkbox" class="we-checkbox" ng-model="ctrl.includePreviousUpdates" ng-change="ctrl.toggleIncludePreviousUpdates()" />
+                                        <span>Include previous version</span>
+                                    </label>
+                                    <i class="icon-help we-update-set-options-help" aria-hidden="true" title="Include previous update set versions for comparison."></i>
+                                </div>
+
                                 <div class="we-token-card we-skeleton-token-card" ng-if="ctrl.loadingInitial">
                                     <div class="we-token-header">
                                         <span class="we-token-lbl">Estimated Context Size</span>
@@ -1442,9 +1630,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                                         <span class="we-token-lbl">Estimated Context Size</span>
                                         <span class="we-token-badge" ng-if="ctrl.tokenLevelInfo().label" ng-bind="ctrl.tokenLevelInfo().label"></span>
                                     </div>
-                                    <span class="we-token-val" ng-if="ctrl.sizesPending()">~<span class="we-skeleton-bar" style="width: 3rem; height: 1em; border-radius: 4px; vertical-align: middle; margin: 0 0.25em;" aria-hidden="true"></span> tokens</span>
-                                    <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; ctrl.rawTokenCount() === 0">N/A</span>
-                                    <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; ctrl.rawTokenCount() &gt; 0">~{{ctrl.estimatedTokens()}} tokens</span>
+                                    <span class="we-token-val" ng-if="ctrl.sizesPending() || ctrl.previousVersionsCalculating()">~<span class="we-skeleton-bar" style="width: 3rem; height: 1em; border-radius: 4px; vertical-align: middle; margin: 0 0.25em;" aria-hidden="true"></span> tokens</span>
+                                    <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; !ctrl.previousVersionsCalculating() &amp;&amp; ctrl.rawTokenCount() === 0">N/A</span>
+                                    <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; !ctrl.previousVersionsCalculating() &amp;&amp; ctrl.rawTokenCount() &gt; 0">~{{ctrl.estimatedTokens()}} tokens</span>
                                 </div>
 
                                 <!-- Export Button -->
@@ -1756,6 +1944,69 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 </div>
                                 <div class="we-picker-load-more" ng-if="ctrl.lookup.loadingMore"><we-loader></we-loader></div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Update Set Lookup Modal — same picker chrome as the Table/Record Lookup Modal above -->
+        <div class="we-modal-backdrop" ng-if="ctrl.usPicker.open" ng-click="ctrl.onUpdateSetBackdropClick($event)">
+            <div class="we-picker-box" ng-click="$event.stopPropagation()">
+                <div class="we-picker-title-row" we-modal-draggable="we-modal-draggable">
+                    <div class="we-picker-title-left">
+                        <span class="we-picker-title">Select Update Set</span>
+                    </div>
+                    <div class="we-picker-title-actions">
+                        <button type="button" class="we-modal-close-btn" ng-click="ctrl.closeUpdateSetPicker()" aria-label="Close">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="we-picker-columns">
+                    <div class="we-picker-col-main" style="display: flex; flex-direction: column; min-height: 0; flex: 1;">
+                        <div class="we-picker-search-wrap">
+                            <input type="text" class="form-control we-picker-search-input" ng-model="ctrl.usPicker.query" ng-change="ctrl.onUpdateSetQueryChange()" ng-keydown="ctrl.onUpdateSetSearchKeydown($event)" placeholder="Search by update set name…" autofocus="autofocus" />
+                            <span class="we-picker-search-clear" ng-if="ctrl.usPicker.query &amp;&amp; !ctrl.usPicker.loading" ng-click="ctrl.usPicker.query = ''; ctrl.onUpdateSetQueryChange()" role="button" title="Clear search">×</span>
+                            <span class="we-picker-search-spinner" ng-if="ctrl.usPicker.loading"><we-loader></we-loader></span>
+                            <i class="icon-search we-picker-search-icon" aria-hidden="true" ng-if="!ctrl.usPicker.query &amp;&amp; !ctrl.usPicker.loading"></i>
+                        </div>
+
+                        <div ng-if="ctrl.usPicker.current" style="margin-bottom: 0.75rem;">
+                            <div class="we-picker-section-header">
+                                <span class="we-picker-section-title">Current</span>
+                            </div>
+                            <div class="we-picker-list">
+                                <div class="we-picker-item" ng-click="ctrl.chooseUpdateSet(ctrl.usPicker.current)" ng-keydown="ctrl.onUpdateSetItemKeydown($event, ctrl.usPicker.current)" tabindex="0" role="button">
+                                    <span class="we-picker-item-icon" aria-hidden="true"><i class="icon-document-code" aria-hidden="true"></i></span>
+                                    <div class="we-picker-item-content">
+                                        <span class="we-picker-item-name" ng-bind-html="ctrl.usPicker.current.name | weHighlight:ctrl.usPicker.activeSearch"></span>
+                                        <span class="we-picker-item-id" ng-if="ctrl.usPicker.current.stateLabel">{{ctrl.usPicker.current.stateLabel}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="we-picker-section-header">
+                            <span class="we-picker-section-title">
+                                <span>Update Sets</span>
+                                <span class="we-picker-count-badge" ng-if="ctrl.usPicker.total" ng-bind="ctrl.usPicker.total"></span>
+                                <we-header-loader ng-if="ctrl.usPicker.loading || ctrl.usPicker.loadingMore"></we-header-loader>
+                            </span>
+                        </div>
+                        <div class="we-picker-list" we-infinite-scroll="ctrl.loadMoreUpdateSets()">
+                            <div class="we-picker-empty" ng-if="!ctrl.usPicker.loading &amp;&amp; ctrl.usPicker.results.length === 0">
+                                <span>No update sets found</span>
+                            </div>
+                            <div class="we-picker-item" ng-repeat="us in ctrl.usPicker.results" ng-click="ctrl.chooseUpdateSet(us)" ng-keydown="ctrl.onUpdateSetItemKeydown($event, us)" tabindex="0" role="button">
+                                <span class="we-picker-item-icon" aria-hidden="true"><i class="icon-document-code" aria-hidden="true"></i></span>
+                                <div class="we-picker-item-content">
+                                    <span class="we-picker-item-name" ng-bind-html="us.name | weHighlight:ctrl.usPicker.activeSearch"></span>
+                                    <span class="we-picker-item-id" ng-if="us.stateLabel">{{us.stateLabel}} · {{us.updatedOn}}</span>
+                                </div>
+                            </div>
+                            <div class="we-picker-load-more" ng-if="ctrl.usPicker.loadingMore"><we-loader></we-loader></div>
                         </div>
                     </div>
                 </div>
@@ -2128,6 +2379,20 @@ export const widgetEditorAssistantUiPage = UiPage({
             } catch (e) {}
         }
 
+        function clearPrimaryUrl() {
+            try {
+                var url = new URL(window.location.href);
+                url.searchParams.delete('record_table');
+                url.searchParams.delete('record_sys_id');
+                window.history.replaceState(null, '', url.toString());
+
+                if (window.top !== window && window.parent === window.top) {
+                    var page = url.pathname.substring(1) + url.search + url.hash;
+                    window.top.history.replaceState(null, '', '/now/nav/ui/classic/params/target/' + encodeURIComponent(page));
+                }
+            } catch (e) {}
+        }
+
         async function runPool(items, worker, concurrency) {
             var idx = 0;
             async function next() {
@@ -2185,6 +2450,8 @@ export const widgetEditorAssistantUiPage = UiPage({
             ctrl.embeddedInModal = !!(window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.embedded);
             ctrl.primary = { table: '', sysId: '', label: '', tableLabel: '', updatedOn: '' };
             ctrl.related = [];
+            ctrl.updateSets = [];
+            ctrl.includePreviousUpdates = false;
             ctrl.rows = [];
             ctrl.visibleRows = [];
             ctrl.typeCountsList = [];
@@ -2192,6 +2459,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             var primaryRowObj = null;
             var placeholderRowObj = { placeholder: true, checked: false };
             ctrl.generating = false;
+            ctrl.addingUpdateSet = false;
             ctrl.loadingInitial = !!(window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.sysId);
             ctrl.progress = { done: 0, total: 0 };
             ctrl.activeSidebarTab = 'xml';
@@ -2240,6 +2508,18 @@ export const widgetEditorAssistantUiPage = UiPage({
                 loading: false,
                 loadingMore: false,
                 recordActiveSearch: '',
+            };
+
+            ctrl.usPicker = {
+                open: false,
+                query: '',
+                current: null,
+                results: [],
+                total: 0,
+                hasMore: false,
+                loading: false,
+                loadingMore: false,
+                activeSearch: '',
             };
 
             // Favourite tables: persisted server-side as a user preference, not localStorage.
@@ -2707,7 +2987,10 @@ export const widgetEditorAssistantUiPage = UiPage({
 
             ctrl.tableIconClass = tableIconClass;
 
-            ctrl.isExportBlocked = function (table) {
+            // Update-set members are never blocked — an update set already scopes what's
+            // being exported, so nothing it touches is excluded.
+            ctrl.isExportBlocked = function (table, row) {
+                if (row && row.updateSetSysId) { return false; }
                 return isTableExportBlocked(table);
             };
 
@@ -2878,7 +3161,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                         checked: true,
                     });
                     rows.push(primaryRowObj);
-                } else if (!ctrl.loadingInitial) {
+                } else if (!ctrl.loadingInitial && ctrl.related.length === 0) {
+                    // Once there are already related rows (e.g. from an added update set), the big
+                    // "choose a primary" prompt would just sit awkwardly among real data — a primary
+                    // is optional at that point.
                     rows.push(placeholderRowObj);
                 }
 
@@ -2933,16 +3219,22 @@ export const widgetEditorAssistantUiPage = UiPage({
                     var r = ctrl.visibleRows[i];
                     if (r.placeholder || !r.checked) continue;
                     bytes += ctrl.rowSizeBytes[rowKey(r)] || 0;
+                    // Include Previous Updates adds a previous_version payload per update-set row to the export.
+                    if (ctrl.includePreviousUpdates && r.updateSetSysId) {
+                        bytes += r.previousVersionBytes || 0;
+                    }
                 }
                 return Math.round(bytes / charsPerToken);
             };
 
-            // True while any checked, visible row's export size hasn't been measured yet.
+            // True while any checked, visible row's export size hasn't been measured yet — including
+            // the previous-version payload size, once Include Previous Updates makes that relevant.
             ctrl.sizesPending = function () {
                 for (var i = 0; i < ctrl.visibleRows.length; i++) {
                     var r = ctrl.visibleRows[i];
                     if (r.placeholder || !r.checked) continue;
                     if (!ctrl.rowSizeBytes.hasOwnProperty(rowKey(r))) return true;
+                    if (ctrl.includePreviousUpdates && r.updateSetSysId && !r.hasOwnProperty('previousVersionBytes')) return true;
                 }
                 return false;
             };
@@ -2957,6 +3249,9 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             ctrl.tokenLevelInfo = function () {
+                if (ctrl.sizesPending() || ctrl.previousVersionsCalculating()) {
+                    return { level: 'none', label: '' };
+                }
                 var count = ctrl.rawTokenCount();
                 if (count === 0) {
                     return { level: 'none', label: '' };
@@ -3007,11 +3302,39 @@ export const widgetEditorAssistantUiPage = UiPage({
                 recomputeTypeCounts();
             };
 
+            ctrl.updateSetRecordCount = function (us) {
+                return ctrl.related.filter(function (r) { return r.updateSetSysId === us.sys_id; }).length;
+            };
+
+            ctrl.isUpdateSetChecked = function (us) {
+                var rows = ctrl.related.filter(function (r) { return r.updateSetSysId === us.sys_id; });
+                if (rows.length === 0) return false;
+                return rows.every(function (r) { return r.checked; });
+            };
+
+            // Bulk-(de)selects every record from one update set at once, without touching rows from other sources.
+            ctrl.toggleUpdateSetChecked = function (us) {
+                var target = !ctrl.isUpdateSetChecked(us);
+                ctrl.related.forEach(function (r) {
+                    if (r.updateSetSysId === us.sys_id) {
+                        r.checked = target;
+                    }
+                });
+                ctrl.saveSelections();
+                recomputeTypeCounts();
+            };
+
             ctrl.removeRow = function (row) {
                 if (row.suggested) {
                     dismissedSuggestionKeys[rowKey(row)] = true;
                 }
                 ctrl.related = ctrl.related.filter(function (r) { return r !== row; });
+                // Drop the update set's own summary row too once its last member row is gone.
+                if (row.updateSetSysId) {
+                    ctrl.updateSets = ctrl.updateSets.filter(function (u) {
+                        return u.sys_id !== row.updateSetSysId || ctrl.updateSetRecordCount(u) > 0;
+                    });
+                }
                 ctrl.saveSelections();
                 rebuildRows();
             };
@@ -3052,16 +3375,52 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
             };
 
+            // Wipes the whole bundle back to an empty state: primary, related records, and update
+            // sets. In embedded mode the primary comes from the host page, not this session, so it's
+            // left alone — only the related/update-set data this session added gets cleared.
+            ctrl.clearAll = function () {
+                var clearPrimary = !!ctrl.primary.sysId && !ctrl.embeddedInModal;
+                if (!clearPrimary && ctrl.related.length === 0 && ctrl.updateSets.length === 0) return;
+
+                if (clearPrimary) {
+                    ctrl.primary = { table: '', sysId: '', label: '', tableLabel: '', updatedOn: '' };
+                    clearPrimaryUrl();
+                }
+                ctrl.related = [];
+                ctrl.updateSets = [];
+                ctrl.includePreviousUpdates = false;
+                dismissedSuggestionKeys = {};
+                _scannedScriptKeys = {};
+                ctrl.rowSizeBytes = {};
+                ctrl.activeTypeFilters = {};
+                ctrl.saveSelections();
+                rebuildRows();
+            };
+
             ctrl.progressPct = function () {
                 if (!ctrl.progress.total) return 0;
                 return Math.round((ctrl.progress.done / ctrl.progress.total) * 100);
             };
 
-            // localStorage remembers only table+sys_id and checked state, never name/updated-on.
+            // localStorage remembers only table+sys_id and checked state, never name/updated-on —
+            // except for DELETE-action update-set members, whose label is persisted since the
+            // underlying record is gone and can never be freshly re-resolved on reload.
             ctrl.saveSelections = function () {
                 try {
                     var manual = ctrl.related.filter(function (r) { return r.manual; })
                         .map(function (r) { return { table: r.table, sys_id: r.sys_id }; });
+                    var updateSetMembers = ctrl.related.filter(function (r) { return r.updateSetSysId; })
+                        .map(function (r) {
+                            return {
+                                table: r.table,
+                                sys_id: r.sys_id,
+                                label: r.updateSetAction === 'DELETE' ? (r.label || '') : '',
+                                updateSetSysId: r.updateSetSysId,
+                                updateSetName: r.updateSetName,
+                                updateSetAction: r.updateSetAction,
+                                updateSetMemberCreatedOnValue: r.updateSetMemberCreatedOnValue,
+                            };
+                        });
                     var checked = {};
                     for (var i = 0; i < ctrl.related.length; i++) {
                         var r = ctrl.related[i];
@@ -3070,7 +3429,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                         }
                     }
                     var dismissedSuggestions = Object.keys(dismissedSuggestionKeys);
-                    localStorage.setItem(storageKey(), JSON.stringify({ manual: manual, checked: checked, dismissedSuggestions: dismissedSuggestions }));
+                    localStorage.setItem(storageKey(), JSON.stringify({
+                        checked: checked,
+                        dismissedSuggestions: dismissedSuggestions,
+                        includePreviousUpdates: ctrl.includePreviousUpdates,
+                        manual: manual,
+                        updateSetMembers: updateSetMembers,
+                        updateSets: ctrl.updateSets,
+                    }));
                 } catch (e) {}
             };
 
@@ -3099,32 +3465,73 @@ export const widgetEditorAssistantUiPage = UiPage({
                         suggested: false,
                         checked: true,
                     });
+                    existingKeys.add(r.table + ':' + r.sys_id);
+                }
+
+                ctrl.updateSets = stored.updateSets || [];
+                ctrl.includePreviousUpdates = !!stored.includePreviousUpdates;
+                var updateSetMemberRows = (stored.updateSetMembers || []).filter(function (r) {
+                    return r && r.table && r.sys_id && !existingKeys.has(r.table + ':' + r.sys_id);
+                });
+                var restoredUpdateSetRows = [];
+                for (var k = 0; k < updateSetMemberRows.length; k++) {
+                    var m = updateSetMemberRows[k];
+                    var row = {
+                        table: m.table,
+                        sys_id: m.sys_id,
+                        label: m.updateSetAction === 'DELETE' ? (m.label || '') : '',
+                        tableLabel: tableLabel(m.table),
+                        category: 'Update Set',
+                        manual: false,
+                        suggested: false,
+                        checked: true,
+                        updateSetSysId: m.updateSetSysId,
+                        updateSetName: m.updateSetName,
+                        updateSetAction: m.updateSetAction,
+                        updateSetMemberCreatedOnValue: m.updateSetMemberCreatedOnValue,
+                    };
+                    ctrl.related.push(row);
+                    restoredUpdateSetRows.push(row);
+                    existingKeys.add(m.table + ':' + m.sys_id);
                 }
 
                 var checked = stored.checked || {};
                 for (var j = 0; j < ctrl.related.length; j++) {
-                    var row = ctrl.related[j];
-                    if (row.primary) continue;
-                    var key = rowKey(row);
+                    var row2 = ctrl.related[j];
+                    if (row2.primary) continue;
+                    var key = rowKey(row2);
                     if (Object.prototype.hasOwnProperty.call(checked, key)) {
-                        row.checked = !!checked[key];
+                        row2.checked = !!checked[key];
                     }
                 }
 
-                return validateManualRows();
+                return validateRowsNeedingLabel(function (r) {
+                    return (r.manual || r.updateSetSysId) && r.updateSetAction !== 'DELETE';
+                }).then(function () {
+                    if (ctrl.includePreviousUpdates && restoredUpdateSetRows.length) {
+                        return refreshPreviousVersions(restoredUpdateSetRows);
+                    }
+                });
             }
 
-            function validateManualRows() {
-                var manualRows = ctrl.related.filter(function (r) { return r.manual; });
-                if (manualRows.length === 0) {
+            // Re-resolves label/tableLabel/updatedOn for rows added by sys_id alone (manual adds,
+            // update-set members) — anything matched by predicate — dropping any that no longer
+            // resolve (e.g. the record was deleted since it was added).
+            function validateRowsNeedingLabel(predicate) {
+                var rows = ctrl.related.filter(predicate);
+                if (rows.length === 0) {
                     return $q.resolve();
                 }
-                return $q.all(manualRows.map(function (r) {
+                return $q.all(rows.map(function (r) {
                     if (!r.table || !r.sys_id) {
                         ctrl.related = ctrl.related.filter(function (x) { return x !== r; });
                         return $q.resolve();
                     }
-                    return ajax('getRecordLabel', { table: r.table, sys_id: r.sys_id }).then(function (res) {
+                    // Update-set members are never export-blocklisted — the update set already
+                    // scopes what's being exported, so unblock label resolution for those rows.
+                    var params = { table: r.table, sys_id: r.sys_id };
+                    if (r.updateSetSysId) { params.unblocked = 'true'; }
+                    return ajax('getRecordLabel', params).then(function (res) {
                         if (!res || !res.success || !res.label) {
                             ctrl.related = ctrl.related.filter(function (x) { return x !== r; });
                         } else {
@@ -3234,7 +3641,8 @@ export const widgetEditorAssistantUiPage = UiPage({
             }
 
             ctrl.openLookup = function (mode) {
-                if (mode === 'primary' && ctrl.embeddedInModal) return;
+                // A bundle can't mix a primary record with an update set.
+                if (mode === 'primary' && (ctrl.embeddedInModal || ctrl.updateSets.length)) return;
                 ctrl.lookup.open = true;
                 ctrl.lookup.mode = mode;
                 ctrl.lookup.targetRow = null;
@@ -3617,6 +4025,237 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.closeLookup();
             };
 
+            ////////////////////////////////////////////////////////////
+            // Update Set Picker
+            ////////////////////////////////////////////////////////////
+
+            ctrl.openUpdateSetPicker = function () {
+                // A bundle can't mix a primary record with an update set.
+                if (ctrl.primary.sysId) return;
+                ctrl.usPicker.open = true;
+                ctrl.usPicker.query = '';
+                ctrl.usPicker.current = null;
+                ctrl.usPicker.results = [];
+                ctrl.usPicker.total = 0;
+                ctrl.usPicker.hasMore = false;
+                ctrl.usPicker.activeSearch = '';
+                loadUpdateSets('', false);
+            };
+
+            ctrl.closeUpdateSetPicker = function () {
+                ctrl.usPicker.open = false;
+            };
+
+            ctrl.onUpdateSetBackdropClick = function (event) {
+                if (event.target === event.currentTarget) {
+                    ctrl.closeUpdateSetPicker();
+                }
+            };
+
+            var _updateSetRequestId = 0;
+            function loadUpdateSets(query, isMore) {
+                if (isMore) {
+                    ctrl.usPicker.loadingMore = true;
+                } else {
+                    ctrl.usPicker.loading = true;
+                    ctrl.usPicker.results = [];
+                }
+                var requestId = ++_updateSetRequestId;
+                var offset = isMore ? ctrl.usPicker.results.length : 0;
+
+                return ajax('searchUpdateSets', { query: query || '', offset: offset }).then(function (res) {
+                    if (requestId !== _updateSetRequestId) return;
+                    ctrl.usPicker.activeSearch = query || '';
+                    if (res.success) {
+                        if (!isMore) ctrl.usPicker.current = res.current || null;
+                        ctrl.usPicker.total = res.total || 0;
+                        ctrl.usPicker.hasMore = !!res.hasMore;
+                        var results = res.updateSets || [];
+                        ctrl.usPicker.results = isMore ? ctrl.usPicker.results.concat(results) : results;
+                    }
+                    ctrl.usPicker.loading = false;
+                    ctrl.usPicker.loadingMore = false;
+                }, function () {
+                    if (requestId === _updateSetRequestId) {
+                        ctrl.usPicker.loading = false;
+                        ctrl.usPicker.loadingMore = false;
+                    }
+                });
+            }
+
+            var _updateSetSearchDebounce;
+            ctrl.onUpdateSetQueryChange = function () {
+                ctrl.usPicker.loading = true;
+                $timeout.cancel(_updateSetSearchDebounce);
+                _updateSetSearchDebounce = $timeout(function () {
+                    loadUpdateSets(ctrl.usPicker.query, false);
+                }, 250);
+            };
+
+            ctrl.loadMoreUpdateSets = function () {
+                if (ctrl.usPicker.loading || ctrl.usPicker.loadingMore || !ctrl.usPicker.hasMore) return;
+                loadUpdateSets(ctrl.usPicker.query, true);
+            };
+
+            ctrl.onUpdateSetSearchKeydown = function (event) {
+                onListSearchKeydown(event, '.we-picker-col-main .we-picker-item', function () {
+                    if (ctrl.usPicker.current) {
+                        ctrl.chooseUpdateSet(ctrl.usPicker.current);
+                    } else if (ctrl.usPicker.results.length) {
+                        ctrl.chooseUpdateSet(ctrl.usPicker.results[0]);
+                    }
+                });
+            };
+
+            ctrl.onUpdateSetItemKeydown = function (event, us) {
+                onListItemKeydown(event, function () { ctrl.chooseUpdateSet(us); });
+            };
+
+            // Adds every record touched by an update set. Existing rows (already added, or the
+            // primary) are left untouched rather than duplicated or re-tagged.
+            // Pushes a related row for each member not already present (by table+sys_id) or
+            // matching the primary. Shared by chooseUpdateSet (first add) and refreshUpdateSet
+            // (re-add after removing the set's existing rows).
+            function addUpdateSetMembers(us, members) {
+                var addedRows = [];
+                (members || []).forEach(function (m) {
+                    var isPrimary = ctrl.primary.table === m.table && ctrl.primary.sysId === m.sys_id;
+                    var existing = ctrl.related.filter(function (r) { return r.table === m.table && r.sys_id === m.sys_id; })[0];
+                    if (isPrimary || existing) return;
+                    var row = {
+                        table: m.table,
+                        sys_id: m.sys_id,
+                        label: m.label,
+                        tableLabel: m.tableLabel,
+                        category: 'Update Set',
+                        updatedOn: m.updatedOn,
+                        manual: false,
+                        suggested: false,
+                        checked: true,
+                        updateSetSysId: us.sys_id,
+                        updateSetName: us.name,
+                        updateSetAction: m.action,
+                        updateSetMemberCreatedOnValue: m.sysCreatedOnValue,
+                    };
+                    ctrl.related.push(row);
+                    addedRows.push(row);
+                });
+                return addedRows;
+            }
+
+            ctrl.chooseUpdateSet = function (us) {
+                ctrl.closeUpdateSetPicker();
+                ctrl.addingUpdateSet = true;
+                ajax('getUpdateSetMembers', { update_set: us.sys_id }).then(function (res) {
+                    ctrl.addingUpdateSet = false;
+                    if (!res || !res.success) return;
+
+                    if (!ctrl.updateSets.some(function (u) { return u.sys_id === us.sys_id; })) {
+                        ctrl.updateSets.push({
+                            sys_id: us.sys_id,
+                            name: us.name,
+                            state: us.state,
+                            description: us.description,
+                            updatedOn: us.updatedOn,
+                        });
+                    }
+
+                    var addedRows = addUpdateSetMembers(us, res.members);
+
+                    ctrl.saveSelections();
+                    rebuildRows();
+                    if (ctrl.includePreviousUpdates && addedRows.length) {
+                        refreshPreviousVersions(addedRows);
+                    }
+                }, function () {
+                    ctrl.addingUpdateSet = false;
+                });
+            };
+
+            ctrl.removeUpdateSet = function (us) {
+                ctrl.updateSets = ctrl.updateSets.filter(function (u) { return u.sys_id !== us.sys_id; });
+                ctrl.related = ctrl.related.filter(function (r) { return r.updateSetSysId !== us.sys_id; });
+                ctrl.saveSelections();
+                rebuildRows();
+            };
+
+            // Drops every row this update set added and re-fetches/re-adds its current member
+            // list from scratch, so records added or removed from the set since it was applied
+            // (and refreshed labels/dates) are reflected.
+            ctrl.refreshingUpdateSets = {};
+            ctrl.refreshUpdateSet = function (us) {
+                if (ctrl.refreshingUpdateSets[us.sys_id]) return;
+                ctrl.refreshingUpdateSets[us.sys_id] = true;
+                ajax('getUpdateSetMembers', { update_set: us.sys_id }).then(function (res) {
+                    ctrl.refreshingUpdateSets[us.sys_id] = false;
+                    if (!res || !res.success) return;
+
+                    ctrl.related = ctrl.related.filter(function (r) { return r.updateSetSysId !== us.sys_id; });
+                    var addedRows = addUpdateSetMembers(us, res.members);
+
+                    ctrl.saveSelections();
+                    rebuildRows();
+                    if (ctrl.includePreviousUpdates && addedRows.length) {
+                        refreshPreviousVersions(addedRows);
+                    }
+                }, function () {
+                    ctrl.refreshingUpdateSets[us.sys_id] = false;
+                });
+            };
+
+            // Looks up, per row, the latest recorded version of that record before it was touched
+            // by its update set — used both to render the "New" pill and to populate the export's
+            // previous_version content.
+            // Counter (not a bool) since a toggle-on refresh and a newly-added update set's refresh
+            // can overlap — the token estimate should keep showing "calculating" until both finish.
+            var _pendingPreviousVersionFetches = 0;
+            ctrl.previousVersionsCalculating = function () {
+                return _pendingPreviousVersionFetches > 0;
+            };
+
+            async function refreshPreviousVersions(rows) {
+                var targets = rows.filter(function (r) { return r.updateSetSysId; });
+                if (!targets.length) return;
+                _pendingPreviousVersionFetches++;
+                $timeout(angular.noop);
+                await runPool(targets, async function (row) {
+                    try {
+                        var res = await ajax('getPreviousUpdateXml', {
+                            table: row.table,
+                            sys_id: row.sys_id,
+                            before: row.updateSetMemberCreatedOnValue || '',
+                        });
+                        if (!res || !res.success) {
+                            row.previousVersionBytes = 0;
+                            return;
+                        }
+                        row.isNewInUpdateSet = !res.found;
+                        row.previousVersion = res.found ? {
+                            payload: res.payload,
+                            action: res.action,
+                            updateSetSysId: res.updateSetSysId,
+                            updateSetName: res.updateSetName,
+                            updatedOn: res.updatedOn,
+                        } : null;
+                        // Cached once here (not recomputed per digest) since it feeds the token estimate.
+                        row.previousVersionBytes = res.found ? new Blob([res.payload || '']).size : 0;
+                    } catch (e) {
+                        // Fall back to 0 so a failed lookup doesn't leave sizesPending() stuck true forever.
+                        row.previousVersionBytes = 0;
+                    }
+                    $timeout(angular.noop);
+                }, 4);
+                _pendingPreviousVersionFetches--;
+                $timeout(angular.noop);
+            }
+
+            ctrl.toggleIncludePreviousUpdates = function () {
+                ctrl.saveSelections();
+                if (ctrl.includePreviousUpdates) {
+                    refreshPreviousVersions(ctrl.related.filter(function (r) { return r.updateSetSysId; }));
+                }
+            };
+
             ctrl.generateXml = async function () {
                 // Scoped to visibleRows: an active type filter excludes hidden types from the export.
                 var selected = ctrl.visibleRows.filter(function (r) { return r.checked; });
@@ -3629,6 +4268,21 @@ export const widgetEditorAssistantUiPage = UiPage({
                 var combinedDoc = document.implementation.createDocument(null, 'unload', null);
                 combinedDoc.documentElement.setAttribute('unload', 'widget_editor_assistant_context');
 
+                // Update set metadata up front, before the manifest — a reader needs to know
+                // which sets are involved before the per-record update_set_name attributes below mean anything.
+                if (ctrl.updateSets.length) {
+                    var updateSetsEl = combinedDoc.createElement('update_sets');
+                    ctrl.updateSets.forEach(function (us) {
+                        var usEl = combinedDoc.createElement('update_set');
+                        usEl.setAttribute('sys_id', us.sys_id);
+                        usEl.setAttribute('name', us.name);
+                        if (us.state) usEl.setAttribute('state', us.state);
+                        if (us.description) usEl.setAttribute('description', us.description);
+                        updateSetsEl.appendChild(usEl);
+                    });
+                    combinedDoc.documentElement.appendChild(updateSetsEl);
+                }
+
                 // Manifest tells a reader what's here and why before it has to parse any record data.
                 var manifestEl = combinedDoc.createElement('context_manifest');
                 selected.forEach(function (row) {
@@ -3639,7 +4293,22 @@ export const widgetEditorAssistantUiPage = UiPage({
                     if (row.suggested && row.category) {
                         entryEl.setAttribute('reason', row.category);
                     }
-                    if (isTableExportBlocked(row.table)) {
+                    if (row.updateSetSysId) {
+                        entryEl.setAttribute('update_set_sys_id', row.updateSetSysId);
+                        entryEl.setAttribute('update_set_name', row.updateSetName || '');
+                        if (row.updateSetAction) entryEl.setAttribute('action', row.updateSetAction);
+                        // change_type is always set for a DELETE (known from the update set itself,
+                        // no lookup needed); new vs. updated needs the previous-version lookup, so
+                        // it's only known once "Include previous version" has fetched that data.
+                        var changeType = null;
+                        if (row.updateSetAction === 'DELETE') {
+                            changeType = 'deleted';
+                        } else if (ctrl.includePreviousUpdates) {
+                            changeType = row.isNewInUpdateSet ? 'new' : 'updated';
+                        }
+                        if (changeType) entryEl.setAttribute('change_type', changeType);
+                    }
+                    if (!row.updateSetSysId && isTableExportBlocked(row.table)) {
                         entryEl.setAttribute('blocked', 'true');
                     }
                     manifestEl.appendChild(entryEl);
@@ -3653,8 +4322,33 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                 await runPool(selected, async function (row) {
                     var targetContainer = row.primary ? primaryContainer : relatedContainer;
+                    // With "Include previous updates" on, an update-set row gets wrapped so a reader
+                    // can tell current and previous state apart at a glance instead of having to
+                    // diff two same-shaped records themselves.
+                    var showsVersions = !!row.updateSetSysId && ctrl.includePreviousUpdates;
+                    var versionedEl = null;
+                    var destContainer = targetContainer;
+                    if (showsVersions) {
+                        versionedEl = combinedDoc.createElement('versioned_record');
+                        versionedEl.setAttribute('table', row.table);
+                        versionedEl.setAttribute('sys_id', row.sys_id);
+                        versionedEl.setAttribute('update_set_name', row.updateSetName || '');
+                        versionedEl.setAttribute('update_set_action', row.updateSetAction || '');
+                        versionedEl.setAttribute('change_type', row.updateSetAction === 'DELETE' ? 'deleted' : (row.isNewInUpdateSet ? 'new' : 'updated'));
+                        targetContainer.appendChild(versionedEl);
+                        destContainer = combinedDoc.createElement('current_version');
+                        versionedEl.appendChild(destContainer);
+                    }
                     try {
-                        if (row.table === 'sys_db_object') {
+                        if (row.updateSetAction === 'DELETE') {
+                            // A DELETE record no longer exists on the live table — fetching it would
+                            // just come back empty, so say plainly that it was deleted instead.
+                            var deletedEl = combinedDoc.createElement('deleted_record');
+                            deletedEl.setAttribute('table', row.table);
+                            deletedEl.setAttribute('sys_id', row.sys_id);
+                            deletedEl.setAttribute('reason', 'This record was deleted by the "' + (row.updateSetName || 'update set') + '" update set');
+                            destContainer.appendChild(deletedEl);
+                        } else if (row.table === 'sys_db_object') {
                             // ?SCHEMA is keyed by the URL's own table, not sys_id — resolve the
                             // actual table name this sys_db_object row represents first, then
                             // export THAT table's schema (e.g. sys_user.do?SCHEMA, no sys_id).
@@ -3668,15 +4362,17 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 var schemaText = await schemaResp.text();
                                 var schemaEl = new DOMParser().parseFromString(schemaText, 'text/xml').documentElement;
                                 redactRecordElement(schemaEl);
-                                targetContainer.appendChild(combinedDoc.importNode(schemaEl, true));
+                                destContainer.appendChild(combinedDoc.importNode(schemaEl, true));
                             }
-                        } else if (isTableExportBlocked(row.table)) {
+                        } else if (!row.updateSetSysId && isTableExportBlocked(row.table)) {
                             // Structure export (above) is fine; record data from this table is never exported.
+                            // Update-set members skip this check entirely — the update set already
+                            // scopes what's being exported, so nothing it touches is withheld.
                             var blockedEl = combinedDoc.createElement('blocked_record');
                             blockedEl.setAttribute('table', row.table);
                             blockedEl.setAttribute('sys_id', row.sys_id);
                             blockedEl.setAttribute('reason', 'Table is on the export blocklist — record data withheld');
-                            targetContainer.appendChild(blockedEl);
+                            destContainer.appendChild(blockedEl);
                         } else {
                             var resp = await fetch('/' + row.table + '.do?sys_id=' + encodeURIComponent(row.sys_id) + '&XML', { credentials: 'same-origin' });
                             var text = await resp.text();
@@ -3685,10 +4381,37 @@ export const widgetEditorAssistantUiPage = UiPage({
                             for (var c = 0; c < children.length; c++) {
                                 var recordEl = children[c];
                                 redactRecordElement(recordEl);
-                                targetContainer.appendChild(combinedDoc.importNode(recordEl, true));
+                                destContainer.appendChild(combinedDoc.importNode(recordEl, true));
+                            }
+                            if (showsVersions && children.length === 0) {
+                                destContainer.setAttribute('status', 'unavailable');
+                                destContainer.setAttribute('reason', 'Record no longer exists on this table');
                             }
                         }
-                    } catch (e) {}
+                    } catch (e) {
+                        if (showsVersions) {
+                            destContainer.setAttribute('status', 'unavailable');
+                        }
+                    }
+
+                    if (showsVersions) {
+                        var previousEl = combinedDoc.createElement('previous_version');
+                        if (row.previousVersion) {
+                            previousEl.setAttribute('update_set_name', row.previousVersion.updateSetName || '');
+                            previousEl.setAttribute('recorded_on', row.previousVersion.updatedOn || '');
+                            var prevParsed = new DOMParser().parseFromString(row.previousVersion.payload || '', 'text/xml');
+                            var prevChildren = prevParsed.documentElement ? prevParsed.documentElement.children : [];
+                            for (var p = 0; p < prevChildren.length; p++) {
+                                redactRecordElement(prevChildren[p]);
+                                previousEl.appendChild(combinedDoc.importNode(prevChildren[p], true));
+                            }
+                        } else {
+                            previousEl.setAttribute('status', 'new');
+                            previousEl.textContent = 'No earlier version exists — this record is new as of this update set.';
+                        }
+                        versionedEl.appendChild(previousEl);
+                    }
+
                     $timeout(function () { ctrl.progress.done++; });
                 }, 4);
 

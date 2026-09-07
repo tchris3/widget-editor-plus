@@ -686,13 +686,20 @@ function link(scope, element, attrs, controller) {
         /**
          * Walks up the DOM from el and returns the sys_id of the nearest widget
          * whose Angular scope exposes rectangle.widget.sys_id, or null if not found.
+         * An embedded widget (one included by another widget's template rather than
+         * placed on the page) has its own [widget] wrapper and v{sys_id} class but no
+         * rectangle, so the rectangle-based pass is checked to completion first —
+         * across every DOM ancestor, past any embedded wrappers — before ever falling
+         * back to a v{sys_id} class; otherwise an embedded widget's own class would
+         * match first and mask the real placement further up.
          * @param   {Element} el  Starting element.
          * @returns {string|null}
          */
         function getWidgetSysId(el) {
-            while (el && el !== document.body) {
+            let cursor = el;
+            while (cursor && cursor !== document.body) {
                 try {
-                    const s = getActualWidgetScope(el);
+                    const s = getActualWidgetScope(cursor);
                     if (s) {
                         const rect = s.rectangle || s.$parent?.rectangle;
                         if (rect?.widget?.sys_id) {
@@ -700,17 +707,25 @@ function link(scope, element, attrs, controller) {
                         }
                     }
                 } catch (_ex) { /* angular not ready or detached node — keep walking */ }
-                // Fallback: header/footer widgets often lack rectangle.widget.sys_id but always have the v{sys_id} class.
-                if (el.hasAttribute && el.hasAttribute('widget')) {
-                    for (const cls of el.classList) {
+                cursor = cursor.parentElement;
+            }
+            // Fallback: no rectangle-bearing ancestor at all (e.g. header/footer
+            // widgets, which are never embedded) — use the outermost v{sys_id}
+            // class rather than the innermost, for the same reason as above.
+            let outermostMatch = null;
+            cursor = el;
+            while (cursor && cursor !== document.body) {
+                if (cursor.hasAttribute && cursor.hasAttribute('widget')) {
+                    for (const cls of cursor.classList) {
                         if (cls.length >= 33 && cls[0] === 'v' && /^[0-9a-f]{32}/.test(cls.slice(1))) {
-                            return cls.slice(1, 33);
+                            outermostMatch = cls.slice(1, 33);
+                            break;
                         }
                     }
                 }
-                el = el.parentElement;
+                cursor = cursor.parentElement;
             }
-            return null;
+            return outermostMatch;
         }
 
         /**
@@ -1890,6 +1905,27 @@ function link(scope, element, attrs, controller) {
         }
 
         /**
+         * Fetches every active sp_instance placement of widgetSysId plus the active
+         * portals, and hands { instances, portals } to callback.
+         * @param {string}   widgetSysId
+         * @param {Function} callback
+         */
+        function fetchOpenPageOptions(widgetSysId, callback) {
+            if (!widgetSysId) {
+                callback({ instances: [], portals: [] });
+                return;
+            }
+            scope.$applyAsync(function () {
+                scope.server.get({ action: 'getOpenPageOptions', widgetSysId: widgetSysId }).then(function (response) {
+                    // server.get() resolves with the whole widget payload (template, css, data, …),
+                    // not just the server script's "data" object, and doesn't merge into scope.data.
+                    const result = (response && response.data && response.data.openPageOptions) || {};
+                    callback({ instances: result.instances || [], portals: result.portals || [] });
+                });
+            });
+        }
+
+        /**
          * Resolves every active instance of widgetSysId plus the active portals,
          * then shows the instance picker (if more than one instance) or goes
          * straight to the portal picker.
@@ -1901,24 +1937,58 @@ function link(scope, element, attrs, controller) {
          * @param {number} y
          */
         function open(widgetSysId, instanceSysId, table, sysId, x, y) {
-            if (!widgetSysId) return;
-            scope.$applyAsync(function () {
-                scope.server.get({ action: 'getOpenPageOptions', widgetSysId: widgetSysId }).then(function (response) {
-                    const result = (response && response.openPageOptions) || (scope.data && scope.data.openPageOptions) || {};
-                    const instances = result.instances || [];
-                    const portals = result.portals || [];
-                    if (instances.length > 1) {
-                        renderInstanceMenu(x, y, instances, portals, instanceSysId, table, sysId);
-                    } else {
-                        const inst = instances[0] || null;
-                        const page = inst ? { id: inst.pageId, title: inst.pageTitle } : null;
-                        renderPortalMenu(x, y, page, portals, table, sysId);
-                    }
+            fetchOpenPageOptions(widgetSysId, function (result) {
+                const instances = result.instances;
+                const portals = result.portals;
+                if (instances.length > 1) {
+                    renderInstanceMenu(x, y, instances, portals, instanceSysId, table, sysId);
+                } else {
+                    const inst = instances[0] || null;
+                    const page = inst ? { id: inst.pageId, title: inst.pageTitle } : null;
+                    renderPortalMenu(x, y, page, portals, table, sysId);
+                }
+            });
+        }
+
+        /** Navigates to the sp_page record itself (platform form view), by sys_id. */
+        function navigateToPage(pageSysId) {
+            window.open('/nav_to.do?uri=sp_page.do%3Fsys_id=' + encodeURIComponent(pageSysId), '_blank');
+        }
+
+        /** Renders a page picker (by sp_page record, not portal) when a widget has more than one active sp_instance. */
+        function renderPageInstanceMenu(x, y, instances) {
+            const menu = createShell(x, y, 'This widget appears on multiple pages — select one:');
+            instances.forEach(function (inst) {
+                const label = inst.pageTitle || inst.pageId || 'Untitled page';
+                addButtonRow(menu, label, function () {
+                    navigateToPage(inst.pageSysId);
+                    close();
                 });
             });
         }
 
-        return { open };
+        /**
+         * Resolves widgetSysId to its sp_page and opens that page record directly
+         * (platform form view) rather than prompting for a portal.
+         * @param {string} widgetSysId
+         * @param {number} x
+         * @param {number} y
+         */
+        function openPage(widgetSysId, x, y) {
+            if (!widgetSysId) return;
+            fetchOpenPageOptions(widgetSysId, function (result) {
+                const instances = result.instances;
+                if (!instances.length) {
+                    createShell(x, y, 'Could not resolve the page for this widget.');
+                } else if (instances.length > 1) {
+                    renderPageInstanceMenu(x, y, instances);
+                } else {
+                    navigateToPage(instances[0].pageSysId);
+                }
+            });
+        }
+
+        return { open, openPage };
     }());
 
 
@@ -2348,10 +2418,17 @@ function link(scope, element, attrs, controller) {
             });
             if (_pendingInstanceSysId) {
                 pageItems.push({
-                    label: 'Open page\u2026',
-                    icon: 'icon-layout',
+                    label: 'Open portal',
+                    icon: 'icon-panel-display-popout',
                     onClick: () => {
                         PortalPicker.open(widgetSysId, _pendingInstanceSysId, recordTable, recordSysId, _pendingCursorX, _pendingCursorY);
+                    }
+                });
+                pageItems.push({
+                    label: 'Open page',
+                    icon: 'icon-document',
+                    onClick: () => {
+                        PortalPicker.openPage(widgetSysId, _pendingCursorX, _pendingCursorY);
                     }
                 });
             }

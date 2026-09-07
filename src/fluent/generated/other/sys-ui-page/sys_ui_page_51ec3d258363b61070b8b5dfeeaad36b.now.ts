@@ -2551,6 +2551,10 @@ UiPage({
         ctrl.tableFieldsCache = {};
         ctrl.resolvedDisplayValuesCache = {};
         ctrl.resolvingQueries = {};
+        // Catalog variable metadata for variable_conditions fields, keyed by item_option_new Sys ID
+        // (not per-table, since a variable's Sys ID is already globally unique).
+        ctrl.variableLabelsCache = {};
+        ctrl.variableFieldsCache = {};
 
         // Private state
         var _recordData          = null;
@@ -3308,7 +3312,8 @@ UiPage({
                 enableSplitViewResizing: true,
                 readOnly: true,
                 scrollBeyondLastLine: false,
-                wordWrap: ctrl.wordWrap ? 'on' : 'off'
+                wordWrap: ctrl.wordWrap ? 'on' : 'off',
+                renderOverviewRuler: false
             });
             diffEditor.setModel({
                 original: monaco.editor.createModel(lf[key] || '', lang),
@@ -3782,7 +3787,8 @@ UiPage({
                 readOnly: true,
                 scrollBeyondLastLine: false,
                 wordWrap: ctrl.wordWrap ? 'on' : 'off',
-                minimap: { enabled: false }
+                minimap: { enabled: false },
+                renderOverviewRuler: false
             });
             diffEditor.setModel({
                 original: monaco.editor.createModel(ctrl.leftFields[fDef.key]  || '', _langForEditor(fDef.language)),
@@ -3822,7 +3828,8 @@ UiPage({
                 readOnly: true,
                 scrollBeyondLastLine: false,
                 wordWrap: ctrl.wordWrap ? 'on' : 'off',
-                minimap: { enabled: false }
+                minimap: { enabled: false },
+                renderOverviewRuler: false
             });
             diffEditor.setModel({
                 original: monaco.editor.createModel(ctrl.extraLeftFields[fDef.key]  || '', _langForEditor(fDef.language)),
@@ -3933,22 +3940,85 @@ UiPage({
             return conditions;
         }
 
+        // variable_conditions values are an encoded-query string just like 'conditions', but each
+        // "field" token is an item_option_new (catalog variable) Sys ID prefixed with "IO:" instead
+        // of a table field name, so the operator-splitting logic above is reused as-is.
+        function _extractVariableIds(query) {
+            var ids = [];
+            if (!query) { return ids; }
+            var re = /IO:([0-9a-f]{32})/gi;
+            var m;
+            while ((m = re.exec(query))) {
+                if (ids.indexOf(m[1]) === -1) {
+                    ids.push(m[1]);
+                }
+            }
+            return ids;
+        }
+
+        function _parseVariableConditions(query, variableLabels) {
+            var parsed = _parseEncodedQuery(query, {});
+            for (var i = 0; i < parsed.length; i++) {
+                var cond = parsed[i];
+                var variableId = cond.field.indexOf('IO:') === 0 ? cond.field.substring(3) : cond.field;
+                cond.isVariable = true;
+                cond.variableId = variableId;
+                cond.fieldLabel = (variableLabels && variableLabels[variableId]) || variableId;
+            }
+            return parsed;
+        }
+
         ctrl.toggleBuilderMode = function(f, isExtra) {
             var key = f.key;
             ctrl.showBuilder[key] = !ctrl.showBuilder[key];
-            if (ctrl.showBuilder[key]) {
-                var targetTable = '';
-                if (f.dependent) {
-                    targetTable = isExtra ? (ctrl.extraLeftFields[f.dependent] || ctrl.extraRightFields[f.dependent] || '')
-                                          : (ctrl.leftFields[f.dependent] || ctrl.rightFields[f.dependent] || '');
-                }
-                if (!targetTable) {
-                    targetTable = tableParam;
-                }
-                if (targetTable && (!ctrl.tableLabelsCache[targetTable] || Object.keys(ctrl.tableLabelsCache[targetTable]).length === 0)) {
-                    ctrl.loadTableLabels(targetTable);
+            if (!ctrl.showBuilder[key]) {
+                return;
+            }
+
+            if (f.type === 'variable_conditions') {
+                var leftQuery = isExtra ? (ctrl.extraLeftFields[key] || '') : (ctrl.leftFields[key] || '');
+                var rightQuery = isExtra ? (ctrl.extraRightFields[key] || '') : (ctrl.rightFields[key] || '');
+                var variableIds = _extractVariableIds(leftQuery).concat(_extractVariableIds(rightQuery));
+                ctrl.loadVariableMetadata(variableIds);
+                return;
+            }
+
+            var targetTable = '';
+            if (f.dependent) {
+                targetTable = isExtra ? (ctrl.extraLeftFields[f.dependent] || ctrl.extraRightFields[f.dependent] || '')
+                                      : (ctrl.leftFields[f.dependent] || ctrl.rightFields[f.dependent] || '');
+            }
+            if (!targetTable) {
+                targetTable = tableParam;
+            }
+            if (targetTable && (!ctrl.tableLabelsCache[targetTable] || Object.keys(ctrl.tableLabelsCache[targetTable]).length === 0)) {
+                ctrl.loadTableLabels(targetTable);
+            }
+        };
+
+        ctrl.loadVariableMetadata = function(variableIds) {
+            var toLoad = [];
+            for (var i = 0; i < variableIds.length; i++) {
+                var id = variableIds[i];
+                if (!ctrl.variableFieldsCache.hasOwnProperty(id) && toLoad.indexOf(id) === -1) {
+                    toLoad.push(id);
                 }
             }
+            if (!toLoad.length) {
+                return;
+            }
+            toLoad.forEach(function(id) { ctrl.variableFieldsCache[id] = {}; });
+            _ajax('getVariableLabels', { variables: JSON.stringify(toLoad) }, function(data) {
+                if (data.success && data.variables) {
+                    _apply(function() {
+                        for (var id in data.variables) {
+                            ctrl.variableFieldsCache[id] = data.variables[id];
+                            ctrl.variableLabelsCache[id] = data.variables[id].label;
+                        }
+                        ctrl.parsedCache = {};
+                    });
+                }
+            });
         };
 
         ctrl.loadTableLabels = function(tableName) {
@@ -3987,6 +4057,14 @@ UiPage({
             
             var f = isExtra ? ctrl.extraFields.filter(function(x) { return x.key === key; })[0]
                             : ctrl.fields.filter(function(x) { return x.key === key; })[0];
+
+            if (f && f.type === 'variable_conditions') {
+                var varParsed = _parseVariableConditions(rawQuery, ctrl.variableLabelsCache);
+                ctrl.parsedCache[cacheKey] = varParsed;
+                ctrl.resolveDisplayValuesForConditions(key, side, isExtra, varParsed);
+                return varParsed;
+            }
+
             var labels = {};
             if (f) {
                 var targetTable = '';
@@ -3999,7 +4077,7 @@ UiPage({
                 }
                 labels = ctrl.tableLabelsCache[targetTable] || {};
             }
-            
+
             var parsed = _parseEncodedQuery(rawQuery, labels);
             ctrl.parsedCache[cacheKey] = parsed;
             ctrl.resolveDisplayValuesForConditions(key, side, isExtra, parsed);
@@ -4016,7 +4094,12 @@ UiPage({
             if (!f) {
                 return;
             }
-            
+
+            if (f.type === 'variable_conditions') {
+                ctrl.resolveDisplayValuesForVariableConditions(conditions);
+                return;
+            }
+
             var targetTable = '';
             if (f.dependent) {
                 targetTable = isExtra ? (ctrl.extraLeftFields[f.dependent] || ctrl.extraRightFields[f.dependent] || '')
@@ -4075,17 +4158,65 @@ UiPage({
             });
         };
 
+        // Mirrors resolveDisplayValuesForConditions, but resolves catalog-variable choice/reference
+        // values (keyed by variableId, not table+field) via resolveVariableConditionDisplayValues.
+        ctrl.resolveDisplayValuesForVariableConditions = function(conditions) {
+            var toResolve = [];
+            for (var i = 0; i < conditions.length; i++) {
+                var cond = conditions[i];
+                if (!cond.variableId || cond.value === undefined || cond.value === null || cond.value === '') {
+                    continue;
+                }
+                var cacheKey = 'VAR|||' + cond.variableId + '|||' + cond.value;
+                if (ctrl.resolvedDisplayValuesCache[cacheKey] === undefined) {
+                    toResolve.push({ variable: cond.variableId, value: cond.value });
+                }
+            }
+
+            if (toResolve.length === 0) {
+                return;
+            }
+
+            var batchKey = 'VAR|||' + JSON.stringify(toResolve);
+            if (ctrl.resolvingQueries[batchKey]) {
+                return;
+            }
+            ctrl.resolvingQueries[batchKey] = true;
+
+            _ajax('resolveVariableConditionDisplayValues', {
+                pairs: JSON.stringify(toResolve)
+            }, function(data) {
+                delete ctrl.resolvingQueries[batchKey];
+                if (data.success && data.results) {
+                    _apply(function() {
+                        for (var k in data.results) {
+                            var parts = k.split('|||');
+                            var variableId = parts[0];
+                            var rawVal = parts[1];
+                            var cacheKey = 'VAR|||' + variableId + '|||' + rawVal;
+                            ctrl.resolvedDisplayValuesCache[cacheKey] = data.results[k];
+                        }
+                    });
+                }
+            });
+        };
+
         ctrl.getConditionDisplayValue = function(field, cond, side, isExtra) {
-            var targetTable = '';
-            if (field.dependent) {
-                targetTable = isExtra ? (ctrl.extraLeftFields[field.dependent] || ctrl.extraRightFields[field.dependent] || '')
-                                      : (ctrl.leftFields[field.dependent] || ctrl.rightFields[field.dependent] || '');
+            var cacheKey;
+            if (cond.isVariable) {
+                cacheKey = 'VAR|||' + cond.variableId + '|||' + cond.value;
+            } else {
+                var targetTable = '';
+                if (field.dependent) {
+                    targetTable = isExtra ? (ctrl.extraLeftFields[field.dependent] || ctrl.extraRightFields[field.dependent] || '')
+                                          : (ctrl.leftFields[field.dependent] || ctrl.rightFields[field.dependent] || '');
+                }
+                if (!targetTable) {
+                    targetTable = tableParam;
+                }
+                cacheKey = targetTable + '|||' + cond.field + '|||' + cond.value;
             }
-            if (!targetTable) {
-                targetTable = tableParam;
-            }
-            
-            var cacheKey = targetTable + '|||' + cond.field + '|||' + cond.value;
+
             var displayVal = ctrl.resolvedDisplayValuesCache[cacheKey] !== undefined
                 ? ctrl.resolvedDisplayValuesCache[cacheKey]
                 : cond.value;
@@ -4097,6 +4228,15 @@ UiPage({
         };
 
         ctrl.getFieldMetadata = function(field, cond, isExtra) {
+            if (cond && cond.isVariable) {
+                var varMeta = ctrl.variableFieldsCache[cond.variableId] || {};
+                return {
+                    choice: varMeta.isChoice ? 1 : 0,
+                    type: varMeta.reference ? 'reference' : (varMeta.isChoice ? 'choice' : ''),
+                    reference: varMeta.reference || ''
+                };
+            }
+
             var targetTable = '';
             if (field.dependent) {
                 targetTable = isExtra ? (ctrl.extraLeftFields[field.dependent] || ctrl.extraRightFields[field.dependent] || '')
@@ -4105,7 +4245,7 @@ UiPage({
             if (!targetTable) {
                 targetTable = tableParam;
             }
-            
+
             var fields = ctrl.tableFieldsCache[targetTable] || {};
             return fields[cond.field] || {};
         };
