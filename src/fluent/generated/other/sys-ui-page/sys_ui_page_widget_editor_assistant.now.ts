@@ -1643,9 +1643,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                                         <span class="we-token-lbl">Estimated Context Size</span>
                                         <span class="we-token-badge" ng-if="ctrl.tokenLevelInfo().label" ng-bind="ctrl.tokenLevelInfo().label"></span>
                                     </div>
-                                    <span class="we-token-val" ng-if="ctrl.sizesPending() || ctrl.previousVersionsCalculating()"><span class="we-token-wheel" ng-style="{'background-image': 'conic-gradient(rgb(var(--now-color_text--tertiary, 130 134 142)) ' + (ctrl.tokenLoadFraction() * 360) + 'deg, transparent 0)'}" aria-hidden="true"></span>~<span class="we-skeleton-bar" style="width: 3rem; height: 1em; border-radius: 4px; vertical-align: middle; margin: 0 0.25em;" aria-hidden="true"></span> tokens</span>
+                                    <span class="we-token-val" ng-if="ctrl.sizesPending() || ctrl.previousVersionsCalculating()"><span class="we-token-wheel" ng-style="{'background-image': 'conic-gradient(rgb(var(--now-color_text--tertiary, 130 134 142)) ' + (ctrl.tokenLoadFraction() * 360) + 'deg, transparent 0)'}" aria-hidden="true"></span><span class="we-skeleton-bar" style="width: 3rem; height: 1em; border-radius: 4px; vertical-align: middle; margin: 0 0.25em;" aria-hidden="true"></span> tokens</span>
                                     <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; !ctrl.previousVersionsCalculating() &amp;&amp; ctrl.rawTokenCount() === 0">N/A</span>
-                                    <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; !ctrl.previousVersionsCalculating() &amp;&amp; ctrl.rawTokenCount() &gt; 0">~{{ctrl.estimatedTokens()}} tokens</span>
+                                    <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; !ctrl.previousVersionsCalculating() &amp;&amp; ctrl.rawTokenCount() &gt; 0">{{ctrl.estimatedTokens()}} tokens</span>
                                 </div>
 
                                 <!-- Export Button -->
