@@ -167,13 +167,21 @@ for (const path of [diffPath, root + 'other/sys-ui-page/sys_ui_page_widget_edito
         const left = { children: [field('script', 'same\n'), field('empty', ''), field('nullable', '', { nil: 'true' }), field('hidden', '', { redacted: 'true' }), field('removed', 'old'), field('whitespace', ' x ')] };
         const right = { children: [field('script', 'same\n'), field('empty', ''), field('nullable', ''), field('hidden', ''), field('added', 'new'), field('whitespace', 'x')] };
         context.annotateFieldChanges(left, right, false);
-        assert.deepEqual(left.children.map(f => f.attrs.change), ['unchanged', 'unchanged', 'modified', 'unknown', 'removed', 'modified']);
+        // A redacted field can't be compared — left unset rather than change="unknown",
+        // since redacted="true" on the field already conveys that.
+        assert.deepEqual(left.children.map(f => f.attrs.change), ['unchanged', 'unchanged', 'modified', undefined, 'removed', 'modified']);
         assert.equal(right.children[4].attrs.change, 'added');
-        context.annotateFieldChanges(null, right, false);
-        assert.ok(right.children.every(f => f.attrs.change === 'unknown'));
-        context.annotateFieldChanges(left, null, true);
-        assert.equal(left.children[0].attrs.change, 'removed');
-        assert.equal(left.children[3].attrs.change, 'unknown');
+        // Whole record missing on one side — no per-field change attribute; the enclosing
+        // previous_version's status="new" (or the deleted_record fallback) already says why.
+        // Fresh fields here since a field already carrying a change attribute from a prior
+        // comparison is left untouched, not cleared, when this pass has nothing to say.
+        const rightAlone = { children: [field('a', 'x'), field('b', 'y')] };
+        context.annotateFieldChanges(null, rightAlone, false);
+        assert.ok(rightAlone.children.every(f => f.attrs.change === undefined));
+        const leftDeleted = { children: [field('script', 'old'), field('hidden', '', { redacted: 'true' })] };
+        context.annotateFieldChanges(leftDeleted, null, true);
+        assert.equal(leftDeleted.children[0].attrs.change, 'removed');
+        assert.equal(leftDeleted.children[1].attrs.change, undefined);
     });
 }
 test('Assistant keeps shared metadata once while retaining payload counters', () => {

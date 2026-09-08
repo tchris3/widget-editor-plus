@@ -2427,14 +2427,16 @@ export const widgetEditorAssistantUiPage = UiPage({
             names.forEach(function (name) {
                 var left = before[name];
                 var right = after[name];
-                var status;
+                var status = null;
                 if ((left && (left.getAttribute('redacted') === 'true' || left.children.length)) ||
                     (right && (right.getAttribute('redacted') === 'true' || right.children.length))) {
-                    status = 'unknown';
+                    // Not comparable — already conveyed by redacted="true" or the field's own
+                    // nested structure; leaving change unset avoids a second, redundant signal.
                 } else if (currentDeleted && previous) {
                     status = 'removed';
                 } else if (!previous || !current) {
-                    status = 'unknown';
+                    // The whole record is missing on one side — already conveyed by the
+                    // enclosing previous_version's status="new" or the deleted_record fallback.
                 } else if (!left) {
                     status = 'added';
                 } else if (!right) {
@@ -2442,6 +2444,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 } else {
                     status = left.textContent === right.textContent && isNil(left) === isNil(right) ? 'unchanged' : 'modified';
                 }
+                if (!status) return;
                 if (left) left.setAttribute('change', status);
                 if (right) right.setAttribute('change', status);
             });
@@ -4373,7 +4376,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 var combinedDoc = document.implementation.createDocument(null, 'context_bundle', null);
                 combinedDoc.documentElement.setAttribute('format_version', '2');
                 var notes = combinedDoc.createElement('format_notes');
-                notes.textContent = 'Compare previous to current raw field values; added/removed means snapshot presence. Unknown covers missing, redacted or structured values. sys_mod_count is a per-record saved update counter, not a global version; unsaved edits do not increment it. ES12 is the current server-side override at export/load, not historical or client-side mode; not_found/unavailable may inherit application defaults. Record URLs identify platform records, not historical versions.';
+                notes.textContent = 'Compare previous to current raw field values; added/removed means snapshot presence. A field with no change attribute could not be compared — redacted, structured, or the whole record is missing on one side (see its status/change_type). sys_mod_count is a per-record saved update counter, not a global version; unsaved edits do not increment it. ES12 is the current server-side override at export/load, not historical or client-side mode; not_found/unavailable may inherit application defaults. Record URLs identify platform records, not historical versions.';
                 combinedDoc.documentElement.appendChild(notes);
 
                 // Update set metadata up front, before the manifest — a reader needs to know
