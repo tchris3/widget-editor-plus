@@ -3086,12 +3086,12 @@ export const widgetEditorAssistantUiPage = UiPage({
                 var key = rowKey(row);
                 var p;
                 if (row.table === 'sys_db_object') {
-                    p = fetch('/sys_db_object.do?sys_id=' + encodeURIComponent(row.sys_id) + '&XML', { credentials: 'same-origin' })
-                        .then(function (r) { return r.text(); })
-                        .then(function (metaText) {
-                            var metaEl = new DOMParser().parseFromString(metaText, 'text/xml').documentElement.firstElementChild;
-                            var nameEl = metaEl ? metaEl.querySelector('name') : null;
-                            var targetTable = (nameEl && nameEl.textContent) || row.label;
+                    // A single-field server lookup instead of a full record export, just to
+                    // resolve which table's SCHEMA to fetch (the export path needs the full
+                    // record anyway, for sys_mod_count, so it resolves this separately).
+                    p = ajax('resolveTableName', { sys_id: row.sys_id })
+                        .then(function (res) {
+                            var targetTable = (res && res.success && res.name) || row.label;
                             if (!targetTable) return 0;
                             return fetch('/' + encodeURIComponent(targetTable) + '.do?SCHEMA', { credentials: 'same-origin' })
                                 .then(function (r) { return r.text(); })
@@ -3112,15 +3112,18 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
             }
 
+            // Scoped to visibleRows + checked — the same scope rawTokenCount() reads from —
+            // so a row hidden by the active type filter, or unchecked, isn't exported just to
+            // measure a size nothing currently uses.
             function ensureRowSizesLoaded() {
-                var pending = ctrl.rows.filter(function (r) {
-                    if (r.placeholder || !r.sys_id || !r.table) return false;
+                var pending = ctrl.visibleRows.filter(function (r) {
+                    if (r.placeholder || !r.sys_id || !r.table || !r.checked) return false;
                     var key = rowKey(r);
                     return !ctrl.rowSizeBytes.hasOwnProperty(key) && !_sizeFetchInFlight[key];
                 });
                 pending.forEach(function (r) { _sizeFetchInFlight[rowKey(r)] = true; });
                 if (pending.length) {
-                    runPool(pending, _fetchRowSize, 4);
+                    runPool(pending, _fetchRowSize, 8);
                 }
             }
 
@@ -3195,7 +3198,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                     delete ctrl.activeTypeFilters[label];
                 }
                 recomputeVisibleRows();
-                ensurePreviousVersionsForVisible();
+                ensureEstimatesForVisible();
             };
 
             // Reuses existing row objects across calls so ng-repeat's watch settles; also resets the progress bar.
@@ -3351,13 +3354,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
                 ctrl.saveSelections();
                 recomputeTypeCounts();
-                ensurePreviousVersionsForVisible();
+                ensureEstimatesForVisible();
             };
 
             ctrl.onSelectionChange = function () {
                 ctrl.saveSelections();
                 recomputeTypeCounts();
-                ensurePreviousVersionsForVisible();
+                ensureEstimatesForVisible();
             };
 
             ctrl.updateSetRecordCount = function (us) {
@@ -3380,7 +3383,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
                 ctrl.saveSelections();
                 recomputeTypeCounts();
-                ensurePreviousVersionsForVisible();
+                ensureEstimatesForVisible();
             };
 
             ctrl.removeRow = function (row) {
@@ -4305,7 +4308,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         row.previousVersionBytes = 0;
                     }
                     $timeout(angular.noop);
-                }, 4);
+                }, 8);
                 _pendingPreviousVersionFetches--;
                 $timeout(angular.noop);
             }
@@ -4317,6 +4320,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                 if (!ctrl.includePreviousUpdates) return;
                 var targets = ctrl.visibleRows.filter(function (r) { return r.checked && r.updateSetSysId; });
                 if (targets.length) refreshPreviousVersions(targets);
+            }
+
+            // Both estimate inputs share the same scope (checked rows passing the active type
+            // filter) and the same "only fetch what's missing" guard — call together whenever
+            // selection or filter state changes.
+            function ensureEstimatesForVisible() {
+                ensureRowSizesLoaded();
+                ensurePreviousVersionsForVisible();
             }
 
             ctrl.toggleIncludePreviousUpdates = function () {
@@ -4348,7 +4359,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                     } catch (e) {
                         exportUrls[key] = '';
                     }
-                }, 4);
+                }, 8);
                 function addRecordUrl(el, row, payload) {
                     if (el.tagName !== 'versioned_record' && el.tagName !== 'record') addExportModCount(el);
                     // Identity and runtime context live once in the manifest or version wrapper.
@@ -4528,7 +4539,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                     }
 
                     $timeout(function () { ctrl.progress.done++; });
-                }, 4);
+                }, 8);
 
                 combinedDoc.documentElement.setAttribute('generated_at', new Date().toISOString());
                 indentXmlDoc(combinedDoc);

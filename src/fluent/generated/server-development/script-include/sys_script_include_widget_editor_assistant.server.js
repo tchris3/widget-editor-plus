@@ -837,6 +837,20 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     },
 
     /**
+     * Resolves the technical table name a sys_db_object record represents, for the token-size
+     * estimate's SCHEMA export lookup — a single-field read instead of a full record export.
+     * Accepts `sys_id` (of the sys_db_object record).
+     * @returns {{success: boolean, name: string}} Return value.
+     */
+    resolveTableName: function () {
+        var sysId = this.getParameter('sys_id');
+        if (!sysId) return this._answer({ success: false, name: '' });
+        var gr = new GlideRecordSecure('sys_db_object');
+        if (!gr.get(sysId)) return this._answer({ success: false, name: '' });
+        return this._answer({ success: true, name: gr.getValue('name') || '' });
+    },
+
+    /**
      * Resolves a table's display label from sys_db_object.
      * @param {string} table - Table name.
      * @returns {string} The table's label, or the table name if not found.
