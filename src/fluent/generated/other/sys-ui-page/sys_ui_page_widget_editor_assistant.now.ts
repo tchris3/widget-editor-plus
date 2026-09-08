@@ -2408,6 +2408,60 @@ export const widgetEditorAssistantUiPage = UiPage({
             await Promise.all(workers);
         }
 
+        // Compare exported field values, not display labels or generated metadata.
+        function annotateFieldChanges(previous, current, currentDeleted) {
+            function fields(record) {
+                var result = Object.create(null);
+                if (record) Array.prototype.forEach.call(record.children, function (field) {
+                    result[field.tagName] = field;
+                });
+                return result;
+            }
+            var before = fields(previous);
+            var after = fields(current);
+            var names = Object.keys(before);
+            Object.keys(after).forEach(function (name) { if (!before[name]) names.push(name); });
+            function isNil(field) {
+                return field.getAttribute('nil') === 'true' || field.getAttribute('nil') === '1';
+            }
+            names.forEach(function (name) {
+                var left = before[name];
+                var right = after[name];
+                var status;
+                if ((left && (left.getAttribute('redacted') === 'true' || left.children.length)) ||
+                    (right && (right.getAttribute('redacted') === 'true' || right.children.length))) {
+                    status = 'unknown';
+                } else if (currentDeleted && previous) {
+                    status = 'removed';
+                } else if (!previous || !current) {
+                    status = 'unknown';
+                } else if (!left) {
+                    status = 'added';
+                } else if (!right) {
+                    status = 'removed';
+                } else {
+                    status = left.textContent === right.textContent && isNil(left) === isNil(right) ? 'unchanged' : 'modified';
+                }
+                if (left) left.setAttribute('change', status);
+                if (right) right.setAttribute('change', status);
+            });
+        }
+        // End field comparison helper.
+
+        // Read only the record's own counter, never one from a nested schema or payload.
+        function addExportModCount(el, source) {
+            source = source || el;
+            var count = null;
+            for (var i = 0; i < source.children.length; i++) {
+                if (source.children[i].tagName === 'sys_mod_count') {
+                    count = source.children[i].textContent.trim();
+                    break;
+                }
+            }
+            if (count !== null && /^[0-9]+$/.test(count)) el.setAttribute('sys_mod_count', count);
+            else el.setAttribute('sys_mod_count_status', 'unavailable');
+        }
+
         function redactRecordElement(el) {
             var leaves = el.querySelectorAll('*');
             for (var i = 0; i < leaves.length; i++) {
@@ -2418,6 +2472,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 var tag = node.tagName;
                 var text = (node.textContent || '').trim();
                 if (REDACT_FIELDS[tag] || (text && EMAIL_ONLY_RE.test(text))) {
+                    node.setAttribute('redacted', 'true');
                     node.textContent = '';
                 }
             }
@@ -4265,8 +4320,37 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.generating = true;
                 ctrl.progress = { done: 0, total: selected.length };
 
-                var combinedDoc = document.implementation.createDocument(null, 'unload', null);
-                combinedDoc.documentElement.setAttribute('unload', 'widget_editor_assistant_context');
+                // Resolve every selected row, including records deleted since they were selected.
+                var exportUrls = {};
+                var exportEs12 = {};
+                await runPool(selected, async function (row) {
+                    var key = row.table + ':' + row.sys_id;
+                    try {
+                        var result = await ajax('getExportRecordUrl', {
+                            table: row.table, sys_id: row.sys_id,
+                            deleted: row.updateSetAction === 'DELETE' ? 'true' : 'false'
+                        });
+                        exportUrls[key] = result && result.success ? result.url || '' : '';
+                        exportEs12[key] = result && result.success ? result.es12Override || 'unavailable' : 'unavailable';
+                    } catch (e) {
+                        exportUrls[key] = '';
+                    }
+                }, 4);
+                function addRecordUrl(el, row, payload) {
+                    if (el.tagName !== 'versioned_record' && el.tagName !== 'record') addExportModCount(el);
+                    // Identity and runtime context live once in the manifest or version wrapper.
+                    if (payload || (el.tagName === 'record' && row.updateSetSysId && ctrl.includePreviousUpdates)) return;
+                    el.setAttribute('es12_override_at_export', exportEs12[row.table + ':' + row.sys_id] || 'unavailable');
+                    var url = exportUrls[row.table + ':' + row.sys_id];
+                    if (url) el.setAttribute('record_url', url);
+                    else el.setAttribute('record_url_status', 'unavailable');
+                }
+
+                var combinedDoc = document.implementation.createDocument(null, 'context_bundle', null);
+                combinedDoc.documentElement.setAttribute('format_version', '2');
+                var notes = combinedDoc.createElement('format_notes');
+                notes.textContent = 'Compare previous to current raw field values; added/removed means snapshot presence. Unknown covers missing, redacted or structured values. sys_mod_count is a per-record saved update counter, not a global version; unsaved edits do not increment it. ES12 is the current server-side override at export/load, not historical or client-side mode; not_found/unavailable may inherit application defaults. Record URLs identify platform records, not historical versions.';
+                combinedDoc.documentElement.appendChild(notes);
 
                 // Update set metadata up front, before the manifest — a reader needs to know
                 // which sets are involved before the per-record update_set_name attributes below mean anything.
@@ -4275,6 +4359,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                     ctrl.updateSets.forEach(function (us) {
                         var usEl = combinedDoc.createElement('update_set');
                         usEl.setAttribute('sys_id', us.sys_id);
+                        usEl.setAttribute('record_url', window.location.origin + '/nav_to.do?uri=' + encodeURIComponent('sys_update_set.do?sys_id=' + us.sys_id));
                         usEl.setAttribute('name', us.name);
                         if (us.state) usEl.setAttribute('state', us.state);
                         if (us.description) usEl.setAttribute('description', us.description);
@@ -4288,6 +4373,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                 selected.forEach(function (row) {
                     var entryEl = combinedDoc.createElement('record');
                     entryEl.setAttribute('table', row.table);
+                    entryEl.setAttribute('sys_id', row.sys_id);
+                    addRecordUrl(entryEl, row);
                     entryEl.setAttribute('name', row.label || row.sys_id);
                     entryEl.setAttribute('role', row.primary ? 'primary' : 'related');
                     if (row.suggested && row.category) {
@@ -4332,6 +4419,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         versionedEl = combinedDoc.createElement('versioned_record');
                         versionedEl.setAttribute('table', row.table);
                         versionedEl.setAttribute('sys_id', row.sys_id);
+                        addRecordUrl(versionedEl, row);
                         versionedEl.setAttribute('update_set_name', row.updateSetName || '');
                         versionedEl.setAttribute('update_set_action', row.updateSetAction || '');
                         versionedEl.setAttribute('change_type', row.updateSetAction === 'DELETE' ? 'deleted' : (row.isNewInUpdateSet ? 'new' : 'updated'));
@@ -4346,6 +4434,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             var deletedEl = combinedDoc.createElement('deleted_record');
                             deletedEl.setAttribute('table', row.table);
                             deletedEl.setAttribute('sys_id', row.sys_id);
+                            addRecordUrl(deletedEl, row, true);
                             deletedEl.setAttribute('reason', 'This record was deleted by the "' + (row.updateSetName || 'update set') + '" update set');
                             destContainer.appendChild(deletedEl);
                         } else if (row.table === 'sys_db_object') {
@@ -4361,6 +4450,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 var schemaResp = await fetch('/' + encodeURIComponent(targetTable) + '.do?SCHEMA', { credentials: 'same-origin' });
                                 var schemaText = await schemaResp.text();
                                 var schemaEl = new DOMParser().parseFromString(schemaText, 'text/xml').documentElement;
+                                addRecordUrl(schemaEl, row, true);
+                                schemaEl.removeAttribute('sys_mod_count_status');
+                                addExportModCount(schemaEl, metaEl);
                                 redactRecordElement(schemaEl);
                                 destContainer.appendChild(combinedDoc.importNode(schemaEl, true));
                             }
@@ -4371,6 +4463,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             var blockedEl = combinedDoc.createElement('blocked_record');
                             blockedEl.setAttribute('table', row.table);
                             blockedEl.setAttribute('sys_id', row.sys_id);
+                            addRecordUrl(blockedEl, row, true);
                             blockedEl.setAttribute('reason', 'Table is on the export blocklist — record data withheld');
                             destContainer.appendChild(blockedEl);
                         } else {
@@ -4380,6 +4473,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             var children = parsed.documentElement.children;
                             for (var c = 0; c < children.length; c++) {
                                 var recordEl = children[c];
+                                addRecordUrl(recordEl, row, true);
                                 redactRecordElement(recordEl);
                                 destContainer.appendChild(combinedDoc.importNode(recordEl, true));
                             }
@@ -4402,6 +4496,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             var prevParsed = new DOMParser().parseFromString(row.previousVersion.payload || '', 'text/xml');
                             var prevChildren = prevParsed.documentElement ? prevParsed.documentElement.children : [];
                             for (var p = 0; p < prevChildren.length; p++) {
+                                addRecordUrl(prevChildren[p], row, true);
                                 redactRecordElement(prevChildren[p]);
                                 previousEl.appendChild(combinedDoc.importNode(prevChildren[p], true));
                             }
@@ -4410,11 +4505,19 @@ export const widgetEditorAssistantUiPage = UiPage({
                             previousEl.textContent = 'No earlier version exists — this record is new as of this update set.';
                         }
                         versionedEl.appendChild(previousEl);
+                        function recordChild(container) {
+                            for (var i = 0; i < container.children.length; i++) {
+                                if (container.children[i].tagName === row.table) return container.children[i];
+                            }
+                            return null;
+                        }
+                        annotateFieldChanges(recordChild(previousEl), recordChild(destContainer), row.updateSetAction === 'DELETE');
                     }
 
                     $timeout(function () { ctrl.progress.done++; });
                 }, 4);
 
+                combinedDoc.documentElement.setAttribute('generated_at', new Date().toISOString());
                 indentXmlDoc(combinedDoc);
                 var xml = new XMLSerializer().serializeToString(combinedDoc);
                 var blob = new Blob([xml], { type: 'application/xml' });

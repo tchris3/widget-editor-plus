@@ -13,6 +13,54 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         GlideAjax: true, GlideModal: true, GlideDialogWindow: true, GlideList2: true,
     },
 
+    // Resolve the navigation target separately from the historical record identity.
+    getExportRecordUrl: function () {
+        var table = String(this.getParameter('table') || '');
+        var sysId = String(this.getParameter('sys_id') || '');
+        if (!/^[a-zA-Z0-9_]+$/.test(table) || !/^[0-9a-f]{32}$/.test(sysId)) {
+            return this._answer({ success: false });
+        }
+        var es12Override = 'unavailable';
+        var deleted = this.getParameter('deleted') === 'true';
+        var record = new GlideRecordSecure(table);
+        var exists = record.isValid() && record.get(sysId);
+        if (exists && !deleted && table !== 'sys_metadata_delete') {
+            es12Override = this._getExportEs12Override(sysId);
+        }
+        if (table !== 'sys_metadata_delete' && (deleted || !exists)) {
+            var deletion = new GlideRecordSecure('sys_metadata_delete');
+            deletion.addQuery('sys_metadata', sysId);
+            deletion.orderByDesc('sys_created_on');
+            deletion.setLimit(1);
+            deletion.query();
+            if (deletion.next()) {
+                table = 'sys_metadata_delete';
+                sysId = deletion.getUniqueValue();
+            } else {
+                // Never manufacture a link to a deleted record or a guessed deletion sys_id.
+                return this._answer({ success: true, url: '', unavailable: true });
+            }
+        }
+        var origin = String(gs.getProperty('glide.servlet.uri', '')).replace(/\/+$/, '');
+        return this._answer({ success: true, es12Override: es12Override, url: origin + '/nav_to.do?uri=' +
+            encodeURIComponent(table + '.do?sys_id=' + sysId) });
+    },
+
+    // An absent per-script override does not establish the application's effective mode.
+    _getExportEs12Override: function (sysId) {
+        try {
+            var es = new GlideRecordSecure('sys_es_latest_script');
+            es.addQuery('id', sysId);
+            es.setLimit(1);
+            es.query();
+            if (!es.next()) return 'not_found';
+            var value = es.getValue('use_es_latest');
+            if (value === '1' || value === 'true') return 'enabled';
+            if (value === '0' || value === 'false') return 'disabled';
+        } catch (e) {}
+        return 'unavailable';
+    },
+
     EXPORT_BLOCKLIST_TABLES_PROPERTY: 'monaco.plus.assistant.export_blocklist_tables',
     EXPORT_BLOCKLIST_PREFIXES_PROPERTY: 'monaco.plus.assistant.export_blocklist_prefixes',
 
