@@ -1378,8 +1378,9 @@ UiPage({
                             <div class="dc-spinner-sm"></div>
                         </div>
                     </div>
-                    <div class="dc-version-revert" ng-if="ctrl.canWrite &amp;&amp; ctrl.leftVersionId &amp;&amp; ctrl.leftVersionId !== 'current_saved'">
-                        <button class="btn btn-default dc-revert-btn" ng-click="ctrl.revertToLeft()" ng-disabled="!!ctrl.recordSysPolicy" title="{{ctrl.recordSysPolicy ? (ctrl.recordSysPolicyDisplay + ' protection policy prevents changes') : 'Revert'}}">Revert</button>
+                    <div class="dc-version-revert">
+                        <button class="btn btn-default dc-revert-btn" ng-if="ctrl.canWrite &amp;&amp; ctrl.leftVersionId &amp;&amp; ctrl.leftVersionId !== 'current_saved'" ng-click="ctrl.revertToLeft()" ng-disabled="!!ctrl.recordSysPolicy" title="{{ctrl.recordSysPolicy ? (ctrl.recordSysPolicyDisplay + ' protection policy prevents changes') : 'Revert'}}">Revert</button>
+                        <button type="button" class="btn btn-default" style="margin-left: 0.375rem;" ng-click="ctrl.exportXml()" ng-disabled="!ctrl.canExportXml()" title="Export both versions as XML" aria-label="Export both versions as XML"><span class="icon icon-export" aria-hidden="true"></span></button>
                     </div>
                     </div><!-- /.dc-version-left-half -->
                     <div class="dc-version-col dc-version-dd" ng-click="$event.stopPropagation()">
@@ -2484,6 +2485,49 @@ UiPage({
             return;
         }
 
+    // Compare exported field values, not display labels or generated metadata.
+    function annotateFieldChanges(previous, current, currentDeleted) {
+        function fields(record) {
+            var result = Object.create(null);
+            if (record) Array.prototype.forEach.call(record.children, function (field) {
+                result[field.tagName] = field;
+            });
+            return result;
+        }
+        var before = fields(previous);
+        var after = fields(current);
+        var names = Object.keys(before);
+        Object.keys(after).forEach(function (name) { if (!before[name]) names.push(name); });
+        function isNil(field) {
+            return field.getAttribute('nil') === 'true' || field.getAttribute('nil') === '1';
+        }
+        names.forEach(function (name) {
+            var left = before[name];
+            var right = after[name];
+            var status = null;
+            if ((left && (left.getAttribute('redacted') === 'true' || left.children.length)) ||
+                (right && (right.getAttribute('redacted') === 'true' || right.children.length))) {
+                // Not comparable — already conveyed by redacted="true" or the field's own
+                // nested structure; leaving change unset avoids a second, redundant signal.
+            } else if (currentDeleted && previous) {
+                status = 'removed';
+            } else if (!previous || !current) {
+                // The whole record is missing on one side — already conveyed by the
+                // enclosing previous_version's status="new" or the deleted_record fallback.
+            } else if (!left) {
+                status = 'added';
+            } else if (!right) {
+                status = 'removed';
+            } else {
+                status = left.textContent === right.textContent && isNil(left) === isNil(right) ? 'unchanged' : 'modified';
+            }
+            if (!status) return;
+            if (left) left.setAttribute('change', status);
+            if (right) right.setAttribute('change', status);
+        });
+    }
+    // End field comparison helper.
+
     angular.module('weDiff', [])
 
     .controller('WeDiffCtrl', ['$scope', '$timeout', '$document', function($scope, $timeout, $document) {
@@ -2568,6 +2612,8 @@ UiPage({
         var _versionCache        = {};
         var _currentLeftId       = version1Id;
         var _currentRightId      = version2Id || 'current';
+        var _exportLeftValues    = {};
+        var _exportRightValues   = {};
         var _pending             = 0;
         var _errors              = [];
         var _tableHasNoTracking  = false;
@@ -2701,6 +2747,10 @@ UiPage({
                 : _buildFields(_leftVersionData, _recordData, _fieldDefs);
             var rf = _buildFields(_rightVersionData, _unsavedRef, _fieldDefs);
 
+            // Preserve all loaded fields and raw values, independent of the visible diff filter.
+            _exportLeftValues = _leftIsCurrentSaved ? ((_savedRef && _savedRef.values) || {})
+                : (_leftVersionData ? _leftVersionData.fields : ((_recordData && _recordData.values) || {}));
+            _exportRightValues = _rightVersionData ? _rightVersionData.fields : ((_unsavedRef && _unsavedRef.values) || {});
             ctrl.leftFields  = lf;
             ctrl.rightFields = rf;
             ctrl.leftDisplayFields  = _buildDisplayFields(lf);
@@ -2914,6 +2964,74 @@ UiPage({
 
             $timeout(_scheduleChangedBelowIndicatorUpdate, 0, false);
         }
+
+        ctrl.canExportXml = function () {
+            return !ctrl.loading && !ctrl.loadingLeft && !ctrl.loadingRight && !ctrl.errorMsg &&
+                !ctrl.isSameVersionSelected() &&
+                (_leftIsCurrentSaved || (!!_leftVersionData && _versionCache[ctrl.leftVersionId] === _leftVersionData)) &&
+                (ctrl.rightVersionId === 'current' || (!!_rightVersionData && _versionCache[ctrl.rightVersionId] === _rightVersionData));
+        };
+
+        ctrl.exportXml = function () {
+            if (!ctrl.canExportXml()) return;
+            var doc = document.implementation.createDocument(null, 'context_bundle', null);
+            doc.documentElement.setAttribute('format_version', '2');
+            var notes = doc.createElement('format_notes');
+            notes.textContent = 'Compare previous to current raw field values; added/removed means snapshot presence. A field with no change attribute could not be compared — redacted, structured, or the whole record is missing on one side (see its status/change_type). sys_mod_count is a per-record saved update counter, not a global version; unsaved edits do not increment it. ES12 is the current server-side override at export/load, not historical or client-side mode; not_found/unavailable may inherit application defaults. Record URLs identify platform records, not historical versions.';
+            doc.documentElement.appendChild(notes);
+            doc.documentElement.setAttribute('generated_at', new Date().toISOString());
+            var primary = doc.createElement('primary_record');
+            doc.documentElement.appendChild(primary);
+            var record = doc.createElement('versioned_record');
+            record.setAttribute('table', tableParam);
+            record.setAttribute('sys_id', recordId);
+            record.setAttribute('name', ctrl.recordName || recordId);
+            var recordUrl = window.location.origin + '/nav_to.do?uri=' + encodeURIComponent(tableParam + '.do?sys_id=' + recordId);
+            record.setAttribute('record_url', recordUrl);
+            var es12Source = _savedRecordData || _recordData;
+            record.setAttribute('es12_override_at_load', (es12Source && es12Source.es12_override) || 'unavailable');
+            primary.appendChild(record);
+            function appendVersion(tag, side, id, label, values, metadata) {
+                var version = doc.createElement(tag);
+                version.setAttribute('version_id', id || '');
+                version.setAttribute('label', label || '');
+                if (side === 'right' && id === 'current' && ctrl.currentIsUnsaved) version.setAttribute('unsaved', 'true');
+                if (metadata) {
+                    if (metadata.sys_created_on) version.setAttribute('recorded_on', metadata.sys_created_on);
+                    if (metadata.sys_created_by) version.setAttribute('recorded_by', metadata.sys_created_by);
+                    if (metadata.update_set_name) version.setAttribute('update_set_name', metadata.update_set_name);
+                }
+                var data = doc.createElement(tableParam);
+                var modCount = values && values.sys_mod_count;
+                if (modCount !== null && modCount !== undefined && /^[0-9]+$/.test(String(modCount))) {
+                    data.setAttribute('sys_mod_count', String(modCount));
+                } else {
+                    data.setAttribute('sys_mod_count_status', 'unavailable');
+                }
+                Object.keys(values || {}).forEach(function (key) {
+                    if (key === '_unsaved') return;
+                    var field = doc.createElement(key);
+                    if (values[key] === null || values[key] === undefined) field.setAttribute('nil', 'true');
+                    else field.textContent = String(values[key]);
+                    data.appendChild(field);
+                });
+                version.appendChild(data);
+                record.appendChild(version);
+                return data;
+            }
+            var previousRecord = appendVersion('previous_version', 'left', ctrl.leftVersionId, ctrl.leftLabel(), _exportLeftValues, _leftVersionData);
+            var currentRecord = appendVersion('current_version', 'right', ctrl.rightVersionId, ctrl.rightLabel(), _exportRightValues, _rightVersionData);
+            annotateFieldChanges(previousRecord, currentRecord, false);
+            var blob = new Blob([new XMLSerializer().serializeToString(doc)], { type: 'application/xml' });
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement('a');
+            link.href = url;
+            link.download = 'diff-' + tableParam + '-' + recordId + '.xml';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        };
 
         ctrl.revertToLeft = function() {
             var sysId = ctrl.leftVersionId;

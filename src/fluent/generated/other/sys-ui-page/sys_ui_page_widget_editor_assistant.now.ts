@@ -725,6 +725,19 @@ export const widgetEditorAssistantUiPage = UiPage({
             color: rgb(var(--now-color_text--primary, 29 29 29));
             line-height: 1.2;
         }
+        .we-token-wheel {
+            display: inline-block;
+            width: 0.9rem;
+            height: 0.9rem;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 0.35rem;
+            /* conic-gradient sweeps clockwise from 12 o'clock; mirroring the element turns
+               that same sweep anticlockwise without recomputing the angle math. */
+            transform: scaleX(-1);
+            background-color: rgb(var(--now-color_background--tertiary, 243 244 246));
+            transition: background 0.2s linear;
+        }
 
         /* Color-coded Token Ranges */
         .we-token-card.we-token-green {
@@ -1630,9 +1643,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                                         <span class="we-token-lbl">Estimated Context Size</span>
                                         <span class="we-token-badge" ng-if="ctrl.tokenLevelInfo().label" ng-bind="ctrl.tokenLevelInfo().label"></span>
                                     </div>
-                                    <span class="we-token-val" ng-if="ctrl.sizesPending() || ctrl.previousVersionsCalculating()">~<span class="we-skeleton-bar" style="width: 3rem; height: 1em; border-radius: 4px; vertical-align: middle; margin: 0 0.25em;" aria-hidden="true"></span> tokens</span>
+                                    <span class="we-token-val" ng-if="ctrl.sizesPending() || ctrl.previousVersionsCalculating()"><span class="we-token-wheel" ng-style="{'background-image': 'conic-gradient(rgb(var(--now-color_text--tertiary, 130 134 142)) ' + (ctrl.tokenLoadFraction() * 360) + 'deg, transparent 0)'}" aria-hidden="true"></span><span class="we-skeleton-bar" style="width: 3rem; height: 1em; border-radius: 4px; vertical-align: middle; margin: 0 0.25em;" aria-hidden="true"></span> tokens</span>
                                     <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; !ctrl.previousVersionsCalculating() &amp;&amp; ctrl.rawTokenCount() === 0">N/A</span>
-                                    <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; !ctrl.previousVersionsCalculating() &amp;&amp; ctrl.rawTokenCount() &gt; 0">~{{ctrl.estimatedTokens()}} tokens</span>
+                                    <span class="we-token-val" ng-if="!ctrl.sizesPending() &amp;&amp; !ctrl.previousVersionsCalculating() &amp;&amp; ctrl.rawTokenCount() &gt; 0">{{ctrl.estimatedTokens()}} tokens</span>
                                 </div>
 
                                 <!-- Export Button -->
@@ -2408,6 +2421,63 @@ export const widgetEditorAssistantUiPage = UiPage({
             await Promise.all(workers);
         }
 
+        // Compare exported field values, not display labels or generated metadata.
+        function annotateFieldChanges(previous, current, currentDeleted) {
+            function fields(record) {
+                var result = Object.create(null);
+                if (record) Array.prototype.forEach.call(record.children, function (field) {
+                    result[field.tagName] = field;
+                });
+                return result;
+            }
+            var before = fields(previous);
+            var after = fields(current);
+            var names = Object.keys(before);
+            Object.keys(after).forEach(function (name) { if (!before[name]) names.push(name); });
+            function isNil(field) {
+                return field.getAttribute('nil') === 'true' || field.getAttribute('nil') === '1';
+            }
+            names.forEach(function (name) {
+                var left = before[name];
+                var right = after[name];
+                var status = null;
+                if ((left && (left.getAttribute('redacted') === 'true' || left.children.length)) ||
+                    (right && (right.getAttribute('redacted') === 'true' || right.children.length))) {
+                    // Not comparable — already conveyed by redacted="true" or the field's own
+                    // nested structure; leaving change unset avoids a second, redundant signal.
+                } else if (currentDeleted && previous) {
+                    status = 'removed';
+                } else if (!previous || !current) {
+                    // The whole record is missing on one side — already conveyed by the
+                    // enclosing previous_version's status="new" or the deleted_record fallback.
+                } else if (!left) {
+                    status = 'added';
+                } else if (!right) {
+                    status = 'removed';
+                } else {
+                    status = left.textContent === right.textContent && isNil(left) === isNil(right) ? 'unchanged' : 'modified';
+                }
+                if (!status) return;
+                if (left) left.setAttribute('change', status);
+                if (right) right.setAttribute('change', status);
+            });
+        }
+        // End field comparison helper.
+
+        // Read only the record's own counter, never one from a nested schema or payload.
+        function addExportModCount(el, source) {
+            source = source || el;
+            var count = null;
+            for (var i = 0; i < source.children.length; i++) {
+                if (source.children[i].tagName === 'sys_mod_count') {
+                    count = source.children[i].textContent.trim();
+                    break;
+                }
+            }
+            if (count !== null && /^[0-9]+$/.test(count)) el.setAttribute('sys_mod_count', count);
+            else el.setAttribute('sys_mod_count_status', 'unavailable');
+        }
+
         function redactRecordElement(el) {
             var leaves = el.querySelectorAll('*');
             for (var i = 0; i < leaves.length; i++) {
@@ -2418,6 +2488,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 var tag = node.tagName;
                 var text = (node.textContent || '').trim();
                 if (REDACT_FIELDS[tag] || (text && EMAIL_ONLY_RE.test(text))) {
+                    node.setAttribute('redacted', 'true');
                     node.textContent = '';
                 }
             }
@@ -3031,12 +3102,12 @@ export const widgetEditorAssistantUiPage = UiPage({
                 var key = rowKey(row);
                 var p;
                 if (row.table === 'sys_db_object') {
-                    p = fetch('/sys_db_object.do?sys_id=' + encodeURIComponent(row.sys_id) + '&XML', { credentials: 'same-origin' })
-                        .then(function (r) { return r.text(); })
-                        .then(function (metaText) {
-                            var metaEl = new DOMParser().parseFromString(metaText, 'text/xml').documentElement.firstElementChild;
-                            var nameEl = metaEl ? metaEl.querySelector('name') : null;
-                            var targetTable = (nameEl && nameEl.textContent) || row.label;
+                    // A single-field server lookup instead of a full record export, just to
+                    // resolve which table's SCHEMA to fetch (the export path needs the full
+                    // record anyway, for sys_mod_count, so it resolves this separately).
+                    p = ajax('resolveTableName', { sys_id: row.sys_id })
+                        .then(function (res) {
+                            var targetTable = (res && res.success && res.name) || row.label;
                             if (!targetTable) return 0;
                             return fetch('/' + encodeURIComponent(targetTable) + '.do?SCHEMA', { credentials: 'same-origin' })
                                 .then(function (r) { return r.text(); })
@@ -3057,15 +3128,18 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
             }
 
+            // Scoped to visibleRows + checked — the same scope rawTokenCount() reads from —
+            // so a row hidden by the active type filter, or unchecked, isn't exported just to
+            // measure a size nothing currently uses.
             function ensureRowSizesLoaded() {
-                var pending = ctrl.rows.filter(function (r) {
-                    if (r.placeholder || !r.sys_id || !r.table) return false;
+                var pending = ctrl.visibleRows.filter(function (r) {
+                    if (r.placeholder || !r.sys_id || !r.table || !r.checked) return false;
                     var key = rowKey(r);
                     return !ctrl.rowSizeBytes.hasOwnProperty(key) && !_sizeFetchInFlight[key];
                 });
                 pending.forEach(function (r) { _sizeFetchInFlight[rowKey(r)] = true; });
                 if (pending.length) {
-                    runPool(pending, _fetchRowSize, 4);
+                    runPool(pending, _fetchRowSize, 8);
                 }
             }
 
@@ -3140,6 +3214,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                     delete ctrl.activeTypeFilters[label];
                 }
                 recomputeVisibleRows();
+                ensureEstimatesForVisible();
             };
 
             // Reuses existing row objects across calls so ng-repeat's watch settles; also resets the progress bar.
@@ -3239,6 +3314,23 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return false;
             };
 
+            // Fraction (0-1) of the same checked+visible measurements sizesPending() waits on
+            // that have actually landed — drives the loading wheel's fill while it's pending.
+            ctrl.tokenLoadFraction = function () {
+                var total = 0, done = 0;
+                for (var i = 0; i < ctrl.visibleRows.length; i++) {
+                    var r = ctrl.visibleRows[i];
+                    if (r.placeholder || !r.checked) continue;
+                    total++;
+                    if (ctrl.rowSizeBytes.hasOwnProperty(rowKey(r))) done++;
+                    if (ctrl.includePreviousUpdates && r.updateSetSysId) {
+                        total++;
+                        if (r.hasOwnProperty('previousVersionBytes')) done++;
+                    }
+                }
+                return total === 0 ? 1 : done / total;
+            };
+
             ctrl.estimatedTokens = function () {
                 var count = ctrl.rawTokenCount();
                 if (count === 0) return '0';
@@ -3295,11 +3387,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
                 ctrl.saveSelections();
                 recomputeTypeCounts();
+                ensureEstimatesForVisible();
             };
 
             ctrl.onSelectionChange = function () {
                 ctrl.saveSelections();
                 recomputeTypeCounts();
+                ensureEstimatesForVisible();
             };
 
             ctrl.updateSetRecordCount = function (us) {
@@ -3322,6 +3416,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
                 ctrl.saveSelections();
                 recomputeTypeCounts();
+                ensureEstimatesForVisible();
             };
 
             ctrl.removeRow = function (row) {
@@ -4214,7 +4309,9 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             async function refreshPreviousVersions(rows) {
-                var targets = rows.filter(function (r) { return r.updateSetSysId; });
+                // Skip rows already measured — toggling Include Previous Updates off then on
+                // shouldn't re-fetch previous-version XML the row object already has cached.
+                var targets = rows.filter(function (r) { return r.updateSetSysId && !r.hasOwnProperty('previousVersionBytes'); });
                 if (!targets.length) return;
                 _pendingPreviousVersionFetches++;
                 $timeout(angular.noop);
@@ -4244,16 +4341,31 @@ export const widgetEditorAssistantUiPage = UiPage({
                         row.previousVersionBytes = 0;
                     }
                     $timeout(angular.noop);
-                }, 4);
+                }, 8);
                 _pendingPreviousVersionFetches--;
                 $timeout(angular.noop);
             }
 
+            // Fetches previous-version sizes only for rows actually contributing to the token
+            // estimate right now — checked AND passing the active type filter. A row hidden by
+            // the filter, or unchecked, is skipped until it becomes visible/checked again.
+            function ensurePreviousVersionsForVisible() {
+                if (!ctrl.includePreviousUpdates) return;
+                var targets = ctrl.visibleRows.filter(function (r) { return r.checked && r.updateSetSysId; });
+                if (targets.length) refreshPreviousVersions(targets);
+            }
+
+            // Both estimate inputs share the same scope (checked rows passing the active type
+            // filter) and the same "only fetch what's missing" guard — call together whenever
+            // selection or filter state changes.
+            function ensureEstimatesForVisible() {
+                ensureRowSizesLoaded();
+                ensurePreviousVersionsForVisible();
+            }
+
             ctrl.toggleIncludePreviousUpdates = function () {
                 ctrl.saveSelections();
-                if (ctrl.includePreviousUpdates) {
-                    refreshPreviousVersions(ctrl.related.filter(function (r) { return r.updateSetSysId; }));
-                }
+                ensurePreviousVersionsForVisible();
             };
 
             ctrl.generateXml = async function () {
@@ -4265,8 +4377,37 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.generating = true;
                 ctrl.progress = { done: 0, total: selected.length };
 
-                var combinedDoc = document.implementation.createDocument(null, 'unload', null);
-                combinedDoc.documentElement.setAttribute('unload', 'widget_editor_assistant_context');
+                // Resolve every selected row, including records deleted since they were selected.
+                var exportUrls = {};
+                var exportEs12 = {};
+                await runPool(selected, async function (row) {
+                    var key = row.table + ':' + row.sys_id;
+                    try {
+                        var result = await ajax('getExportRecordUrl', {
+                            table: row.table, sys_id: row.sys_id,
+                            deleted: row.updateSetAction === 'DELETE' ? 'true' : 'false'
+                        });
+                        exportUrls[key] = result && result.success ? result.url || '' : '';
+                        exportEs12[key] = result && result.success ? result.es12Override || 'unavailable' : 'unavailable';
+                    } catch (e) {
+                        exportUrls[key] = '';
+                    }
+                }, 8);
+                function addRecordUrl(el, row, payload) {
+                    if (el.tagName !== 'versioned_record' && el.tagName !== 'record') addExportModCount(el);
+                    // Identity and runtime context live once in the manifest or version wrapper.
+                    if (payload || (el.tagName === 'record' && row.updateSetSysId && ctrl.includePreviousUpdates)) return;
+                    el.setAttribute('es12_override_at_export', exportEs12[row.table + ':' + row.sys_id] || 'unavailable');
+                    var url = exportUrls[row.table + ':' + row.sys_id];
+                    if (url) el.setAttribute('record_url', url);
+                    else el.setAttribute('record_url_status', 'unavailable');
+                }
+
+                var combinedDoc = document.implementation.createDocument(null, 'context_bundle', null);
+                combinedDoc.documentElement.setAttribute('format_version', '2');
+                var notes = combinedDoc.createElement('format_notes');
+                notes.textContent = 'Compare previous to current raw field values; added/removed means snapshot presence. A field with no change attribute could not be compared — redacted, structured, or the whole record is missing on one side (see its status/change_type). sys_mod_count is a per-record saved update counter, not a global version; unsaved edits do not increment it. ES12 is the current server-side override at export/load, not historical or client-side mode; not_found/unavailable may inherit application defaults. Record URLs identify platform records, not historical versions.';
+                combinedDoc.documentElement.appendChild(notes);
 
                 // Update set metadata up front, before the manifest — a reader needs to know
                 // which sets are involved before the per-record update_set_name attributes below mean anything.
@@ -4275,6 +4416,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                     ctrl.updateSets.forEach(function (us) {
                         var usEl = combinedDoc.createElement('update_set');
                         usEl.setAttribute('sys_id', us.sys_id);
+                        usEl.setAttribute('record_url', window.location.origin + '/nav_to.do?uri=' + encodeURIComponent('sys_update_set.do?sys_id=' + us.sys_id));
                         usEl.setAttribute('name', us.name);
                         if (us.state) usEl.setAttribute('state', us.state);
                         if (us.description) usEl.setAttribute('description', us.description);
@@ -4288,6 +4430,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                 selected.forEach(function (row) {
                     var entryEl = combinedDoc.createElement('record');
                     entryEl.setAttribute('table', row.table);
+                    entryEl.setAttribute('sys_id', row.sys_id);
+                    addRecordUrl(entryEl, row);
                     entryEl.setAttribute('name', row.label || row.sys_id);
                     entryEl.setAttribute('role', row.primary ? 'primary' : 'related');
                     if (row.suggested && row.category) {
@@ -4332,6 +4476,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         versionedEl = combinedDoc.createElement('versioned_record');
                         versionedEl.setAttribute('table', row.table);
                         versionedEl.setAttribute('sys_id', row.sys_id);
+                        addRecordUrl(versionedEl, row);
                         versionedEl.setAttribute('update_set_name', row.updateSetName || '');
                         versionedEl.setAttribute('update_set_action', row.updateSetAction || '');
                         versionedEl.setAttribute('change_type', row.updateSetAction === 'DELETE' ? 'deleted' : (row.isNewInUpdateSet ? 'new' : 'updated'));
@@ -4346,6 +4491,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             var deletedEl = combinedDoc.createElement('deleted_record');
                             deletedEl.setAttribute('table', row.table);
                             deletedEl.setAttribute('sys_id', row.sys_id);
+                            addRecordUrl(deletedEl, row, true);
                             deletedEl.setAttribute('reason', 'This record was deleted by the "' + (row.updateSetName || 'update set') + '" update set');
                             destContainer.appendChild(deletedEl);
                         } else if (row.table === 'sys_db_object') {
@@ -4361,6 +4507,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 var schemaResp = await fetch('/' + encodeURIComponent(targetTable) + '.do?SCHEMA', { credentials: 'same-origin' });
                                 var schemaText = await schemaResp.text();
                                 var schemaEl = new DOMParser().parseFromString(schemaText, 'text/xml').documentElement;
+                                addRecordUrl(schemaEl, row, true);
+                                schemaEl.removeAttribute('sys_mod_count_status');
+                                addExportModCount(schemaEl, metaEl);
                                 redactRecordElement(schemaEl);
                                 destContainer.appendChild(combinedDoc.importNode(schemaEl, true));
                             }
@@ -4371,6 +4520,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             var blockedEl = combinedDoc.createElement('blocked_record');
                             blockedEl.setAttribute('table', row.table);
                             blockedEl.setAttribute('sys_id', row.sys_id);
+                            addRecordUrl(blockedEl, row, true);
                             blockedEl.setAttribute('reason', 'Table is on the export blocklist — record data withheld');
                             destContainer.appendChild(blockedEl);
                         } else {
@@ -4380,6 +4530,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             var children = parsed.documentElement.children;
                             for (var c = 0; c < children.length; c++) {
                                 var recordEl = children[c];
+                                addRecordUrl(recordEl, row, true);
                                 redactRecordElement(recordEl);
                                 destContainer.appendChild(combinedDoc.importNode(recordEl, true));
                             }
@@ -4402,6 +4553,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             var prevParsed = new DOMParser().parseFromString(row.previousVersion.payload || '', 'text/xml');
                             var prevChildren = prevParsed.documentElement ? prevParsed.documentElement.children : [];
                             for (var p = 0; p < prevChildren.length; p++) {
+                                addRecordUrl(prevChildren[p], row, true);
                                 redactRecordElement(prevChildren[p]);
                                 previousEl.appendChild(combinedDoc.importNode(prevChildren[p], true));
                             }
@@ -4410,11 +4562,19 @@ export const widgetEditorAssistantUiPage = UiPage({
                             previousEl.textContent = 'No earlier version exists — this record is new as of this update set.';
                         }
                         versionedEl.appendChild(previousEl);
+                        function recordChild(container) {
+                            for (var i = 0; i < container.children.length; i++) {
+                                if (container.children[i].tagName === row.table) return container.children[i];
+                            }
+                            return null;
+                        }
+                        annotateFieldChanges(recordChild(previousEl), recordChild(destContainer), row.updateSetAction === 'DELETE');
                     }
 
                     $timeout(function () { ctrl.progress.done++; });
-                }, 4);
+                }, 8);
 
+                combinedDoc.documentElement.setAttribute('generated_at', new Date().toISOString());
                 indentXmlDoc(combinedDoc);
                 var xml = new XMLSerializer().serializeToString(combinedDoc);
                 var blob = new Blob([xml], { type: 'application/xml' });

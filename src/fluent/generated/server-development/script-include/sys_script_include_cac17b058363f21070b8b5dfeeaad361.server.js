@@ -1056,6 +1056,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             record: {
                 sys_id: gr.getUniqueValue(),
                 name: gr.getDisplayValue() || '',
+                es12_override: new WidgetEditorAssistantAjax()._getExportEs12Override(recordId),
                 values: values,
                 display_values: displayValues,
                 sys_updated_on: gr.getValue('sys_updated_on') || '',
