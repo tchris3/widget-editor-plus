@@ -3195,6 +3195,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                     delete ctrl.activeTypeFilters[label];
                 }
                 recomputeVisibleRows();
+                ensurePreviousVersionsForVisible();
             };
 
             // Reuses existing row objects across calls so ng-repeat's watch settles; also resets the progress bar.
@@ -3350,11 +3351,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
                 ctrl.saveSelections();
                 recomputeTypeCounts();
+                ensurePreviousVersionsForVisible();
             };
 
             ctrl.onSelectionChange = function () {
                 ctrl.saveSelections();
                 recomputeTypeCounts();
+                ensurePreviousVersionsForVisible();
             };
 
             ctrl.updateSetRecordCount = function (us) {
@@ -3377,6 +3380,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
                 ctrl.saveSelections();
                 recomputeTypeCounts();
+                ensurePreviousVersionsForVisible();
             };
 
             ctrl.removeRow = function (row) {
@@ -4269,7 +4273,9 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             async function refreshPreviousVersions(rows) {
-                var targets = rows.filter(function (r) { return r.updateSetSysId; });
+                // Skip rows already measured — toggling Include Previous Updates off then on
+                // shouldn't re-fetch previous-version XML the row object already has cached.
+                var targets = rows.filter(function (r) { return r.updateSetSysId && !r.hasOwnProperty('previousVersionBytes'); });
                 if (!targets.length) return;
                 _pendingPreviousVersionFetches++;
                 $timeout(angular.noop);
@@ -4304,11 +4310,18 @@ export const widgetEditorAssistantUiPage = UiPage({
                 $timeout(angular.noop);
             }
 
+            // Fetches previous-version sizes only for rows actually contributing to the token
+            // estimate right now — checked AND passing the active type filter. A row hidden by
+            // the filter, or unchecked, is skipped until it becomes visible/checked again.
+            function ensurePreviousVersionsForVisible() {
+                if (!ctrl.includePreviousUpdates) return;
+                var targets = ctrl.visibleRows.filter(function (r) { return r.checked && r.updateSetSysId; });
+                if (targets.length) refreshPreviousVersions(targets);
+            }
+
             ctrl.toggleIncludePreviousUpdates = function () {
                 ctrl.saveSelections();
-                if (ctrl.includePreviousUpdates) {
-                    refreshPreviousVersions(ctrl.related.filter(function (r) { return r.updateSetSysId; }));
-                }
+                ensurePreviousVersionsForVisible();
             };
 
             ctrl.generateXml = async function () {
