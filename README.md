@@ -106,11 +106,11 @@ An AI context bundle exporter (`widget_editor_assistant.do`) available as a stan
 - **Extensible Relationship Engine**: Admin-configurable relationship rules defined through `monaco.plus.assistant.table_config.<table>` system properties.
 - **Favourites & Bundles**: Save and group frequently referenced record sets with user preference persistence and JSON export/import.
 - **ES12 Context**: XML explicitly identifies the readable per-record ES12 override as enabled, disabled, not found, or unavailable. It labels the setting as current context rather than historical version state, and explains that application defaults may apply when no override is available.
-- **Field Change Status**: Version comparisons annotate fields with `change="unchanged|modified|added|removed|unknown"`, comparing exact exported values from previous to current. Missing versions and redacted values remain unknown; added/removed means presence in the snapshots.
+- **Field Change Status**: Version comparisons annotate fields with `change="unchanged|modified|added|removed"`, comparing exact exported values from previous to current; added/removed means presence in the snapshots. A field left without a `change` attribute couldn't be compared — redacted, structured, or the whole record missing on one side (see its `status`/`change_type` instead).
 - **Compact Context**: One `format_notes` element explains conventions. Record URLs and current ES12 settings appear once in the manifest (unversioned records) or version wrapper. Both full versions and field change statuses are retained.
 - **Export Metadata**: Assistant and Compare+ exports use a `<context_bundle format_version="2">` root for AI context and include a UTC `generated_at` timestamp and each available record version’s `sys_mod_count`. Counters absent from the source are marked unavailable; unsaved edits do not increment the saved counter.
 - **Absolute Record URLs**: XML includes platform navigation URLs once per record. Deleted records link to their `sys_metadata_delete` entry; unavailable or unreadable deletion entries are marked with `record_url_status="unavailable"`.
-- **Live Token Estimation**: Real-time token count estimation based on payload size with progress animations.
+- **Live Token Estimation**: Real-time token count estimation based on payload size, with a proportional loading wheel while row and previous-version sizes are still being measured.
 - **Security Guardrails**: Table search blocklists, credential table withholding, and automated password redaction.
 
 ---
