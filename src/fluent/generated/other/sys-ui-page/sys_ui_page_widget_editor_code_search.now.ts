@@ -69,7 +69,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             height: 100vh;
             max-height: 100vh;
             display: grid;
-            grid-template-rows: auto minmax(0, 1fr);
+            grid-template-rows: auto auto minmax(0, 1fr);
             overflow: hidden !important;
             overscroll-behavior: none;
             background: rgb(var(--now-color_background--secondary, 246, 247, 249));
@@ -77,6 +77,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
         /* Header Bar - Native ServiceNow Horizon Styling matching Widget Editor+ Assistant */
         .dc-header {
+            grid-row: 1;
             background: rgb(var(--now-color_chrome--brand-5, var(--now-color--primary-0, 221, 237, 233)));
             border-bottom: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235)));
             flex-shrink: 0;
@@ -200,6 +201,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
         /* Body Layout */
         .cs-body {
+            grid-row: 3;
             min-height: 0;
             display: grid;
             grid-template-columns: 21rem minmax(0, 1fr);
@@ -466,7 +468,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             background: rgb(var(--now-color_background--secondary, 246, 247, 249));
         }
 
-        .cs-advanced { padding: .6rem 1rem; border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235)); flex-shrink: 0; max-height: 35vh; overflow: auto; }
+        .cs-advanced { grid-row: 2; padding: .6rem 1rem; border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235)); flex-shrink: 0; max-height: 35vh; overflow: auto; }
 
         .cs-cond-row {
             display: flex;
@@ -1113,18 +1115,22 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         }
 
         /* Marks a gap between two non-contiguous excerpts of the same field, merged into one box,
-           as a horizontal rule spanning both the gutter and content columns. */
+           as a solid rule spanning both the gutter and content columns. Keeps the row's normal
+           line-height (rather than switching to flex) so it lines up with the gutter row beside
+           it, and centers the rule within that row with an absolutely positioned pseudo-element. */
         .cs-gutter-num.cs-sep,
         .cs-code-line.cs-sep {
-            display: flex;
-            align-items: center;
+            position: relative;
         }
 
         .cs-gutter-num.cs-sep::after,
         .cs-code-line.cs-sep::after {
             content: '';
-            width: 100%;
-            border-top: 1px dashed rgb(var(--now-color_border--secondary, 228, 230, 235));
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            border-top: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
         }
 
         .cs-code-box {

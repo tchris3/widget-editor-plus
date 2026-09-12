@@ -85,3 +85,57 @@ test('table navigation scrolls only results across viewport and header sizes', a
         await browser.close();
     }
 });
+
+test('advanced conditions get their own row and results keep the remaining height', async () => {
+    const browser = await chromium.launch({ headless: true });
+    const advancedForm = source.match(/<form class="cs-advanced"[\s\S]*?<\/form>/)[0];
+    try {
+        for (const height of [800, 500]) {
+            const page = await browser.newPage({ viewport: { width: 1280, height } });
+            await page.setContent(`<style>${css}</style><div class="cs-app">
+                <header class="dc-header" style="height:80px">Search</header>
+                <div class="cs-body"><aside class="cs-sidebar">Tables</aside><main class="cs-main">
+                <div class="cs-toolbar">Summary</div><div class="cs-results" id="cs-results-container">
+                <div style="height:3000px">Results</div></div></main></div></div>`);
+            const bodyHeight = await page.locator('.cs-body').evaluate(el => el.clientHeight);
+            for (const rows of [1, 20]) {
+                // Reproduce ng-if inserting the actual conditions form between header and body.
+                await page.evaluate(({ advancedForm, rows }) => {
+                    document.querySelector('.dc-header').insertAdjacentHTML('afterend', advancedForm);
+                    const form = document.querySelector('.cs-advanced');
+                    const row = form.firstElementChild;
+                    for (let i = 1; i < rows; i++) form.append(row.cloneNode(true));
+                }, { advancedForm, rows });
+                const bounds = await page.evaluate(() => {
+                    const header = document.querySelector('.dc-header').getBoundingClientRect();
+                    const form = document.querySelector('.cs-advanced').getBoundingClientRect();
+                    const body = document.querySelector('.cs-body').getBoundingClientRect();
+                    const results = document.querySelector('.cs-results').getBoundingClientRect();
+                    return { headerTop: header.top, headerBottom: header.bottom, formTop: form.top,
+                        formBottom: form.bottom, formHeight: form.height, bodyTop: body.top,
+                        bodyBottom: body.bottom, resultsHeight: results.height, viewport: innerHeight };
+                });
+                assert.equal(bounds.headerTop, 0);
+                assert.ok(bounds.formHeight > 30);
+                assert.ok(bounds.formHeight <= height * 0.35 + 1);
+                assert.ok(bounds.formTop >= bounds.headerBottom);
+                assert.ok(bounds.bodyTop >= bounds.formBottom);
+                assert.ok(bounds.bodyBottom <= bounds.viewport);
+                assert.ok(bounds.resultsHeight > 100);
+                await page.locator('.cs-results').evaluate(el => { el.scrollTop = 1000; });
+                assert.equal(await page.locator('.cs-results').evaluate(el => el.scrollTop), 1000);
+                assert.equal(await page.locator('.dc-header').evaluate(el => el.getBoundingClientRect().top), 0);
+                if (rows === 20) {
+                    await page.locator('.cs-advanced').evaluate(el => { el.scrollTop = el.scrollHeight; });
+                    assert.ok(await page.locator('.cs-advanced').evaluate(el => el.scrollTop) > 0);
+                }
+                // Removing the last condition restores all available height to results.
+                await page.locator('.cs-advanced').evaluate(el => el.remove());
+                assert.equal(await page.locator('.cs-body').evaluate(el => el.clientHeight), bodyHeight);
+            }
+            await page.close();
+        }
+    } finally {
+        await browser.close();
+    }
+});
