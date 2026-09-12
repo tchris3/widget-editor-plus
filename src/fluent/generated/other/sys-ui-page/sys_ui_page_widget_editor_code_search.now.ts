@@ -1112,10 +1112,19 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             line-height: 1.55;
         }
 
-        /* Marks a gap between two non-contiguous excerpts of the same field, merged into one box. */
+        /* Marks a gap between two non-contiguous excerpts of the same field, merged into one box,
+           as a horizontal rule spanning both the gutter and content columns. */
+        .cs-gutter-num.cs-sep,
         .cs-code-line.cs-sep {
-            color: rgb(var(--now-color_text--tertiary, 140, 145, 155));
-            letter-spacing: 0.15em;
+            display: flex;
+            align-items: center;
+        }
+
+        .cs-gutter-num.cs-sep::after,
+        .cs-code-line.cs-sep::after {
+            content: '';
+            width: 100%;
+            border-top: 1px dashed rgb(var(--now-color_border--secondary, 228, 230, 235));
         }
 
         .cs-code-box {
@@ -1733,10 +1742,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                             <!-- Monaco-style line gutter and code lines -->
                                             <div class="cs-code-editor-box" ng-if="match.lines">
                                                 <div class="cs-code-gutter" ng-if="match.totalLines ? match.totalLines > 1 : match.lines.length > 1">
-                                                    <span class="cs-gutter-num" ng-repeat="line in match.lines track by $index">{{line.separator ? '' : line.num}}</span>
+                                                    <span class="cs-gutter-num" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index">{{line.separator ? '' : line.num}}</span>
                                                 </div>
                                                 <div class="cs-code-content">
-                                                    <div class="cs-code-line" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index"><span ng-if="line.separator">⋯</span><span ng-if="!line.separator" ng-bind-html="ctrl.highlight(line.text)"></span></div>
+                                                    <div class="cs-code-line" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index"><span ng-if="!line.separator" ng-bind-html="ctrl.highlight(line.text)"></span></div>
                                                 </div>
                                             </div>
                                             <pre class="cs-code-box" ng-if="!match.lines" ng-bind-html="ctrl.highlight(match.snippet)"></pre>
@@ -1796,10 +1805,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                         <!-- Monaco-style line gutter and code lines -->
                                         <div class="cs-code-editor-box" ng-if="match.lines">
                                             <div class="cs-code-gutter" ng-if="match.totalLines ? match.totalLines > 1 : match.lines.length > 1">
-                                                <span class="cs-gutter-num" ng-repeat="line in match.lines track by $index">{{line.separator ? '' : line.num}}</span>
+                                                <span class="cs-gutter-num" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index">{{line.separator ? '' : line.num}}</span>
                                             </div>
                                             <div class="cs-code-content">
-                                                <div class="cs-code-line" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index"><span ng-if="line.separator">⋯</span><span ng-if="!line.separator" ng-bind-html="ctrl.highlight(line.text)"></span></div>
+                                                <div class="cs-code-line" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index"><span ng-if="!line.separator" ng-bind-html="ctrl.highlight(line.text)"></span></div>
                                             </div>
                                         </div>
                                         <pre class="cs-code-box" ng-if="!match.lines" ng-bind-html="ctrl.highlight(match.snippet)"></pre>
