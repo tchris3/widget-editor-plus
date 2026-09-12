@@ -77,7 +77,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
         /* Header Bar - Native ServiceNow Horizon Styling matching Widget Editor+ Assistant */
         .dc-header {
-            background: rgb(var(--now-color_surface--brand-5, var(--now-color--primary-0, 221, 237, 233)));
+            background: rgb(var(--now-color_chrome--brand-5, var(--now-color--primary-0, 221, 237, 233)));
             border-bottom: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235)));
             flex-shrink: 0;
             z-index: 10;
@@ -556,7 +556,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             overflow-y: auto !important;
             overflow-x: hidden;
             position: relative;
-            padding: 1rem 1.25rem;
+            padding: 0 1rem 1.25rem;
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
         }
@@ -806,7 +806,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             z-index: 2;
             margin: 0 -1.25rem 0.75rem;
             padding: 0.55rem 1.25rem 0.6rem;
-            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            background: rgb(var(--now-color_surface--brand-3, 255, 255, 255));
             border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
             scroll-margin-top: 0.5rem;
         }
@@ -1110,6 +1110,12 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             white-space: pre;
             color: rgb(var(--now-color_text--primary, 29, 29, 29));
             line-height: 1.55;
+        }
+
+        /* Marks a gap between two non-contiguous excerpts of the same field, merged into one box. */
+        .cs-code-line.cs-sep {
+            color: rgb(var(--now-color_text--tertiary, 140, 145, 155));
+            letter-spacing: 0.15em;
         }
 
         .cs-code-box {
@@ -1672,7 +1678,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                         <span class="cs-table-group-label">{{group.tableLabel}}</span>
                                         <span class="cs-table-group-name">{{group.table}}</span>
                                     </div>
-                                    <a class="cs-table-group-badge" ng-href="{{ctrl.getGroupListUrl(group)}}" target="_blank" title="Open {{group.tableLabel}} list view for these results">{{group.records.length}} {{group.records.length === 1 ? 'record' : 'records'}}</a>
+                                    <a class="cs-table-group-badge" ng-href="{{ctrl.getGroupListUrl(group)}}" target="_blank" title="Open {{group.tableLabel}} list (case insensitive)">{{group.records.length}} {{group.records.length === 1 ? 'record' : 'records'}}</a>
                                 </div>
 
                                 <div class="cs-field-toggle-row" ng-if="group.fields.length">
@@ -1717,7 +1723,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                             <div>
                                                 <span class="cs-field-pill">{{match.fieldLabel || match.field}}</span>
                                             </div>
-                                            <button type="button" class="btn btn-icon" ng-if="!match.allLinesShown &amp;&amp; !(match.totalLines &amp;&amp; match.lines &amp;&amp; match.lines.length &gt;= match.totalLines)" ng-class="{'active': match.expanded}" ng-click="ctrl.toggleMatchExpand(result, match, $index)" title="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}" aria-label="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}">
+                                            <button type="button" class="btn btn-icon" ng-if="!match.allLinesShown" ng-class="{'active': match.expanded}" ng-click="ctrl.toggleMatchExpand(result, match, $index)" title="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}" aria-label="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}">
                                                 <span ng-class="match.expanded ? 'icon-pop-in' : 'icon-pop-out'" aria-hidden="true"></span>
                                             </button>
                                         </div>
@@ -1727,10 +1733,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                             <!-- Monaco-style line gutter and code lines -->
                                             <div class="cs-code-editor-box" ng-if="match.lines">
                                                 <div class="cs-code-gutter" ng-if="match.totalLines ? match.totalLines > 1 : match.lines.length > 1">
-                                                    <span class="cs-gutter-num" ng-repeat="line in match.lines track by $index">{{line.num}}</span>
+                                                    <span class="cs-gutter-num" ng-repeat="line in match.lines track by $index">{{line.separator ? '' : line.num}}</span>
                                                 </div>
                                                 <div class="cs-code-content">
-                                                    <div class="cs-code-line" ng-repeat="line in match.lines track by $index" ng-bind-html="ctrl.highlight(line.text)"></div>
+                                                    <div class="cs-code-line" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index"><span ng-if="line.separator">⋯</span><span ng-if="!line.separator" ng-bind-html="ctrl.highlight(line.text)"></span></div>
                                                 </div>
                                             </div>
                                             <pre class="cs-code-box" ng-if="!match.lines" ng-bind-html="ctrl.highlight(match.snippet)"></pre>
@@ -1780,7 +1786,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                         <div>
                                             <span class="cs-field-pill">{{match.fieldLabel || match.field}}</span>
                                         </div>
-                                        <button type="button" class="btn btn-icon" ng-if="!match.allLinesShown &amp;&amp; !(match.totalLines &amp;&amp; match.lines &amp;&amp; match.lines.length &gt;= match.totalLines)" ng-class="{'active': match.expanded}" ng-click="ctrl.toggleMatchExpand(result, match, $index)" title="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}" aria-label="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}">
+                                        <button type="button" class="btn btn-icon" ng-if="!match.allLinesShown" ng-class="{'active': match.expanded}" ng-click="ctrl.toggleMatchExpand(result, match, $index)" title="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}" aria-label="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}">
                                             <span ng-class="match.expanded ? 'icon-pop-in' : 'icon-pop-out'" aria-hidden="true"></span>
                                         </button>
                                     </div>
@@ -1790,10 +1796,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                         <!-- Monaco-style line gutter and code lines -->
                                         <div class="cs-code-editor-box" ng-if="match.lines">
                                             <div class="cs-code-gutter" ng-if="match.totalLines ? match.totalLines > 1 : match.lines.length > 1">
-                                                <span class="cs-gutter-num" ng-repeat="line in match.lines track by $index">{{line.num}}</span>
+                                                <span class="cs-gutter-num" ng-repeat="line in match.lines track by $index">{{line.separator ? '' : line.num}}</span>
                                             </div>
                                             <div class="cs-code-content">
-                                                <div class="cs-code-line" ng-repeat="line in match.lines track by $index" ng-bind-html="ctrl.highlight(line.text)"></div>
+                                                <div class="cs-code-line" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index"><span ng-if="line.separator">⋯</span><span ng-if="!line.separator" ng-bind-html="ctrl.highlight(line.text)"></span></div>
                                             </div>
                                         </div>
                                         <pre class="cs-code-box" ng-if="!match.lines" ng-bind-html="ctrl.highlight(match.snippet)"></pre>

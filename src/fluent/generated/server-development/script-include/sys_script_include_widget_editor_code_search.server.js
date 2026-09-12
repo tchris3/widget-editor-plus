@@ -182,65 +182,55 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                     var fieldName = fields[f];
                     var value = String(record.getValue(fieldName) || '');
                     if (!value) continue;
+                    var haystack = caseSensitive ? value : value.toLowerCase();
+                    var needle = caseSensitive ? term : termLower;
                     var searchPos = 0;
                     var occurrencesInField = 0;
-                    // Occurrences whose context window (matched line ± 2) overlaps the last shown
-                    // window render an identical snippet, so they're skipped rather than pushed as
-                    // a separate "match" — otherwise a field with several close-together occurrences
-                    // (e.g. the same variable used twice on one line) shows the same snippet 3-4 times.
+                    // Every occurrence in a field is merged into one match, its snippet windows
+                    // joined by a "…" separator line when they aren't contiguous — rather than a
+                    // separate match (and its own field pill/box) per occurrence. An occurrence
+                    // whose window (matched line ± 2) is already covered by the previous one is
+                    // skipped rather than merged in, since it would add nothing new to show.
                     var lastShownEndLine = 0;
+                    var fieldMatch = null;
 
-                    if (caseSensitive) {
-                        while (occurrencesInField < this.MAX_SNIPPETS_PER_FIELD) {
-                            var at = value.indexOf(term, searchPos);
-                            if (at === -1) break;
-                            searchPos = at + term.length;
-                            var snippetInfo = this._extractSnippetWithLines(value, at, term.length);
-                            if (snippetInfo.matchLine <= lastShownEndLine) continue;
+                    while (occurrencesInField < this.MAX_SNIPPETS_PER_FIELD) {
+                        var at = haystack.indexOf(needle, searchPos);
+                        if (at === -1) break;
+                        searchPos = at + term.length;
+                        var snippetInfo = this._extractSnippetWithLines(value, at, term.length);
+                        if (snippetInfo.matchLine <= lastShownEndLine) continue;
+
+                        if (!fieldMatch) {
                             var fLabel = fieldName;
                             try { fLabel = record.getElement(fieldName).getLabel() || fieldName; } catch (efl) {}
-
-                            var isAllShown = snippetInfo.allLinesShown || (snippetInfo.lines && snippetInfo.totalLines && snippetInfo.lines.length >= snippetInfo.totalLines);
-                            matches.push({
+                            fieldMatch = {
                                 field: fieldName,
                                 fieldLabel: fLabel,
                                 line: snippetInfo.matchLine,
-                                startLine: snippetInfo.startLine,
                                 totalLines: snippetInfo.totalLines,
                                 singleLine: snippetInfo.singleLine,
-                                allLinesShown: !!isAllShown,
-                                lines: snippetInfo.lines,
+                                lines: snippetInfo.lines.slice(),
                                 snippet: snippetInfo.text
+                            };
+                        } else {
+                            if (snippetInfo.startLine > lastShownEndLine + 1) {
+                                fieldMatch.lines.push({ separator: true });
+                                fieldMatch.snippet += '\n…\n';
+                            }
+                            snippetInfo.lines.forEach(function (l) {
+                                if (l.num > lastShownEndLine) fieldMatch.lines.push(l);
                             });
-                            occurrencesInField++;
-                            lastShownEndLine = snippetInfo.startLine + snippetInfo.lines.length - 1;
+                            fieldMatch.snippet += snippetInfo.text;
                         }
-                    } else {
-                        var valLower = value.toLowerCase();
-                        while (occurrencesInField < this.MAX_SNIPPETS_PER_FIELD) {
-                            var at = valLower.indexOf(termLower, searchPos);
-                            if (at === -1) break;
-                            searchPos = at + term.length;
-                            var snippetInfo = this._extractSnippetWithLines(value, at, term.length);
-                            if (snippetInfo.matchLine <= lastShownEndLine) continue;
-                            var fLabel = fieldName;
-                            try { fLabel = record.getElement(fieldName).getLabel() || fieldName; } catch (efl) {}
+                        occurrencesInField++;
+                        lastShownEndLine = snippetInfo.startLine + snippetInfo.lines.length - 1;
+                    }
 
-                            var isAllShown = snippetInfo.allLinesShown || (snippetInfo.lines && snippetInfo.totalLines && snippetInfo.lines.length >= snippetInfo.totalLines);
-                            matches.push({
-                                field: fieldName,
-                                fieldLabel: fLabel,
-                                line: snippetInfo.matchLine,
-                                startLine: snippetInfo.startLine,
-                                totalLines: snippetInfo.totalLines,
-                                singleLine: snippetInfo.singleLine,
-                                allLinesShown: !!isAllShown,
-                                lines: snippetInfo.lines,
-                                snippet: snippetInfo.text
-                            });
-                            occurrencesInField++;
-                            lastShownEndLine = snippetInfo.startLine + snippetInfo.lines.length - 1;
-                        }
+                    if (fieldMatch) {
+                        var shownLineCount = fieldMatch.lines.filter(function (l) { return !l.separator; }).length;
+                        fieldMatch.allLinesShown = shownLineCount >= fieldMatch.totalLines;
+                        matches.push(fieldMatch);
                     }
                 }
 
