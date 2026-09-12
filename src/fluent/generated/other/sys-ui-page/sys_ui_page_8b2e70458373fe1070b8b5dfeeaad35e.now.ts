@@ -5692,6 +5692,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     showRecentlyOpenedWidgets: true,
                     showOpenHistory: true,
                     recentWidgets: [],
+                    // Not surfaced in the Preferences dialog — just carried through load/save/export/import
+                    // so Code Search's own preference lives on the shared preference row.
+                    lastCodeSearchGroup: null,
                     // Last-saved editor order/visibility, so the Preferences dialog reflects saved state, not live changes.
                     editorOrder: [],
                     editorVisibility: {},
@@ -6428,6 +6431,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     if (p.hasOwnProperty('recentWidgets') && Array.isArray(p.recentWidgets)) {
                         $scope.userPrefs.recentWidgets = p.recentWidgets;
                         _refreshRecentWidgetsResolved();
+                    }
+                    if (p.hasOwnProperty('lastCodeSearchGroup')) {
+                        $scope.userPrefs.lastCodeSearchGroup = p.lastCodeSearchGroup;
                     }
                     if (p.hasOwnProperty('ctrlSSaveActiveOnly')) {
                         $scope.userPrefs.ctrlSSaveActiveOnly =
@@ -10650,6 +10656,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     prefs.htmlClassIncludeStandardCss =
                         !!$scope.userPrefs.htmlClassIncludeStandardCss;
                     prefs.recentWidgets = $scope.userPrefs.recentWidgets;
+                    prefs.lastCodeSearchGroup = $scope.userPrefs.lastCodeSearchGroup;
                     prefs.order = $scope.coreEditorDefs.map(function (d) {
                         return d.key;
                     });
@@ -13109,6 +13116,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     if (p.hasOwnProperty('recentWidgets') && Array.isArray(p.recentWidgets)) {
                         $scope.userPrefs.recentWidgets = p.recentWidgets;
                         _refreshRecentWidgetsResolved();
+                    }
+                    if (p.hasOwnProperty('lastCodeSearchGroup')) {
+                        $scope.userPrefs.lastCodeSearchGroup = p.lastCodeSearchGroup;
                     }
                     // Staged for saveUserPrefsModal() to push to sys_user_preference on Save;
                     // not part of the widget editor's own preference blob.
