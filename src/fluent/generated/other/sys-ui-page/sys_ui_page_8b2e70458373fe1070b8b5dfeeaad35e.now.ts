@@ -4383,21 +4383,22 @@ Features version history, side-by-side diff comparison, related lists, and user 
         return;
     }
 
-    var AJAX_SCRIPT =
-        (window.WE_CONFIG && window.WE_CONFIG.ajaxScript) || 'WidgetEditorAjax';
-    var WE_UI_SCRIPTS = (window.WE_CONFIG && window.WE_CONFIG.uiScripts) || {};
-    var DIFF_PAGE_SYS_ID =
-        (window.WE_CONFIG && window.WE_CONFIG.diffPageSysId) || '';
+    var WE_CONFIG = window.WE_CONFIG || {};
+    var AJAX_SCRIPT = WE_CONFIG.ajaxScript || 'WidgetEditorAjax';
+    var WE_UI_SCRIPTS = WE_CONFIG.uiScripts || {};
+    var DIFF_PAGE_SYS_ID = WE_CONFIG.diffPageSysId || '';
+
+    function _queryString(params) {
+        return Object.keys(params)
+            .map(function (k) {
+                return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+            })
+            .join('&');
+    }
 
     /** Builds a UI page nav URL; uses sys_id-based nav when known so it survives page renames. */
     function _diffNavUrl(params) {
-        var qs = Object.keys(params)
-            .map(function (k) {
-                return (
-                    encodeURIComponent(k) + '=' + encodeURIComponent(params[k])
-                );
-            })
-            .join('&');
+        var qs = _queryString(params);
         if (DIFF_PAGE_SYS_ID) {
             return (
                 '/nav_to.do?uri=' +
@@ -4413,13 +4414,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
     /** Build a same-frame / iframe URL for the diff page. */
     function _diffIframeUrl(params) {
-        var qs = Object.keys(params)
-            .map(function (k) {
-                return (
-                    encodeURIComponent(k) + '=' + encodeURIComponent(params[k])
-                );
-            })
-            .join('&');
+        var qs = _queryString(params);
         if (DIFF_PAGE_SYS_ID) {
             return '/ui_page.do?sys_id=' + DIFF_PAGE_SYS_ID + '&' + qs;
         }
@@ -5272,7 +5267,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 // Reads window.WE_CONFIG (set before Angular bootstraps) instead of re-parsing location.search, since ServiceNow can rewrite the URL first.
                 var _params = new URLSearchParams(window.location.search);
-                var _weConfig = window.WE_CONFIG || {};
+                var _weConfig = WE_CONFIG;
                 var SYS_ID = _weConfig.sys_id || _params.get('widget_id') || '';
                 var VERSION_ID = _weConfig.version_id || _params.get('version_id') || '';
                 var IS_NEW =
@@ -5280,9 +5275,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         ? !!_weConfig.is_new
                         : _params.get('new') === '1';
                 var APP_TITLE = 'Widget Editor+';
-                var SITE_TITLE =
-                    (window.WE_CONFIG && window.WE_CONFIG.siteTitle) ||
-                    'ServiceNow';
+                var SITE_TITLE = _weConfig.siteTitle || 'ServiceNow';
 
                 var _titleTimer = null;
                 $scope.$watch('widget.name', function (name) {
@@ -5433,28 +5426,38 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 }, 10000);
 
                 $scope.c = $scope.c || {};
+
+                function _buildSnUtilsWidgetFields(widget) {
+                    widget = widget || {};
+                    var scopeValue = typeof widget.sys_scope === 'object' && widget.sys_scope
+                        ? widget.sys_scope.value || 'global'
+                        : widget.sys_scope || 'global';
+                    var scopeDisplay = typeof widget.sys_scope === 'object' && widget.sys_scope
+                        ? widget.sys_scope.displayValue || scopeValue
+                        : scopeValue;
+                    return {
+                        name: { value: widget.name || '', displayValue: widget.name || '' },
+                        id: { value: widget.id || '', displayValue: widget.id || '' },
+                        template: { value: widget.template || '' },
+                        css: { value: widget.css || '' },
+                        client_script: { value: widget.client_script || '' },
+                        script: { value: widget.script || '' },
+                        link: { value: widget.link || '' },
+                        option_schema: { value: widget.option_schema || '' },
+                        demo_data: { value: widget.demo_data || '' },
+                        sys_scope: { value: scopeValue, displayValue: scopeDisplay },
+                        data_table: { value: 'sp_widget', displayValue: 'Widget', choices: [] },
+                    };
+                }
+
                 $scope.$watch('widget', function (w) {
                     if (!w) return;
                     $scope.c.readOnly = !$scope.canWriteWidget;
                     $scope.data = $scope.data || {};
                     $scope.data.title = w.name || '';
                     $scope.data.sys_id = w.sys_id || '';
-                    var scopeVal = typeof w.sys_scope === 'object' && w.sys_scope ? w.sys_scope.value || 'global' : (w.sys_scope || 'global');
-                    var scopeDisp = typeof w.sys_scope === 'object' && w.sys_scope ? w.sys_scope.displayValue || scopeVal : scopeVal;
                     $scope.data.f = {
-                        _fields: {
-                            name: { value: w.name || '', displayValue: w.name || '' },
-                            id: { value: w.id || '', displayValue: w.id || '' },
-                            template: { value: w.template || '' },
-                            css: { value: w.css || '' },
-                            client_script: { value: w.client_script || '' },
-                            script: { value: w.script || '' },
-                            link: { value: w.link || '' },
-                            option_schema: { value: w.option_schema || '' },
-                            demo_data: { value: w.demo_data || '' },
-                            sys_scope: { value: scopeVal, displayValue: scopeDisp },
-                            data_table: { value: 'sp_widget', displayValue: 'Widget', choices: [] },
-                        },
+                        _fields: _buildSnUtilsWidgetFields(w),
                     };
                 }, true);
 
@@ -5480,22 +5483,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         g_ck: g_ck_val,
                     };
 
-                    var scopeVal = typeof $scope.widget.sys_scope === 'object' && $scope.widget.sys_scope ? $scope.widget.sys_scope.value || 'global' : ($scope.widget.sys_scope || 'global');
-                    var scopeDisp = typeof $scope.widget.sys_scope === 'object' && $scope.widget.sys_scope ? $scope.widget.sys_scope.displayValue || scopeVal : scopeVal;
-
-                    var fields = {
-                        name: { value: $scope.widget.name || '', displayValue: $scope.widget.name || '' },
-                        id: { value: $scope.widget.id || '', displayValue: $scope.widget.id || '' },
-                        template: { value: $scope.widget.template || '' },
-                        css: { value: $scope.widget.css || '' },
-                        client_script: { value: $scope.widget.client_script || '' },
-                        script: { value: $scope.widget.script || '' },
-                        link: { value: $scope.widget.link || '' },
-                        option_schema: { value: $scope.widget.option_schema || '' },
-                        demo_data: { value: $scope.widget.demo_data || '' },
-                        sys_scope: { value: scopeVal, displayValue: scopeDisp },
-                        data_table: { value: 'sp_widget', displayValue: 'Widget', choices: [] },
-                    };
+                    var fields = _buildSnUtilsWidgetFields($scope.widget);
 
                     var data = {
                         action: 'saveWidget',
@@ -5760,19 +5748,21 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 $scope.visibleItems = [];
 
+                function _createGlideAjax(scriptName, action, params) {
+                    var ga = new GlideAjax(scriptName);
+                    ga.addParam('sysparm_name', action);
+                    if (params) {
+                        Object.keys(params).forEach(function (key) {
+                            ga.addParam(key, params[key] != null ? String(params[key]) : '');
+                        });
+                    }
+                    return ga;
+                }
+
                 // AJAX helper — GlideAjax → WidgetEditorAjax Script Include
                 function ajax(action, params) {
                     var deferred = $q.defer();
-                    var ga = new GlideAjax(AJAX_SCRIPT);
-                    ga.addParam('sysparm_name', action);
-                    if (params) {
-                        Object.keys(params).forEach(function (k) {
-                            ga.addParam(
-                                k,
-                                params[k] != null ? String(params[k]) : ''
-                            );
-                        });
-                    }
+                    var ga = _createGlideAjax(AJAX_SCRIPT, action, params);
                     ga.getXML(function (response) {
                         if (!response || !response.responseXML || !response.responseXML.documentElement) {
                             deferred.resolve({
@@ -5817,13 +5807,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 // preferences export/import so a single JSON file round-trips both.
                 function _assistantAjax(action, params) {
                     var deferred = $q.defer();
-                    var ga = new GlideAjax('WidgetEditorAssistantAjax');
-                    ga.addParam('sysparm_name', action);
-                    if (params) {
-                        Object.keys(params).forEach(function (k) {
-                            ga.addParam(k, params[k] != null ? String(params[k]) : '');
-                        });
-                    }
+                    var ga = _createGlideAjax('WidgetEditorAssistantAjax', action, params);
                     ga.getXML(function (response) {
                         var answer = response && response.responseXML && response.responseXML.documentElement
                             ? response.responseXML.documentElement.getAttribute('answer')
@@ -6812,8 +6796,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         if (d.success) {
                             $scope.versions = d.versions;
                             // Auto-open the Versions dropdown once, on initial load only.
-                            if (window.WE_CONFIG && window.WE_CONFIG.openPanel === 'versions') {
-                                window.WE_CONFIG.openPanel = '';
+                            if (_weConfig.openPanel === 'versions') {
+                                _weConfig.openPanel = '';
                                 $scope.toggleDropdown('versions');
                             }
                         }
@@ -7449,8 +7433,8 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 // Returns the ServiceNow build name (e.g. "zurich") for docs URLs; WE_CONFIG.buildName comes from gs.getBuildName().
                 function _getSnVersion() {
-                    if (window.WE_CONFIG && window.WE_CONFIG.buildName) {
-                        return window.WE_CONFIG.buildName;
+                    if (_weConfig.buildName) {
+                        return _weConfig.buildName;
                     }
                     if (typeof getVersion === 'function') {
                         try {
