@@ -4052,6 +4052,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <button type="button" class="btn btn-default" ng-if="userPrefs.showRecentlyOpenedWidgets !== false &amp;&amp; userPrefs.recentWidgets.length" ng-click="toggleRecentWidgetsPane()" aria-pressed="{{!!userPrefs.showOpenHistory}}" we-tooltip-title="{{userPrefs.showOpenHistory ? 'Hide recently opened widgets' : 'Show recently opened widgets'}}" aria-label="History">
                             <i class="icon-history" aria-hidden="true"></i>
                         </button>
+                        <button type="button" class="btn btn-default" ng-click="openUserPrefsModal()" we-tooltip-title="User preferences" aria-label="User preferences">
+                            <i class="icon-cog" aria-hidden="true"></i>
+                        </button>
                         <button type="button" class="btn btn-primary we-picker-btn-new" ng-click="newWidget()">
                             <span>+ New Widget</span>
                         </button>
@@ -12160,6 +12163,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         $scope.cancelDeletePane();
                         return true;
                     }
+                    if ($scope.showUserPrefsModal) {
+                        $scope.cancelUserPrefsModal();
+                        return true;
+                    }
                     if ($scope.showWidgetPickerModal && !$scope.showPicker) {
                         $scope.closeWidgetPickerModal();
                         return true;
@@ -12198,10 +12205,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     }
                     if ($scope.showLinkDependencyModal) {
                         $scope.cancelLinkDependencyModal();
-                        return true;
-                    }
-                    if ($scope.showUserPrefsModal) {
-                        $scope.cancelUserPrefsModal();
                         return true;
                     }
 
