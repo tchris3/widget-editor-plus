@@ -184,12 +184,19 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                     if (!value) continue;
                     var searchPos = 0;
                     var occurrencesInField = 0;
+                    // Occurrences whose context window (matched line ± 2) overlaps the last shown
+                    // window render an identical snippet, so they're skipped rather than pushed as
+                    // a separate "match" — otherwise a field with several close-together occurrences
+                    // (e.g. the same variable used twice on one line) shows the same snippet 3-4 times.
+                    var lastShownEndLine = 0;
 
                     if (caseSensitive) {
                         while (occurrencesInField < this.MAX_SNIPPETS_PER_FIELD) {
                             var at = value.indexOf(term, searchPos);
                             if (at === -1) break;
+                            searchPos = at + term.length;
                             var snippetInfo = this._extractSnippetWithLines(value, at, term.length);
+                            if (snippetInfo.matchLine <= lastShownEndLine) continue;
                             var fLabel = fieldName;
                             try { fLabel = record.getElement(fieldName).getLabel() || fieldName; } catch (efl) {}
 
@@ -206,14 +213,16 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                                 snippet: snippetInfo.text
                             });
                             occurrencesInField++;
-                            searchPos = at + term.length;
+                            lastShownEndLine = snippetInfo.startLine + snippetInfo.lines.length - 1;
                         }
                     } else {
                         var valLower = value.toLowerCase();
                         while (occurrencesInField < this.MAX_SNIPPETS_PER_FIELD) {
                             var at = valLower.indexOf(termLower, searchPos);
                             if (at === -1) break;
+                            searchPos = at + term.length;
                             var snippetInfo = this._extractSnippetWithLines(value, at, term.length);
+                            if (snippetInfo.matchLine <= lastShownEndLine) continue;
                             var fLabel = fieldName;
                             try { fLabel = record.getElement(fieldName).getLabel() || fieldName; } catch (efl) {}
 
@@ -230,7 +239,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                                 snippet: snippetInfo.text
                             });
                             occurrencesInField++;
-                            searchPos = at + term.length;
+                            lastShownEndLine = snippetInfo.startLine + snippetInfo.lines.length - 1;
                         }
                     }
                 }
