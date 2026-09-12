@@ -1,0 +1,87 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const { chromium } = require('@playwright/test');
+
+const source = fs.readFileSync('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts', 'utf8');
+const css = source.match(/<style>([\s\S]*?)<\/style>/)[1];
+const scrollCode = source.slice(source.indexOf('            var tableScrollRequest = 0;'), source.indexOf('\n            };', source.indexOf('            vm.scrollToTable =')) + 15);
+
+test('table navigation scrolls only results across viewport and header sizes', async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+        for (const size of [{ width: 1280, height: 800 }, { width: 800, height: 500 }]) {
+            const page = await browser.newPage({ viewport: size });
+            await page.setContent(`<style>${css}</style>
+                <div class="cs-app"><header class="dc-header" style="height:123px"><input placeholder="Search" /></header>
+                <div class="cs-body"><aside class="cs-sidebar">Tables</aside><main class="cs-main">
+                <div class="cs-toolbar">Search summary</div><div class="cs-results" id="cs-results-container">
+                ${Array.from({ length: 6 }, (_, i) => `<section class="cs-table-group" id="table-group-t${i}"><div class="cs-table-group-sticky" id="table-group-head-t${i}"><div class="cs-table-group-head">Table ${i}</div><div class="cs-field-toggle-row">Fields</div></div><div style="height:600px">Results</div></section>`).join('')}
+                </div></main></div></div>`);
+            await page.evaluate(code => {
+                window.vm = { viewMode: 'group_table' };
+                const $timeout = (fn, delay) => setTimeout(fn, delay || 0);
+                // ServiceNow's Prototype library shadows the native method on elements.
+                window.legacyScrollCalls = 0;
+                document.querySelector('.cs-results').scrollTo = () => {
+                    window.legacyScrollCalls++;
+                    window.scrollTo(0, 100);
+                };
+                eval(code);
+            }, scrollCode);
+            const positions = () => page.evaluate(() => ({
+                header: document.querySelector('.dc-header').getBoundingClientRect().top,
+                toolbar: document.querySelector('.cs-toolbar').getBoundingClientRect().top,
+                ancestors: ['.cs-app', '.cs-body', '.cs-main'].map(s => document.querySelector(s).scrollTop),
+                legacyScrollCalls: window.legacyScrollCalls,
+                page: window.scrollY
+            }));
+            const before = await positions();
+            for (const table of ['t4', 't1', 't5', 't0']) {
+                await page.evaluate(table => vm.scrollToTable(table), table);
+                await page.waitForFunction(table => {
+                    const container = document.getElementById('cs-results-container');
+                    const rect = document.getElementById('table-group-head-' + table).getBoundingClientRect();
+                    const bounds = container.getBoundingClientRect();
+                    return rect.top >= bounds.top && rect.bottom <= bounds.bottom;
+                }, table);
+                // Allow the smooth scroll to finish before comparing positions.
+                await page.waitForTimeout(600);
+                assert.deepEqual(await positions(), before);
+            }
+            // A sticky heading must not prevent returning to the table's first record.
+            await page.locator('.cs-results').evaluate(el => { el.scrollTop = 350; });
+            await page.evaluate(() => vm.scrollToTable('t0'));
+            await page.waitForFunction(() => document.querySelector('.cs-results').scrollTop < 20);
+            await page.waitForTimeout(600);
+            const top = await page.locator('.cs-results').evaluate(el => el.scrollTop);
+            await page.evaluate(() => vm.scrollToTable('t0'));
+            await page.waitForTimeout(100);
+            assert.equal(await page.locator('.cs-results').evaluate(el => el.scrollTop), top);
+            // A delayed render for an earlier click must not override a later click.
+            await page.evaluate(() => {
+                vm.viewMode = 'date_desc';
+                vm.scrollToTable('missing');
+                vm.scrollToTable('t3');
+                setTimeout(() => {
+                    const el = document.createElement('a');
+                    el.id = 'table-group-missing';
+                    el.textContent = 'Late group';
+                    document.querySelector('.cs-results').prepend(el);
+                }, 60);
+            });
+            await page.waitForTimeout(1000);
+            assert.equal(await page.evaluate(() => vm.viewMode), 'group_table');
+            assert.ok(await page.locator('.cs-results').evaluate(el => el.scrollTop) > 1000);
+            assert.deepEqual(await positions(), before);
+            await page.locator('.cs-results').evaluate(el => { el.scrollTop = el.scrollHeight; });
+            await page.locator('.cs-results').hover();
+            await page.mouse.wheel(0, 1000);
+            await page.waitForTimeout(100);
+            assert.deepEqual(await positions(), before);
+            await page.close();
+        }
+    } finally {
+        await browser.close();
+    }
+});
