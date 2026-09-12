@@ -77,7 +77,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
         /* Header Bar - Native ServiceNow Horizon Styling matching Widget Editor+ Assistant */
         .dc-header {
-            background: rgb(var(--now-color_chrome--brand-5, var(--now-color--primary-0, 221, 237, 233)));
+            background: rgb(var(--now-color_surface--brand-5, var(--now-color--primary-0, 221, 237, 233)));
             border-bottom: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235)));
             flex-shrink: 0;
             z-index: 10;
@@ -389,6 +389,12 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
         .cs-table-result-item {
             padding: 0.5rem 0.65rem;
+        }
+
+        /* Tracks which table's results section is currently scrolled into view — reuses the
+           same subtle background as :hover rather than introducing another highlight colour. */
+        .cs-table-result-item.in-view {
+            background: rgb(var(--now-color_background--tertiary, 238, 240, 242));
         }
 
         .cs-check {
@@ -784,26 +790,32 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             margin-bottom: 1.5rem;
         }
 
+        /* Cancels .cs-results' own top padding so the first sticky table header sits flush
+           against the top of the results pane from the start, instead of leaving a gap that
+           only closes once scrolled past. */
+        .cs-group-table-view {
+            margin-top: -1rem;
+        }
+
+        /* Sticky table header: bleeds out to the full width of the results pane (cancelling
+           its horizontal padding) and stays pinned, with the field pills, while that table's
+           records scroll underneath. Opaque so scrolled-past cards never show through it. */
+        .cs-table-group-sticky {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            margin: 0 -1.25rem 0.75rem;
+            padding: 0.55rem 1.25rem 0.6rem;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            scroll-margin-top: 0.5rem;
+        }
+
         /* Level 1: Record table (no indent) */
         .cs-table-group-head {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.55rem 0.85rem;
-            margin-bottom: 0.5rem;
-            margin-left: 0;
-            background: rgb(var(--now-color_background--primary, 255, 255, 255));
-            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
-            border-radius: var(--now-form-field--border-radius, 4px);
-            scroll-margin-top: 0.5rem;
-            transition: background-color 0.3s ease, border-color 0.15s ease;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        .cs-table-group-head:hover {
-            border-color: rgba(var(--now-color--primary-2, 23, 103, 91), 0.4);
-            background: rgba(var(--now-color--primary-2, 23, 103, 91), 0.04);
         }
 
         .cs-field-toggle-row {
@@ -811,7 +823,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             flex-wrap: wrap;
             align-items: center;
             gap: 0.4rem;
-            margin: 0 0 0.65rem 0;
+            margin: 0.5rem 0 0;
         }
 
         .cs-field-toggle-label {
@@ -847,6 +859,15 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             text-decoration: line-through;
         }
 
+        .cs-field-toggle-pill:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .cs-field-toggle-pill:disabled:hover {
+            opacity: 0.5;
+        }
+
         .cs-table-group-title {
             display: flex;
             align-items: center;
@@ -872,6 +893,13 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             border-radius: 9999px;
             background: rgba(var(--now-color--primary-2, 23, 103, 91), 0.12);
             color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.12s ease;
+        }
+
+        .cs-table-group-badge:hover {
+            background: rgba(var(--now-color--primary-2, 23, 103, 91), 0.22);
         }
 
         /* Level 2: Record name (indented) */
@@ -1020,15 +1048,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             padding: 0.35rem 0.85rem;
             background: rgb(var(--now-color_background--secondary, 246, 246, 248));
             border-bottom: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.06);
-        }
-
-        @keyframes csPulse {
-            0% { background-color: rgba(var(--now-color--primary-2, 23, 103, 91), 0.25); }
-            100% { background-color: rgb(var(--now-color_background--primary, 255, 255, 255)); }
-        }
-
-        .cs-target-pulse {
-            animation: csPulse 1.2s ease-out;
         }
 
         .cs-field-pill {
@@ -1540,7 +1559,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             </span>
                         </div>
                         <div class="cs-table-list">
-                            <div class="cs-table-item cs-table-result-item" ng-repeat="table in ctrl.tablesWithResults track by table.sysId" ng-click="ctrl.scrollToTable(table.table)" title="{{table.searchFieldsDisplay || ctrl.getTableSearchFieldsDisplay(table)}}">
+                            <div class="cs-table-item cs-table-result-item" ng-class="{'in-view': ctrl.currentViewedTable === table.table}" ng-repeat="table in ctrl.tablesWithResults track by table.sysId" ng-click="ctrl.scrollToTable(table.table)" title="{{table.searchFieldsDisplay || ctrl.getTableSearchFieldsDisplay(table)}}">
                                 <div class="cs-table-info">
                                     <div class="cs-table-name">
                                         <span>{{table.label}}</span>
@@ -1643,27 +1662,31 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     </div>
 
                     <!-- View 1: Grouped by Record Type (Table) -->
-                    <div ng-if="ctrl.hasSearched &amp;&amp; !ctrl.loading &amp;&amp; ctrl.viewMode === 'group_table'">
+                    <div class="cs-group-table-view" ng-if="ctrl.hasSearched &amp;&amp; !ctrl.loading &amp;&amp; ctrl.viewMode === 'group_table'">
                         <section class="cs-table-group" id="table-group-{{group.table}}" data-table="{{group.table}}" ng-repeat="group in ctrl.groupedResults track by group.table" ng-if="group.records.length">
-                            <!-- Level 1: Record table (no indent) -->
-                            <a class="cs-table-group-head" id="table-group-head-{{group.table}}" ng-href="{{ctrl.getGroupListUrl(group)}}" target="_blank" title="Open {{group.tableLabel}} list view for these results">
-                                <div class="cs-table-group-title">
-                                    <span class="cs-table-group-label">{{group.tableLabel}}</span>
-                                    <span class="cs-table-group-name">{{group.table}}</span>
+                            <!-- Level 1: Record table (no indent). Sticky so the table name and its
+                                 field pills stay visible while that table's records scroll beneath. -->
+                            <div class="cs-table-group-sticky" id="table-group-head-{{group.table}}">
+                                <div class="cs-table-group-head">
+                                    <div class="cs-table-group-title">
+                                        <span class="cs-table-group-label">{{group.tableLabel}}</span>
+                                        <span class="cs-table-group-name">{{group.table}}</span>
+                                    </div>
+                                    <a class="cs-table-group-badge" ng-href="{{ctrl.getGroupListUrl(group)}}" target="_blank" title="Open {{group.tableLabel}} list view for these results">{{group.records.length}} {{group.records.length === 1 ? 'record' : 'records'}}</a>
                                 </div>
-                                <span class="cs-table-group-badge">{{group.records.length}} {{group.records.length === 1 ? 'record' : 'records'}}</span>
-                            </a>
 
-                            <div class="cs-field-toggle-row" ng-if="group.fields.length">
-                                <span class="cs-field-toggle-label">Fields:</span>
-                                <button type="button"
-                                        class="cs-field-toggle-pill"
-                                        ng-repeat="f in group.fields track by f.field"
-                                        ng-class="{'inactive': !ctrl.tableActiveFields[group.table][f.field]}"
-                                        ng-click="ctrl.toggleGroupField(group, f.field)"
-                                        title="{{ctrl.tableActiveFields[group.table][f.field] ? 'Exclude results where the keyword only appears in ' + f.label : 'Include results where the keyword appears in ' + f.label}}">
-                                    {{f.label}}
-                                </button>
+                                <div class="cs-field-toggle-row" ng-if="group.fields.length">
+                                    <span class="cs-field-toggle-label">Fields:</span>
+                                    <button type="button"
+                                            class="cs-field-toggle-pill"
+                                            ng-repeat="f in group.fields track by f.field"
+                                            ng-class="{'inactive': !ctrl.tableActiveFields[group.table][f.field]}"
+                                            ng-click="ctrl.toggleGroupField(group, f.field)"
+                                            ng-disabled="ctrl.isLastActiveField(group, f.field)"
+                                            title="{{ctrl.isLastActiveField(group, f.field) ? 'At least one field must stay included' : (ctrl.tableActiveFields[group.table][f.field] ? 'Exclude results where the keyword only appears in ' + f.label : 'Include results where the keyword appears in ' + f.label)}}">
+                                        {{f.label}}
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Level 2: Record name (indented) -->
@@ -1998,6 +2021,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             vm.currentTableFields = [];
             vm.caseSensitive = false;
             vm.activeOnly = true;
+            // Table whose results section is currently scrolled to the top of the results pane.
+            vm.currentViewedTable = null;
 
             var currentSearchGen = 0;
             vm.searchProgress = {
@@ -2127,6 +2152,46 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 vm.sortedResults = items;
             }
 
+            // Tracks which table's section has scrolled to the top of the results pane,
+            // so the sidebar's "tables with results" list can highlight it.
+            function _updateCurrentViewedTable() {
+                if (vm.viewMode !== 'group_table' || !vm.hasSearched) {
+                    vm.currentViewedTable = null;
+                    return;
+                }
+                var container = document.getElementById('cs-results-container');
+                var sections = container ? container.querySelectorAll('.cs-table-group') : [];
+                if (!sections.length) {
+                    vm.currentViewedTable = null;
+                    return;
+                }
+                var containerTop = container.getBoundingClientRect().top;
+                var current = sections[0].getAttribute('data-table');
+                for (var i = 0; i < sections.length; i++) {
+                    if (sections[i].getBoundingClientRect().top - containerTop > 4) break;
+                    current = sections[i].getAttribute('data-table');
+                }
+                vm.currentViewedTable = current;
+            }
+
+            function _bindResultsScrollSpy() {
+                var container = document.getElementById('cs-results-container');
+                if (!container) return;
+                var ticking = false;
+                container.addEventListener('scroll', function () {
+                    if (ticking) return;
+                    ticking = true;
+                    window.requestAnimationFrame(function () {
+                        ticking = false;
+                        if ($scope.$$phase) {
+                            _updateCurrentViewedTable();
+                        } else {
+                            $scope.$apply(_updateCurrentViewedTable);
+                        }
+                    });
+                }, { passive: true });
+            }
+
             vm.togglePane = function (pane) {
                 if (pane === 'group') {
                     vm.paneGroupOpen = !vm.paneGroupOpen;
@@ -2165,6 +2230,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
             $scope.$watch('ctrl.viewMode', function () {
                 _updateSortedResults();
+                $timeout(_updateCurrentViewedTable);
             });
 
             vm.clearInput = function () {
@@ -2425,7 +2491,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 function doScroll(attempts) {
                     if (request !== tableScrollRequest || vm.viewMode !== 'group_table') return;
                     var container = document.getElementById('cs-results-container');
-                    var el = document.getElementById('table-group-head-' + tableName);
+                    var el = document.getElementById('table-group-' + tableName);
                     // Angular may still be replacing the date-sorted view with table groups.
                     if (!container || !el || !container.contains(el) || !el.getClientRects().length || !container.clientHeight) {
                         if (attempts > 0) {
@@ -2434,18 +2500,24 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         return;
                     }
 
+                    vm.currentViewedTable = tableName;
                     var containerRect = container.getBoundingClientRect();
                     var elRect = el.getBoundingClientRect();
                     var visibleTop = containerRect.top + container.clientTop;
                     var visibleBottom = visibleTop + container.clientHeight;
-                    // Leave an already visible table heading in place. Otherwise align it
-                    // inside the results pane, without scrolling any ancestor or the page.
-                    if (elRect.top < visibleTop || elRect.bottom > visibleBottom) {
+                    var heading = el.querySelector('.cs-table-group-sticky') || el.querySelector('.cs-table-group-head');
+                    var headingHeight = heading ? heading.getBoundingClientRect().height : 0;
+                    // Measure the section's natural position: its sticky heading may be
+                    // visible even when the start of the table is above the results pane.
+                    if (elRect.top < visibleTop || elRect.top + headingHeight > visibleBottom) {
                         var offset = container.scrollTop + elRect.top - visibleTop - 10;
                         var top = Math.max(0, Math.min(offset, container.scrollHeight - container.clientHeight));
-                        if (typeof container.scrollTo === 'function') {
+                        // ServiceNow's Prototype extensions shadow element.scrollTo with
+                        // a page-scrolling helper. Call the browser method directly instead.
+                        var nativeScrollTo = window.Element && window.Element.prototype.scrollTo;
+                        if (typeof nativeScrollTo === 'function') {
                             try {
-                                container.scrollTo({ top: top, behavior: 'smooth' });
+                                nativeScrollTo.call(container, { top: top, behavior: 'smooth' });
                             } catch (e) {
                                 container.scrollTop = top;
                             }
@@ -2453,11 +2525,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             container.scrollTop = top;
                         }
                     }
-
-                    el.classList.add('cs-target-pulse');
-                    $timeout(function () {
-                        el.classList.remove('cs-target-pulse');
-                    }, 1200);
                 }
                 $timeout(function () { doScroll(8); });
             };
@@ -2702,6 +2769,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     _updateSortedResults();
                     vm.paneResultsOpen = true;
                     vm.paneGroupOpen = false;
+                    $timeout(_updateCurrentViewedTable);
                     if (allSkipped.length) {
                         notify(allSkipped.length + ' table configuration(s) skipped');
                     }
@@ -2733,9 +2801,20 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 return vm.groupedResults;
             };
 
+            // At least one field must stay included, so results are never entirely hidden.
+            vm.isLastActiveField = function (group, field) {
+                var active = vm.tableActiveFields[group.table];
+                if (!active || active[field] === false) return false;
+                var activeCount = (group.fields || []).filter(function (f) {
+                    return active[f.field] !== false;
+                }).length;
+                return activeCount <= 1;
+            };
+
             vm.toggleGroupField = function (group, field) {
                 var active = vm.tableActiveFields[group.table];
                 if (!active) return;
+                if (vm.isLastActiveField(group, field)) return;
                 active[field] = active[field] === false;
                 _applyFieldFilter(group);
                 _updateSortedResults();
@@ -3043,6 +3122,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             };
 
             // Initialize
+            _bindResultsScrollSpy();
             vm.loadGroups();
         }]);
 
