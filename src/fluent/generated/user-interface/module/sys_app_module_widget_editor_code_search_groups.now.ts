@@ -10,7 +10,7 @@ Record({
         mobile_title: 'Code Search Groups',
         mobile_view_name: 'Mobile',
         name: 'sn_codesearch_search_group',
-        order: 1479,
+        order: 1477,
         override_menu_roles: false,
         require_confirmation: true,
         sys_domain: 'global',

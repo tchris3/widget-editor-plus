@@ -162,6 +162,7 @@ declare global {
                     'widget-editor-admin-group-module': {
                         table: 'sys_app_module'
                         id: 'd0dadcb5e60a41f89819500a2c173522'
+                        deleted: true
                     }
                     'widget-editor-assistant-module': {
                         table: 'sys_app_module'
@@ -318,6 +319,10 @@ declare global {
                     'widget-editor-diff-module': {
                         table: 'sys_app_module'
                         id: 'bc7f98e35baa4911b82d59b8365a264a'
+                    }
+                    'widget-editor-group-end-module': {
+                        table: 'sys_app_module'
+                        id: 'd2a550f6aa7f404a8c8031f910e40563'
                     }
                     'widget-editor-group-module': {
                         table: 'sys_app_module'

@@ -9,7 +9,7 @@ Record({
         link_type: 'DIRECT',
         mobile_title: 'Code Actions',
         mobile_view_name: 'Mobile',
-        order: 1477,
+        order: 1476,
         override_menu_roles: false,
         query: 'sys_ui_script.do?sys_id=5121643a8398031070b8b5dfeeaad368',
         require_confirmation: true,
