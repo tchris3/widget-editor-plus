@@ -619,61 +619,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             opacity: 0.7;
         }
 
-        /* Hero Animated Icon for "Search for code" */
-        .cs-hero-icon-wrap {
-            position: relative;
-            width: 5.25rem;
-            height: 5.25rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1.25rem;
-            border-radius: 1.25rem;
-            background: radial-gradient(circle at 35% 35%, rgba(var(--now-color--primary-2, 23, 103, 91), 0.16) 0%, rgba(var(--now-color--primary-2, 23, 103, 91), 0.04) 70%, transparent 100%);
-            border: 1px solid rgba(var(--now-color--primary-2, 23, 103, 91), 0.22);
-            box-shadow: 0 8px 24px -4px rgba(var(--now-color--primary-2, 23, 103, 91), 0.14);
-        }
-
-        .cs-hero-icon {
-            width: 3.25rem;
-            height: 3.25rem;
-            color: rgb(var(--now-color--primary-2, 23, 103, 91));
-        }
-
-        .cs-anim-brackets {
-            animation: csBracketsPulse 3.5s ease-in-out infinite;
-            transform-origin: center center;
-        }
-
-        .cs-anim-glass {
-            animation: csGlassScan 3.5s ease-in-out infinite;
-            transform-origin: 27px 27px;
-        }
-
-        @keyframes csGlassScan {
-            0%, 100% {
-                transform: translate(0, 0) rotate(0deg);
-            }
-            25% {
-                transform: translate(1.5px, -1.5px) rotate(1.2deg);
-            }
-            50% {
-                transform: translate(-1.5px, 0.5px) rotate(-1deg);
-            }
-            75% {
-                transform: translate(0.5px, 1.2px) rotate(0.6deg);
-            }
-        }
-
-        @keyframes csBracketsPulse {
-            0%, 100% {
-                opacity: 0.65;
-            }
-            50% {
-                opacity: 0.95;
-            }
-        }
-
+        
         /* No Results Icon */
         .cs-no-results-wrap {
             position: relative;
@@ -1692,9 +1638,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     <div class="cs-pane-body" ng-show="ctrl.paneResultsOpen &amp;&amp; ctrl.hasSearched">
                         <div class="cs-results-pane-header">
                             <span class="cs-table-count-badge">
-                                <strong>{{ctrl.tablesWithResults.length}}</strong>
-                                <span>{{ctrl.tablesWithResults.length === 1 ? 'table' : 'tables'}}</span>
-                                <span class="cs-summary-sep">•</span>
                                 <strong>{{ctrl.sortedResults.length}}</strong>
                                 <span>{{ctrl.sortedResults.length === 1 ? 'record' : 'records'}}</span>
                             </span>
@@ -1781,22 +1724,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 <div class="cs-results" id="cs-results-container">
                     <!-- Initial Welcome State -->
                     <div class="cs-empty cs-welcome-state" ng-if="!ctrl.hasSearched &amp;&amp; !ctrl.loading">
-                        <div class="cs-hero-icon-wrap" aria-hidden="true">
-                            <svg class="cs-hero-icon" viewBox="0 0 56 56" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                <!-- Outer Code Brackets -->
-                                <g class="cs-anim-brackets">
-                                    <path d="M14 18L5 28L14 38" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                    <path d="M42 18L51 28L42 38" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                </g>
-                                <!-- Magnifying Glass Scanning Over Code -->
-                                <g class="cs-anim-glass">
-                                    <circle cx="27" cy="27" r="11" stroke-width="2.5"/>
-                                    <path d="M22 22A6 6 0 0 1 29 19.5" stroke-width="1.75" stroke-linecap="round" opacity="0.75"/>
-                                    <!-- Handle -->
-                                    <path d="M35 35L46 46" stroke-width="3.25" stroke-linecap="round"/>
-                                </g>
-                            </svg>
-                        </div>
                         <h2>Search for code</h2>
                         <p>Search across configured fields in your tables.</p>
                     </div>
@@ -2185,6 +2112,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             vm.currentViewedTable = null;
 
             var currentSearchGen = 0;
+            // GlideAjax has no built-in timeout, so a table whose CONTAINS query stalls (large table,
+            // unindexed field) hangs its worker forever instead of erroring, freezing the whole search.
+            var TABLE_SEARCH_TIMEOUT_MS = 25000;
             vm.searchProgress = {
                 completed: 0,
                 total: 0,
@@ -2558,6 +2488,31 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 return deferred.promise;
             }
 
+            function ajaxWithTimeout(action, params, timeoutMs) {
+                var deferred = $q.defer();
+                var settled = false;
+
+                var timeoutHandle = $timeout(function () {
+                    if (settled) return;
+                    settled = true;
+                    deferred.reject(new Error('Timed out'));
+                }, timeoutMs);
+
+                ajax(action, params).then(function (data) {
+                    if (settled) return;
+                    settled = true;
+                    $timeout.cancel(timeoutHandle);
+                    deferred.resolve(data);
+                }, function (err) {
+                    if (settled) return;
+                    settled = true;
+                    $timeout.cancel(timeoutHandle);
+                    deferred.reject(err);
+                });
+
+                return deferred.promise;
+            }
+
             function _selectGroup(groupId) {
                 var match = groupId && vm.groups.filter(function (g) { return g.sysId === groupId; })[0];
                 vm.selectedGroup = match || vm.groups[0];
@@ -2924,7 +2879,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
                     vm.searchProgress.currentTable = table.label || table.table;
 
-                    return ajax('search', {
+                    return ajaxWithTimeout('search', {
                         group_id: vm.selectedGroupId,
                         table_config_id: table.sysId,
                         query: vm.query,
@@ -2932,7 +2887,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         overrides: JSON.stringify(overrides),
                         case_sensitive: vm.caseSensitive ? 'true' : 'false',
                         active_only: vm.activeOnly ? 'true' : 'false'
-                    }).then(function (data) {
+                    }, TABLE_SEARCH_TIMEOUT_MS).then(function (data) {
                         if (currentSearchGen !== gen) return;
                         completedCount++;
                         vm.searchedTables = completedCount;
@@ -2959,12 +2914,16 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         if (nextIndex < total) {
                             return searchNext();
                         }
-                    }).catch(function () {
+                    }).catch(function (err) {
                         if (currentSearchGen !== gen) return;
                         completedCount++;
                         vm.searchedTables = completedCount;
                         vm.searchProgress.completed = completedCount;
                         vm.searchProgress.percent = Math.round((completedCount / total) * 100);
+                        var label = table.label || table.table;
+                        allSkipped.push(err && err.message === 'Timed out' ?
+                            label + ': search took too long and was skipped' :
+                            label + ': ' + ((err && err.message) || 'search failed'));
                         if (nextIndex < total) {
                             return searchNext();
                         }
