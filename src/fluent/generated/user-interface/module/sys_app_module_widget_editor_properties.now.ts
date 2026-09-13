@@ -6,11 +6,11 @@ Record({
     data: {
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
-        filter: 'category=120d01222f6e41e8bf4eaf0c4b73490a',
+        filter: 'sys_scope=d65bb60783e7321070b8b5dfeeaad3b2',
         link_type: 'LIST',
         mobile_title: 'System Properties',
         mobile_view_name: 'Mobile',
-        name: 'sys_properties_category_m2m',
+        name: 'sys_properties',
         order: 1478,
         override_menu_roles: false,
         require_confirmation: true,
