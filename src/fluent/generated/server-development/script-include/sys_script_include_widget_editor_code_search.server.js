@@ -34,7 +34,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
 
     getGroups: function () {
         var groups = [];
-        var gr = new GlideRecordSecure('sn_codesearch_search_group');
+        var gr = new GlideRecord('sn_codesearch_search_group');
         gr.orderBy('name');
         gr.query();
         while (gr.next()) {
@@ -73,7 +73,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         if (!this._isSysId(groupId)) return this._answer({ success: false, error: 'Invalid search group.' });
 
         var rows = [];
-        var cfg = new GlideRecordSecure('sn_codesearch_table');
+        var cfg = new GlideRecord('sn_codesearch_table');
         cfg.addQuery('search_group', groupId);
         cfg.orderBy('table');
         cfg.query();
@@ -122,7 +122,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         var overrides = {};
         try { overrides = JSON.parse(this._getParam('overrides') || '{}'); } catch (ignore) {}
         var results = [], searched = 0, skipped = [];
-        var cfg = new GlideRecordSecure('sn_codesearch_table');
+        var cfg = new GlideRecord('sn_codesearch_table');
         cfg.addQuery('search_group', groupId);
         if (tableConfigId) {
             if (this._isSysId(tableConfigId)) {
@@ -146,7 +146,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             if (!validation.valid) { skipped.push(table + ': ' + validation.error); continue; }
 
             var displayCfg = this._getTableDisplayConfig(table);
-            var record = new GlideRecordSecure(table);
+            var record = new GlideRecord(table);
             if (filter) record.addEncodedQuery(filter);
 
             // Active only filter
@@ -358,7 +358,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         } catch (e) {}
         if (!hierArr.length) hierArr = [table];
 
-        var dict = new GlideRecordSecure('sys_dictionary');
+        var dict = new GlideRecord('sys_dictionary');
         dict.addQuery('name', 'IN', hierArr.join(','));
         dict.addNotNullQuery('element');
         dict.addQuery('internal_type', '!=', 'collection');
@@ -366,7 +366,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
 
         var fields = [];
         var seen = {};
-        var probe = new GlideRecordSecure(table);
+        var probe = new GlideRecord(table);
         while (dict.next()) {
             var fName = String(dict.getValue('element') || '');
             if (!fName || seen[fName]) continue;
@@ -428,7 +428,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         var rawFields = String(this._getParam('search_fields') || '').split(',');
         var fields = [];
         var seen = {};
-        var probe = new GlideRecordSecure(table);
+        var probe = new GlideRecord(table);
         for (var i = 0; i < rawFields.length; i++) {
             var f = rawFields[i].trim();
             if (!f) continue;
@@ -452,7 +452,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
 
     _getConfig: function (sysId) {
         if (!this._isSysId(sysId)) return null;
-        var gr = new GlideRecordSecure('sn_codesearch_table');
+        var gr = new GlideRecord('sn_codesearch_table');
         return gr.get(sysId) ? gr : null;
     },
 
@@ -471,7 +471,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         if (!filter) return { valid: true };
         if (filter.length > 4000) return { valid: false, error: 'Filter exceeds 4,000 characters.' };
         try {
-            var gr = new GlideRecordSecure(table);
+            var gr = new GlideRecord(table);
             if (typeof gr.isValidEncodedQuery === 'function' && !gr.isValidEncodedQuery(filter)) {
                 return { valid: false, error: 'The encoded query contains an invalid field or operator.' };
             }
@@ -480,7 +480,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
     },
 
     _validFields: function (table, csv) {
-        var out = [], seen = {}, probe = new GlideRecordSecure(table);
+        var out = [], seen = {}, probe = new GlideRecord(table);
         String(csv || '').split(',').forEach(function (raw) {
             var field = raw.trim();
             if (field && !seen[field] && /^[a-zA-Z0-9_]+$/.test(field) && probe.isValidField(field)) {
@@ -492,11 +492,11 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
 
     _validTable: function (table) {
         if (!/^[a-zA-Z0-9_]+$/.test(table)) return false;
-        try { return new GlideRecordSecure(table).isValid(); } catch (e) { return false; }
+        try { return new GlideRecord(table).isValid(); } catch (e) { return false; }
     },
 
     _tableLabel: function (table) {
-        try { return new GlideRecordSecure(table).getLabel() || table; } catch (e) { return table; }
+        try { return new GlideRecord(table).getLabel() || table; } catch (e) { return table; }
     },
 
     getFieldContent: function () {
@@ -506,7 +506,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         if (!this._validTable(table) || !this._isSysId(sysId) || !field || !/^[a-zA-Z0-9_]+$/.test(field)) {
             return this._answer({ success: false, error: 'Invalid parameters.' });
         }
-        var gr = new GlideRecordSecure(table);
+        var gr = new GlideRecord(table);
         if (!gr.get(sysId)) {
             return this._answer({ success: false, error: 'Record not found or access denied.' });
         }
@@ -651,7 +651,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
      * @returns {{success: boolean, groupId: string|null}} Return value.
      */
     getLastSearchGroup: function () {
-        var gr = new GlideRecordSecure('sys_user_preference');
+        var gr = new GlideRecord('sys_user_preference');
         gr.addQuery('user', gs.getUserID());
         gr.addQuery('name', this.USER_PREF_NAME);
         gr.query();
@@ -672,7 +672,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
      */
     saveLastSearchGroup: function () {
         var groupId = this._getParam('group_id');
-        var gr = new GlideRecordSecure('sys_user_preference');
+        var gr = new GlideRecord('sys_user_preference');
         gr.addQuery('user', gs.getUserID());
         gr.addQuery('name', this.USER_PREF_NAME);
         gr.query();

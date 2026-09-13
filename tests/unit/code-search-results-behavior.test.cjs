@@ -19,6 +19,27 @@ const categorySource = fs.readFileSync(
     'src/fluent/generated/properties/system-property-category-m2m/sys_properties_category_m2m_widget_editor_plus.now.ts',
     'utf8'
 );
+const pageAclSource = fs.readFileSync(
+    'src/fluent/generated/security/access-control/sys_security_acl_widget_editor_code_search_ui_page.now.ts',
+    'utf8'
+);
+const ajaxAclSource = fs.readFileSync(
+    'src/fluent/generated/security/access-control/sys_security_acl_widget_editor_code_search_ajax.now.ts',
+    'utf8'
+);
+const moduleSource = fs.readFileSync(
+    'src/fluent/generated/user-interface/module/sys_app_module_widget_editor_code_search.now.ts',
+    'utf8'
+);
+
+test('code search uses GlideRecord and is restricted to administrators', () => {
+    assert.equal(serverSource.includes('GlideRecordSecure'), false);
+    assert.ok(serverSource.includes('new GlideRecord('));
+    assert.ok(pageAclSource.includes("roles: ['admin']"));
+    assert.ok(ajaxAclSource.includes("roles: ['admin']"));
+    assert.ok(moduleSource.includes('override_menu_roles: true'));
+    assert.ok(moduleSource.includes("roles: ['admin']"));
+});
 
 test('changing Group/Sort resets the results pane without smooth scrolling', () => {
     const start = pageSource.indexOf("            $scope.$watch('ctrl.viewMode'");
@@ -90,7 +111,7 @@ test('record header fields come only from each table display-fields property', (
     const context = {
         AbstractAjaxProcessor: {},
         Class: { create() { return function WidgetEditorCodeSearchAjax() {}; } },
-        GlideRecordSecure() {},
+        GlideRecord() {},
         JSON,
         encodeURIComponent,
         gs: {

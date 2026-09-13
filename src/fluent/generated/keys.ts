@@ -341,6 +341,19 @@ declare global {
                 composite: [
                     {
                         table: 'sys_security_acl_role'
+                        id: '102584b8d6114f778e961ab7da3444fb'
+                        key: {
+                            sys_security_acl: '3bd862d0819e4f9281df97d5d8ac9741'
+                            sys_user_role: {
+                                id: '28161fd90a14479a8fd00b5c294cde93'
+                                key: {
+                                    name: 'admin'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
                         id: '10b5cf0d83ebb21070b8b5dfeeaad3ea'
                         key: {
                             sys_security_acl: '90b5cf0d83ebb21070b8b5dfeeaad3bb'
@@ -355,6 +368,7 @@ declare global {
                     {
                         table: 'sys_security_acl_role'
                         id: '11e13651395c432c89ad6d0de4fae1f7'
+                        deleted: true
                         key: {
                             sys_security_acl: '3bd862d0819e4f9281df97d5d8ac9741'
                             sys_user_role: {
@@ -503,6 +517,7 @@ declare global {
                     {
                         table: 'sys_security_acl_role'
                         id: 'a6b621a010514fa0905b7a9c4c460f09'
+                        deleted: true
                         key: {
                             sys_security_acl: 'bd0822292b594c3f84bd890026315b62'
                             sys_user_role: {
@@ -520,6 +535,19 @@ declare global {
                             claim_owner_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             previous_claim_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             metadata_update_name: 'sys_security_acl_role_792d35658363b61070b8b5dfeeaad32e'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: 'b7983abfee7a44a1985b811269a9d8bb'
+                        key: {
+                            sys_security_acl: 'bd0822292b594c3f84bd890026315b62'
+                            sys_user_role: {
+                                id: '28161fd90a14479a8fd00b5c294cde93'
+                                key: {
+                                    name: 'admin'
+                                }
+                            }
                         }
                     },
                     {

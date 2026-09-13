@@ -16,7 +16,7 @@ function searchOneScript(script, query) {
     let configRead = false;
     let recordRead = false;
 
-    function GlideRecordSecure(table) {
+    function GlideRecord(table) {
         if (table === 'sn_codesearch_table') {
             return {
                 addQuery() {},
@@ -46,7 +46,7 @@ function searchOneScript(script, query) {
     const context = {
         AbstractAjaxProcessor: {},
         Class: { create() { return function WidgetEditorCodeSearchAjax() {}; } },
-        GlideRecordSecure,
+        GlideRecord,
         JSON,
         encodeURIComponent
     };

@@ -5,6 +5,6 @@ Acl({
     localOrExisting: 'Existing',
     type: 'client_callable_script_include',
     operation: 'execute',
-    roles: ['sp_admin'],
+    roles: ['admin'],
     name: 'WidgetEditorCodeSearchAjax',
 })
