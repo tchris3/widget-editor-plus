@@ -7,7 +7,7 @@ Record({
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
         filter: 'sys_scope=d65bb60783e7321070b8b5dfeeaad3b2',
-        hint: 'All monaco.plus.* system properties',
+        hint: 'Widget Editor+ system properties',
         link_type: 'LIST',
         mobile_title: 'System Properties',
         mobile_view_name: 'Mobile',

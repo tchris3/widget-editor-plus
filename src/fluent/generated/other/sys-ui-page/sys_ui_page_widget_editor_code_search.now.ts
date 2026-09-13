@@ -171,9 +171,140 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             height: 1.75rem;
         }
 
-        .cs-search-actions button.btn {
+        .cs-search-actions .btn {
             border: none;
+            background: transparent;
+            color: rgb(var(--now-color_text--secondary, 110, 115, 125));
             height: 100%;
+            padding: 0 0.35rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: none;
+            border-radius: var(--now-button--border-radius, 4px);
+            transition: color 0.15s ease;
+        }
+        .cs-search-actions .btn:hover {
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            background: transparent;
+        }
+
+        /* Header action buttons matching Compare+ styling */
+        .cs-header-search > .btn {
+            height: 2.25rem;
+            padding: 0 0.875rem;
+            font-size: var(--now-global-font-size--md, 14px);
+            font-weight: 600;
+            line-height: 1;
+            border-radius: var(--now-button--border-radius, 4px);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: none;
+        }
+        .cs-header-search > .btn:focus-visible {
+            outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142)));
+            outline-offset: 2px;
+        }
+        .cs-header-search > .btn:disabled,
+        .cs-header-search > .btn[disabled] {
+            opacity: 0.45;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        /* Primary button: Search submit & header bar primary buttons */
+        .dc-header .btn-primary,
+        .cs-header-search > .btn-primary {
+            background-color: rgb(var(--now-button--primary--background-color, var(--now-color--primary-1, 30, 133, 109))) !important;
+            border: 1px solid rgb(var(--now-button--primary--border-color, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color, var(--now-color--neutral-0, 255, 255, 255))) !important;
+        }
+        .dc-header .btn-primary:hover:not(:disabled),
+        .cs-header-search > .btn-primary:hover:not(:disabled) {
+            background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--hover, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--hover, var(--now-color--neutral-0, 255, 255, 255))) !important;
+        }
+        .dc-header .btn-primary:focus,
+        .dc-header .btn-primary:focus:hover,
+        .cs-header-search > .btn-primary:focus,
+        .cs-header-search > .btn-primary:focus:hover {
+            background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--hover, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--hover, var(--now-color--neutral-0, 255, 255, 255))) !important;
+            outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
+            outline-offset: 2px !important;
+        }
+        .dc-header .btn-primary:active:not(:disabled),
+        .dc-header .btn-primary.active,
+        .dc-header .btn-primary:active:hover,
+        .dc-header .btn-primary:active:focus,
+        .cs-header-search > .btn-primary:active:not(:disabled),
+        .cs-header-search > .btn-primary.active,
+        .cs-header-search > .btn-primary:active:hover,
+        .cs-header-search > .btn-primary:active:focus {
+            background-color: rgb(var(--now-button--primary--background-color--active, var(--now-color--primary-3, 15, 67, 55))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--active, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--active, var(--now-color--neutral-0, 255, 255, 255))) !important;
+        }
+        .dc-header .btn-primary:disabled,
+        .dc-header .btn-primary[disabled],
+        .cs-header-search > .btn-primary:disabled,
+        .cs-header-search > .btn-primary[disabled] {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
+        }
+        /* Secondary button: Filter toggle & any btn-default in header (header chrome styling) */
+        .dc-header .btn-default,
+        .cs-header-search > .btn-default {
+            background-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.12) !important;
+            border: 1px solid rgba(var(--now-color--neutral-0, 255, 255, 255), 0.22) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            border-radius: var(--now-button--border-radius, 4px) !important;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .dc-header .btn-default *,
+        .cs-header-search > .btn-default * {
+            color: inherit !important;
+            fill: currentColor !important;
+        }
+        .dc-header .btn-default:hover:not(:disabled),
+        .cs-header-search > .btn-default:hover:not(:disabled) {
+            background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
+            border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+        }
+        .dc-header .btn-default:focus,
+        .dc-header .btn-default:focus:hover,
+        .cs-header-search > .btn-default:focus,
+        .cs-header-search > .btn-default:focus:hover {
+            background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
+            border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
+            outline-offset: 2px !important;
+        }
+        .dc-header .btn-default:active:not(:disabled),
+        .dc-header .btn-default.active,
+        .dc-header .btn-default:active:hover,
+        .dc-header .btn-default:active:focus,
+        .cs-header-search > .btn-default:active:not(:disabled),
+        .cs-header-search > .btn-default.active,
+        .cs-header-search > .btn-default:active:hover,
+        .cs-header-search > .btn-default:active:focus {
+            background-color: rgba(var(--now-button--bare_secondary--background-color--active, var(--now-color--secondary-2, 1, 89, 107)), 0.45) !important;
+            border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            box-shadow: 0 0 0 1px rgba(var(--now-color--secondary-1, 1, 119, 142), 0.5), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+        }
+        .dc-header .btn-default:disabled,
+        .dc-header .btn-default[disabled],
+        .cs-header-search > .btn-default:disabled,
+        .cs-header-search > .btn-default[disabled] {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
         }
 
         .cs-header-toggles {
@@ -1497,7 +1628,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                autofocus="autofocus" />
                         <div class="cs-search-actions">
                             <button type="button"
-                                    class="btn btn-default"
+                                    class="btn cs-clear-btn"
                                     ng-if="ctrl.query"
                                     ng-click="ctrl.clearInput()"
                                     title="Clear search"
@@ -1507,10 +1638,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         </div>
                     </div>
 
-                    <button type="button" class="btn btn-default" ng-click="ctrl.showAdvanced()" title="Additional conditions" aria-expanded="{{!!ctrl.secondaryFilters.length}}" aria-controls="secondary-filters"><span class="icon-filter" aria-hidden="true"></span><span class="sr-only">Advanced conditions</span></button>
+                    <button type="button" class="btn btn-default" ng-class="{'active': ctrl.hasActiveConditions()}" ng-click="ctrl.toggleAdvanced()" title="Additional conditions" aria-expanded="{{ctrl.isFilterPanelVisible()}}" aria-controls="secondary-filters"><span class="icon-filter" aria-hidden="true"></span><span class="sr-only">Advanced conditions</span></button>
 
                     <button type="submit"
-                            class="btn btn-default"
+                            class="btn btn-primary"
                             ng-disabled="ctrl.loading || !ctrl.query.trim()"
                             title="Search"
                             aria-label="Search">
@@ -1534,7 +1665,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             </div>
         </header>
 
-        <form class="cs-advanced" id="secondary-filters" ng-if="ctrl.secondaryFilters.length" ng-submit="ctrl.onSearchSubmit()">
+        <form class="cs-advanced" id="secondary-filters" ng-if="ctrl.isFilterPanelVisible()" ng-submit="ctrl.onSearchSubmit()">
             <div class="cs-cond-row" ng-repeat="filter in ctrl.secondaryFilters track by $index">
                 <span class="cs-cond-joiner" ng-if="filter.joiner === 'or'">or</span>
                 <select class="form-control cs-cond-operator" ng-model="filter.operator" aria-label="Secondary filter operator">
@@ -1707,7 +1838,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     <!-- Initial Welcome State -->
                     <div class="cs-empty cs-welcome-state" ng-if="!ctrl.hasSearched &amp;&amp; !ctrl.loading">
                         <h2>Search for code</h2>
-                        <p>Search across configured fields in your tables.</p>
+                        <p>Search fields across configured tables.</p>
                     </div>
 
                     <!-- No Results State -->
@@ -2058,6 +2189,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             vm.filteredConfigTables = [];
             vm.query = '';
             vm.secondaryFilters = [];
+            vm.showAdvancedFilters = false;
             vm.loading = false;
             vm.hasSearched = false;
             vm.searchedTables = 0;
@@ -2328,11 +2460,33 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 vm.clearResults();
             };
 
-            vm.showAdvanced = function () {
+            vm.hasActiveConditions = function () {
+                return (vm.secondaryFilters || []).some(function (f) {
+                    return f && typeof f.term === 'string' && f.term.trim().length > 0;
+                });
+            };
+
+            vm.isFilterPanelVisible = function () {
+                return !!(vm.showAdvancedFilters && vm.secondaryFilters && vm.secondaryFilters.length);
+            };
+
+            vm.toggleAdvanced = function () {
                 if (!vm.secondaryFilters.length) {
                     vm.addSecondaryFilter(-1, 'and');
+                    vm.showAdvancedFilters = true;
+                } else if (vm.showAdvancedFilters) {
+                    if (!vm.hasActiveConditions()) {
+                        vm.secondaryFilters = [];
+                        vm.showAdvancedFilters = false;
+                    } else {
+                        vm.showAdvancedFilters = false;
+                    }
+                } else {
+                    vm.showAdvancedFilters = true;
                 }
             };
+
+            vm.showAdvanced = vm.toggleAdvanced;
 
             function _lastOrChainIndex(afterIndex) {
                 // Find the end of any contiguous run of OR-joined rows immediately
@@ -2353,10 +2507,14 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 } else {
                     vm.secondaryFilters.splice(_lastOrChainIndex(afterIndex) + 1, 0, row);
                 }
+                vm.showAdvancedFilters = true;
             };
 
             vm.removeSecondaryFilter = function (index) {
                 vm.secondaryFilters.splice(index, 1);
+                if (!vm.secondaryFilters.length) {
+                    vm.showAdvancedFilters = false;
+                }
             };
 
             vm.formatElapsed = function (ms) {
@@ -2469,7 +2627,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             }
             if (urlQuery) {
                 vm.query = urlQuery;
-                if (urlFilters) vm.secondaryFilters = urlFilters;
+            }
+            if (urlFilters && urlFilters.length) {
+                vm.secondaryFilters = urlFilters;
+                vm.showAdvancedFilters = true;
             }
 
             function notify(msg) {

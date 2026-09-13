@@ -6,7 +6,7 @@ Record({
     data: {
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
-        hint: 'Search text across widgets and related script fields',
+        hint: 'Search code across the platform',
         link_type: 'DIRECT',
         mobile_title: 'Code Search+',
         mobile_view_name: 'Mobile',

@@ -6,7 +6,7 @@ Record({
     data: {
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
-        hint: 'Side-by-side diff and revert for widget versions',
+        hint: 'Compare side-by-side versions of a record',
         link_type: 'DIRECT',
         mobile_title: 'Compare+',
         mobile_view_name: 'Mobile',
