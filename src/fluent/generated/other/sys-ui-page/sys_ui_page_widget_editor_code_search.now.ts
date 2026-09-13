@@ -2072,6 +2072,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             vm.currentViewedTable = null;
 
             var currentSearchGen = 0;
+            var cancellationNoticeSuppressionTimer = null;
             // GlideAjax has no built-in timeout, so a table whose CONTAINS query stalls (large table,
             // unindexed field) hangs its worker forever instead of erroring, freezing the whole search.
             var TABLE_SEARCH_TIMEOUT_MS = 25000;
@@ -2504,16 +2505,61 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 return deferred.promise;
             }
 
-            // GlideAjax has no client-side abort: once a request is dispatched the server keeps
-            // running it regardless of what the browser does next. cancel_my_transaction.do is the
-            // platform's own self-service kill switch (the same one behind the slow-transaction
-            // warning's Cancel link) — it's best-effort and can take a while to take effect, but
-            // it's the only way to actually stop a stalled table search server-side.
+            function _suppressCancellationNotifications() {
+                if (cancellationNoticeSuppressionTimer) {
+                    window.clearInterval(cancellationNoticeSuppressionTimer);
+                }
+                var expiresAt = Date.now() + 5000;
+
+                function removeCancellationNotices(targetWindow) {
+                    try {
+                        var doc = targetWindow.document;
+                        var outputMessages = doc.getElementById('output_messages');
+                        var outputText = outputMessages ? String(outputMessages.textContent || '').replace(/\s+/g, ' ').toLowerCase() : '';
+                        if (outputText.indexOf('transaction was canceled') !== -1 && targetWindow.GlideUI && typeof targetWindow.GlideUI.get === 'function') {
+                            targetWindow.GlideUI.get().clearOutputMessages();
+                        }
+
+                        var nodes = doc.querySelectorAll('.outputmsg, .notification, .sn-notification, now-alert, [role="alert"]');
+                        for (var i = nodes.length - 1; i >= 0; i--) {
+                            var text = String(nodes[i].textContent || '').replace(/\s+/g, ' ').toLowerCase();
+                            var isCancelledDownload = text.indexOf('information could not be downloaded from the server because the transaction was canceled') !== -1;
+                            var isUserCancellation = /reason:\s*cancel(?:ed|led) by user request/.test(text);
+                            if ((isCancelledDownload || isUserCancellation) && nodes[i].parentNode) {
+                                nodes[i].parentNode.removeChild(nodes[i]);
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                function sweep() {
+                    removeCancellationNotices(window);
+                    if (window.top !== window) removeCancellationNotices(window.top);
+                    if (Date.now() >= expiresAt) {
+                        window.clearInterval(cancellationNoticeSuppressionTimer);
+                        cancellationNoticeSuppressionTimer = null;
+                    }
+                }
+
+                sweep();
+                cancellationNoticeSuppressionTimer = window.setInterval(sweep, 200);
+            }
+
+            // GlideAjax has no supported client-side abort: once dispatched, its server transaction
+            // can outlive this page. Load ServiceNow's cancellation processor as an invisible page
+            // navigation; unlike a background XHR this invokes its transaction-kill flow, without
+            // moving the user away from Code Search or opening another tab.
             function _requestTransactionCancel() {
+                var cancelUrl = '/cancel_my_transaction.do?sysparm_cancel_source=widget_editor_code_search&_=' + Date.now();
                 try {
-                    var req = new XMLHttpRequest();
-                    req.open('GET', '/cancel_my_transaction.do', true);
-                    req.send();
+                    var oldFrame = document.getElementById('widget-editor-code-search-cancel-frame');
+                    if (oldFrame && oldFrame.parentNode) oldFrame.parentNode.removeChild(oldFrame);
+                    var frame = document.createElement('iframe');
+                    frame.id = 'widget-editor-code-search-cancel-frame';
+                    frame.title = 'Cancel server transactions';
+                    frame.hidden = true;
+                    frame.src = cancelUrl;
+                    document.body.appendChild(frame);
                 } catch (e) {}
             }
 
@@ -2873,6 +2919,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 vm.cancelSearch = function () {
                     if (currentSearchGen !== gen) return;
                     ++currentSearchGen;
+                    _suppressCancellationNotifications();
                     vm.loading = false;
                     vm.results = accumulatedResults;
                     vm.elapsed = Date.now() - started;
