@@ -631,20 +631,16 @@ UiPage({
             pointer-events: none;
         }
         /* Primary header button */
-        .dc-header .btn-primary,
         .dc-header-btns .btn-primary {
             background-color: rgb(var(--now-button--primary--background-color, var(--now-color--primary-1, 30, 133, 109))) !important;
             border: 1px solid rgb(var(--now-button--primary--border-color, var(--now-color--primary-3, 15, 67, 55))) !important;
             color: rgb(var(--now-button--primary--color, var(--now-color--neutral-0, 255, 255, 255))) !important;
         }
-        .dc-header .btn-primary:hover:not(:disabled),
         .dc-header-btns .btn-primary:hover:not(:disabled) {
             background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
             border-color: rgb(var(--now-button--primary--border-color--hover, var(--now-color--primary-3, 15, 67, 55))) !important;
             color: rgb(var(--now-button--primary--color--hover, var(--now-color--neutral-0, 255, 255, 255))) !important;
         }
-        .dc-header .btn-primary:focus,
-        .dc-header .btn-primary:focus:hover,
         .dc-header-btns .btn-primary:focus,
         .dc-header-btns .btn-primary:focus:hover {
             background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
@@ -653,10 +649,6 @@ UiPage({
             outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
             outline-offset: 2px !important;
         }
-        .dc-header .btn-primary:active:not(:disabled),
-        .dc-header .btn-primary.active,
-        .dc-header .btn-primary:active:hover,
-        .dc-header .btn-primary:active:focus,
         .dc-header-btns .btn-primary:active:not(:disabled),
         .dc-header-btns .btn-primary.active,
         .dc-header-btns .btn-primary:active:hover,
@@ -665,15 +657,12 @@ UiPage({
             border-color: rgb(var(--now-button--primary--border-color--active, var(--now-color--primary-3, 15, 67, 55))) !important;
             color: rgb(var(--now-button--primary--color--active, var(--now-color--neutral-0, 255, 255, 255))) !important;
         }
-        .dc-header .btn-primary:disabled,
-        .dc-header .btn-primary[disabled],
         .dc-header-btns .btn-primary:disabled,
         .dc-header-btns .btn-primary[disabled] {
             opacity: 0.45 !important;
             cursor: not-allowed !important;
         }
         /* Secondary header button (header chrome styling) */
-        .dc-header .btn-default,
         .dc-header-btns .btn-default {
             background-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.12) !important;
             border: 1px solid rgba(var(--now-color--neutral-0, 255, 255, 255), 0.22) !important;
@@ -681,19 +670,15 @@ UiPage({
             border-radius: var(--now-button--border-radius, 4px) !important;
             transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
         }
-        .dc-header .btn-default *,
         .dc-header-btns .btn-default * {
             color: inherit !important;
             fill: currentColor !important;
         }
-        .dc-header .btn-default:hover:not(:disabled),
         .dc-header-btns .btn-default:hover:not(:disabled) {
             background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
             border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
             color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
         }
-        .dc-header .btn-default:focus,
-        .dc-header .btn-default:focus:hover,
         .dc-header-btns .btn-default:focus,
         .dc-header-btns .btn-default:focus:hover {
             background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
@@ -702,10 +687,6 @@ UiPage({
             outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
             outline-offset: 2px !important;
         }
-        .dc-header .btn-default:active:not(:disabled),
-        .dc-header .btn-default.active,
-        .dc-header .btn-default:active:hover,
-        .dc-header .btn-default:active:focus,
         .dc-header-btns .btn-default:active:not(:disabled),
         .dc-header-btns .btn-default.active,
         .dc-header-btns .btn-default:active:hover,
@@ -715,8 +696,6 @@ UiPage({
             color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
             box-shadow: 0 0 0 1px rgba(var(--now-color--secondary-1, 1, 119, 142), 0.5), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
         }
-        .dc-header .btn-default:disabled,
-        .dc-header .btn-default[disabled],
         .dc-header-btns .btn-default:disabled,
         .dc-header-btns .btn-default[disabled] {
             opacity: 0.45 !important;
