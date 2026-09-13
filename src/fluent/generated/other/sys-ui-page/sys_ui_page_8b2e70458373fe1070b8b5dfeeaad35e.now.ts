@@ -3303,6 +3303,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <div class="we-dropdown-divider--group" ng-if="!isNewWidget"></div>
                             <div class="we-dropdown-item" ng-click="openUserPrefsModal()">User preferences</div>
                             <div class="we-dropdown-item" ng-click="openKeyboardShortcutsModal()">Keyboard shortcuts</div>
+                            <div class="we-dropdown-item" ng-click="openCodeSearch()">Search code <span class="we-ext-icon we-icon-secondary" aria-hidden="true"></span></div>
                             <div class="we-dropdown-item" ng-click="openApiDocs()">API documentation <span class="we-ext-icon we-icon-secondary" aria-hidden="true"></span></div>
                         </div>
                     </div>
@@ -13351,6 +13352,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     _closeModal(function () {
                         $scope.showKeyboardShortcutsModal = false;
                     });
+                };
+
+                $scope.openCodeSearch = function () {
+                    window.open(
+                        '/nav_to.do?uri=ui_page.do%3Fsys_id%3De7d81afae74144a89136e51d5cc38c09',
+                        '_blank',
+                        'noopener,noreferrer'
+                    );
+                    $scope.openDropdown = null;
                 };
 
                 $scope.openApiDocs = function () {
