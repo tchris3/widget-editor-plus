@@ -424,6 +424,25 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             text-overflow: ellipsis;
         }
 
+        .cs-table-name-label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cs-session-dot {
+            display: inline-block;
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            background: rgb(var(--now-color_alert--high-2, 221 145 34));
+            margin-left: 0.25rem;
+            flex-shrink: 0;
+            vertical-align: middle;
+            position: relative;
+            top: -0.0625rem;
+        }
+
         .cs-table-id {
             color: rgb(var(--now-color_text--secondary, 96, 100, 108));
             font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -1095,9 +1114,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             display: block;
             padding: 0 0.65rem 0 0.5rem;
             color: rgb(var(--now-color_text--secondary, 140, 145, 155));
-            font-size: 0.75rem;
             min-width: 2.75rem;
-            line-height: 1.55;
         }
 
         .cs-code-content {
@@ -1298,6 +1315,12 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             background: rgb(var(--now-color_background--secondary, 246, 246, 248));
         }
 
+        .cs-drawer-foot a.btn {
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
         /* Select2 multi-select styles in drawer */
         .cs-drawer .select2-container {
             width: 100% !important;
@@ -1487,7 +1510,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     </label>
                     <label class="cs-toggle-label" title="Only show records where active=true or u_active=true">
                         <input type="checkbox" ng-model="ctrl.activeOnly" ng-change="ctrl.onOptionChange()" />
-                        <span>Active only</span>
+                        <span>Active</span>
                     </label>
                 </div>
             </div>
@@ -1549,7 +1572,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                 <input class="cs-check" type="checkbox" ng-model="table.enabled" ng-click="$event.stopPropagation()" aria-label="Include {{table.label}} in search" />
                                 <div class="cs-table-info">
                                     <div class="cs-table-name">
-                                        <span>{{table.label}}</span>
+                                        <span class="cs-table-name-label">{{table.label}}</span>
+                                        <span class="cs-session-dot" ng-if="ctrl.hasCustomSessionConfig(table)" title="{{ctrl.getSessionConfigTooltip(table)}}"></span>
                                         <span class="cs-filter-badge" ng-if="table.additionalFilter" title="Custom encoded query filter applied">FILTER</span>
                                     </div>
                                     <div class="cs-table-id">{{table.table}}</div>
@@ -1583,7 +1607,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             <div class="cs-table-item cs-table-result-item" ng-class="{'in-view': ctrl.currentViewedTable === table.table}" ng-repeat="table in ctrl.tablesWithResults track by table.sysId" ng-click="ctrl.scrollToTable(table.table)" title="{{table.searchFieldsDisplay || ctrl.getTableSearchFieldsDisplay(table)}}">
                                 <div class="cs-table-info">
                                     <div class="cs-table-name">
-                                        <span>{{table.label}}</span>
+                                        <span class="cs-table-name-label">{{table.label}}</span>
+                                        <span class="cs-session-dot" ng-if="ctrl.hasCustomSessionConfig(table)" title="{{ctrl.getSessionConfigTooltip(table)}}"></span>
                                     </div>
                                     <div class="cs-table-id">{{table.table}}</div>
                                 </div>
@@ -1691,6 +1716,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                 <div class="cs-table-group-head">
                                     <div class="cs-table-group-title">
                                         <span class="cs-table-group-label">{{group.tableLabel}}</span>
+                                        <span class="cs-session-dot" ng-if="ctrl.hasCustomSessionConfigForTable(group.table)" title="{{ctrl.getSessionConfigTooltipForTable(group.table)}}"></span>
                                         <span class="cs-table-group-name">{{group.table}}</span>
                                     </div>
                                     <a class="cs-table-group-badge" ng-href="{{ctrl.getGroupListUrl(group)}}" target="_blank" title="Open {{group.tableLabel}} list (case insensitive)">{{group.records.length}} {{group.records.length === 1 ? 'record' : 'records'}}</a>
@@ -1841,7 +1867,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             <section class="cs-drawer" ng-click="$event.stopPropagation()">
                 <header class="cs-drawer-head">
                     <div>
-                        <h2>{{ctrl.editing.label}}</h2>
+                        <div style="display: flex; align-items: center; gap: 0.35rem;">
+                            <h2>{{ctrl.editing.label}}</h2>
+                            <span class="cs-session-dot" ng-if="ctrl.hasCustomSessionConfig(ctrl.editing)" title="{{ctrl.getSessionConfigTooltip(ctrl.editing)}}"></span>
+                        </div>
                         <div class="cs-table-id">{{ctrl.editing.table}}</div>
                     </div>
                     <button type="button" class="btn btn-icon" ng-click="ctrl.closeConfig()" aria-label="Close drawer">
@@ -1886,9 +1915,11 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 </div>
 
                 <footer class="cs-drawer-foot">
-                    <button type="button" class="btn btn-default" ng-click="ctrl.saveConfig()" ng-disabled="!ctrl.editing.canWrite || ctrl.saving" title="{{ctrl.editing.canWrite ? 'Update Code Search Table configuration' : 'Write access required to update configuration'}}">
-                        <svg ng-if="ctrl.saving" class="cs-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg>
-                        <span>{{ctrl.saving ? 'Updating…' : 'Update Code Search Table'}}</span>
+                    <a class="btn btn-default" style="margin-right: auto;" ng-href="{{ctrl.getTableRecordUrl(ctrl.editing)}}" target="_blank" title="Open Code Search Table record">
+                        <span>Open Config</span>
+                    </a>
+                    <button type="button" class="btn btn-default" ng-if="ctrl.hasCustomSessionConfig(ctrl.editing)" ng-click="ctrl.resetSessionConfig()" title="Reset to saved Code Search Table configuration">
+                        <span>Reset</span>
                     </button>
                     <button type="button" class="btn btn-primary" ng-click="ctrl.applyConfig()">Apply for session</button>
                 </footer>
@@ -2448,6 +2479,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     vm.tables = (data.tables || []).map(function (t) {
                         t.enabled = true;
                         t.searchFieldsDisplay = (t.searchFields || t.search_fields || '').split(',').map(function (f) { return f.trim(); }).filter(Boolean).join(', ');
+                        t.originalSearchFields = t.searchFields || '';
+                        t.originalAdditionalFilter = t.additionalFilter || '';
                         return t;
                     });
                     // Sort alphabetical by label
@@ -2605,7 +2638,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 }
                 vm.editing.searchFields = raw.join(',');
                 vm.editing.searchFieldsDisplay = raw.join(', ');
-                vm.editing.additionalFilter = vm.draft.additionalFilter;
+                vm.editing.additionalFilter = (vm.draft.additionalFilter || '').trim();
                 vm.closeConfig();
                 notify('Filter applied for this search session');
             };
@@ -2631,40 +2664,78 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 });
             };
 
-            vm.saveConfig = function () {
+            vm.resetSessionConfig = function () {
                 if (!vm.editing) return;
-                var raw = (vm.draft.searchFields || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-                if (!raw.length) {
-                    vm.validation = { error: 'At least one valid search field is required.' };
-                    return;
+                var origFields = vm.editing.originalSearchFields || '';
+                var origFilter = vm.editing.originalAdditionalFilter || '';
+                vm.draft.searchFields = origFields;
+                vm.draft.additionalFilter = origFilter;
+                vm.editing.searchFields = origFields;
+                vm.editing.searchFieldsDisplay = origFields.split(',').map(function (f) { return f.trim(); }).filter(Boolean).join(', ');
+                vm.editing.additionalFilter = origFilter;
+                vm.validation = {};
+                notify('Reset to Code Search Table configuration');
+            };
+
+            function _normalizeFields(fieldsStr) {
+                return (fieldsStr || '')
+                    .split(',')
+                    .map(function (s) { return s.trim(); })
+                    .filter(Boolean)
+                    .sort()
+                    .join(',');
+            }
+
+            function _normalizeFilter(filterStr) {
+                return (filterStr || '').trim();
+            }
+
+            vm.hasCustomSessionConfig = function (table) {
+                if (!table) return false;
+                var origFields = _normalizeFields(table.originalSearchFields);
+                var curFields = _normalizeFields(table.searchFields);
+                if (origFields !== curFields) return true;
+
+                var origFilter = _normalizeFilter(table.originalAdditionalFilter);
+                var curFilter = _normalizeFilter(table.additionalFilter);
+                if (origFilter !== curFilter) return true;
+
+                return false;
+            };
+
+            vm.getTableByTableName = function (tableName) {
+                if (!tableName || !vm.tables) return null;
+                for (var i = 0; i < vm.tables.length; i++) {
+                    if (vm.tables[i].table === tableName) return vm.tables[i];
                 }
-                var validFields = vm.fieldsCache[vm.editing.table] || vm.currentTableFields || [];
-                if (validFields.length > 0) {
-                    var validMap = {};
-                    validFields.forEach(function (f) { validMap[f.id] = true; });
-                    for (var i = 0; i < raw.length; i++) {
-                        if (!validMap[raw[i]]) {
-                            vm.validation = { error: 'Field "' + raw[i] + '" does not exist on table ' + vm.editing.table + '.' };
-                            return;
-                        }
-                    }
+                return null;
+            };
+
+            vm.hasCustomSessionConfigForTable = function (tableName) {
+                var t = vm.getTableByTableName(tableName);
+                return t ? vm.hasCustomSessionConfig(t) : false;
+            };
+
+            vm.getSessionConfigTooltip = function (table) {
+                if (!table || !vm.hasCustomSessionConfig(table)) return '';
+                var changes = [];
+                if (_normalizeFields(table.searchFields) !== _normalizeFields(table.originalSearchFields)) {
+                    changes.push('search fields modified');
                 }
-                vm.saving = true;
-                ajax('saveTableConfig', {
-                    config_id: vm.editing.sysId,
-                    search_fields: raw.join(','),
-                    filter: vm.draft.additionalFilter || ''
-                }).then(function (data) {
-                    vm.editing.searchFields = data.searchFields;
-                    vm.editing.searchFieldsDisplay = (data.searchFields || '').split(',').map(function (f) { return f.trim(); }).filter(Boolean).join(', ');
-                    vm.editing.additionalFilter = data.additionalFilter;
-                    vm.saving = false;
-                    vm.closeConfig();
-                    notify('Code Search Table updated');
-                }).catch(function (e) {
-                    vm.saving = false;
-                    vm.validation = { error: e.message };
-                });
+                if (_normalizeFilter(table.additionalFilter) !== _normalizeFilter(table.originalAdditionalFilter)) {
+                    changes.push('additional query modified');
+                }
+                return 'Custom session configuration: ' + changes.join(', ');
+            };
+
+            vm.getSessionConfigTooltipForTable = function (tableName) {
+                var t = vm.getTableByTableName(tableName);
+                return t ? vm.getSessionConfigTooltip(t) : '';
+            };
+
+            vm.getTableRecordUrl = function (table) {
+                if (!table || !table.sysId) return '#';
+                return '/nav_to.do?uri=' + encodeURIComponent('sn_codesearch_table.do?sys_id=' + table.sysId);
             };
 
             vm.onSearchSubmit = function () {
