@@ -113,3 +113,40 @@ test('inline Monaco find keeps the code-search query instead of seeding from the
     assert.equal(changes[0].searchString, 'incident');
     assert.equal(genericFindActionReads, 0, 'generic Find action would overwrite the query with the cursor word');
 });
+
+test('inline Monaco follows the ServiceNow UI theme instead of the Widget Editor+ preference', () => {
+    const resolverStart = source.indexOf('            function _getUiMonacoTheme');
+    const resolverEnd = source.indexOf('            function _highlightQueryInEditor', resolverStart);
+    const resolverSource = source.slice(resolverStart, resolverEnd);
+    const createStart = source.indexOf('window.monaco.editor.create(container');
+    const createSource = source.slice(createStart, source.indexOf('match._editor = editor;', createStart));
+
+    assert.ok(resolverStart > 0, 'Should define a Code Search UI-theme resolver');
+    assert.ok(
+        resolverSource.includes("getPropertyValue('--now-color_background--primary')"),
+        'Should derive the Monaco theme from the ServiceNow UI background token'
+    );
+    assert.ok(resolverSource.includes("? 'vs' : 'vs-dark'"), 'Should support both Monaco light and dark themes');
+    assert.ok(resolverSource.includes('MutationObserver'), 'Should react when the ServiceNow UI theme changes');
+    assert.ok(createSource.includes('theme: _getUiMonacoTheme()'), 'Should resolve the UI theme when creating an editor');
+    assert.equal(resolverSource.includes('userPrefs'), false, 'Should not read Widget Editor+ preferences');
+    assert.equal(createSource.includes("theme: 'vs-dark'"), false, 'Should not hard-code Monaco to dark mode');
+});
+
+test('opening an inline Monaco editor is disabled while search is running', () => {
+    const disabledBindings = source.match(/ng-disabled="ctrl\.loading &amp;&amp; !match\.expanded"/g) || [];
+    const toggleStart = source.indexOf('            vm.toggleMatchExpand = function');
+    const toggleEnd = source.indexOf('            vm.collapseMatch = function', toggleStart);
+    const toggleSource = source.slice(toggleStart, toggleEnd);
+
+    assert.equal(disabledBindings.length, 2, 'Both result layouts should disable their expand controls while searching');
+    assert.ok(
+        source.includes("ctrl.loading ? 'Available when search completes' : 'View entire field'"),
+        'Disabled controls should explain when the full-field view becomes available'
+    );
+    assert.ok(toggleSource.includes('if (vm.loading) return;'), 'The controller should also reject expansion while searching');
+    assert.ok(
+        toggleSource.indexOf('if (match.expanded)') < toggleSource.indexOf('if (vm.loading) return;'),
+        'An already-open editor should remain collapsible while searching'
+    );
+});

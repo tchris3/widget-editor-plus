@@ -905,6 +905,11 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             opacity: 0.5;
         }
 
+        .cs-match-meta .btn-icon:disabled {
+            cursor: not-allowed;
+            opacity: 0.45;
+        }
+
         .cs-table-group-title {
             display: flex;
             align-items: center;
@@ -1803,7 +1808,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                             <div>
                                                 <span class="cs-field-pill">{{match.fieldLabel || match.field}}</span>
                                             </div>
-                                            <button type="button" class="btn btn-icon" ng-if="!match.allLinesShown" ng-class="{'active': match.expanded}" ng-click="ctrl.toggleMatchExpand(result, match, $index)" title="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}" aria-label="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}">
+                                            <button type="button" class="btn btn-icon" ng-if="!match.allLinesShown" ng-class="{'active': match.expanded}" ng-disabled="ctrl.loading &amp;&amp; !match.expanded" ng-click="ctrl.toggleMatchExpand(result, match, $index)" title="{{match.expanded ? 'Collapse to snippet' : (ctrl.loading ? 'Available when search completes' : 'View entire field')}}" aria-label="{{match.expanded ? 'Collapse to snippet' : (ctrl.loading ? 'View entire field unavailable while searching' : 'View entire field')}}">
                                                 <span ng-class="match.expanded ? 'icon-pop-in' : 'icon-pop-out'" aria-hidden="true"></span>
                                             </button>
                                         </div>
@@ -1864,7 +1869,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                         <div>
                                             <span class="cs-field-pill">{{match.fieldLabel || match.field}}</span>
                                         </div>
-                                        <button type="button" class="btn btn-icon" ng-if="!match.allLinesShown" ng-class="{'active': match.expanded}" ng-click="ctrl.toggleMatchExpand(result, match, $index)" title="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}" aria-label="{{match.expanded ? 'Collapse to snippet' : 'View entire field'}}">
+                                        <button type="button" class="btn btn-icon" ng-if="!match.allLinesShown" ng-class="{'active': match.expanded}" ng-disabled="ctrl.loading &amp;&amp; !match.expanded" ng-click="ctrl.toggleMatchExpand(result, match, $index)" title="{{match.expanded ? 'Collapse to snippet' : (ctrl.loading ? 'Available when search completes' : 'View entire field')}}" aria-label="{{match.expanded ? 'Collapse to snippet' : (ctrl.loading ? 'View entire field unavailable while searching' : 'View entire field')}}">
                                             <span ng-class="match.expanded ? 'icon-pop-in' : 'icon-pop-out'" aria-hidden="true"></span>
                                         </button>
                                     </div>
@@ -3297,6 +3302,65 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 return 'javascript';
             }
 
+            // Code Search follows the ServiceNow UI theme, independently of the
+            // editorTheme preference used by Widget Editor+ itself.
+            function _getUiMonacoTheme() {
+                try {
+                    var bg = window.getComputedStyle(document.documentElement)
+                        .getPropertyValue('--now-color_background--primary')
+                        .trim();
+                    if (bg) {
+                        var parts = bg.split(/[\\s,]+/).map(Number);
+                        if (parts.length >= 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+                            return (parts[0] + parts[1] + parts[2]) / 3 >= 128 ? 'vs' : 'vs-dark';
+                        }
+                    }
+                } catch (e) {}
+
+                try {
+                    if (window.NOW && window.NOW.theme && window.NOW.theme.name) {
+                        return /dark/i.test(window.NOW.theme.name) ? 'vs-dark' : 'vs';
+                    }
+                } catch (eNow) {}
+
+                return 'vs';
+            }
+
+            var _currentUiMonacoTheme = '';
+            function _syncUiMonacoTheme() {
+                var theme = _getUiMonacoTheme();
+                if (theme === _currentUiMonacoTheme) return;
+                _currentUiMonacoTheme = theme;
+                if (window.monaco && window.monaco.editor) {
+                    window.monaco.editor.setTheme(theme);
+                }
+            }
+
+            function _watchUiMonacoTheme() {
+                _syncUiMonacoTheme();
+                if (!window.MutationObserver) return;
+
+                var queued = false;
+                var observer = new MutationObserver(function () {
+                    if (queued) return;
+                    queued = true;
+                    window.requestAnimationFrame(function () {
+                        queued = false;
+                        _syncUiMonacoTheme();
+                    });
+                });
+                observer.observe(document.documentElement, { attributes: true });
+                if (document.body) observer.observe(document.body, { attributes: true });
+                if (document.head) {
+                    observer.observe(document.head, {
+                        attributes: true,
+                        childList: true,
+                        characterData: true,
+                        subtree: true
+                    });
+                }
+            }
+
             function _highlightQueryInEditor(editor, query, targetLine) {
                 if (!editor || !query) return;
                 var q = String(query).trim();
@@ -3344,6 +3408,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 if (match.expanded) {
                     vm.collapseMatch(match);
                 } else {
+                    if (vm.loading) return;
                     vm.expandMatch(result, match, index);
                 }
             };
@@ -3383,7 +3448,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             var editor = window.monaco.editor.create(container, {
                                 value: data.content || '',
                                 language: lang,
-                                theme: 'vs-dark',
+                                theme: _getUiMonacoTheme(),
                                 readOnly: true,
                                 automaticLayout: true,
                                 lineNumbers: 'on',
@@ -3410,6 +3475,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             };
 
             // Initialize
+            _watchUiMonacoTheme();
             _bindResultsScrollSpy();
             vm.loadGroups();
         }]);
