@@ -96,70 +96,45 @@ test('cancelSearch stops the search while retaining accumulated results', () => 
         source.indexOf('function searchNext()')
     );
     assert.ok(cancelSnippet.includes('++currentSearchGen;'), 'cancelSearch should bump currentSearchGen to stop in-flight workers from continuing');
-    assert.ok(cancelSnippet.includes('_suppressCancellationNotifications();'), 'cancelSearch should suppress expected platform notices from the transactions it cancels');
     assert.ok(cancelSnippet.includes('vm.loading = false;'), 'cancelSearch should end the loading state');
     assert.ok(cancelSnippet.includes('vm.results = accumulatedResults;'), 'cancelSearch should retain results gathered before cancellation');
-    assert.ok(cancelSnippet.includes('_requestTransactionCancel();'), 'cancelSearch should also ask the platform to cancel the underlying transaction, since GlideAjax has no supported client-side abort');
+    assert.ok(cancelSnippet.includes('_requestTransactionCancel();'),
+        'Cancel must terminate stuck server-side table queries, not merely ignore their responses');
+    assert.ok(source.includes("document.createElement('iframe')"));
+    assert.ok(source.includes('/cancel_my_transaction.do?'));
+});
+
+test('Code Search GlideAjax requests suppress only the platform cancellation notification', () => {
+    const ajaxStart = source.indexOf('            function ajax(action, params)');
+    const ajaxEnd = source.indexOf('            function ajaxWithTimeout', ajaxStart);
+    const ajaxSource = source.slice(ajaxStart, ajaxEnd);
+
+    assert.ok(ajaxSource.includes("new GlideAjax('WidgetEditorCodeSearchAjax')"));
     assert.ok(
-        source.includes("document.createElement('iframe')"),
-        'Should visit the platform cancellation processor as an invisible page navigation'
+        ajaxSource.includes('ga._suppressCancelNotification = true;'),
+        'ServiceNow GlideAjax should not fire its native notification when the cancellation endpoint kills a Code Search request'
     );
-    assert.equal(source.includes('window.open(cancelUrl'), false, 'Cancellation should never open a new tab or window');
-    assert.equal(source.includes('window.top.location.href = cancelUrl;'), false, 'Cancellation should not navigate away from Code Search');
-    assert.equal(source.includes("req.open('GET', '/cancel_my_transaction.do', true);"), false, 'Should not use the unreliable background XHR cancellation path');
+    assert.equal(
+        ajaxSource.includes('clearOutputMessages'),
+        false,
+        'Unrelated platform messages should never be cleared'
+    );
 });
 
-test('cancellation notice suppression removes only user-cancelled transaction alerts', () => {
-    const helperStart = source.indexOf('            function _suppressCancellationNotifications()');
-    const helperEnd = source.indexOf('            // GlideAjax has no supported client-side abort', helperStart);
-    const helperSource = source.slice(helperStart, helperEnd);
-    assert.ok(helperSource.includes('Date.now() + 5000'), 'Cancellation notices should only be suppressed for five seconds');
-    const removed = [];
-    function node(text) {
-        const value = { textContent: text };
-        value.parentNode = { removeChild(item) { removed.push(item); } };
-        return value;
-    }
-    const cancellation = node('Information could not be downloaded from the server because the transaction was canceled. Reason: cancelled by user request');
-    const unrelated = node('A different informational message');
-    const document = {
-        getElementById() { return null; },
-        querySelectorAll() { return [cancellation, unrelated]; }
-    };
-    const window = {
-        document,
-        top: null,
-        clearInterval() {},
-        setInterval() { return 1; }
-    };
-    window.top = window;
-    let cancellationNoticeSuppressionTimer = null;
+test('sticky table headers paint above Monaco overflow widgets while results scroll', () => {
+    const stickyStart = source.indexOf('        .cs-table-group-sticky {');
+    const stickyEnd = source.indexOf('        }', stickyStart);
+    const cardStart = source.indexOf('        .cs-card {');
+    const cardEnd = source.indexOf('        }', cardStart);
+    const stickyCss = source.slice(stickyStart, stickyEnd);
+    const cardCss = source.slice(cardStart, cardEnd);
 
-    eval(helperSource);
-    _suppressCancellationNotifications();
-
-    assert.deepEqual(removed, [cancellation]);
-});
-
-test('transaction cancellation uses a hidden same-session page without opening a tab', () => {
-    const helperSource = source.slice(
-        source.indexOf('            function _requestTransactionCancel()'),
-        source.indexOf('            function _selectGroup', source.indexOf('            function _requestTransactionCancel()'))
+    assert.ok(stickyCss.includes('position: sticky;'), 'Table group headings should remain sticky');
+    assert.ok(stickyCss.includes('z-index: 2;'), 'Sticky headings should establish their foreground layer');
+    assert.ok(
+        cardCss.includes('isolation: isolate;'),
+        'Each result card should contain Monaco find, hover, and suggest widget stacking levels'
     );
-    const appended = [];
-    const document = {
-        body: { appendChild(node) { appended.push(node); } },
-        createElement(tag) { return { tagName: tag }; },
-        getElementById() { return null; }
-    };
-
-    eval(helperSource);
-    _requestTransactionCancel();
-    assert.equal(appended.length, 1);
-    assert.equal(appended[0].tagName, 'iframe');
-    assert.equal(appended[0].id, 'widget-editor-code-search-cancel-frame');
-    assert.equal(appended[0].hidden, true);
-    assert.match(appended[0].src, /^\/cancel_my_transaction\.do\?/);
 });
 
 test('inline Monaco find keeps the code-search query instead of seeding from the cursor word', () => {

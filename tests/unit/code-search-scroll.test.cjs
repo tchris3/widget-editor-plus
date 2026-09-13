@@ -108,6 +108,40 @@ test('table navigation scrolls only results across viewport and header sizes', a
     }
 });
 
+test('sticky table header paints over Monaco widgets from a scrolled result card', async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+        const page = await browser.newPage({ viewport: { width: 900, height: 600 } });
+        await page.setContent(`<style>${css}</style>
+            <div class="cs-results" style="width:800px;height:300px">
+                <section class="cs-table-group">
+                    <div class="cs-table-group-sticky" id="sticky-header" style="height:60px">Business Rule</div>
+                    <div class="cs-card" style="height:500px;position:relative">
+                        <div class="monaco-editor" style="height:500px;position:relative">
+                            <div id="monaco-find-widget" style="position:absolute;z-index:1000;top:80px;height:50px;width:300px">Find</div>
+                        </div>
+                    </div>
+                </section>
+            </div>`);
+        await page.locator('.cs-results').evaluate(el => { el.scrollTop = 140; });
+
+        const layers = await page.evaluate(() => {
+            const header = document.getElementById('sticky-header').getBoundingClientRect();
+            const widget = document.getElementById('monaco-find-widget').getBoundingClientRect();
+            const topmost = document.elementFromPoint(widget.left + 10, Math.max(header.top, widget.top) + 5);
+            return {
+                overlap: header.bottom > widget.top && widget.bottom > header.top,
+                topmostInsideHeader: document.getElementById('sticky-header').contains(topmost)
+            };
+        });
+
+        assert.equal(layers.overlap, true, 'The fixture should put Monaco\'s widget behind the sticky header');
+        assert.equal(layers.topmostInsideHeader, true, 'The sticky header should be the topmost painted layer');
+    } finally {
+        await browser.close();
+    }
+});
+
 test('advanced conditions get their own row and results keep the remaining height', async () => {
     const browser = await chromium.launch({ headless: true });
     const advancedForm = source.match(/<form class="cs-advanced"[\s\S]*?<\/form>/)[0];
