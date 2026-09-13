@@ -32,13 +32,13 @@ const moduleSource = fs.readFileSync(
     'utf8'
 );
 
-test('code search uses GlideRecord and is restricted to administrators', () => {
+test('code search uses GlideRecord and is restricted to sp_admin', () => {
     assert.equal(serverSource.includes('GlideRecordSecure'), false);
     assert.ok(serverSource.includes('new GlideRecord('));
-    assert.ok(pageAclSource.includes("roles: ['admin']"));
-    assert.ok(ajaxAclSource.includes("roles: ['admin']"));
+    assert.ok(pageAclSource.includes("roles: ['sp_admin']"));
+    assert.ok(ajaxAclSource.includes("roles: ['sp_admin']"));
     assert.ok(moduleSource.includes('override_menu_roles: true'));
-    assert.ok(moduleSource.includes("roles: ['admin']"));
+    assert.ok(moduleSource.includes("roles: ['sp_admin']"));
 });
 
 test('table search always caps the GlideRecord scan, even with secondary filters or case-sensitive matching', () => {

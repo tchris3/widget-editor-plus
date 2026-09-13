@@ -6,5 +6,5 @@ Acl({
     type: 'ui_page',
     operation: 'read',
     roles: ['sp_admin'],
-    name: 'Widget Editor Diff',
+    name: 'widget_editor_diff',
 })

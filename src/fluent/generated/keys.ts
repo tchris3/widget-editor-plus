@@ -510,6 +510,7 @@ declare global {
                     {
                         table: 'sys_security_acl_role'
                         id: '102584b8d6114f778e961ab7da3444fb'
+                        deleted: true
                         key: {
                             sys_security_acl: '3bd862d0819e4f9281df97d5d8ac9741'
                             sys_user_role: {
@@ -536,7 +537,7 @@ declare global {
                     {
                         table: 'sys_security_acl_role'
                         id: '11e13651395c432c89ad6d0de4fae1f7'
-                        deleted: true
+                        deleted: false
                         key: {
                             sys_security_acl: '3bd862d0819e4f9281df97d5d8ac9741'
                             sys_user_role: {
@@ -685,7 +686,7 @@ declare global {
                     {
                         table: 'sys_security_acl_role'
                         id: 'a6b621a010514fa0905b7a9c4c460f09'
-                        deleted: true
+                        deleted: false
                         key: {
                             sys_security_acl: 'bd0822292b594c3f84bd890026315b62'
                             sys_user_role: {
@@ -708,6 +709,7 @@ declare global {
                     {
                         table: 'sys_security_acl_role'
                         id: 'b7983abfee7a44a1985b811269a9d8bb'
+                        deleted: true
                         key: {
                             sys_security_acl: 'bd0822292b594c3f84bd890026315b62'
                             sys_user_role: {

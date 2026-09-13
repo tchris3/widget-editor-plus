@@ -5,6 +5,6 @@ Acl({
     localOrExisting: 'Existing',
     type: 'ui_page',
     operation: 'read',
-    roles: ['admin'],
+    roles: ['sp_admin'],
     name: 'widget_editor_code_search',
 })
