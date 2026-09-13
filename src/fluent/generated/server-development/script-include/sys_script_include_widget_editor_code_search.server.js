@@ -223,7 +223,8 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                                         fieldMatch.lines.push({
                                             num: gapLine,
                                             text: snippetInfo.allLines[gapLine - 1],
-                                            isMatch: false
+                                            isMatch: false,
+                                            inBlockComment: snippetInfo.blockCommentStates[gapLine - 1]
                                         });
                                     }
                                 } else {
@@ -526,51 +527,18 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
     },
 
     _getTableDisplayConfig: function (table) {
-        var raw = gs.getProperty('monaco.plus.code_search.table_config.' + table, '');
-        if (!raw) {
-            raw = gs.getProperty('monaco.plus.assistant.table_config.' + table, '');
-        }
-        var parsed = null;
-        if (raw) {
-            try { parsed = JSON.parse(raw); } catch (e) {}
-        }
-        if (!parsed) {
-            var globalMapRaw = gs.getProperty('monaco.plus.code_search.table_display_fields', '');
-            if (globalMapRaw) {
-                try {
-                    var globalMap = JSON.parse(globalMapRaw);
-                    parsed = globalMap[table];
-                } catch (e2) {}
-            }
-        }
-
-        var primaryField = '';
-        var secondaryFields = [];
-
-        if (parsed) {
-            if (typeof parsed.primaryField === 'string') primaryField = parsed.primaryField;
-            else if (typeof parsed.primary === 'string') primaryField = parsed.primary;
-
-            if (Array.isArray(parsed.secondaryFields)) secondaryFields = parsed.secondaryFields;
-            else if (Array.isArray(parsed.secondary)) secondaryFields = parsed.secondary;
-            else if (Array.isArray(parsed.pickerFields)) {
-                var pf = parsed.pickerFields;
-                if (!primaryField && pf.length > 0) {
-                    primaryField = pf[0];
-                    secondaryFields = pf.slice(1);
-                } else {
-                    secondaryFields = pf.filter(function (f) { return f !== primaryField; });
-                }
-            }
-        }
-
-        // Built-in fallback for sys_security_acl if no property is present
-        if (table === 'sys_security_acl' && !secondaryFields.length) {
-            secondaryFields = ['type', 'operation'];
-        }
+        var raw = gs.getProperty('monaco.plus.code_search.display_fields.' + table, '');
+        var seen = {};
+        var secondaryFields = String(raw || '').split(',').map(function (field) {
+            return field.trim();
+        }).filter(function (field) {
+            if (!field || seen[field]) return false;
+            seen[field] = true;
+            return true;
+        });
 
         return {
-            primaryField: primaryField,
+            primaryField: '',
             secondaryFields: secondaryFields
         };
     },
@@ -578,6 +546,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
     _extractSnippetWithLines: function (value, at, termLen) {
         var norm = value.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
         var allLines = norm.split('\n');
+        var blockCommentStates = this._getBlockCommentStates(allLines);
         var charCount = 0;
         var matchLineIdx = 0;
         for (var l = 0; l < allLines.length; l++) {
@@ -598,7 +567,8 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             resultLines.push({
                 num: i + 1,
                 text: allLines[i],
-                isMatch: (i === matchLineIdx)
+                isMatch: (i === matchLineIdx),
+                inBlockComment: blockCommentStates[i]
             });
         }
 
@@ -611,9 +581,57 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             singleLine: totalLines <= 1,
             allLinesShown: allLinesShown,
             allLines: allLines,
+            blockCommentStates: blockCommentStates,
             lines: resultLines,
             text: resultLines.map(function (r) { return r.text; }).join('\n')
         };
+    },
+
+    /* Track whether each source line begins inside a block comment. The snippet UI only
+       receives selected lines, so it cannot infer this when the opening delimiter was
+       outside the excerpt. Strings are skipped to avoid treating comment-like text as code. */
+    _getBlockCommentStates: function (lines) {
+        var states = [];
+        var inBlockComment = false;
+        var quote = '';
+        var escaped = false;
+
+        for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            var line = String(lines[lineIndex] || '');
+            states.push(inBlockComment);
+            escaped = false;
+
+            for (var i = 0; i < line.length; i++) {
+                var ch = line.charAt(i);
+                var next = line.charAt(i + 1);
+
+                if (inBlockComment) {
+                    if (ch === '*' && next === '/') {
+                        inBlockComment = false;
+                        i++;
+                    }
+                    continue;
+                }
+                if (quote) {
+                    if (escaped) escaped = false;
+                    else if (ch === '\\') escaped = true;
+                    else if (ch === quote) quote = '';
+                    continue;
+                }
+                if (ch === '/' && next === '/') break;
+                if (ch === '/' && next === '*') {
+                    inBlockComment = true;
+                    i++;
+                } else if (ch === "'" || ch === '"' || ch === '`') {
+                    quote = ch;
+                }
+            }
+
+            /* JavaScript single- and double-quoted strings do not continue onto the next
+               physical line. Template literals do, so retain only the backtick state. */
+            if (quote !== '`') quote = '';
+        }
+        return states;
     },
 
     _snippet: function (value, index, length) {

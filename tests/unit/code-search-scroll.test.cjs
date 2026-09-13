@@ -47,8 +47,30 @@ test('table navigation scrolls only results across viewport and header sizes', a
                 }, table);
                 // Allow the smooth scroll to finish before comparing positions.
                 await page.waitForTimeout(600);
+                const headerGap = await page.evaluate(table => {
+                    const container = document.getElementById('cs-results-container');
+                    const header = document.getElementById('table-group-head-' + table);
+                    return header.getBoundingClientRect().top -
+                        (container.getBoundingClientRect().top + container.clientTop);
+                }, table);
+                assert.ok(Math.abs(headerGap) <= 1, `table ${table} header should be flush, got ${headerGap}px`);
                 assert.deepEqual(await positions(), before);
             }
+            // Field toggles force the current table back to its start, even while its sticky
+            // header is already visible part-way through that table.
+            await page.evaluate(() => {
+                const container = document.getElementById('cs-results-container');
+                const table = document.getElementById('table-group-t2');
+                container.scrollTop = table.offsetTop + 250;
+                vm.scrollToTable('t2', { forceTop: true, smooth: true });
+            });
+            await page.waitForFunction(() => {
+                const container = document.getElementById('cs-results-container');
+                const table = document.getElementById('table-group-t2');
+                const visibleTop = container.getBoundingClientRect().top + container.clientTop;
+                return Math.abs(table.getBoundingClientRect().top - visibleTop) <= 1;
+            });
+            assert.deepEqual(await positions(), before);
             // A sticky heading must not prevent returning to the table's first record.
             await page.locator('.cs-results').evaluate(el => { el.scrollTop = 350; });
             await page.evaluate(() => vm.scrollToTable('t0'));

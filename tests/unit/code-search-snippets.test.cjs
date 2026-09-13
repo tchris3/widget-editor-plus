@@ -114,3 +114,52 @@ test('snippet separator is a shared row spanning gutter and code', () => {
     assert.equal(pageSource.includes('.cs-code-line.cs-sep::after'), false);
     assert.equal((pageSource.match(/class="cs-code-row" ng-class="\{'cs-sep': line\.separator\}"/g) || []).length, 2);
 });
+
+test('line-number gutter spans the snippet padding without removing that spacing', () => {
+    assert.ok(pageSource.includes('padding: 0.45rem 0;'));
+    assert.ok(pageSource.includes('.cs-code-editor-box.cs-has-gutter::before'));
+    assert.ok(pageSource.includes('inset: 0 auto 0 0;'));
+    assert.equal((pageSource.match(/class="cs-code-editor-box" ng-class="\{'cs-has-gutter':/g) || []).length, 2);
+
+    const gutterRule = pageSource.slice(
+        pageSource.indexOf('        .cs-gutter-num {'),
+        pageSource.indexOf('        .cs-code-line {')
+    );
+    assert.equal(gutterRule.includes('background:'), false);
+    assert.equal(gutterRule.includes('border-right:'), false);
+});
+
+test('snippet lines retain block-comment context from outside the visible excerpt', () => {
+    const match = searchOneScript([
+        '/* documentation',
+        ' * first detail',
+        ' * second detail',
+        ' * incident handling detail',
+        ' */',
+        'var active = true;'
+    ].join('\n'), 'incident');
+
+    assert.equal(match.lines.find(line => line.num === 2).inBlockComment, true);
+    assert.equal(match.lines.find(line => line.num === 4).inBlockComment, true);
+    assert.equal(match.lines.find(line => line.num === 5).inBlockComment, true);
+    assert.equal(match.lines.find(line => line.num === 6).inBlockComment, false);
+});
+
+test('comment-like delimiters inside strings do not alter following line context', () => {
+    const match = searchOneScript([
+        'var example = "/* not a comment";',
+        'var path = "// also not a comment";',
+        'var incident = true;'
+    ].join('\n'), 'incident');
+
+    assert.equal(match.lines.every(line => line.inBlockComment === false), true);
+});
+
+test('code snippet renderer applies syntax classes while preserving search highlights', () => {
+    assert.ok(pageSource.includes('.cs-token-comment'));
+    assert.ok(pageSource.includes('.cs-token-string'));
+    assert.ok(pageSource.includes('.cs-token-keyword'));
+    assert.ok(pageSource.includes('vm.highlightCode = function'));
+    assert.equal((pageSource.match(/ctrl\.highlightCode\(/g) || []).length, 4);
+    assert.ok(pageSource.includes('<mark class="cs-highlight">'));
+});

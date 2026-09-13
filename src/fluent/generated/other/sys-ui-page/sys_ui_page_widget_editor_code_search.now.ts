@@ -7,6 +7,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
     description: 'Advanced cross-table code search for Widget Editor+, with per-table runtime and saved encoded-query filters.',
     html: `<?xml version="1.0" encoding="utf-8" ?>
 <j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+    <j:set var="jvar_hide_response_time" value="true"/>
 
     <!-- Ensure the ServiceNow header frame is present; redirect if accessed directly -->
     <script>
@@ -24,6 +25,12 @@ export const widgetEditorCodeSearchUiPage = UiPage({
     <link rel="stylesheet" href="/styles/retina_icons/retina_icons.css" />
 
     <style>
+        /* The Jelly flag is not honoured consistently when this page is hosted in the
+           classic target frame, so hide its response-time widget explicitly. */
+        #page_timing_div {
+            display: none !important;
+        }
+
         /* Base Reset */
         *, *::before, *::after {
             box-sizing: border-box;
@@ -485,6 +492,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             flex-direction: column;
             overflow: hidden;
             background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+            position: relative;
         }
 
         .cs-advanced { grid-row: 2; padding: .6rem 1rem; border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235)); flex-shrink: 0; max-height: 35vh; overflow: auto; }
@@ -522,14 +530,16 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         }
 
         .cs-toolbar {
+            grid-row: 3;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 1rem;
-            padding: 0.6rem 1.25rem;
-            border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            gap: 0.75rem;
+            padding: 0.65rem 1.25rem;
             background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235)));
             flex-shrink: 0;
+            min-height: 3.125rem;
         }
 
         .cs-toolbar-summary {
@@ -537,38 +547,44 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             color: rgb(var(--now-color_text--secondary, 96, 100, 108));
             display: flex;
             align-items: center;
-            white-space: nowrap;
+            gap: 0.35rem;
         }
 
         .cs-toolbar-summary strong {
             color: rgb(var(--now-color_text--primary, 29, 29, 29));
-            margin: 0 0.25rem;
-        }
-
-        .cs-summary-sep {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 0.325rem;
-            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
-            opacity: 0.65;
-            font-size: 0.95rem;
-            line-height: 1;
-            user-select: none;
+            font-weight: 700;
         }
 
         .cs-toolbar-actions {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
         }
 
-        .cs-toolbar-label {
-            font-size: 0.78rem;
-            font-weight: 600;
+        .cs-summary-sep {
             color: rgb(var(--now-color_text--secondary, 96, 100, 108));
-            white-space: nowrap;
-            margin: 0;
+            opacity: 0.5;
+            padding: 0 0.15rem;
+        }
+
+        .cs-field-pill {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.15rem 0.5rem;
+            border-radius: var(--now-form-field--border-radius, 4px);
+            background: rgba(var(--now-color--primary-2, 23, 103, 91), 0.12);
+            color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            letter-spacing: 0.02em;
+        }
+
+        .cs-results-container-wrap {
+            display: contents;
+        }
+
+        .cs-field-pill.inactive {
+            background: rgb(var(--now-color_background--secondary, 246, 246, 248));
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
         }
 
         .cs-results {
@@ -717,93 +733,147 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             line-height: 1.5;
         }
 
-        /* Search Progress Bar */
-        .cs-progress-state {
-            padding: 3rem 1.5rem;
-            min-height: 18rem;
+        /* Searching Initial Empty State */
+        .cs-searching-empty {
+            padding: 4rem 1.5rem;
+            text-align: center;
         }
 
-        .cs-progress-card {
-            width: 100%;
-            max-width: 32rem;
-            background: rgb(var(--now-color_background--primary, 255 255 255));
-            border: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228 230 235)));
-            border-radius: var(--now-form-field--border-radius, 6px);
-            padding: 1.5rem 1.75rem;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-            text-align: left;
+        .cs-searching-empty-msg {
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            font-size: 0.9rem;
+            font-style: italic;
         }
 
-        .cs-progress-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
-            margin-bottom: 0.85rem;
-        }
-
-        .cs-progress-title {
+        /* Toolbar searching state */
+        .cs-toolbar-searching-left {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            font-size: var(--now-global-font-size--md, 14px);
-            font-weight: 600;
-            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            min-width: 0;
+            overflow: hidden;
         }
 
-        .cs-progress-icon {
-            font-size: 1rem;
+        .cs-toolbar-glass-wrap {
+            width: 1.75rem;
+            height: 1.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .cs-toolbar-glass-svg {
+            width: 1.15rem;
+            height: 1.15rem;
             color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            animation: csSearchGlassScan 2.4s ease-in-out infinite;
+            transform-origin: 10px 10px;
         }
 
-        .cs-progress-count {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+        @keyframes csSearchGlassScan {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+            25% {
+                transform: translate(2px, -2px) rotate(8deg);
+            }
+            50% {
+                transform: translate(-1.5px, -1.5px) rotate(-8deg);
+            }
+            75% {
+                transform: translate(-1px, 1.5px) rotate(-4deg);
+            }
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+        }
+
+        .cs-glass-glow {
+            animation: csGlassGlowPulse 1.8s ease-in-out infinite;
+            transform-origin: 10px 10px;
+        }
+
+        @keyframes csGlassGlowPulse {
+            0%, 100% {
+                opacity: 0.35;
+                transform: scale(0.92);
+            }
+            50% {
+                opacity: 0.9;
+                transform: scale(1.06);
+            }
+        }
+
+        .cs-toolbar-searching-text {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.84rem;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .cs-progress-bar-container {
-            height: 0.75rem;
-            margin-bottom: 0.75rem;
-            background-color: rgb(var(--now-color_background--secondary, 235, 238, 242));
-            border-radius: 9999px;
-            overflow: hidden;
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        .cs-toolbar-searching-title {
+            font-weight: 700;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
         }
 
-        .cs-progress-bar-fill {
+        .cs-toolbar-curr-table {
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cs-toolbar-curr-table code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8em;
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            background: rgba(var(--now-color--neutral-0, 0, 0, 0), 0.06);
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+        }
+
+        .cs-toolbar-searching-right {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            flex-shrink: 0;
+        }
+
+        .cs-toolbar-progress-count {
+            font-size: 0.78rem;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .cs-toolbar-progress-bar {
+            width: 9rem;
+            height: 0.45rem;
+            margin-bottom: 0;
+            background-color: rgb(var(--now-color_background--secondary, 232, 235, 240));
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+
+        .cs-toolbar-progress-fill {
             height: 100%;
             background-color: rgb(var(--now-color--primary-2, 23, 103, 91));
             transition: width 0.25s ease-out;
             border-radius: 9999px;
         }
 
-        .cs-progress-foot {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.5rem;
+        .cs-toolbar-progress-percent {
             font-size: 0.8rem;
-            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
-        }
-
-        .cs-progress-curr {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .cs-progress-curr strong {
-            color: rgb(var(--now-color_text--primary, 29, 29, 29));
-            font-weight: 600;
-        }
-
-        .cs-progress-percent {
             font-weight: 700;
             color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            min-width: 2.1rem;
+            text-align: right;
             white-space: nowrap;
-            margin-left: auto;
         }
 
         /* Hierarchical Indentation */
@@ -1093,17 +1163,30 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         /* Monaco-style Code Snippet Box */
         .cs-code-editor-box {
             display: block;
+            position: relative;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             font-size: 0.8125rem;
             line-height: 1.55;
             background: rgb(var(--now-color_background--primary, 255, 255, 255));
-            border-top: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.05);
+            border-top: 1px solid rgb(var(--now-color--neutral-2, 0, 0, 0));
             overflow-x: auto;
-            padding: 0.4rem 0;
+            padding: 0.45rem 0;
+        }
+
+        /* Paint the gutter on the container so its background and divider include the
+           vertical padding, while the line content keeps that breathing room. */
+        .cs-code-editor-box.cs-has-gutter::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 3.5rem;
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+            border-right: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
         }
 
         .cs-code-row {
             display: flex;
+            position: relative;
             min-width: max-content;
         }
 
@@ -1112,8 +1195,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             padding: 0 0.65rem 0 0.5rem;
             color: rgb(var(--now-color_text--secondary, 140, 145, 155));
             flex: 0 0 3.5rem;
-            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
-            border-right: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
             user-select: none;
             text-align: right;
         }
@@ -1162,6 +1243,25 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             padding: 0 2px;
             font-weight: 700;
             box-shadow: 0 0 0 1px rgba(var(--now-color_alert--warning-1, 245, 158, 11), 0.4);
+        }
+
+        .cs-token-comment {
+            color: rgb(var(--now-color_text--tertiary, 92, 122, 92));
+            font-style: italic;
+        }
+
+        .cs-token-string {
+            color: rgb(var(--now-color--secondary-2, 163, 76, 46));
+        }
+
+        .cs-token-keyword {
+            color: rgb(var(--now-color--primary-2, 91, 72, 168));
+            font-weight: 600;
+        }
+
+        .cs-token-number,
+        .cs-token-literal {
+            color: rgb(var(--now-color--secondary-3, 31, 101, 143));
         }
 
         /* Inline Monaco Editor Box */
@@ -1593,7 +1693,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         <div class="cs-results-pane-header">
                             <span class="cs-table-count-badge">
                                 <strong>{{ctrl.tablesWithResults.length}}</strong>
-                                <span>tables with results</span>
+                                <span>{{ctrl.tablesWithResults.length === 1 ? 'table' : 'tables'}}</span>
+                                <span class="cs-summary-sep">•</span>
+                                <strong>{{ctrl.sortedResults.length}}</strong>
+                                <span>{{ctrl.sortedResults.length === 1 ? 'record' : 'records'}}</span>
                             </span>
                         </div>
                         <div class="cs-table-list">
@@ -1602,10 +1705,14 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                     <div class="cs-table-name">
                                         <span class="cs-table-name-label">{{table.label}}</span>
                                         <span class="cs-session-dot" ng-if="ctrl.hasCustomSessionConfig(table)" title="{{ctrl.getSessionConfigTooltip(table)}}"></span>
+                                        <span class="cs-session-dot" ng-if="ctrl.hasExcludedResultFields(table.table)" title="One or more matching fields are excluded from these results"></span>
                                     </div>
                                     <div class="cs-table-id">{{table.table}}</div>
                                 </div>
                                 <span class="cs-table-count-pill" title="{{ctrl.tableMatchCounts[table.table]}} matching records">{{ctrl.tableMatchCounts[table.table] || 0}}</span>
+                            </div>
+                            <div class="cs-pane-empty-notice" ng-if="ctrl.loading &amp;&amp; !ctrl.tablesWithResults.length">
+                                Searching tables…
                             </div>
                             <div class="cs-pane-empty-notice" ng-if="!ctrl.loading &amp;&amp; !ctrl.tablesWithResults.length">
                                 No matching tables found.
@@ -1617,8 +1724,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
             <!-- Main Results Area -->
             <main class="cs-main">
-                <div class="cs-toolbar" ng-if="ctrl.hasSearched &amp;&amp; !ctrl.loading">
-                    <div class="cs-toolbar-summary" ng-if="ctrl.hasSearched &amp;&amp; !ctrl.loading">
+                <div class="cs-toolbar" ng-if="ctrl.hasSearched">
+                    <!-- Standard Summary (when search is finished) -->
+                    <div class="cs-toolbar-summary" ng-if="!ctrl.loading">
                         <span>Found</span>
                         <strong>{{ctrl.sortedResults.length}}</strong>
                         <span>matching records across</span>
@@ -1628,12 +1736,46 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         <span ng-if="ctrl.elapsed">{{ctrl.formatElapsed(ctrl.elapsed)}}</span>
                     </div>
 
-                    <div ng-show="ctrl.hasSearched &amp;&amp; !ctrl.loading" class="cs-toolbar-actions">
+                    <!-- Progress & Current Table being searched (during search) -->
+                    <div class="cs-toolbar-searching-left" ng-if="ctrl.loading">
+                        <div class="cs-toolbar-glass-wrap" aria-hidden="true">
+                            <svg class="cs-toolbar-glass-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <circle class="cs-glass-glow" cx="10" cy="10" r="6" fill="rgba(23, 103, 91, 0.15)" stroke="none"/>
+                                <circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="2"/>
+                                <path d="M7 7A3 3 0 0 1 11 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/>
+                                <path d="M14.5 14.5L20 20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div class="cs-toolbar-searching-text">
+                            <span class="cs-toolbar-searching-title">Searching</span>
+                            <span class="cs-toolbar-curr-table" ng-if="ctrl.searchProgress.currentTable">
+                                <span><code>{{ctrl.searchProgress.currentTable}}</code>…</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- View Select: Only displayed when NOT searching -->
+                    <div ng-if="!ctrl.loading" class="cs-toolbar-actions">
                         <select id="view-select" class="form-control" ng-model="ctrl.viewMode" aria-label="Sort or group results">
                             <option value="group_table">Group by record type</option>
                             <option value="date_asc">Sort by updated date (oldest to newest)</option>
                             <option value="date_desc">Sort by updated date (newest to oldest)</option>
                         </select>
+                    </div>
+
+                    <!-- Progress Bar on Right: Displayed during search -->
+                    <div class="cs-toolbar-searching-right" ng-if="ctrl.loading">
+                        <span class="cs-toolbar-progress-count">{{ctrl.searchProgress.completed}} of {{ctrl.searchProgress.total}} tables</span>
+                        <div class="progress cs-toolbar-progress-bar">
+                            <div class="progress-bar progress-bar-striped active cs-toolbar-progress-fill"
+                                 role="progressbar"
+                                 aria-valuenow="{{ctrl.searchProgress.percent}}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100"
+                                 ng-style="{'width': ctrl.searchProgress.percent + '%'}">
+                            </div>
+                        </div>
+                        <span class="cs-toolbar-progress-percent">{{ctrl.searchProgress.percent}}%</span>
                     </div>
                 </div>
                 <div class="cs-results" id="cs-results-container">
@@ -1659,32 +1801,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         <p>Search across configured fields in your tables.</p>
                     </div>
 
-                    <!-- Loading State with Progress Bar -->
-                    <div class="cs-empty cs-progress-state" ng-if="ctrl.loading">
-                        <div class="cs-progress-card">
-                            <div class="cs-progress-head">
-                                <div class="cs-progress-title">
-                                    <span class="icon-search cs-progress-icon" aria-hidden="true"></span>
-                                    <span>Searching…</span>
-                                </div>
-                                <span class="cs-progress-count">{{ctrl.searchProgress.completed}} of {{ctrl.searchProgress.total}} tables</span>
-                            </div>
-                            <div class="progress cs-progress-bar-container">
-                                <div class="progress-bar progress-bar-striped active cs-progress-bar-fill"
-                                     role="progressbar"
-                                     aria-valuenow="{{ctrl.searchProgress.percent}}"
-                                     aria-valuemin="0"
-                                     aria-valuemax="100"
-                                     ng-style="{'width': ctrl.searchProgress.percent + '%'}">
-                                </div>
-                            </div>
-                            <div class="cs-progress-foot">
-                                <span class="cs-progress-curr" ng-if="ctrl.searchProgress.currentTable">
-                                    <strong>{{ctrl.searchProgress.currentTable}}</strong>…
-                                </span>
-                                <span class="cs-progress-percent">{{ctrl.searchProgress.percent}}%</span>
-                            </div>
-                        </div>
+                    <!-- Searching Initial Empty State (before first match is found) -->
+                    <div class="cs-empty cs-searching-empty" ng-if="ctrl.loading &amp;&amp; !ctrl.results.length">
+                        <p class="cs-searching-empty-msg">Searching tables for matching code…</p>
                     </div>
 
                     <!-- No Results State -->
@@ -1701,7 +1820,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     </div>
 
                     <!-- View 1: Grouped by Record Type (Table) -->
-                    <div class="cs-group-table-view" ng-if="ctrl.hasSearched &amp;&amp; !ctrl.loading &amp;&amp; ctrl.viewMode === 'group_table'">
+                    <div class="cs-group-table-view" ng-if="ctrl.hasSearched &amp;&amp; ctrl.viewMode === 'group_table'">
                         <section class="cs-table-group" id="table-group-{{group.table}}" data-table="{{group.table}}" ng-repeat="group in ctrl.groupedResults track by group.table" ng-if="group.records.length">
                             <!-- Level 1: Record table (no indent). Sticky so the table name and its
                                  field pills stay visible while that table's records scroll beneath. -->
@@ -1765,13 +1884,13 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                         <!-- Initial snippet state -->
                                         <div ng-if="!match.expanded">
                                             <!-- Monaco-style line gutter and code lines -->
-                                            <div class="cs-code-editor-box" ng-if="match.lines">
+                                            <div class="cs-code-editor-box" ng-class="{'cs-has-gutter': (match.totalLines ? match.totalLines > 1 : match.lines.length > 1)}" ng-if="match.lines">
                                                 <div class="cs-code-row" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index">
                                                     <span class="cs-gutter-num" ng-if="!line.separator &amp;&amp; (match.totalLines ? match.totalLines > 1 : match.lines.length > 1)">{{line.num}}</span>
-                                                    <div class="cs-code-line" ng-if="!line.separator"><span ng-bind-html="ctrl.highlight(line.text)"></span></div>
+                                                    <div class="cs-code-line" ng-if="!line.separator"><span ng-bind-html="ctrl.highlightCode(line.text, line.inBlockComment)"></span></div>
                                                 </div>
                                             </div>
-                                            <pre class="cs-code-box" ng-if="!match.lines" ng-bind-html="ctrl.highlight(match.snippet)"></pre>
+                                            <pre class="cs-code-box" ng-if="!match.lines" ng-bind-html="ctrl.highlightCode(match.snippet)"></pre>
                                         </div>
 
                                         <!-- Inline Monaco Editor state (replaces code snippet) -->
@@ -1789,7 +1908,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     </div>
 
                     <!-- View 2: Sorted by Date (Oldest to Newest or Newest to Oldest) -->
-                    <div ng-if="ctrl.hasSearched &amp;&amp; !ctrl.loading &amp;&amp; ctrl.viewMode !== 'group_table'">
+                    <div ng-if="ctrl.hasSearched &amp;&amp; ctrl.viewMode !== 'group_table'">
                         <article class="cs-card cs-card-flat" ng-repeat="result in ctrl.sortedResults track by result.table + result.sysId">
                             <header class="cs-card-head">
                                 <div class="cs-card-title-wrap">
@@ -1826,13 +1945,13 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                     <!-- Initial snippet state -->
                                     <div ng-if="!match.expanded">
                                         <!-- Monaco-style line gutter and code lines -->
-                                        <div class="cs-code-editor-box" ng-if="match.lines">
+                                        <div class="cs-code-editor-box" ng-class="{'cs-has-gutter': (match.totalLines ? match.totalLines > 1 : match.lines.length > 1)}" ng-if="match.lines">
                                             <div class="cs-code-row" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index">
                                                 <span class="cs-gutter-num" ng-if="!line.separator &amp;&amp; (match.totalLines ? match.totalLines > 1 : match.lines.length > 1)">{{line.num}}</span>
-                                                <div class="cs-code-line" ng-if="!line.separator"><span ng-bind-html="ctrl.highlight(line.text)"></span></div>
+                                                <div class="cs-code-line" ng-if="!line.separator"><span ng-bind-html="ctrl.highlightCode(line.text, line.inBlockComment)"></span></div>
                                             </div>
                                         </div>
-                                        <pre class="cs-code-box" ng-if="!match.lines" ng-bind-html="ctrl.highlight(match.snippet)"></pre>
+                                        <pre class="cs-code-box" ng-if="!match.lines" ng-bind-html="ctrl.highlightCode(match.snippet)"></pre>
                                     </div>
 
                                     <!-- Inline Monaco Editor state (replaces code snippet) -->
@@ -2143,6 +2262,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 var items = vm.results || [];
                 var groupsMap = {};
                 var order = [];
+                var visibleCounts = {};
                 items.forEach(function (r) {
                     if (!groupsMap[r.table]) {
                         groupsMap[r.table] = {
@@ -2171,8 +2291,11 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     group.fields = _computeGroupFields(group.allRecords);
                     _ensureActiveFieldDefaults(t, group.fields);
                     _applyFieldFilter(group);
+                    visibleCounts[t] = group.records.length;
                 });
                 vm.groupedResults = order.map(function (t) { return groupsMap[t]; });
+                vm.tableMatchCounts = visibleCounts;
+                _updateTablesWithResults();
             }
 
             function _updateSortedResults() {
@@ -2269,9 +2392,15 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 _updateFilteredConfigTables();
             });
 
-            $scope.$watch('ctrl.viewMode', function () {
+            $scope.$watch('ctrl.viewMode', function (newMode, oldMode) {
                 _updateSortedResults();
-                $timeout(_updateCurrentViewedTable);
+                $timeout(function () {
+                    if (newMode !== oldMode) {
+                        var container = document.getElementById('cs-results-container');
+                        if (container) container.scrollTop = 0;
+                    }
+                    _updateCurrentViewedTable();
+                });
             });
 
             vm.clearInput = function () {
@@ -2528,7 +2657,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             };
 
             var tableScrollRequest = 0;
-            vm.scrollToTable = function (tableName) {
+            vm.scrollToTable = function (tableName, options) {
+                options = options || {};
                 var request = ++tableScrollRequest;
                 vm.viewMode = 'group_table';
                 function doScroll(attempts) {
@@ -2552,15 +2682,20 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     var headingHeight = heading ? heading.getBoundingClientRect().height : 0;
                     // Measure the section's natural position: its sticky heading may be
                     // visible even when the start of the table is above the results pane.
-                    if (elRect.top < visibleTop || elRect.top + headingHeight > visibleBottom) {
-                        var offset = container.scrollTop + elRect.top - visibleTop - 10;
+                    if (options.forceTop || elRect.top < visibleTop || elRect.top + headingHeight > visibleBottom) {
+                        // Align the section exactly with the results viewport. Adding or subtracting
+                        // a visual cushion here leaves a strip above the sticky table header.
+                        var offset = container.scrollTop + elRect.top - visibleTop;
                         var top = Math.max(0, Math.min(offset, container.scrollHeight - container.clientHeight));
                         // ServiceNow's Prototype extensions shadow element.scrollTo with
                         // a page-scrolling helper. Call the browser method directly instead.
                         var nativeScrollTo = window.Element && window.Element.prototype.scrollTo;
                         if (typeof nativeScrollTo === 'function') {
                             try {
-                                nativeScrollTo.call(container, { top: top, behavior: 'smooth' });
+                                nativeScrollTo.call(container, {
+                                    top: top,
+                                    behavior: options.smooth ? 'smooth' : 'auto'
+                                });
                             } catch (e) {
                                 container.scrollTop = top;
                             }
@@ -2764,6 +2899,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     percent: 0,
                     currentTable: enabledTables[0].label || enabledTables[0].table
                 };
+                vm.paneResultsOpen = true;
+                vm.paneGroupOpen = false;
                 _updateTablesWithResults();
                 _updateGroupedResults();
                 _updateSortedResults();
@@ -2809,11 +2946,11 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             }
                         });
                         if (tableResults.length > 0) {
-                            vm.tableMatchCounts[table.table] = tableResults.length;
                             accumulatedResults = accumulatedResults.concat(tableResults);
                             vm.results = accumulatedResults;
-                            _updateTablesWithResults();
                             _updateGroupedResults();
+                            _updateTablesWithResults();
+                            _updateSortedResults();
                         }
                         if (data && data.skipped && data.skipped.length) {
                             allSkipped = allSkipped.concat(data.skipped);
@@ -2845,8 +2982,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     vm.elapsed = Date.now() - started;
                     vm.loading = false;
                     vm.searchProgress.percent = 100;
-                    _updateTablesWithResults();
+                    vm.searchProgress.currentTable = '';
                     _updateGroupedResults();
+                    _updateTablesWithResults();
                     _updateSortedResults();
                     vm.paneResultsOpen = true;
                     vm.paneGroupOpen = false;
@@ -2857,6 +2995,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 }).catch(function (e) {
                     if (currentSearchGen !== gen) return;
                     vm.loading = false;
+                    vm.searchProgress.currentTable = '';
                     notify(e ? e.message : 'Search encountered an error');
                 });
             };
@@ -2898,7 +3037,18 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 if (vm.isLastActiveField(group, field)) return;
                 active[field] = active[field] === false;
                 _applyFieldFilter(group);
+                vm.tableMatchCounts[group.table] = group.records.length;
+                _updateTablesWithResults();
                 _updateSortedResults();
+                vm.scrollToTable(group.table, { forceTop: true, smooth: true });
+            };
+
+            vm.hasExcludedResultFields = function (table) {
+                var active = vm.tableActiveFields[table];
+                if (!active) return false;
+                return Object.keys(active).some(function (field) {
+                    return active[field] === false;
+                });
             };
 
             function _fieldsOrClause(fields, operator, value) {
@@ -2985,7 +3135,97 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             var _highlightCache = {};
             var _highlightCacheKey = '';
 
-            vm.highlight = function (text) {
+            var _codeKeywords = {
+                'break': true, 'case': true, 'catch': true, 'class': true, 'const': true,
+                'continue': true, 'debugger': true, 'default': true, 'delete': true, 'do': true,
+                'else': true, 'export': true, 'extends': true, 'finally': true, 'for': true,
+                'function': true, 'if': true, 'import': true, 'in': true, 'instanceof': true,
+                'let': true, 'new': true, 'return': true, 'switch': true, 'throw': true,
+                'try': true, 'typeof': true, 'var': true, 'void': true, 'while': true,
+                'with': true, 'yield': true, 'async': true, 'await': true, 'of': true,
+                'this': true, 'super': true
+            };
+            var _codeLiterals = { 'true': true, 'false': true, 'null': true, 'undefined': true };
+
+            function _codeTokens(raw, startsInBlockComment) {
+                var tokens = [];
+                var i = 0;
+                var inBlockComment = !!startsInBlockComment;
+
+                function add(text, type) {
+                    if (!text) return;
+                    var previous = tokens[tokens.length - 1];
+                    if (previous && previous.type === type) previous.text += text;
+                    else tokens.push({ text: text, type: type });
+                }
+
+                while (i < raw.length) {
+                    var start = i;
+                    var ch = raw.charAt(i);
+                    var next = raw.charAt(i + 1);
+
+                    if (inBlockComment) {
+                        var close = raw.indexOf('*/', i);
+                        if (close === -1) {
+                            add(raw.substring(i), 'comment');
+                            break;
+                        }
+                        add(raw.substring(i, close + 2), 'comment');
+                        i = close + 2;
+                        inBlockComment = false;
+                        continue;
+                    }
+                    if (ch === '/' && next === '/') {
+                        var newline = raw.indexOf('\\n', i);
+                        if (newline === -1) {
+                            add(raw.substring(i), 'comment');
+                            break;
+                        }
+                        add(raw.substring(i, newline), 'comment');
+                        add('\\n', '');
+                        i = newline + 1;
+                        continue;
+                    }
+                    if (ch === '/' && next === '*') {
+                        inBlockComment = true;
+                        continue;
+                    }
+                    if (ch === "'" || ch === '"' || ch === '\`') {
+                        var quote = ch;
+                        i++;
+                        var escaped = false;
+                        while (i < raw.length) {
+                            var stringChar = raw.charAt(i++);
+                            if (escaped) escaped = false;
+                            else if (stringChar === '\\\\') escaped = true;
+                            else if (stringChar === quote) break;
+                            else if (stringChar === '\\n' && quote !== '\`') break;
+                        }
+                        add(raw.substring(start, i), 'string');
+                        continue;
+                    }
+                    if (/[0-9]/.test(ch) && (i === 0 || !/[A-Za-z0-9_$]/.test(raw.charAt(i - 1)))) {
+                        var numberMatch = raw.substring(i).match(/^(?:0[xob][0-9a-f]+|\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)/i);
+                        if (numberMatch) {
+                            add(numberMatch[0], 'number');
+                            i += numberMatch[0].length;
+                            continue;
+                        }
+                    }
+                    if (/[A-Za-z_$]/.test(ch)) {
+                        i++;
+                        while (i < raw.length && /[A-Za-z0-9_$]/.test(raw.charAt(i))) i++;
+                        var word = raw.substring(start, i);
+                        add(word, _codeKeywords[word] ? 'keyword' : (_codeLiterals[word] ? 'literal' : ''));
+                        continue;
+                    }
+                    add(ch, '');
+                    i++;
+                }
+                return tokens;
+            }
+
+            vm.highlightCode = function (text, startsInBlockComment) {
                 function esc(v) {
                     var div = document.createElement('div');
                     div.textContent = String(v || '');
@@ -2993,7 +3233,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 }
                 var raw = String(text || '');
                 var needle = String(vm.query || '');
-                var cacheKey = needle + ' ' + (vm.caseSensitive ? '1' : '0');
+                var cacheKey = needle + ' ' + (vm.caseSensitive ? '1' : '0') + ' ' + (startsInBlockComment ? '1' : '0');
                 if (cacheKey !== _highlightCacheKey) {
                     _highlightCache = {};
                     _highlightCacheKey = cacheKey;
@@ -3002,32 +3242,47 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     return _highlightCache[raw];
                 }
 
-                var result;
-                if (!needle) {
-                    result = $sce.trustAsHtml(esc(raw));
-                } else if (vm.caseSensitive) {
-                    var out = '';
-                    var pos = 0;
-                    var at;
-                    while ((at = raw.indexOf(needle, pos)) !== -1) {
-                        out += esc(raw.substring(pos, at)) + '<mark class="cs-highlight">' + esc(raw.substring(at, at + needle.length)) + '</mark>';
-                        pos = at + needle.length;
+                var searchable = vm.caseSensitive ? raw : raw.toLowerCase();
+                var find = vm.caseSensitive ? needle : needle.toLowerCase();
+                var ranges = [];
+                var searchAt = 0;
+                var foundAt;
+                if (find) {
+                    while ((foundAt = searchable.indexOf(find, searchAt)) !== -1) {
+                        ranges.push({ start: foundAt, end: foundAt + needle.length });
+                        searchAt = foundAt + needle.length;
                     }
-                    out += esc(raw.substring(pos));
-                    result = $sce.trustAsHtml(out);
-                } else {
-                    var lower = raw.toLowerCase();
-                    var find = needle.toLowerCase();
-                    var out2 = '';
-                    var pos2 = 0;
-                    var at2;
-                    while ((at2 = lower.indexOf(find, pos2)) !== -1) {
-                        out2 += esc(raw.substring(pos2, at2)) + '<mark class="cs-highlight">' + esc(raw.substring(at2, at2 + needle.length)) + '</mark>';
-                        pos2 = at2 + needle.length;
-                    }
-                    out2 += esc(raw.substring(pos2));
-                    result = $sce.trustAsHtml(out2);
                 }
+
+                var offset = 0;
+                var rangeIndex = 0;
+                var out = '';
+                _codeTokens(raw, startsInBlockComment).forEach(function (token) {
+                    var tokenStart = offset;
+                    var tokenEnd = offset + token.text.length;
+                    var localAt = 0;
+                    var tokenHtml = '';
+
+                    while (rangeIndex < ranges.length && ranges[rangeIndex].end <= tokenStart) rangeIndex++;
+                    var currentRange = rangeIndex;
+                    while (localAt < token.text.length) {
+                        var globalAt = tokenStart + localAt;
+                        while (currentRange < ranges.length && ranges[currentRange].end <= globalAt) currentRange++;
+                        var range = ranges[currentRange];
+                        var highlighted = !!range && globalAt >= range.start && globalAt < range.end;
+                        var boundary = tokenEnd;
+                        if (range) boundary = Math.min(boundary, highlighted ? range.end : Math.max(globalAt, range.start));
+                        if (boundary <= globalAt) boundary = globalAt + 1;
+                        var piece = esc(token.text.substring(localAt, boundary - tokenStart));
+                        tokenHtml += highlighted ? '<mark class="cs-highlight">' + piece + '</mark>' : piece;
+                        localAt = boundary - tokenStart;
+                    }
+                    out += token.type ? '<span class="cs-token-' + token.type + '">' + tokenHtml + '</span>' : tokenHtml;
+                    offset = tokenEnd;
+                    rangeIndex = currentRange;
+                });
+
+                var result = $sce.trustAsHtml(out);
                 _highlightCache[raw] = result;
                 return result;
             };
@@ -3090,14 +3345,15 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
                 var matchCase = !!vm.caseSensitive;
 
-                // 1. Configure Monaco FindController with search string & case sensitivity
+                // Opening the controller directly lets us opt out of Monaco's default behavior
+                // of replacing the requested query with the word currently under the cursor.
                 try {
                     var findController = editor.getContribution('editor.contrib.findController');
                     if (findController) {
                         findController.start({
                             forceRevealReplace: false,
                             seedSearchStringFromSelection: false,
-                            shouldFocus: 0,
+                            shouldFocus: 1,
                             shouldAnimate: false
                         });
                         var state = findController.getState();
@@ -3112,15 +3368,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     }
                 } catch (efc) {}
 
-                // 2. Automatically open Monaco Editor's native Find widget UI
-                try {
-                    var findAction = editor.getAction('actions.find');
-                    if (findAction) {
-                        findAction.run();
-                    }
-                } catch (efa) {}
-
-                // 3. Scroll to target match line
+                // Scroll to the line returned by the code search.
                 if (targetLine) {
                     try {
                         editor.revealLineInCenter(targetLine);

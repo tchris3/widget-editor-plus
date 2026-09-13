@@ -1,0 +1,115 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+
+const source = fs.readFileSync('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts', 'utf8');
+
+test('Code Search UI hides the classic page response-time widget', () => {
+    assert.match(source, /#page_timing_div\s*\{[^}]*display:\s*none\s*!important;/s);
+});
+
+test('Code Search UI header toolbar contains progress bar, current table, and animated search glass during search', () => {
+    // Toolbar searching elements
+    assert.ok(source.includes('class="cs-toolbar-searching-left"'), 'Should include cs-toolbar-searching-left container');
+    assert.ok(source.includes('class="cs-toolbar-searching-right"'), 'Should include cs-toolbar-searching-right container');
+    assert.ok(source.includes('cs-toolbar-glass-wrap'), 'Should include animated glass wrapper in toolbar');
+    assert.ok(source.includes('cs-toolbar-glass-svg'), 'Should include animated search glass SVG');
+    assert.ok(source.includes('cs-glass-glow'), 'Should include glass glow pulse element');
+    assert.ok(source.includes('cs-toolbar-progress-bar'), 'Should include toolbar progress bar');
+    assert.ok(source.includes('ctrl.searchProgress.percent'), 'Progress bar should bind to ctrl.searchProgress.percent');
+    assert.ok(source.includes('ctrl.searchProgress.currentTable'), 'Toolbar should display current searching table');
+
+    // Group/Sort select must NOT be displayed during search
+    assert.ok(
+        source.includes('ng-if="!ctrl.loading" class="cs-toolbar-actions"'),
+        'Group/Sort view select should be hidden when ctrl.loading is true'
+    );
+
+    // CSS animations
+    assert.ok(source.includes('@keyframes csSearchGlassScan'), 'CSS should define csSearchGlassScan animation');
+    assert.ok(source.includes('@keyframes csGlassGlowPulse'), 'CSS should define csGlassGlowPulse animation');
+});
+
+test('Results pane allows real-time streaming without blocking on ctrl.loading and properly closes welcome state', () => {
+    // Welcome state div must properly close before results states
+    const welcomeIndex = source.indexOf('class="cs-empty cs-welcome-state"');
+    const searchingEmptyIndex = source.indexOf('class="cs-empty cs-searching-empty"');
+    assert.ok(welcomeIndex > 0 && searchingEmptyIndex > welcomeIndex, 'Welcome and searching states present');
+    const welcomeBlock = source.slice(welcomeIndex, searchingEmptyIndex);
+    assert.ok(welcomeBlock.includes('</div>'), 'Welcome state must have closing </div> before searching state');
+
+    // Group table view must not gate on !ctrl.loading
+    assert.ok(
+        source.includes('ng-if="ctrl.hasSearched &amp;&amp; ctrl.viewMode === \'group_table\'"'),
+        'Group table view should render in real time without waiting for loading to finish'
+    );
+
+    // Date view must not gate on !ctrl.loading
+    assert.ok(
+        source.includes('ng-if="ctrl.hasSearched &amp;&amp; ctrl.viewMode !== \'group_table\'"'),
+        'Flat date view should render in real time without waiting for loading to finish'
+    );
+
+    // Tables with results pane header displays "x tables • x records"
+    const paneHeaderSnippet = source.slice(
+        source.indexOf('class="cs-results-pane-header"'),
+        source.indexOf('class="cs-table-list"', source.indexOf('class="cs-results-pane-header"'))
+    );
+    assert.ok(paneHeaderSnippet.includes('ctrl.tablesWithResults.length'), 'Pane header should display tablesWithResults count');
+    assert.ok(paneHeaderSnippet.includes('ctrl.sortedResults.length'), 'Pane header should display records (sortedResults) count');
+    assert.ok(paneHeaderSnippet.includes('cs-summary-sep'), 'Pane header should display separator between tables and records');
+});
+
+test('runSearch logic enables Pane 2 and updates sorted/grouped results in real-time', () => {
+    // Check that searchNext updates sortedResults in real time
+    const searchNextSnippet = source.slice(
+        source.indexOf('function searchNext()'),
+        source.indexOf('var workers = [];')
+    );
+    assert.ok(searchNextSnippet.includes('_updateTablesWithResults();'), 'searchNext should update tablesWithResults');
+    assert.ok(searchNextSnippet.includes('_updateGroupedResults();'), 'searchNext should update groupedResults');
+    assert.ok(searchNextSnippet.includes('_updateSortedResults();'), 'searchNext should update sortedResults in real time');
+
+    // Check that runSearch opens Pane 2 ("Tables with Results") right at search initiation
+    const runSearchInitSnippet = source.slice(
+        source.indexOf('vm.runSearch = function ()'),
+        source.indexOf('function searchNext()')
+    );
+    assert.ok(runSearchInitSnippet.includes('vm.paneResultsOpen = true;'), 'runSearch should expand paneResultsOpen immediately');
+    assert.ok(runSearchInitSnippet.includes('vm.paneGroupOpen = false;'), 'runSearch should collapse paneGroupOpen immediately');
+});
+
+test('inline Monaco find keeps the code-search query instead of seeding from the cursor word', () => {
+    const start = source.indexOf('            function _highlightQueryInEditor');
+    const end = source.indexOf('            vm.getMonacoHostId', start);
+    const helperSource = source.slice(start, end);
+    const changes = [];
+    const starts = [];
+    let genericFindActionReads = 0;
+    const vm = { caseSensitive: false };
+    const editor = {
+        getContribution() {
+            return {
+                start(options) { starts.push(options); },
+                getState() {
+                    return { change(update) { changes.push(update); } };
+                }
+            };
+        },
+        getAction() {
+            genericFindActionReads++;
+            return { run() {} };
+        },
+        revealLineInCenter() {},
+        setPosition() {}
+    };
+
+    eval(helperSource);
+    _highlightQueryInEditor(editor, 'incident', 41);
+
+    assert.equal(starts.length, 1);
+    assert.equal(starts[0].seedSearchStringFromSelection, false);
+    assert.equal(starts[0].shouldFocus, 1);
+    assert.equal(changes[0].searchString, 'incident');
+    assert.equal(genericFindActionReads, 0, 'generic Find action would overwrite the query with the cursor word');
+});

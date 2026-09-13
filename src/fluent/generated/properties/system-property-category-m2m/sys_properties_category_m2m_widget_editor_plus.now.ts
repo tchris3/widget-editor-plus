@@ -15,6 +15,15 @@ import { tableConfigSyseventEmailActionProperty } from '../system-property/sys_p
 import { tableConfigSpAngularProviderProperty } from '../system-property/sys_properties_widget_editor_table_config_sp_angular_provider.now'
 import { tableConfigSysSecurityAclProperty } from '../system-property/sys_properties_widget_editor_table_config_sys_security_acl.now'
 import { tableConfigSysUiActionProperty } from '../system-property/sys_properties_widget_editor_table_config_sys_ui_action.now'
+import {
+    codeSearchDisplayFieldsSpPageProperty,
+    codeSearchDisplayFieldsSpWidgetProperty,
+    codeSearchDisplayFieldsScCatItemProducerProperty,
+    codeSearchDisplayFieldsSyseventEmailActionProperty,
+    codeSearchDisplayFieldsSpAngularProviderProperty,
+    codeSearchDisplayFieldsSysSecurityAclProperty,
+    codeSearchDisplayFieldsSysUiActionProperty,
+} from '../system-property/sys_properties_widget_editor_code_search_display_fields.now'
 
 Record({
     $id: Now.ID['widget-editor-plus-category-m2m-record-limit'],
@@ -164,4 +173,46 @@ Record({
         category: widgetEditorPlusPropertiesCategory,
         order: 1500,
     },
+})
+
+Record({
+    $id: Now.ID['widget-editor-plus-category-m2m-code-search-display-fields-sp-page'],
+    table: 'sys_properties_category_m2m',
+    data: { property: codeSearchDisplayFieldsSpPageProperty, category: widgetEditorPlusPropertiesCategory, order: 1600 },
+})
+
+Record({
+    $id: Now.ID['widget-editor-plus-category-m2m-code-search-display-fields-sp-widget'],
+    table: 'sys_properties_category_m2m',
+    data: { property: codeSearchDisplayFieldsSpWidgetProperty, category: widgetEditorPlusPropertiesCategory, order: 1700 },
+})
+
+Record({
+    $id: Now.ID['widget-editor-plus-category-m2m-code-search-display-fields-sc-cat-item-producer'],
+    table: 'sys_properties_category_m2m',
+    data: { property: codeSearchDisplayFieldsScCatItemProducerProperty, category: widgetEditorPlusPropertiesCategory, order: 1800 },
+})
+
+Record({
+    $id: Now.ID['widget-editor-plus-category-m2m-code-search-display-fields-sysevent-email-action'],
+    table: 'sys_properties_category_m2m',
+    data: { property: codeSearchDisplayFieldsSyseventEmailActionProperty, category: widgetEditorPlusPropertiesCategory, order: 1900 },
+})
+
+Record({
+    $id: Now.ID['widget-editor-plus-category-m2m-code-search-display-fields-sp-angular-provider'],
+    table: 'sys_properties_category_m2m',
+    data: { property: codeSearchDisplayFieldsSpAngularProviderProperty, category: widgetEditorPlusPropertiesCategory, order: 2000 },
+})
+
+Record({
+    $id: Now.ID['widget-editor-plus-category-m2m-code-search-display-fields-sys-security-acl'],
+    table: 'sys_properties_category_m2m',
+    data: { property: codeSearchDisplayFieldsSysSecurityAclProperty, category: widgetEditorPlusPropertiesCategory, order: 2100 },
+})
+
+Record({
+    $id: Now.ID['widget-editor-plus-category-m2m-code-search-display-fields-sys-ui-action'],
+    table: 'sys_properties_category_m2m',
+    data: { property: codeSearchDisplayFieldsSysUiActionProperty, category: widgetEditorPlusPropertiesCategory, order: 2200 },
 })
