@@ -4,6 +4,14 @@ const fs = require('node:fs');
 
 const source = fs.readFileSync('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts', 'utf8');
 
+test('Code Search UI source contains no XML 1.0-forbidden control characters', () => {
+    assert.equal(
+        /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(source),
+        false,
+        'Control characters make the packaged sys_ui_page XML impossible to deploy'
+    );
+});
+
 test('Code Search UI hides the classic page response-time widget', () => {
     assert.match(source, /#page_timing_div\s*\{[^}]*display:\s*none\s*!important;/s);
 });

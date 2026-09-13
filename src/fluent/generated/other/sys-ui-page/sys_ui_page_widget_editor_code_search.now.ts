@@ -3266,8 +3266,12 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 var secondaryTerms = (vm.secondaryFilters || [])
                     .filter(function (f) { return f.operator === 'contains' && f.term && f.term.trim(); })
                     .map(function (f) { return f.term; });
-                var cacheKey = needle + '|' + secondaryTerms.join('') + '|' +
-                    (vm.caseSensitive ? '1' : '0') + ' ' + (startsInBlockComment ? '1' : '0');
+                var cacheKey = JSON.stringify([
+                    needle,
+                    secondaryTerms,
+                    !!vm.caseSensitive,
+                    !!startsInBlockComment
+                ]);
                 if (cacheKey !== _highlightCacheKey) {
                     _highlightCache = {};
                     _highlightCacheKey = cacheKey;
