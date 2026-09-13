@@ -295,6 +295,10 @@ declare global {
                         table: 'sys_properties'
                         id: '4cf90698394047e0a12108d78fdf2148'
                     }
+                    'widget-editor-code-search-groups-module': {
+                        table: 'sys_app_module'
+                        id: '23518f35aafd4320bfe1d7450f6c3ab0'
+                    }
                     'widget-editor-code-search-module': {
                         table: 'sys_app_module'
                         id: '733b535096a94c97a08e61b74ea6c4fa'
