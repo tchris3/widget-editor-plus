@@ -345,6 +345,81 @@ Features version history, side-by-side diff comparison, related lists, and user 
             flex-shrink: 0;
         }
 
+        /* Override btn-primary in the header bar */
+        .we-header .btn-primary {
+            background-color: rgb(var(--now-button--primary--background-color, var(--now-color--primary-1, 30, 133, 109))) !important;
+            border: 1px solid rgb(var(--now-button--primary--border-color, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color, var(--now-color--neutral-0, 255, 255, 255))) !important;
+            border-radius: var(--now-button--border-radius, 4px);
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .we-header .btn-primary:hover:not(:disabled) {
+            background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--hover, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--hover, var(--now-color--neutral-0, 255, 255, 255))) !important;
+        }
+        .we-header .btn-primary:focus,
+        .we-header .btn-primary:focus:hover {
+            background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--hover, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--hover, var(--now-color--neutral-0, 255, 255, 255))) !important;
+            outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
+            outline-offset: 2px !important;
+        }
+        .we-header .btn-primary:active:not(:disabled),
+        .we-header .btn-primary.active,
+        .we-header .btn-primary:active:hover,
+        .we-header .btn-primary:active:focus {
+            background-color: rgb(var(--now-button--primary--background-color--active, var(--now-color--primary-3, 15, 67, 55))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--active, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--active, var(--now-color--neutral-0, 255, 255, 255))) !important;
+        }
+        .we-header .btn-primary:disabled,
+        .we-header .btn-primary[disabled] {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
+        }
+
+        /* Override btn-default in the header bar */
+        .we-header .btn-default {
+            background-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.12) !important;
+            border: 1px solid rgba(var(--now-color--neutral-0, 255, 255, 255), 0.22) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            border-radius: var(--now-button--border-radius, 4px) !important;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .we-header .btn-default * {
+            color: inherit !important;
+            fill: currentColor !important;
+        }
+        .we-header .btn-default:hover:not(:disabled) {
+            background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
+            border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+        }
+        .we-header .btn-default:focus,
+        .we-header .btn-default:focus:hover {
+            background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
+            border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
+            outline-offset: 2px !important;
+        }
+        .we-header .btn-default:active:not(:disabled),
+        .we-header .btn-default.active,
+        .we-header .btn-default:active:hover,
+        .we-header .btn-default:active:focus {
+            background-color: rgba(var(--now-button--bare_secondary--background-color--active, var(--now-color--secondary-2, 1, 89, 107)), 0.45) !important;
+            border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            box-shadow: 0 0 0 1px rgba(var(--now-color--secondary-1, 1, 119, 142), 0.5), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+        }
+        .we-header .btn-default:disabled,
+        .we-header .btn-default[disabled] {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
+        }
+
         .we-header-sep {
             width: 1px;
             height: 1.375rem;
@@ -3303,6 +3378,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             <div class="we-dropdown-divider--group" ng-if="!isNewWidget"></div>
                             <div class="we-dropdown-item" ng-click="openUserPrefsModal()">User preferences</div>
                             <div class="we-dropdown-item" ng-click="openKeyboardShortcutsModal()">Keyboard shortcuts</div>
+                            <div class="we-dropdown-item" ng-click="openCodeSearch()">Code Search+</div>
                             <div class="we-dropdown-item" ng-click="openApiDocs()">API documentation <span class="we-ext-icon we-icon-secondary" aria-hidden="true"></span></div>
                         </div>
                     </div>
@@ -5704,6 +5780,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     showRecentlyOpenedWidgets: true,
                     showOpenHistory: true,
                     recentWidgets: [],
+                    // Not surfaced in the Preferences dialog — just carried through load/save/export/import
+                    // so Code Search+'s own preference lives on the shared preference row.
+                    lastCodeSearchGroup: null,
                     // Last-saved editor order/visibility, so the Preferences dialog reflects saved state, not live changes.
                     editorOrder: [],
                     editorVisibility: {},

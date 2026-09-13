@@ -1,23 +1,23 @@
 import { Record } from '@servicenow/sdk/core'
 
 Record({
-    $id: Now.ID['widget-editor-assistant-module'],
+    $id: Now.ID['widget-editor-diff-module'],
     table: 'sys_app_module',
     data: {
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
-        hint: 'Export XML context bundles for AI tools',
+        hint: 'Compare side-by-side versions of a record',
         link_type: 'DIRECT',
-        mobile_title: 'AI Assistant',
+        mobile_title: 'Compare+',
         mobile_view_name: 'Mobile',
-        order: 1475,
+        order: 1473,
         override_menu_roles: true,
-        query: 'ui_page.do?sys_id=584ed242cd934914bffa4b0bb3fb2974',
+        query: 'ui_page.do?sys_id=51ec3d258363b61070b8b5dfeeaad36b',
         require_confirmation: true,
         roles: ['sp_admin'],
         sys_domain: 'global',
         sys_domain_path: '/',
-        title: 'AI Assistant',
+        title: 'Compare+',
         uncancelable: false,
     },
 })

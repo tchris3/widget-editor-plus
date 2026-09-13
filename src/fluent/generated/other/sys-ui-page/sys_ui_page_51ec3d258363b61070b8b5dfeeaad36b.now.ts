@@ -40,6 +40,10 @@ UiPage({
     </script>
 
     <style>
+        #page_timing_div {
+            display: none !important;
+        }
+
         /* Reset */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -48,15 +52,20 @@ UiPage({
         }
 
         html, body {
+            margin: 0;
+            padding: 0 !important;
+            font-size: var(--now-global-font-size--md, 14px);
+            line-height: 1.45;
             background: rgb(var(--now-color_background--primary, 255 255 255));
             color: rgb(var(--now-color_text--primary, 29 29 29));
             overflow: visible !important;
-            padding: 0.5rem 0.75rem;
-            margin: 0;
+            overscroll-behavior: none;
         }
 
-        body {
-            font-size: var(--now-global-font-size--md, 14px);
+        button, input, select, textarea {
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
         }
 
         /* App shell */
@@ -89,11 +98,7 @@ UiPage({
         }
 
         #diff-error {
-            padding: 0.875rem 1rem;
-            color: #f47878;
-            background: rgba(244, 120, 120, 0.08);
-            border-bottom: 1px solid rgba(244, 120, 120, 0.2);
-            font-size: var(--now-global-font-size--md, 14px);
+            margin: 1rem;
         }
 
         #diff-content {
@@ -102,19 +107,22 @@ UiPage({
             flex-direction: column;
         }
 
-        /* Header — sticky so version selects remain visible while scrolling */
+        /* Header Bar */
         .dc-header {
-            background: rgb(var(--now-color_surface--brand-2));
-            border-bottom: 1px solid rgba(var(--now-color--neutral-0, 0 0 0), 0.08);
+            background: rgb(var(--now-color_chrome--brand-5, var(--now-color--primary-0, 221, 237, 233)));
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235)));
             flex-shrink: 0;
             position: sticky;
             top: 0;
             z-index: 1001;
-            margin: -0.825rem -1.125rem 0 -1.125rem; /* negate body padding so header spans full width */
+            margin: 0;
         }
         .dc-header-row {
-            padding: 0.75rem 1rem 0.5rem;
-            margin: 0 1rem;
+            padding: 0.75rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.25rem;
         }
 
         /* Version-select row inside the sticky header */
@@ -122,9 +130,9 @@ UiPage({
             display: flex;
             align-items: stretch;
             min-height: 3.1875rem;
-            padding: 0 1.5rem;
-            background: rgb(var(--now-color_background--tertiary, 237 237 237));
-            border-top: 1px solid rgba(var(--now-color--neutral-0, 0 0 0), 0.06);
+            padding: 0 1.25rem;
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+            border-top: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235)));
         }
         /* Spacer = sft-col-label (12rem) + dc-simple-section left border (1px) */
         .dc-version-spacer {
@@ -148,15 +156,17 @@ UiPage({
             min-width: 0;
             display: flex;
             align-items: stretch;
-            border-right: 1px solid rgba(var(--now-color--neutral-0, 0 0 0), 0.1);
+            border-right: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235)));
         }
 
         .dc-title {
-            font-size: var(--now-font-size--lg);
+            font-size: var(--now-font-size--lg, 18px);
             font-weight: 600;
-            color: rgb(var(--now-color_text--primary, 29 29 29));
+            color: rgb(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56)));
             display: flex;
             align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
         }
 
         .dc-title strong {
@@ -213,10 +223,10 @@ UiPage({
 
         .dc-body {
             flex: 1;
-            padding: 0.75rem 0 0 0;
+            padding: 1rem 1.25rem 2rem;
             display: flex;
             flex-direction: column;
-            gap: 0.625rem;
+            gap: 0.75rem;
             position: relative;
         }
 
@@ -590,18 +600,106 @@ UiPage({
             overflow: hidden;
         }
 
-        /* Header row — title + controls */
-        .dc-header-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
+        /* Header buttons */
         .dc-header-btns {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 0.75rem;
+        }
+        .dc-header-btns .btn {
+            height: 2.25rem;
+            padding: 0 0.875rem;
+            font-size: var(--now-global-font-size--md, 14px);
+            font-weight: 600;
+            line-height: 1;
+            border-radius: var(--now-button--border-radius, 4px);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: none;
+        }
+        .dc-header-btns .btn:focus-visible {
+            outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142)));
+            outline-offset: 2px;
+        }
+        .dc-header-btns .btn:disabled,
+        .dc-header-btns .btn[disabled] {
+            opacity: 0.45;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        /* Primary header button */
+        .dc-header-btns .btn-primary {
+            background-color: rgb(var(--now-button--primary--background-color, var(--now-color--primary-1, 30, 133, 109))) !important;
+            border: 1px solid rgb(var(--now-button--primary--border-color, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color, var(--now-color--neutral-0, 255, 255, 255))) !important;
+        }
+        .dc-header-btns .btn-primary:hover:not(:disabled) {
+            background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--hover, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--hover, var(--now-color--neutral-0, 255, 255, 255))) !important;
+        }
+        .dc-header-btns .btn-primary:focus,
+        .dc-header-btns .btn-primary:focus:hover {
+            background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--hover, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--hover, var(--now-color--neutral-0, 255, 255, 255))) !important;
+            outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
+            outline-offset: 2px !important;
+        }
+        .dc-header-btns .btn-primary:active:not(:disabled),
+        .dc-header-btns .btn-primary.active,
+        .dc-header-btns .btn-primary:active:hover,
+        .dc-header-btns .btn-primary:active:focus {
+            background-color: rgb(var(--now-button--primary--background-color--active, var(--now-color--primary-3, 15, 67, 55))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--active, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--active, var(--now-color--neutral-0, 255, 255, 255))) !important;
+        }
+        .dc-header-btns .btn-primary:disabled,
+        .dc-header-btns .btn-primary[disabled] {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
+        }
+        /* Secondary header button (header chrome styling) */
+        .dc-header-btns .btn-default {
+            background-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.12) !important;
+            border: 1px solid rgba(var(--now-color--neutral-0, 255, 255, 255), 0.22) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            border-radius: var(--now-button--border-radius, 4px) !important;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .dc-header-btns .btn-default * {
+            color: inherit !important;
+            fill: currentColor !important;
+        }
+        .dc-header-btns .btn-default:hover:not(:disabled) {
+            background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
+            border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+        }
+        .dc-header-btns .btn-default:focus,
+        .dc-header-btns .btn-default:focus:hover {
+            background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
+            border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
+            outline-offset: 2px !important;
+        }
+        .dc-header-btns .btn-default:active:not(:disabled),
+        .dc-header-btns .btn-default.active,
+        .dc-header-btns .btn-default:active:hover,
+        .dc-header-btns .btn-default:active:focus {
+            background-color: rgba(var(--now-button--bare_secondary--background-color--active, var(--now-color--secondary-2, 1, 89, 107)), 0.45) !important;
+            border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
+            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            box-shadow: 0 0 0 1px rgba(var(--now-color--secondary-1, 1, 119, 142), 0.5), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+        }
+        .dc-header-btns .btn-default:disabled,
+        .dc-header-btns .btn-default[disabled] {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
         }
 
         /* Custom version column dropdowns */
@@ -749,12 +847,13 @@ UiPage({
 
         /* Widget picker in header title */
         .dc-title-label {
-            font-weight: 400;
+            color: rgb(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56)));
             margin-right: 0;
         }
         .dc-title-colon {
-            font-size: var(--now-font-size--lg);
+            font-size: var(--now-font-size--lg, 18px);
             font-weight: 600;
+            color: rgb(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56)));
             margin-right: 0;
         }
 
@@ -771,23 +870,23 @@ UiPage({
         }
         .dc-table-picker-wrap .select2-choice {
             border: none !important;
-            border-bottom: 1px dotted rgba(var(--now-color_text--primary, 29 29 29), 0.4) !important;
+            border-bottom: 1px dotted rgba(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56)), 0.45) !important;
             border-radius: 0;
             background: transparent !important;
             box-shadow: none !important;
             padding: 0 0 0.125rem 0 !important;
             height: auto !important;
             line-height: 1.2 !important;
-            font-size: var(--now-font-size--lg) !important;
+            font-size: var(--now-font-size--lg, 18px) !important;
             font-weight: 600 !important;
-            color: rgb(var(--now-color_text--primary, 29 29 29)) !important;
+            color: rgb(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56))) !important;
             position: relative !important;
             margin-top: 0.125rem;
         }
         .dc-table-picker-wrap .select2-chosen {
             padding-left: 0 !important;
             padding-right: 0 !important;
-            color: rgb(var(--now-color_text--primary, 29 29 29)) !important;
+            color: rgb(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56))) !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
@@ -813,23 +912,23 @@ UiPage({
         }
         .dc-picker-wrap .select2-choice {
             border: none !important;
-            border-bottom: 1px dotted rgba(var(--now-color_text--primary, 29 29 29), 0.4) !important;
+            border-bottom: 1px dotted rgba(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56)), 0.45) !important;
             border-radius: 0;
             background: transparent !important;
             box-shadow: none !important;
             padding: 0 1.25rem 0.125rem 0 !important;
             height: auto !important;
             line-height: 1.2 !important;
-            font-size: var(--now-font-size--lg) !important;
+            font-size: var(--now-font-size--lg, 18px) !important;
             font-weight: 700 !important;
-            color: rgb(var(--now-color_text--primary, 29 29 29)) !important;
+            color: rgb(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56))) !important;
             position: relative !important;
             margin-top: 0.125rem;
         }
         .dc-picker-wrap .select2-chosen {
             padding-left: 0.5rem;
             padding-right: 0 !important;
-            color: rgb(var(--now-color_text--primary, 29 29 29)) !important;
+            color: rgb(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56))) !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
@@ -863,7 +962,7 @@ UiPage({
             width: 0.6875rem !important;
             height: 0.4375rem !important;
             background-image: none !important;
-            background-color: rgba(var(--now-color_text--primary, 29 29 29), 0.55) !important;
+            background-color: rgba(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56)), 0.6) !important;
             -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0.5L5 5.5L10 0.5' stroke='black' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
             mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0.5L5 5.5L10 0.5' stroke='black' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
             -webkit-mask-size: contain !important;
@@ -1072,20 +1171,6 @@ UiPage({
 
         /* Hide uncompiled Angular template before bootstrap */
         [ng-cloak], .ng-cloak { display: none !important; }
-
-        /* Header label above the extra-changed-fields sections */
-        .dc-extra-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            color: rgb(var(--now-color_text--primary, 29 29 29));
-            opacity: 0.45;
-            padding: 1.5rem 1rem 0.5rem;
-        }
-        html.we-light .dc-extra-label {
-            opacity: 0.4;
-        }
 
         /* Light mode: boost opacity on elements dimmed for dark mode. */
         html.we-light .dc-meta-sep {
@@ -1314,7 +1399,7 @@ UiPage({
         <div id="diff-loading" ng-show="ctrl.loading"><div class="dc-spinner"></div></div>
 
         <!-- Error -->
-        <div id="diff-error" ng-show="ctrl.errorMsg"><i class="icon-alert-triangle"></i>&nbsp;<span ng-bind="ctrl.errorMsg"></span></div>
+        <div id="diff-error" ng-show="ctrl.errorMsg" class="alert alert-danger"><i class="icon-alert-triangle"></i>&nbsp;<span ng-bind="ctrl.errorMsg"></span></div>
 
         <!-- Content -->
         <div id="diff-content" ng-show="!ctrl.errorMsg">
@@ -1329,8 +1414,23 @@ UiPage({
                         <span class="dc-title-label" ng-if="ctrl.expandedIndex !== null || ctrl.expandedExtraIndex !== null || ctrl.expandedString" ng-bind="ctrl.expandedFieldLabel()"></span>
                     </div>
                     <div class="dc-header-btns" ng-hide="ctrl.recordNotFound || ctrl.noRecordSelected || ctrl.tableNoVersions">
-                        <button class="btn btn-default" ng-if="ctrl.isSpWidget" ng-hide="ctrl.noVersions" ng-click="ctrl.goToWidgetEditor()" ng-bind="ctrl.isFromList ? 'Close' : (ctrl.hasWidgetEditorOpener ? 'Return to Widget Editor+' : 'Open Widget Editor+')"></button>
-                        <a class="btn btn-default" ng-if="!ctrl.isSpWidget &amp;&amp; ctrl.tableLabel" ng-href="{{ctrl.platformUrl}}" target="_blank">Open {{ctrl.tableLabel}}<span class="icon-open-document-new-tab" style="display: inline-block; margin-left: 4px;" aria-hidden="true"></span></a>
+                        <button type="button" class="btn"
+                                ng-class="ctrl.showChangedFieldsFirst ? 'btn-primary active' : 'btn-default'"
+                                ng-click="ctrl.toggleShowChangedFieldsFirst()"
+                                title="{{ctrl.showChangedFieldsFirst ? 'Show fields in default order' : 'Show changed fields first'}}"
+                                aria-label="{{ctrl.showChangedFieldsFirst ? 'Show fields in default order' : 'Show changed fields first'}}"
+                                aria-pressed="{{ctrl.showChangedFieldsFirst}}">
+                            <span class="icon icon-new-above" aria-hidden="true"></span>
+                        </button>
+                        <button type="button" class="btn btn-default"
+                                ng-click="ctrl.exportXml()"
+                                ng-disabled="!ctrl.canExportXml()"
+                                title="Export both versions as XML"
+                                aria-label="Export both versions as XML">
+                            <span class="icon icon-export" aria-hidden="true"></span>
+                        </button>
+                        <button class="btn btn-primary" ng-if="ctrl.isSpWidget" ng-hide="ctrl.noVersions" ng-click="ctrl.goToWidgetEditor()" ng-bind="ctrl.isFromList ? 'Close' : (ctrl.hasWidgetEditorOpener ? 'Return to Widget Editor+' : 'Open Widget Editor+')"></button>
+                        <a class="btn btn-primary" ng-if="!ctrl.isSpWidget &amp;&amp; ctrl.tableLabel" ng-href="{{ctrl.platformUrl}}" target="_blank">Open {{ctrl.tableLabel}}<span class="icon-open-document-new-tab" style="display: inline-block; margin-left: 4px;" aria-hidden="true"></span></a>
                     </div>
                 </div>
 
@@ -1380,7 +1480,6 @@ UiPage({
                     </div>
                     <div class="dc-version-revert">
                         <button class="btn btn-default dc-revert-btn" ng-if="ctrl.canWrite &amp;&amp; ctrl.leftVersionId &amp;&amp; ctrl.leftVersionId !== 'current_saved'" ng-click="ctrl.revertToLeft()" ng-disabled="!!ctrl.recordSysPolicy" title="{{ctrl.recordSysPolicy ? (ctrl.recordSysPolicyDisplay + ' protection policy prevents changes') : 'Revert'}}">Revert</button>
-                        <button type="button" class="btn btn-default" style="margin-left: 0.375rem;" ng-click="ctrl.exportXml()" ng-disabled="!ctrl.canExportXml()" title="Export both versions as XML" aria-label="Export both versions as XML"><span class="icon icon-export" aria-hidden="true"></span></button>
                     </div>
                     </div><!-- /.dc-version-left-half -->
                     <div class="dc-version-col dc-version-dd" ng-click="$event.stopPropagation()">
@@ -1495,14 +1594,14 @@ UiPage({
 
                             <!-- Field rows (simple and script) in layout order -->
                             <tr class="sft-row" ng-repeat="f in ctrl.fields"
-                                ng-class="{'sft-changed': f.isScript ? f.changed : ctrl.isChanged(f.key), 'sft-row--top': !f.isScript &amp;&amp; (f.renderAs === 'textarea' || f.renderAs === 'text' || f.renderAs === 'list' || !f.renderAs || f.renderAs === 'conditions')}"
-                                ng-attr-id="{{f.isScript ? 'da-row-' + f.scriptIndex : 'row-' + f.key}}">
+                                ng-class="{'sft-changed': f.isExtra || (f.isScript ? f.changed : ctrl.isChanged(f.key)), 'sft-row--top': !f.isScript &amp;&amp; (f.renderAs === 'textarea' || f.renderAs === 'text' || f.renderAs === 'list' || !f.renderAs || f.renderAs === 'conditions')}"
+                                ng-attr-id="{{f.isScript ? (f.isExtra ? 'da-ex-row-' : 'da-row-') + f.scriptIndex : (f.isExtra ? 'ex-row-' : 'row-') + f.key}}">
 
                                 <!-- If it's a simple field, render the three standard tds -->
                                 <td ng-if="!f.isScript" class="sft-label">
                                     <div class="sft-label-main" we-tooltip="{{f.key}}">
                                         <span ng-bind="f.label"></span>
-                                        <span class="diff-glyph" ng-if="ctrl.isChanged(f.key)"><i class="icon-circle-solid"></i></span>
+                                        <span class="diff-glyph" ng-if="f.isExtra || ctrl.isChanged(f.key)"><i class="icon-circle-solid"></i></span>
                                     </div>
                                 </td>
 
@@ -1511,18 +1610,18 @@ UiPage({
                                     ng-class="{'sft-val--cb': f.renderAs === 'boolean', 'sft-col-loading': ctrl.loadingLeft}"
                                     ng-switch="f.renderAs">
                                     <span ng-switch-when="boolean"
-                                          ng-if="ctrl.leftFields[f.key] !== null"
+                                          ng-if="(f.isExtra ? ctrl.extraLeftFields : ctrl.leftFields)[f.key] !== null"
                                           class="sft-bool-icon"
-                                          ng-class="[ctrl.boolValClass(ctrl.leftFields[f.key]), ctrl.isChanged(f.key) ? 'sft-bool-icon--changed' : 'sft-bool-icon--same']"
-                                          aria-label="{{ctrl.leftFields[f.key]}}"></span>
+                                          ng-class="[ctrl.boolValClass((f.isExtra ? ctrl.extraLeftFields : ctrl.leftFields)[f.key]), (f.isExtra || ctrl.isChanged(f.key)) ? 'sft-bool-icon--changed' : 'sft-bool-icon--same']"
+                                          aria-label="{{(f.isExtra ? ctrl.extraLeftFields : ctrl.leftFields)[f.key]}}"></span>
                                     <span ng-switch-when="textarea" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
-                                                  readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
+                                                  readonly="readonly" ng-model="(f.isExtra ? ctrl.extraLeftDisplayFields : ctrl.leftDisplayFields)[f.key]"
                                                   aria-label="{{f.label}} (left)"
                                                   we-sync-row-height="we-sync-row-height"></textarea>
-                                        <button ng-if="ctrl.shouldShowStringExpand(f, false)"
+                                        <button ng-if="ctrl.shouldShowStringExpand(f, f.isExtra)"
                                                 class="btn btn-default sft-expand-btn"
-                                                ng-click="ctrl.toggleStringExpand(f, false, $event)"
+                                                ng-click="ctrl.toggleStringExpand(f, f.isExtra, $event)"
                                                 title="Expand"
                                                 aria-label="Expand"></button>
                                     </span>
@@ -1530,45 +1629,45 @@ UiPage({
                                         <div style="flex: 1; min-width: 0;">
                                             <textarea ng-show="!ctrl.showBuilder[f.key]"
                                                       class="form-control sft-textarea"
-                                                      readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
+                                                      readonly="readonly" ng-model="(f.isExtra ? ctrl.extraLeftDisplayFields : ctrl.leftDisplayFields)[f.key]"
                                                       aria-label="{{f.label}} (left)"
                                                       we-sync-row-height="we-sync-row-height"></textarea>
                                             <div ng-show="ctrl.showBuilder[f.key]" class="sft-builder-container">
-                                                <div ng-if="!ctrl.getParsedConditions(f.key, 'left', false).length" class="sft-cond-empty">
+                                                <div ng-if="!ctrl.getParsedConditions(f.key, 'left', f.isExtra).length" class="sft-cond-empty">
                                                     No conditions (runs always)
                                                 </div>
-                                                <div ng-repeat="cond in ctrl.getParsedConditions(f.key, 'left', false)" class="sft-cond-row-container">
-                                                    <div class="sft-cond-or-divider" ng-if="cond.isNewQueryGroup" ng-class="{'sft-cond-or-divider--changed': ctrl.isConditionPartChanged(f, cond, 'left', false, $index, 'conjunction')}">
+                                                <div ng-repeat="cond in ctrl.getParsedConditions(f.key, 'left', f.isExtra)" class="sft-cond-row-container">
+                                                    <div class="sft-cond-or-divider" ng-if="cond.isNewQueryGroup" ng-class="{'sft-cond-or-divider--changed': ctrl.isConditionPartChanged(f, cond, 'left', f.isExtra, $index, 'conjunction')}">
                                                         OR
                                                     </div>
                                                     <div class="sft-cond-row">
-                                                        <div class="sft-cond-conjunction" ng-class="{'sft-cond-conjunction--changed': ctrl.isConditionPartChanged(f, cond, 'left', false, $index, 'conjunction')}">
+                                                        <div class="sft-cond-conjunction" ng-class="{'sft-cond-conjunction--changed': ctrl.isConditionPartChanged(f, cond, 'left', f.isExtra, $index, 'conjunction')}">
                                                             <span ng-if="$index > 0 && !cond.isNewQueryGroup" ng-bind="(cond.isOr || cond.isNewQueryGroup) ? 'or' : 'and'"></span>
                                                         </div>
                                                         <div class="sft-cond-fields-wrap">
-                                                            <textarea class="form-control sft-cond-textarea sft-cond-field" readonly="readonly" ng-bind="cond.fieldLabel" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', false, $index, 'field')}"></textarea>
-                                                            <textarea class="form-control sft-cond-textarea sft-cond-operator" readonly="readonly" ng-bind="cond.operatorLabel || cond.operator" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', false, $index, 'operator')}"></textarea>
+                                                            <textarea class="form-control sft-cond-textarea sft-cond-field" readonly="readonly" ng-bind="cond.fieldLabel" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', f.isExtra, $index, 'field')}"></textarea>
+                                                            <textarea class="form-control sft-cond-textarea sft-cond-operator" readonly="readonly" ng-bind="cond.operatorLabel || cond.operator" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', f.isExtra, $index, 'operator')}"></textarea>
                                                             <div class="sft-cond-val-container" ng-if="ctrl.hasValueField(cond)">
-                                                                <textarea class="form-control sft-cond-textarea sft-cond-val-dropdown" readonly="readonly" ng-if="ctrl.isChoiceValueField(f, cond, 'left', false)" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', false)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', false, $index, 'value')}"></textarea>
-                                                                <div class="sft-cond-val-reference" ng-if="ctrl.isReferenceValueField(f, cond, 'left', false)">
-                                                                    <textarea class="form-control sft-cond-textarea sft-cond-val-ref-input" readonly="readonly" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', false)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', false, $index, 'value')}"></textarea>
+                                                                <textarea class="form-control sft-cond-textarea sft-cond-val-dropdown" readonly="readonly" ng-if="ctrl.isChoiceValueField(f, cond, 'left', f.isExtra)" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', f.isExtra)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', f.isExtra, $index, 'value')}"></textarea>
+                                                                <div class="sft-cond-val-reference" ng-if="ctrl.isReferenceValueField(f, cond, 'left', f.isExtra)">
+                                                                    <textarea class="form-control sft-cond-textarea sft-cond-val-ref-input" readonly="readonly" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', f.isExtra)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', f.isExtra, $index, 'value')}"></textarea>
                                                                     <a class="btn btn-default sft-cond-ref-btn"
-                                                                       ng-href="{{ctrl.getConditionReferenceUrl(f, cond, false)}}"
+                                                                       ng-href="{{ctrl.getConditionReferenceUrl(f, cond, f.isExtra)}}"
                                                                        ng-if="ctrl.isValidSysId(cond.value)"
-                                                                       ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', false, $index, 'value')}"
+                                                                       ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', f.isExtra, $index, 'value')}"
                                                                        target="_blank"
                                                                        title="Open record">
                                                                         <i class="icon-open-document-new-tab"></i>
                                                                     </a>
                                                                 </div>
                                                                 <textarea class="form-control sft-cond-textarea sft-cond-val-textarea" readonly="readonly"
-                                                                          ng-if="ctrl.isTextareaValueField(f, cond, 'left', false)"
-                                                                          ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', false, $index, 'value')}"
-                                                                          ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', false)"></textarea>
+                                                                          ng-if="ctrl.isTextareaValueField(f, cond, 'left', f.isExtra)"
+                                                                          ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', f.isExtra, $index, 'value')}"
+                                                                          ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', f.isExtra)"></textarea>
                                                                 <textarea class="form-control sft-cond-textarea sft-cond-val-input" readonly="readonly"
-                                                                          ng-if="ctrl.isStandardValueField(f, cond, 'left', false)"
-                                                                          ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', false, $index, 'value')}"
-                                                                          ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', false)"></textarea>
+                                                                          ng-if="ctrl.isStandardValueField(f, cond, 'left', f.isExtra)"
+                                                                          ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', f.isExtra, $index, 'value')}"
+                                                                          ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', f.isExtra)"></textarea>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1576,15 +1675,15 @@ UiPage({
                                             </div>
                                         </div>
                                         <div style="display: flex; flex-direction: column; gap: 0.25rem; flex-shrink: 0;">
-                                            <button ng-if="ctrl.shouldShowStringExpand(f, false)"
+                                            <button ng-if="ctrl.shouldShowStringExpand(f, f.isExtra)"
                                                     class="btn btn-default sft-expand-btn"
                                                     ng-disabled="ctrl.showBuilder[f.key]"
-                                                    ng-click="ctrl.toggleStringExpand(f, false, $event)"
+                                                    ng-click="ctrl.toggleStringExpand(f, f.isExtra, $event)"
                                                     title="Expand"
                                                     aria-label="Expand"></button>
                                             <button class="btn btn-default sft-filter-btn"
                                                     ng-class="{'active': ctrl.showBuilder[f.key]}"
-                                                    ng-click="ctrl.toggleBuilderMode(f, false)"
+                                                    ng-click="ctrl.toggleBuilderMode(f, f.isExtra)"
                                                     title="Filter"
                                                     aria-label="Filter">
                                                 <i class="icon-filter"></i>
@@ -1593,37 +1692,37 @@ UiPage({
                                     </span>
                                     <span ng-switch-when="reference" class="sft-ref-wrap">
                                         <input type="text" class="form-control"
-                                               readonly="readonly" ng-model="ctrl.leftRefDisplay[f.key]"
+                                               readonly="readonly" ng-model="(f.isExtra ? ctrl.extraLeftRefDisplay : ctrl.leftRefDisplay)[f.key]"
                                                aria-label="{{f.label}} (left)" />
                                         <a class="btn btn-default sft-ref-btn"
-                                           ng-href="{{ctrl.getReferenceUrl(f, 'left')}}"
-                                           ng-if="ctrl.leftFields[f.key]"
+                                           ng-href="{{f.isExtra ? ctrl.getExtraReferenceUrl(f, 'left') : ctrl.getReferenceUrl(f, 'left')}}"
+                                           ng-if="(f.isExtra ? ctrl.extraLeftFields : ctrl.leftFields)[f.key]"
                                            target="_blank"
                                            title="Open record"><i class="icon-open-document-new-tab"></i></a>
                                     </span>
                                     <input ng-switch-when="choice" type="text" class="form-control"
-                                           readonly="readonly" ng-model="ctrl.leftRefDisplay[f.key]"
+                                           readonly="readonly" ng-model="(f.isExtra ? ctrl.extraLeftRefDisplay : ctrl.leftRefDisplay)[f.key]"
                                            aria-label="{{f.label}} (left)" />
                                     <a ng-switch-when="image"
-                                       ng-if="ctrl.leftFields[f.key]" ng-href="/{{ctrl.leftFields[f.key]}}.iix"
+                                       ng-if="(f.isExtra ? ctrl.extraLeftFields : ctrl.leftFields)[f.key]" ng-href="/{{(f.isExtra ? ctrl.extraLeftFields : ctrl.leftFields)[f.key]}}.iix"
                                        target="_blank">
-                                        <img ng-src="/{{ctrl.leftFields[f.key]}}.iix?t=medium"
-                                             class="sft-img-preview" ng-attr-alt="{{ctrl.leftFields[f.key]}}" ng-attr-title="{{ctrl.leftFields[f.key]}}" />
+                                        <img ng-src="/{{(f.isExtra ? ctrl.extraLeftFields : ctrl.leftFields)[f.key]}}.iix?t=medium"
+                                             class="sft-img-preview" ng-attr-alt="{{(f.isExtra ? ctrl.extraLeftFields : ctrl.leftFields)[f.key]}}" ng-attr-title="{{(f.isExtra ? ctrl.extraLeftFields : ctrl.leftFields)[f.key]}}" />
                                     </a>
                                     <span ng-switch-when="list" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
-                                                  readonly="readonly" ng-model="ctrl.leftListDisplay[f.key]"
+                                                  readonly="readonly" ng-model="(f.isExtra ? ctrl.extraLeftListDisplay : ctrl.leftListDisplay)[f.key]"
                                                   aria-label="{{f.label}} (left)"
                                                   we-sync-row-height="we-sync-row-height"></textarea>
                                     </span>
                                     <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
-                                                  readonly="readonly" ng-model="ctrl.leftDisplayFields[f.key]"
+                                                  readonly="readonly" ng-model="(f.isExtra ? ctrl.extraLeftDisplayFields : ctrl.leftDisplayFields)[f.key]"
                                                   aria-label="{{f.label}} (left)"
                                                   we-sync-row-height="we-sync-row-height"></textarea>
-                                        <button ng-if="ctrl.shouldShowStringExpand(f, false)"
+                                        <button ng-if="ctrl.shouldShowStringExpand(f, f.isExtra)"
                                                 class="btn btn-default sft-expand-btn"
-                                                ng-click="ctrl.toggleStringExpand(f, false, $event)"
+                                                ng-click="ctrl.toggleStringExpand(f, f.isExtra, $event)"
                                                 title="Expand"
                                                 aria-label="Expand"></button>
                                     </span>
@@ -1634,18 +1733,18 @@ UiPage({
                                     ng-class="{'sft-val--cb': f.renderAs === 'boolean', 'sft-col-loading': ctrl.loadingRight}"
                                     ng-switch="f.renderAs">
                                     <span ng-switch-when="boolean"
-                                          ng-if="ctrl.rightFields[f.key] !== null"
+                                          ng-if="(f.isExtra ? ctrl.extraRightFields : ctrl.rightFields)[f.key] !== null"
                                           class="sft-bool-icon"
-                                          ng-class="[ctrl.boolValClass(ctrl.rightFields[f.key]), ctrl.isChanged(f.key) ? 'sft-bool-icon--changed' : 'sft-bool-icon--same']"
-                                          aria-label="{{ctrl.rightFields[f.key]}}"></span>
+                                          ng-class="[ctrl.boolValClass((f.isExtra ? ctrl.extraRightFields : ctrl.rightFields)[f.key]), (f.isExtra || ctrl.isChanged(f.key)) ? 'sft-bool-icon--changed' : 'sft-bool-icon--same']"
+                                          aria-label="{{(f.isExtra ? ctrl.extraRightFields : ctrl.rightFields)[f.key]}}"></span>
                                     <span ng-switch-when="textarea" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
-                                                  readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
+                                                  readonly="readonly" ng-model="(f.isExtra ? ctrl.extraRightDisplayFields : ctrl.rightDisplayFields)[f.key]"
                                                   aria-label="{{f.label}} (right)"
                                                   we-sync-row-height="we-sync-row-height"></textarea>
-                                        <button ng-if="ctrl.shouldShowStringExpand(f, false)"
+                                        <button ng-if="ctrl.shouldShowStringExpand(f, f.isExtra)"
                                                 class="btn btn-default sft-expand-btn"
-                                                ng-click="ctrl.toggleStringExpand(f, false, $event)"
+                                                ng-click="ctrl.toggleStringExpand(f, f.isExtra, $event)"
                                                 title="Expand"
                                                 aria-label="Expand"></button>
                                     </span>
@@ -1653,45 +1752,45 @@ UiPage({
                                         <div style="flex: 1; min-width: 0;">
                                             <textarea ng-show="!ctrl.showBuilder[f.key]"
                                                       class="form-control sft-textarea"
-                                                      readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
+                                                      readonly="readonly" ng-model="(f.isExtra ? ctrl.extraRightDisplayFields : ctrl.rightDisplayFields)[f.key]"
                                                       aria-label="{{f.label}} (right)"
                                                       we-sync-row-height="we-sync-row-height"></textarea>
                                             <div ng-show="ctrl.showBuilder[f.key]" class="sft-builder-container">
-                                                <div ng-if="!ctrl.getParsedConditions(f.key, 'right', false).length" class="sft-cond-empty">
+                                                <div ng-if="!ctrl.getParsedConditions(f.key, 'right', f.isExtra).length" class="sft-cond-empty">
                                                     No conditions (runs always)
                                                 </div>
-                                                <div ng-repeat="cond in ctrl.getParsedConditions(f.key, 'right', false)" class="sft-cond-row-container">
-                                                    <div class="sft-cond-or-divider" ng-if="cond.isNewQueryGroup" ng-class="{'sft-cond-or-divider--changed': ctrl.isConditionPartChanged(f, cond, 'right', false, $index, 'conjunction')}">
+                                                <div ng-repeat="cond in ctrl.getParsedConditions(f.key, 'right', f.isExtra)" class="sft-cond-row-container">
+                                                    <div class="sft-cond-or-divider" ng-if="cond.isNewQueryGroup" ng-class="{'sft-cond-or-divider--changed': ctrl.isConditionPartChanged(f, cond, 'right', f.isExtra, $index, 'conjunction')}">
                                                         OR
                                                     </div>
                                                     <div class="sft-cond-row">
-                                                        <div class="sft-cond-conjunction" ng-class="{'sft-cond-conjunction--changed': ctrl.isConditionPartChanged(f, cond, 'right', false, $index, 'conjunction')}">
+                                                        <div class="sft-cond-conjunction" ng-class="{'sft-cond-conjunction--changed': ctrl.isConditionPartChanged(f, cond, 'right', f.isExtra, $index, 'conjunction')}">
                                                             <span ng-if="$index > 0 && !cond.isNewQueryGroup" ng-bind="(cond.isOr || cond.isNewQueryGroup) ? 'or' : 'and'"></span>
                                                         </div>
                                                         <div class="sft-cond-fields-wrap">
-                                                            <textarea class="form-control sft-cond-textarea sft-cond-field" readonly="readonly" ng-bind="cond.fieldLabel" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', false, $index, 'field')}"></textarea>
-                                                            <textarea class="form-control sft-cond-textarea sft-cond-operator" readonly="readonly" ng-bind="cond.operatorLabel || cond.operator" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', false, $index, 'operator')}"></textarea>
+                                                            <textarea class="form-control sft-cond-textarea sft-cond-field" readonly="readonly" ng-bind="cond.fieldLabel" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', f.isExtra, $index, 'field')}"></textarea>
+                                                            <textarea class="form-control sft-cond-textarea sft-cond-operator" readonly="readonly" ng-bind="cond.operatorLabel || cond.operator" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', f.isExtra, $index, 'operator')}"></textarea>
                                                             <div class="sft-cond-val-container" ng-if="ctrl.hasValueField(cond)">
-                                                                <textarea class="form-control sft-cond-textarea sft-cond-val-dropdown" readonly="readonly" ng-if="ctrl.isChoiceValueField(f, cond, 'right', false)" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', false)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', false, $index, 'value')}"></textarea>
-                                                                <div class="sft-cond-val-reference" ng-if="ctrl.isReferenceValueField(f, cond, 'right', false)">
-                                                                    <textarea class="form-control sft-cond-textarea sft-cond-val-ref-input" readonly="readonly" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', false)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', false, $index, 'value')}"></textarea>
+                                                                <textarea class="form-control sft-cond-textarea sft-cond-val-dropdown" readonly="readonly" ng-if="ctrl.isChoiceValueField(f, cond, 'right', f.isExtra)" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', f.isExtra)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', f.isExtra, $index, 'value')}"></textarea>
+                                                                <div class="sft-cond-val-reference" ng-if="ctrl.isReferenceValueField(f, cond, 'right', f.isExtra)">
+                                                                    <textarea class="form-control sft-cond-textarea sft-cond-val-ref-input" readonly="readonly" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', f.isExtra)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', f.isExtra, $index, 'value')}"></textarea>
                                                                     <a class="btn btn-default sft-cond-ref-btn"
-                                                                       ng-href="{{ctrl.getConditionReferenceUrl(f, cond, false)}}"
+                                                                       ng-href="{{ctrl.getConditionReferenceUrl(f, cond, f.isExtra)}}"
                                                                        ng-if="ctrl.isValidSysId(cond.value)"
-                                                                       ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', false, $index, 'value')}"
+                                                                       ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', f.isExtra, $index, 'value')}"
                                                                        target="_blank"
                                                                        title="Open record">
                                                                         <i class="icon-open-document-new-tab"></i>
                                                                     </a>
                                                                 </div>
                                                                 <textarea class="form-control sft-cond-textarea sft-cond-val-textarea" readonly="readonly"
-                                                                          ng-if="ctrl.isTextareaValueField(f, cond, 'right', false)"
-                                                                          ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', false, $index, 'value')}"
-                                                                          ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', false)"></textarea>
+                                                                          ng-if="ctrl.isTextareaValueField(f, cond, 'right', f.isExtra)"
+                                                                          ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', f.isExtra, $index, 'value')}"
+                                                                          ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', f.isExtra)"></textarea>
                                                                 <textarea class="form-control sft-cond-textarea sft-cond-val-input" readonly="readonly"
-                                                                          ng-if="ctrl.isStandardValueField(f, cond, 'right', false)"
-                                                                          ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', false, $index, 'value')}"
-                                                                          ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', false)"></textarea>
+                                                                          ng-if="ctrl.isStandardValueField(f, cond, 'right', f.isExtra)"
+                                                                          ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', f.isExtra, $index, 'value')}"
+                                                                          ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', f.isExtra)"></textarea>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1699,15 +1798,15 @@ UiPage({
                                             </div>
                                         </div>
                                         <div style="display: flex; flex-direction: column; gap: 0.25rem; flex-shrink: 0;">
-                                            <button ng-if="ctrl.shouldShowStringExpand(f, false)"
+                                            <button ng-if="ctrl.shouldShowStringExpand(f, f.isExtra)"
                                                     class="btn btn-default sft-expand-btn"
                                                     ng-disabled="ctrl.showBuilder[f.key]"
-                                                    ng-click="ctrl.toggleStringExpand(f, false, $event)"
+                                                    ng-click="ctrl.toggleStringExpand(f, f.isExtra, $event)"
                                                     title="Expand"
                                                     aria-label="Expand"></button>
                                             <button class="btn btn-default sft-filter-btn"
                                                     ng-class="{'active': ctrl.showBuilder[f.key]}"
-                                                    ng-click="ctrl.toggleBuilderMode(f, false)"
+                                                    ng-click="ctrl.toggleBuilderMode(f, f.isExtra)"
                                                     title="Filter"
                                                     aria-label="Filter">
                                                 <i class="icon-filter"></i>
@@ -1716,44 +1815,44 @@ UiPage({
                                     </span>
                                     <span ng-switch-when="reference" class="sft-ref-wrap">
                                         <input type="text" class="form-control"
-                                               readonly="readonly" ng-model="ctrl.rightRefDisplay[f.key]"
+                                               readonly="readonly" ng-model="(f.isExtra ? ctrl.extraRightRefDisplay : ctrl.rightRefDisplay)[f.key]"
                                                aria-label="{{f.label}} (right)" />
                                         <a class="btn btn-default sft-ref-btn"
-                                           ng-href="{{ctrl.getReferenceUrl(f, 'right')}}"
-                                           ng-if="ctrl.rightFields[f.key]"
+                                           ng-href="{{f.isExtra ? ctrl.getExtraReferenceUrl(f, 'right') : ctrl.getReferenceUrl(f, 'right')}}"
+                                           ng-if="(f.isExtra ? ctrl.extraRightFields : ctrl.rightFields)[f.key]"
                                            target="_blank"
                                            title="Open record"><i class="icon-open-document-new-tab"></i></a>
                                     </span>
                                     <input ng-switch-when="choice" type="text" class="form-control"
-                                           readonly="readonly" ng-model="ctrl.rightRefDisplay[f.key]"
+                                           readonly="readonly" ng-model="(f.isExtra ? ctrl.extraRightRefDisplay : ctrl.rightRefDisplay)[f.key]"
                                            aria-label="{{f.label}} (right)" />
                                     <a ng-switch-when="image"
-                                       ng-if="ctrl.rightFields[f.key]" ng-href="/{{ctrl.rightFields[f.key]}}.iix"
+                                       ng-if="(f.isExtra ? ctrl.extraRightFields : ctrl.rightFields)[f.key]" ng-href="/{{(f.isExtra ? ctrl.extraRightFields : ctrl.rightFields)[f.key]}}.iix"
                                        target="_blank">
-                                        <img ng-src="/{{ctrl.rightFields[f.key]}}.iix?t=medium"
-                                             class="sft-img-preview" ng-attr-alt="{{ctrl.rightFields[f.key]}}" ng-attr-title="{{ctrl.rightFields[f.key]}}" />
+                                        <img ng-src="/{{(f.isExtra ? ctrl.extraRightFields : ctrl.rightFields)[f.key]}}.iix?t=medium"
+                                             class="sft-img-preview" ng-attr-alt="{{(f.isExtra ? ctrl.extraRightFields : ctrl.rightFields)[f.key]}}" ng-attr-title="{{(f.isExtra ? ctrl.extraRightFields : ctrl.rightFields)[f.key]}}" />
                                     </a>
                                     <span ng-switch-when="list" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
-                                                  readonly="readonly" ng-model="ctrl.rightListDisplay[f.key]"
+                                                  readonly="readonly" ng-model="(f.isExtra ? ctrl.extraRightListDisplay : ctrl.rightListDisplay)[f.key]"
                                                   aria-label="{{f.label}} (right)"
                                                   we-sync-row-height="we-sync-row-height"></textarea>
                                     </span>
                                     <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
                                         <textarea class="form-control sft-textarea"
-                                                  readonly="readonly" ng-model="ctrl.rightDisplayFields[f.key]"
+                                                  readonly="readonly" ng-model="(f.isExtra ? ctrl.extraRightDisplayFields : ctrl.rightDisplayFields)[f.key]"
                                                   aria-label="{{f.label}} (right)"
                                                   we-sync-row-height="we-sync-row-height"></textarea>
-                                        <button ng-if="ctrl.shouldShowStringExpand(f, false)"
+                                        <button ng-if="ctrl.shouldShowStringExpand(f, f.isExtra)"
                                                 class="btn btn-default sft-expand-btn"
-                                                ng-click="ctrl.toggleStringExpand(f, false, $event)"
+                                                ng-click="ctrl.toggleStringExpand(f, f.isExtra, $event)"
                                                 title="Expand"
                                                 aria-label="Expand"></button>
                                     </span>
                                 </td>
 
-                                <!-- If it's a script field, render the label in the first column and editor in colspan="2" -->
-                                <td ng-if="f.isScript" class="sft-label" style="vertical-align: top; padding-top: 0.75rem;">
+                                <!-- If it's a script field (not extra), render the label in the first column and editor in colspan="2" -->
+                                <td ng-if="f.isScript &amp;&amp; !f.isExtra" class="sft-label" style="vertical-align: top; padding-top: 0.75rem;">
                                     <div>
                                         <div class="sft-label-main" we-tooltip="{{f.key}}">
                                             <span ng-bind="f.label"></span>
@@ -1773,7 +1872,7 @@ UiPage({
                                             aria-label="Expand"></button>
                                 </td>
 
-                                <td ng-if="f.isScript" colspan="2" style="padding: 0.5rem 0.75rem; vertical-align: top;">
+                                <td ng-if="f.isScript &amp;&amp; !f.isExtra" colspan="2" style="padding: 0.5rem 0.75rem; vertical-align: top;">
                                     <div we-diff-editor="f.scriptIndex"
                                          script-index="{{f.scriptIndex}}"
                                          class="da-section"
@@ -1790,315 +1889,48 @@ UiPage({
                                         </div>
                                     </div>
                                 </td>
-                            </tr>
 
-                <!-- Extra changed fields not in the Default view form layout -->
-                <div ng-if="ctrl.extraFields.length > 0">
-                    <div class="dc-extra-label">Other changed fields</div>
-
-                    <div class="dc-simple-section">
-                        <table class="sft-table">
-                            <colgroup><col class="sft-col-label" /><col /><col /></colgroup>
-                            <tbody>
-                                <tr ng-repeat="f in ctrl.extraFields"
-                                    class="sft-row sft-changed"
-                                    ng-class="{'sft-row--top': !f.isScript &amp;&amp; (f.renderAs === 'textarea' || f.renderAs === 'text' || f.renderAs === 'list' || !f.renderAs || f.renderAs === 'conditions')}"
-                                    ng-attr-id="{{f.isScript ? 'da-ex-row-' + f.scriptIndex : 'ex-row-' + f.key}}">
-
-                                    <!-- Simple field -->
-                                    <td ng-if="!f.isScript" class="sft-label">
+                                <!-- If it's an extra (non-layout) script field, render the label in the first column and editor in colspan="2" -->
+                                <td ng-if="f.isScript &amp;&amp; f.isExtra" class="sft-label" style="vertical-align: top; padding-top: 0.75rem;">
+                                    <div>
                                         <div class="sft-label-main" we-tooltip="{{f.key}}">
                                             <span ng-bind="f.label"></span>
                                             <span class="diff-glyph"><i class="icon-circle-solid"></i></span>
                                         </div>
-                                    </td>
+                                    </div>
+                                    <div class="da-diff-counts" ng-if="f.counts" style="margin-top: 0.25rem; font-size: 0.8125rem;">
+                                        <span class="da-diff-added" ng-if="f.counts.added" ng-bind-template="+{{f.counts.added}}"></span>
+                                        <span ng-if="f.counts.added &amp;&amp; f.counts.removed"> </span>
+                                        <span class="da-diff-removed" ng-if="f.counts.removed" ng-bind-template="-{{f.counts.removed}}"></span>
+                                    </div>
+                                    <!-- Expand button below field label -->
+                                    <button class="btn btn-default sft-expand-btn"
+                                            style="margin-top: 0.5rem;"
+                                            ng-click="ctrl.toggleExtraExpand(f.scriptIndex, $event)"
+                                            title="Expand"
+                                            aria-label="Expand"></button>
+                                </td>
 
-                                    <td ng-if="!f.isScript" class="sft-val"
-                                        ng-class="{'sft-val--cb': f.renderAs === 'boolean', 'sft-col-loading': ctrl.loadingLeft}"
-                                        ng-switch="f.renderAs">
-                                        <span ng-switch-when="boolean"
-                                              ng-if="ctrl.extraLeftFields[f.key] !== null"
-                                              class="sft-bool-icon sft-bool-icon--changed"
-                                              ng-class="ctrl.boolValClass(ctrl.extraLeftFields[f.key])"
-                                              aria-label="{{ctrl.extraLeftFields[f.key]}}"></span>
-                                        <span ng-switch-when="textarea" class="sft-string-wrap">
-                                            <textarea class="form-control sft-textarea"
-                                                      readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
-                                                      aria-label="{{f.label}} (left)"
-                                                      we-sync-row-height="we-sync-row-height"></textarea>
-                                            <button ng-if="ctrl.shouldShowStringExpand(f, true)"
-                                                    class="btn btn-default sft-expand-btn"
-                                                    ng-click="ctrl.toggleStringExpand(f, true, $event)"
-                                                    title="Expand"
-                                                    aria-label="Expand"></button>
-                                        </span>
-                                        <span ng-switch-when="conditions" class="sft-string-wrap">
-                                            <div style="flex: 1; min-width: 0;">
-                                                <textarea ng-show="!ctrl.showBuilder[f.key]"
-                                                          class="form-control sft-textarea"
-                                                          readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
-                                                          aria-label="{{f.label}} (left)"
-                                                          we-sync-row-height="we-sync-row-height"></textarea>
-                                                <div ng-show="ctrl.showBuilder[f.key]" class="sft-builder-container">
-                                                    <div ng-if="!ctrl.getParsedConditions(f.key, 'left', true).length" class="sft-cond-empty">
-                                                        No conditions (runs always)
-                                                    </div>
-                                                    <div ng-repeat="cond in ctrl.getParsedConditions(f.key, 'left', true)" class="sft-cond-row-container">
-                                                        <div class="sft-cond-or-divider" ng-if="cond.isNewQueryGroup" ng-class="{'sft-cond-or-divider--changed': ctrl.isConditionPartChanged(f, cond, 'left', true, $index, 'conjunction')}">
-                                                            OR
-                                                        </div>
-                                                        <div class="sft-cond-row">
-                                                            <div class="sft-cond-conjunction" ng-class="{'sft-cond-conjunction--changed': ctrl.isConditionPartChanged(f, cond, 'left', true, $index, 'conjunction')}">
-                                                                <span ng-if="$index > 0 && !cond.isNewQueryGroup" ng-bind="(cond.isOr || cond.isNewQueryGroup) ? 'or' : 'and'"></span>
-                                                            </div>
-                                                            <div class="sft-cond-fields-wrap">
-                                                                <textarea class="form-control sft-cond-textarea sft-cond-field" readonly="readonly" ng-bind="cond.fieldLabel" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', true, $index, 'field')}"></textarea>
-                                                                <textarea class="form-control sft-cond-textarea sft-cond-operator" readonly="readonly" ng-bind="cond.operatorLabel || cond.operator" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', true, $index, 'operator')}"></textarea>
-                                                                <div class="sft-cond-val-container" ng-if="ctrl.hasValueField(cond)">
-                                                                    <textarea class="form-control sft-cond-textarea sft-cond-val-dropdown" readonly="readonly" ng-if="ctrl.isChoiceValueField(f, cond, 'left', true)" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', true)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', true, $index, 'value')}"></textarea>
-                                                                    <div class="sft-cond-val-reference" ng-if="ctrl.isReferenceValueField(f, cond, 'left', true)">
-                                                                        <textarea class="form-control sft-cond-textarea sft-cond-val-ref-input" readonly="readonly" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', true)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', true, $index, 'value')}"></textarea>
-                                                                        <a class="btn btn-default sft-cond-ref-btn"
-                                                                           ng-href="{{ctrl.getConditionReferenceUrl(f, cond, true)}}"
-                                                                           ng-if="ctrl.isValidSysId(cond.value)"
-                                                                           ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', true, $index, 'value')}"
-                                                                           target="_blank"
-                                                                           title="Open record">
-                                                                            <i class="icon-open-document-new-tab"></i>
-                                                                        </a>
-                                                                    </div>
-                                                                    <textarea class="form-control sft-cond-textarea sft-cond-val-textarea" readonly="readonly"
-                                                                              ng-if="ctrl.isTextareaValueField(f, cond, 'left', true)"
-                                                                              ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', true, $index, 'value')}"
-                                                                              ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', true)"></textarea>
-                                                                    <textarea class="form-control sft-cond-textarea sft-cond-val-input" readonly="readonly"
-                                                                              ng-if="ctrl.isStandardValueField(f, cond, 'left', true)"
-                                                                              ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'left', true, $index, 'value')}"
-                                                                              ng-bind="ctrl.getConditionDisplayValue(f, cond, 'left', true)"></textarea>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div style="display: flex; flex-direction: column; gap: 0.25rem; flex-shrink: 0;">
-                                                <button ng-if="ctrl.shouldShowStringExpand(f, true)"
-                                                        class="btn btn-default sft-expand-btn"
-                                                        ng-disabled="ctrl.showBuilder[f.key]"
-                                                        ng-click="ctrl.toggleStringExpand(f, true, $event)"
-                                                        title="Expand"
-                                                        aria-label="Expand"></button>
-                                                <button class="btn btn-default sft-filter-btn"
-                                                        ng-class="{'active': ctrl.showBuilder[f.key]}"
-                                                        ng-click="ctrl.toggleBuilderMode(f, true)"
-                                                        title="Filter"
-                                                        aria-label="Filter">
-                                                    <i class="icon-filter"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <span ng-switch-when="reference" class="sft-ref-wrap">
-                                            <input type="text" class="form-control"
-                                                   readonly="readonly" ng-model="ctrl.extraLeftRefDisplay[f.key]"
-                                                   aria-label="{{f.label}} (left)" />
-                                            <a class="btn btn-default sft-ref-btn"
-                                               ng-href="{{ctrl.getExtraReferenceUrl(f, 'left')}}"
-                                               ng-if="ctrl.extraLeftFields[f.key]"
-                                               target="_blank"
-                                               title="Open record"><i class="icon-open-document-new-tab"></i></a>
-                                        </span>
-                                        <input ng-switch-when="choice" type="text" class="form-control"
-                                               readonly="readonly" ng-model="ctrl.extraLeftRefDisplay[f.key]"
-                                               aria-label="{{f.label}} (left)" />
-                                        <a ng-switch-when="image"
-                                           ng-if="ctrl.extraLeftFields[f.key]" ng-href="/{{ctrl.extraLeftFields[f.key]}}.iix"
-                                           target="_blank">
-                                            <img ng-src="/{{ctrl.extraLeftFields[f.key]}}.iix?t=medium"
-                                                 class="sft-img-preview" ng-attr-alt="{{ctrl.extraLeftFields[f.key]}}" ng-attr-title="{{ctrl.extraLeftFields[f.key]}}" />
-                                        </a>
-                                        <span ng-switch-when="list" class="sft-string-wrap">
-                                            <textarea class="form-control sft-textarea"
-                                                      readonly="readonly" ng-model="ctrl.extraLeftListDisplay[f.key]"
-                                                      aria-label="{{f.label}} (left)"
-                                                      we-sync-row-height="we-sync-row-height"></textarea>
-                                        </span>
-                                        <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
-                                            <textarea class="form-control sft-textarea"
-                                                      readonly="readonly" ng-model="ctrl.extraLeftDisplayFields[f.key]"
-                                                      aria-label="{{f.label}} (left)"
-                                                      we-sync-row-height="we-sync-row-height"></textarea>
-                                            <button ng-if="ctrl.shouldShowStringExpand(f, true)"
-                                                    class="btn btn-default sft-expand-btn"
-                                                    ng-click="ctrl.toggleStringExpand(f, true, $event)"
-                                                    title="Expand"
-                                                    aria-label="Expand"></button>
-                                        </span>
-                                    </td>
-
-                                    <td ng-if="!f.isScript" class="sft-val"
-                                        ng-class="{'sft-val--cb': f.renderAs === 'boolean', 'sft-col-loading': ctrl.loadingRight}"
-                                        ng-switch="f.renderAs">
-                                        <span ng-switch-when="boolean"
-                                              ng-if="ctrl.extraRightFields[f.key] !== null"
-                                              class="sft-bool-icon sft-bool-icon--changed"
-                                              ng-class="ctrl.boolValClass(ctrl.extraRightFields[f.key])"
-                                              aria-label="{{ctrl.extraRightFields[f.key]}}"></span>
-                                        <span ng-switch-when="textarea" class="sft-string-wrap">
-                                            <textarea class="form-control sft-textarea"
-                                                      readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
-                                                      aria-label="{{f.label}} (right)"
-                                                      we-sync-row-height="we-sync-row-height"></textarea>
-                                            <button ng-if="ctrl.shouldShowStringExpand(f, true)"
-                                                    class="btn btn-default sft-expand-btn"
-                                                    ng-click="ctrl.toggleStringExpand(f, true, $event)"
-                                                    title="Expand"
-                                                    aria-label="Expand"></button>
-                                        </span>
-                                        <span ng-switch-when="conditions" class="sft-string-wrap">
-                                            <div style="flex: 1; min-width: 0;">
-                                                <textarea ng-show="!ctrl.showBuilder[f.key]"
-                                                          class="form-control sft-textarea"
-                                                          readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
-                                                          aria-label="{{f.label}} (right)"
-                                                          we-sync-row-height="we-sync-row-height"></textarea>
-                                                <div ng-show="ctrl.showBuilder[f.key]" class="sft-builder-container">
-                                                    <div ng-if="!ctrl.getParsedConditions(f.key, 'right', true).length" class="sft-cond-empty">
-                                                        No conditions (runs always)
-                                                    </div>
-                                                    <div ng-repeat="cond in ctrl.getParsedConditions(f.key, 'right', true)" class="sft-cond-row-container">
-                                                        <div class="sft-cond-or-divider" ng-if="cond.isNewQueryGroup" ng-class="{'sft-cond-or-divider--changed': ctrl.isConditionPartChanged(f, cond, 'right', true, $index, 'conjunction')}">
-                                                            OR
-                                                        </div>
-                                                        <div class="sft-cond-row">
-                                                            <div class="sft-cond-conjunction" ng-class="{'sft-cond-conjunction--changed': ctrl.isConditionPartChanged(f, cond, 'right', true, $index, 'conjunction')}">
-                                                                <span ng-if="$index > 0 && !cond.isNewQueryGroup" ng-bind="(cond.isOr || cond.isNewQueryGroup) ? 'or' : 'and'"></span>
-                                                            </div>
-                                                            <div class="sft-cond-fields-wrap">
-                                                                <textarea class="form-control sft-cond-textarea sft-cond-field" readonly="readonly" ng-bind="cond.fieldLabel" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', true, $index, 'field')}"></textarea>
-                                                                <textarea class="form-control sft-cond-textarea sft-cond-operator" readonly="readonly" ng-bind="cond.operatorLabel || cond.operator" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', true, $index, 'operator')}"></textarea>
-                                                                <div class="sft-cond-val-container" ng-if="ctrl.hasValueField(cond)">
-                                                                    <textarea class="form-control sft-cond-textarea sft-cond-val-dropdown" readonly="readonly" ng-if="ctrl.isChoiceValueField(f, cond, 'right', true)" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', true)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', true, $index, 'value')}"></textarea>
-                                                                    <div class="sft-cond-val-reference" ng-if="ctrl.isReferenceValueField(f, cond, 'right', true)">
-                                                                        <textarea class="form-control sft-cond-textarea sft-cond-val-ref-input" readonly="readonly" ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', true)" ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', true, $index, 'value')}"></textarea>
-                                                                        <a class="btn btn-default sft-cond-ref-btn"
-                                                                           ng-href="{{ctrl.getConditionReferenceUrl(f, cond, true)}}"
-                                                                           ng-if="ctrl.isValidSysId(cond.value)"
-                                                                           ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', true, $index, 'value')}"
-                                                                           target="_blank"
-                                                                           title="Open record">
-                                                                            <i class="icon-open-document-new-tab"></i>
-                                                                        </a>
-                                                                    </div>
-                                                                    <textarea class="form-control sft-cond-textarea sft-cond-val-textarea" readonly="readonly"
-                                                                              ng-if="ctrl.isTextareaValueField(f, cond, 'right', true)"
-                                                                              ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', true, $index, 'value')}"
-                                                                              ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', true)"></textarea>
-                                                                    <textarea class="form-control sft-cond-textarea sft-cond-val-input" readonly="readonly"
-                                                                              ng-if="ctrl.isStandardValueField(f, cond, 'right', true)"
-                                                                              ng-class="{'sft-cond-box--changed': ctrl.isConditionPartChanged(f, cond, 'right', true, $index, 'value')}"
-                                                                              ng-bind="ctrl.getConditionDisplayValue(f, cond, 'right', true)"></textarea>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div style="display: flex; flex-direction: column; gap: 0.25rem; flex-shrink: 0;">
-                                                <button ng-if="ctrl.shouldShowStringExpand(f, true)"
-                                                        class="btn btn-default sft-expand-btn"
-                                                        ng-disabled="ctrl.showBuilder[f.key]"
-                                                        ng-click="ctrl.toggleStringExpand(f, true, $event)"
-                                                        title="Expand"
-                                                        aria-label="Expand"></button>
-                                                <button class="btn btn-default sft-filter-btn"
-                                                        ng-class="{'active': ctrl.showBuilder[f.key]}"
-                                                        ng-click="ctrl.toggleBuilderMode(f, true)"
-                                                        title="Filter"
-                                                        aria-label="Filter">
-                                                    <i class="icon-filter"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <span ng-switch-when="reference" class="sft-ref-wrap">
-                                            <input type="text" class="form-control"
-                                                   readonly="readonly" ng-model="ctrl.extraRightRefDisplay[f.key]"
-                                                   aria-label="{{f.label}} (right)" />
-                                            <a class="btn btn-default sft-ref-btn"
-                                               ng-href="{{ctrl.getExtraReferenceUrl(f, 'right')}}"
-                                               ng-if="ctrl.extraRightFields[f.key]"
-                                               target="_blank"
-                                               title="Open record"><i class="icon-open-document-new-tab"></i></a>
-                                        </span>
-                                        <input ng-switch-when="choice" type="text" class="form-control"
-                                               readonly="readonly" ng-model="ctrl.extraRightRefDisplay[f.key]"
-                                               aria-label="{{f.label}} (right)" />
-                                        <a ng-switch-when="image"
-                                           ng-if="ctrl.extraRightFields[f.key]" ng-href="/{{ctrl.extraRightFields[f.key]}}.iix"
-                                           target="_blank">
-                                            <img ng-src="/{{ctrl.extraRightFields[f.key]}}.iix?t=medium"
-                                                 class="sft-img-preview" ng-attr-alt="{{ctrl.extraRightFields[f.key]}}" ng-attr-title="{{ctrl.extraRightFields[f.key]}}" />
-                                        </a>
-                                        <span ng-switch-when="list" class="sft-string-wrap">
-                                            <textarea class="form-control sft-textarea"
-                                                      readonly="readonly" ng-model="ctrl.extraRightListDisplay[f.key]"
-                                                      aria-label="{{f.label}} (right)"
-                                                      we-sync-row-height="we-sync-row-height"></textarea>
-                                        </span>
-                                        <span ng-switch-default="ng-switch-default" class="sft-string-wrap">
-                                            <textarea class="form-control sft-textarea"
-                                                      readonly="readonly" ng-model="ctrl.extraRightDisplayFields[f.key]"
-                                                      aria-label="{{f.label}} (right)"
-                                                      we-sync-row-height="we-sync-row-height"></textarea>
-                                            <button ng-if="ctrl.shouldShowStringExpand(f, true)"
-                                                    class="btn btn-default sft-expand-btn"
-                                                    ng-click="ctrl.toggleStringExpand(f, true, $event)"
-                                                    title="Expand"
-                                                    aria-label="Expand"></button>
-                                        </span>
-                                    </td>
-
-                                    <!-- Extra script / code fields -->
-                                    <td ng-if="f.isScript" class="sft-label" style="vertical-align: top; padding-top: 0.75rem;">
-                                        <div>
-                                            <div class="sft-label-main" we-tooltip="{{f.key}}">
-                                                <span ng-bind="f.label"></span>
-                                                <span class="diff-glyph"><i class="icon-circle-solid"></i></span>
-                                            </div>
-                                        </div>
-                                        <div class="da-diff-counts" ng-if="f.counts" style="margin-top: 0.25rem; font-size: 0.8125rem;">
-                                            <span class="da-diff-added" ng-if="f.counts.added" ng-bind-template="+{{f.counts.added}}"></span>
-                                            <span ng-if="f.counts.added &amp;&amp; f.counts.removed"> </span>
-                                            <span class="da-diff-removed" ng-if="f.counts.removed" ng-bind-template="-{{f.counts.removed}}"></span>
-                                        </div>
-                                        <!-- Expand button below field label -->
-                                        <button class="btn btn-default sft-expand-btn"
-                                                style="margin-top: 0.5rem;"
-                                                ng-click="ctrl.toggleExtraExpand(f.scriptIndex, $event)"
-                                                title="Expand"
-                                                aria-label="Expand"></button>
-                                    </td>
-
-                                    <td ng-if="f.isScript" colspan="2" style="padding: 0.5rem 0.75rem; vertical-align: middle;">
-                                        <div we-diff-extra-editor="f.scriptIndex"
-                                             class="da-section da-changed"
-                                             ng-class="{'da-expanded': ctrl.expandedExtraIndex === f.scriptIndex}"
-                                             id="da-extra-{{f.scriptIndex}}"
-                                             script-index="{{f.scriptIndex}}">
-                                            <div class="da-editor-wrap">
-                                                <div class="da-editor-canvas-outer" style="margin-left: 0;">
-                                                    <div id="da-ex-ed-{{f.scriptIndex}}" class="da-editor-canvas"></div>
-                                                    <div class="da-editor-loading-overlay"
-                                                         ng-show="ctrl.loadingLeft || ctrl.loadingRight">
-                                                        <div class="dc-spinner-sm"></div>
-                                                    </div>
+                                <td ng-if="f.isScript &amp;&amp; f.isExtra" colspan="2" style="padding: 0.5rem 0.75rem; vertical-align: middle;">
+                                    <div we-diff-extra-editor="f.scriptIndex"
+                                         class="da-section da-changed"
+                                         ng-class="{'da-expanded': ctrl.expandedExtraIndex === f.scriptIndex}"
+                                         id="da-extra-{{f.scriptIndex}}"
+                                         script-index="{{f.scriptIndex}}">
+                                        <div class="da-editor-wrap">
+                                            <div class="da-editor-canvas-outer" style="margin-left: 0;">
+                                                <div id="da-ex-ed-{{f.scriptIndex}}" class="da-editor-canvas"></div>
+                                                <div class="da-editor-loading-overlay"
+                                                     ng-show="ctrl.loadingLeft || ctrl.loadingRight">
+                                                    <div class="dc-spinner-sm"></div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
             </div>
@@ -2110,8 +1942,10 @@ UiPage({
     clientScript: `(function() {
     'use strict';
 
-    // Config
-    var SITE_TITLE = (window.WE_DIFF_CONFIG && window.WE_DIFF_CONFIG.siteTitle) || 'ServiceNow';
+    // Config is populated by the Jelly template above. Keep all client-side
+    // normalization here so the rest of the page has one source of truth.
+    var pageConfig = window.WE_DIFF_CONFIG || {};
+    var SITE_TITLE = pageConfig.siteTitle || 'ServiceNow';
 
     // Suppress "Unexpected usage" rejections from language service workers
     window.addEventListener('unhandledrejection', function(e) {
@@ -2259,22 +2093,27 @@ UiPage({
         _bs.init({ language: 'html' });
     }
 
-    var urlParams    = new URLSearchParams(window.location.search);
-    var recordId     = urlParams.get('record_id')  || '';
-    var tableParam   = urlParams.get('table')       || 'sp_widget';
-    var version1Id   = urlParams.get('version_1')   || '';
-    var version2Id   = urlParams.get('version_2')   || '';
-    var daToken      = urlParams.get('da_token')    || '';
-    var isEmbedded   = urlParams.get('da_iframe')   === 'true';
-    var isFromList   = urlParams.get('da_source')   === 'list';
+    var recordId     = pageConfig.record_id || '';
+    var tableParam   = pageConfig.table || 'sp_widget';
+    var version1Id   = pageConfig.version_1 || '';
+    var version2Id   = pageConfig.version_2 || '';
+    var daToken      = pageConfig.da_token || '';
+    var isEmbedded   = pageConfig.da_iframe === 'true';
+    var isFromList   = pageConfig.da_source === 'list';
 
-    var diffPageSysId      = (window.WE_DIFF_CONFIG && window.WE_DIFF_CONFIG.diffPageSysId)      || '';
-    var widgetEditorSysId  = (window.WE_DIFF_CONFIG && window.WE_DIFF_CONFIG.widgetEditorSysId)  || '';
+    var diffPageSysId     = pageConfig.diffPageSysId || '';
+    var widgetEditorSysId = pageConfig.widgetEditorSysId || '';
+
+    function _queryString(params) {
+        return Object.keys(params)
+            .filter(function(k) { return params[k] !== undefined && params[k] !== null; })
+            .map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); })
+            .join('&');
+    }
 
     // Build a nav_to.do URL for a page identified by its sys_id (or page name as fallback).
     function _navUrl(pageSysId, pageNameFallback, params) {
-        var qs = Object.keys(params).filter(function(k) { return params[k] !== undefined && params[k] !== null; })
-            .map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+        var qs = _queryString(params);
         var uri = pageSysId
             ? ('ui_page.do?sys_id=' + encodeURIComponent(pageSysId) + (qs ? '&' + qs : ''))
             : (pageNameFallback + '.do?' + qs);
@@ -2283,8 +2122,7 @@ UiPage({
 
     // Build a direct page URL (for iframe src) without nav_to wrapper.
     function _iframeUrl(pageSysId, pageNameFallback, params) {
-        var qs = Object.keys(params).filter(function(k) { return params[k] !== undefined && params[k] !== null; })
-            .map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+        var qs = _queryString(params);
         if (pageSysId) {
             return '/ui_page.do?sys_id=' + encodeURIComponent(pageSysId) + (qs ? '&' + qs : '');
         }
@@ -2302,6 +2140,7 @@ UiPage({
             }
         }
         ga.getXML(function(resp) {
+            if (typeof cb !== 'function') { return; }
             var data;
             try { data = JSON.parse(resp.responseXML.documentElement.getAttribute('answer')); }
             catch (e) { data = { success: false, error: 'Parse error: ' + (e.message || e) }; }
@@ -2554,7 +2393,10 @@ UiPage({
         ctrl.metaRight   = {};
         ctrl.simpleFields = [];   // populated after getDiffFieldDefs returns
         ctrl.scriptFields = [];   // populated after getDiffFieldDefs returns
-        ctrl.fields       = [];   // populated after getDiffFieldDefs returns, in layout order
+        ctrl.rawFields    = [];   // populated after getDiffFieldDefs returns, in layout order
+        ctrl.fields       = [];   // displayed fields (sorted when showChangedFieldsFirst is enabled)
+        ctrl.showChangedFieldsFirst = false;
+        var _cachedUserPrefs = {};
         ctrl.tableLabel   = '';   // human-readable table name, e.g. "Widget"
         ctrl.editors       = {};
         ctrl.extraChangedSimpleFields = [];
@@ -2659,6 +2501,47 @@ UiPage({
                 $timeout(fn);
             }
         }
+
+        function _sortFields() {
+            if (!ctrl.rawFields || !ctrl.rawFields.length) { return; }
+            var combined = ctrl.rawFields.concat(ctrl.extraFields || []);
+            if (!ctrl.showChangedFieldsFirst) {
+                ctrl.fields = combined;
+            } else {
+                var changed = [];
+                var unchanged = [];
+                for (var i = 0; i < combined.length; i++) {
+                    var f = combined[i];
+                    var isChg = f.isExtra ? true : (f.isScript ? !!f.changed : !!ctrl.isChanged(f.key));
+                    if (isChg) {
+                        changed.push(f);
+                    } else {
+                        unchanged.push(f);
+                    }
+                }
+                ctrl.fields = changed.concat(unchanged);
+            }
+            _scheduleChangedBelowIndicatorUpdate();
+        }
+
+        ctrl.toggleShowChangedFieldsFirst = function() {
+            ctrl.showChangedFieldsFirst = !ctrl.showChangedFieldsFirst;
+            _sortFields();
+            _cachedUserPrefs.showChangedFieldsFirst = ctrl.showChangedFieldsFirst;
+            _ajax('saveUserPrefs', { value: JSON.stringify(_cachedUserPrefs) });
+            $timeout(function() {
+                for (var k in ctrl.editors) {
+                    if (ctrl.editors.hasOwnProperty(k) && ctrl.editors[k]) {
+                        ctrl.editors[k].layout();
+                    }
+                }
+                for (var ek in ctrl.extraEditors) {
+                    if (ctrl.extraEditors.hasOwnProperty(ek) && ctrl.extraEditors[ek]) {
+                        ctrl.extraEditors[ek].layout();
+                    }
+                }
+            }, 50);
+        };
 
         function _getVersionsList() {
             if (_allVersionsData.length > 0) {
@@ -2901,6 +2784,7 @@ UiPage({
                     if (eDef.renderAs === 'code' || eDef.type === 'html' || eDef.type === 'html_script') {
                         var extraScriptObj = {
                             isScript: true,
+                            isExtra: true,
                             key: eDef.key,
                             label: eDef.label,
                             language: eDef.language || (eDef.type === 'html' || eDef.type === 'html_script' ? 'html' : 'plaintext'),
@@ -2913,6 +2797,7 @@ UiPage({
                     } else {
                         var extraSimpleObj = Object.assign({}, eDef);
                         extraSimpleObj.isScript = false;
+                        extraSimpleObj.isExtra = true;
                         extraSimple.push(extraSimpleObj);
                         extraFields.push(extraSimpleObj);
                     }
@@ -2943,6 +2828,8 @@ UiPage({
                 ctrl.extraLeftRefDisplay  = {};
                 ctrl.extraRightRefDisplay = {};
             }
+
+            _sortFields();
 
             // Refresh / auto-collapse the shared string diff editor when versions change
             if (ctrl.expandedString) {
@@ -3068,6 +2955,7 @@ UiPage({
                                 derivedSimple.push(fdObj);
                                 var fdCopy = Object.assign({}, fdObj);
                                 fdCopy.isScript = false;
+                                fdCopy.isExtra = false;
                                 fields.push(fdCopy);
                             }
                         }
@@ -3075,7 +2963,9 @@ UiPage({
                         _extraFieldDefs = [];
                         ctrl.simpleFields = derivedSimple;
                         ctrl.scriptFields = [];
-                        ctrl.fields       = fields;
+                        ctrl.rawFields    = fields;
+                        ctrl.fields       = fields.slice();
+                        _sortFields();
                     }
                 }
                 if (!_recordData) {
@@ -3171,50 +3061,36 @@ UiPage({
             return Math.ceil(h.getBoundingClientRect().bottom);
         }
 
-        function _setWrapTop(index) {
-            var wrap = document.querySelector('#da-' + index + ' .da-editor-wrap');
-            if (!wrap) { return; }
-            var top = _headerHeight();
-            var h   = window.innerHeight - top;
-            wrap.style.top    = top + 'px';
-            wrap.style.height = h + 'px';
-            var outer = wrap.querySelector('.da-editor-canvas-outer');
-            if (outer) { outer.style.height = h + 'px'; }
-            var container = document.getElementById('da-ed-' + index);
-            if (container) { container.style.height = '100%'; }
+        function _getEditorElements(index, isExtra) {
+            var sectionPrefix = isExtra ? '#da-extra-' : '#da-';
+            var editorPrefix = isExtra ? 'da-ex-ed-' : 'da-ed-';
+            var wrap = document.querySelector(sectionPrefix + index + ' .da-editor-wrap');
+            return {
+                wrap: wrap,
+                outer: wrap ? wrap.querySelector('.da-editor-canvas-outer') : null,
+                container: document.getElementById(editorPrefix + index)
+            };
         }
 
-        function _clearWrapTop(index) {
-            var wrap = document.querySelector('#da-' + index + ' .da-editor-wrap');
+        function _setWrapTop(index, isExtra) {
+            var elements = _getEditorElements(index, isExtra);
+            if (!elements.wrap) { return; }
+            var top = _headerHeight();
+            var height = window.innerHeight - top;
+            elements.wrap.style.top = top + 'px';
+            elements.wrap.style.height = height + 'px';
+            if (elements.outer) { elements.outer.style.height = height + 'px'; }
+            if (elements.container) { elements.container.style.height = '100%'; }
+        }
+
+        function _clearWrapTop(index, isExtra) {
+            var elements = _getEditorElements(index, isExtra);
+            var wrap = elements.wrap;
             if (!wrap) { return; }
             wrap.style.top    = '';
             wrap.style.height = '';
-            var outer = wrap.querySelector('.da-editor-canvas-outer');
-            if (outer) { outer.style.height = ''; }
-            ctrl.updateEditorHeight(index, false);
-        }
-
-        function _setExtraWrapTop(index) {
-            var wrap = document.querySelector('#da-extra-' + index + ' .da-editor-wrap');
-            if (!wrap) { return; }
-            var top = _headerHeight();
-            var h   = window.innerHeight - top;
-            wrap.style.top    = top + 'px';
-            wrap.style.height = h + 'px';
-            var outer = wrap.querySelector('.da-editor-canvas-outer');
-            if (outer) { outer.style.height = h + 'px'; }
-            var container = document.getElementById('da-ex-ed-' + index);
-            if (container) { container.style.height = '100%'; }
-        }
-
-        function _clearExtraWrapTop(index) {
-            var wrap = document.querySelector('#da-extra-' + index + ' .da-editor-wrap');
-            if (!wrap) { return; }
-            wrap.style.top    = '';
-            wrap.style.height = '';
-            var outer = wrap.querySelector('.da-editor-canvas-outer');
-            if (outer) { outer.style.height = ''; }
-            ctrl.updateEditorHeight(index, true);
+            if (elements.outer) { elements.outer.style.height = ''; }
+            ctrl.updateEditorHeight(index, isExtra);
         }
 
         ctrl.updateEditorHeight = function(index, isExtra) {
@@ -3296,13 +3172,13 @@ UiPage({
 
             $timeout(function() {
                 if (!wasExpanded) {
-                    _setWrapTop(index);
+                    _setWrapTop(index, false);
                 } else {
-                    _clearWrapTop(index);
+                    _clearWrapTop(index, false);
                 }
                 if (ctrl.editors[index]) { ctrl.editors[index].layout(); }
                 if (prevIndex !== null && prevIndex !== index) {
-                    _clearWrapTop(prevIndex);
+                    _clearWrapTop(prevIndex, false);
                     if (ctrl.editors[prevIndex]) { ctrl.editors[prevIndex].layout(); }
                 }
                 if (!wasExpanded) {
@@ -3329,13 +3205,13 @@ UiPage({
 
             $timeout(function() {
                 if (!wasExpanded) {
-                    _setExtraWrapTop(index);
+                    _setWrapTop(index, true);
                 } else {
-                    _clearExtraWrapTop(index);
+                    _clearWrapTop(index, true);
                 }
                 if (ctrl.extraEditors[index]) { ctrl.extraEditors[index].layout(); }
                 if (prevIndex !== null && prevIndex !== index) {
-                    _clearExtraWrapTop(prevIndex);
+                    _clearWrapTop(prevIndex, true);
                     if (ctrl.extraEditors[prevIndex]) { ctrl.extraEditors[prevIndex].layout(); }
                 }
                 _scheduleChangedBelowIndicatorUpdate();
@@ -3346,7 +3222,7 @@ UiPage({
             var idx = ctrl.expandedExtraIndex;
             if (idx === null) { return; }
             ctrl.expandedExtraIndex = null;
-            _clearExtraWrapTop(idx);
+            _clearWrapTop(idx, true);
             $timeout(function() {
                 if (ctrl.extraEditors[idx]) { ctrl.extraEditors[idx].layout(); }
                 _scheduleChangedBelowIndicatorUpdate();
@@ -3362,7 +3238,7 @@ UiPage({
             var idx = ctrl.expandedIndex;
             if (idx === null) { return; }
             ctrl.expandedIndex = null;
-            _clearWrapTop(idx);
+            _clearWrapTop(idx, false);
             $timeout(function() {
                 if (ctrl.editors[idx]) { ctrl.editors[idx].layout(); }
                 _scheduleChangedBelowIndicatorUpdate();
@@ -3493,13 +3369,13 @@ UiPage({
 
         var _onWindowResize = function() {
             if (ctrl.expandedIndex !== null) {
-                _setWrapTop(ctrl.expandedIndex);
+                _setWrapTop(ctrl.expandedIndex, false);
                 if (ctrl.editors[ctrl.expandedIndex]) {
                     ctrl.editors[ctrl.expandedIndex].layout();
                 }
             }
             if (ctrl.expandedExtraIndex !== null) {
-                _setExtraWrapTop(ctrl.expandedExtraIndex);
+                _setWrapTop(ctrl.expandedExtraIndex, true);
                 if (ctrl.extraEditors[ctrl.expandedExtraIndex]) {
                     ctrl.extraEditors[ctrl.expandedExtraIndex].layout();
                 }
@@ -3548,6 +3424,22 @@ UiPage({
 
         //////// Initial data load ///////////////////////////////////////////////
 
+        _ajax('getUserPrefs', {}, function(data) {
+            if (data.success && data.value) {
+                try {
+                    var p = JSON.parse(data.value) || {};
+                    _cachedUserPrefs = Object.assign(p, _cachedUserPrefs);
+                    if (_cachedUserPrefs.hasOwnProperty('wordWrap')) { ctrl.wordWrap = !!_cachedUserPrefs.wordWrap; }
+                    if (_cachedUserPrefs.hasOwnProperty('showChangedFieldsFirst')) {
+                        _apply(function() {
+                            ctrl.showChangedFieldsFirst = !!_cachedUserPrefs.showChangedFieldsFirst;
+                            _sortFields();
+                        });
+                    }
+                } catch(e) {}
+            }
+        });
+
         if (!recordId) {
             ctrl.noRecordSelected = true;
             _pending++;
@@ -3562,16 +3454,6 @@ UiPage({
                 _onLoaded();
             });
         } else {
-            // Load user prefs (fire-and-forget)
-            _ajax('getUserPrefs', {}, function(data) {
-                if (data.success && data.value) {
-                    try {
-                        var p = JSON.parse(data.value);
-                        if (p.hasOwnProperty('wordWrap')) { ctrl.wordWrap = !!p.wordWrap; }
-                    } catch(e) {}
-                }
-            });
-
             _pending++;
             _ajax('getDiffFieldDefs', { table: tableParam }, function(data) {
                 if (data.success && data.fields && data.fields.length > 0) {
@@ -3586,6 +3468,7 @@ UiPage({
                         if (fd.renderAs === 'code' || fd.type === 'html' || fd.type === 'html_script') {
                             var scriptObj = {
                                 isScript: true,
+                                isExtra: false,
                                 key: fd.key,
                                 label: fd.label,
                                 language: fd.language || (fd.type === 'html' || fd.type === 'html_script' ? 'html' : 'plaintext'),
@@ -3599,6 +3482,7 @@ UiPage({
                         } else {
                             var simpleObj = Object.assign({}, fd);
                             simpleObj.isScript = false;
+                            simpleObj.isExtra = false;
                             simple.push(simpleObj);
                             fields.push(simpleObj);
                         }
@@ -3606,7 +3490,9 @@ UiPage({
                     _apply(function() {
                         ctrl.simpleFields = simple;
                         ctrl.scriptFields = code;
-                        ctrl.fields       = fields;
+                        ctrl.rawFields    = fields;
+                        ctrl.fields       = fields.slice();
+                        _sortFields();
                         ctrl.tableLabel   = data.table_label || '';
                     });
                 } else if (data.error === 'Table does not track versions') {

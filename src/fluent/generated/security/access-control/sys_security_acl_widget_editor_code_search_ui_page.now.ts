@@ -1,10 +1,10 @@
 import { Acl } from '@servicenow/sdk/core'
 
 Acl({
-    $id: Now.ID['b52df1658363b61070b8b5dfeeaad39b'],
+    $id: Now.ID['widget-editor-code-search-ui-page-acl'],
     localOrExisting: 'Existing',
     type: 'ui_page',
     operation: 'read',
     roles: ['sp_admin'],
-    name: 'widget_editor_diff',
+    name: 'widget_editor_code_search',
 })
