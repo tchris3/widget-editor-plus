@@ -33,10 +33,10 @@ test('Code Search UI header toolbar contains progress bar, current table, and an
 test('Results pane allows real-time streaming without blocking on ctrl.loading and properly closes welcome state', () => {
     // Welcome state div must properly close before results states
     const welcomeIndex = source.indexOf('class="cs-empty cs-welcome-state"');
-    const searchingEmptyIndex = source.indexOf('class="cs-empty cs-searching-empty"');
-    assert.ok(welcomeIndex > 0 && searchingEmptyIndex > welcomeIndex, 'Welcome and searching states present');
-    const welcomeBlock = source.slice(welcomeIndex, searchingEmptyIndex);
-    assert.ok(welcomeBlock.includes('</div>'), 'Welcome state must have closing </div> before searching state');
+    const noResultsIndex = source.indexOf('class="cs-empty cs-no-results-state"');
+    assert.ok(welcomeIndex > 0 && noResultsIndex > welcomeIndex, 'Welcome and no-results states present');
+    const welcomeBlock = source.slice(welcomeIndex, noResultsIndex);
+    assert.ok(welcomeBlock.includes('</div>'), 'Welcome state must have closing </div> before no-results state');
 
     // Group table view must not gate on !ctrl.loading
     assert.ok(
@@ -50,14 +50,12 @@ test('Results pane allows real-time streaming without blocking on ctrl.loading a
         'Flat date view should render in real time without waiting for loading to finish'
     );
 
-    // Tables with results pane header displays "x tables • x records"
+    // Tables with results pane header displays records count
     const paneHeaderSnippet = source.slice(
         source.indexOf('class="cs-results-pane-header"'),
         source.indexOf('class="cs-table-list"', source.indexOf('class="cs-results-pane-header"'))
     );
-    assert.ok(paneHeaderSnippet.includes('ctrl.tablesWithResults.length'), 'Pane header should display tablesWithResults count');
     assert.ok(paneHeaderSnippet.includes('ctrl.sortedResults.length'), 'Pane header should display records (sortedResults) count');
-    assert.ok(paneHeaderSnippet.includes('cs-summary-sep'), 'Pane header should display separator between tables and records');
 });
 
 test('runSearch logic enables Pane 2 and updates sorted/grouped results in real-time', () => {
@@ -145,6 +143,19 @@ test('grouped-results list title remains valid Jelly markup', () => {
         badgeSource.includes("title=\"Open {{group.tableLabel}} list{{ctrl.caseSensitive ? '' : ' (case insensitive)'}}\""),
         'The conditional title should use a valid Angular expression'
     );
+});
+
+test('condition term input uses bounded intrinsic content sizing', () => {
+    const ruleStart = source.indexOf('        .cs-cond-term {');
+    const ruleEnd = source.indexOf('        }', ruleStart);
+    const ruleSource = source.slice(ruleStart, ruleEnd);
+
+    assert.ok(ruleStart > 0, 'Should define condition-term sizing');
+    assert.ok(ruleSource.includes('min-width: 12rem;'), 'Should retain a usable minimum width');
+    assert.ok(ruleSource.includes('width: 30rem;'), 'Should have a 30rem default/fallback width');
+    assert.ok(ruleSource.includes('field-sizing: content;'), 'Should size to the entered term when supported');
+    assert.equal(ruleSource.includes('max-width: 30rem;'), false, 'Content growth should not be capped at 30rem');
+    assert.equal(ruleSource.includes('flex: 1;'), false, 'Row flex space should not override intrinsic sizing');
 });
 
 test('opening an inline Monaco editor is disabled while search is running', () => {

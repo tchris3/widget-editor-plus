@@ -25,8 +25,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
     <link rel="stylesheet" href="/styles/retina_icons/retina_icons.css" />
 
     <style>
-        /* The Jelly flag is not honoured consistently when this page is hosted in the
-           classic target frame, so hide its response-time widget explicitly. */
         #page_timing_div {
             display: none !important;
         }
@@ -519,8 +517,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         }
 
         .cs-cond-term {
-            flex: 1;
             min-width: 12rem;
+            width: 30rem;
+            field-sizing: content;
         }
 
         .cs-cond-joiner-btns {
@@ -1235,8 +1234,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             justify-content: center;
             gap: 0.5rem;
             padding: 2rem 1rem;
-            color: #d4d4d4;
-            background: #1e1e1e;
+            color: rgb(var(--now-color_text--tertiary, 92, 122, 92));
+            background: rgb(var(--now-color_background--primary, 255 255 255));
             font-size: 0.85rem;
         }
 
@@ -1551,9 +1550,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 <div class="cs-header-toggles">
                     <label class="cs-toggle-label" title="Match case exactly">
                         <input type="checkbox" ng-model="ctrl.caseSensitive" ng-change="ctrl.onOptionChange()" />
-                        <span>Case sensitive</span>
+                        <span class="sr-only">Case sensitive</span>
+                        <span aria-hidden="true">Aa</span>
                     </label>
-                    <label class="cs-toggle-label" title="Only show records where active=true or u_active=true">
+                    <label class="cs-toggle-label" title="Only show active records">
                         <input type="checkbox" ng-model="ctrl.activeOnly" ng-change="ctrl.onOptionChange()" />
                         <span>Active</span>
                     </label>
@@ -1681,7 +1681,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         <span>matching records across</span>
                         <strong>{{ctrl.searchedTables}}</strong>
                         <span>tables</span>
-                        <span ng-if="ctrl.elapsed" class="cs-summary-sep">•</span>
+                        <span ng-if="ctrl.elapsed" class=" icon-stop-watch" aria-hidden="true"></span>
                         <span ng-if="ctrl.elapsed">{{ctrl.formatElapsed(ctrl.elapsed)}}</span>
                     </div>
 
@@ -1732,11 +1732,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     <div class="cs-empty cs-welcome-state" ng-if="!ctrl.hasSearched &amp;&amp; !ctrl.loading">
                         <h2>Search for code</h2>
                         <p>Search across configured fields in your tables.</p>
-                    </div>
-
-                    <!-- Searching Initial Empty State (before first match is found) -->
-                    <div class="cs-empty cs-searching-empty" ng-if="ctrl.loading &amp;&amp; !ctrl.results.length">
-                        <p class="cs-searching-empty-msg">Searching tables for matching code…</p>
                     </div>
 
                     <!-- No Results State -->
@@ -1830,7 +1825,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                         <div class="cs-inline-monaco-wrap" ng-if="match.expanded">
                                             <div class="cs-inline-monaco-loading" ng-if="match.loading">
                                                 <svg class="cs-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg>
-                                                <span>Loading entire field…</span>
+                                                <span>Loading field…</span>
                                             </div>
                                             <div id="{{ctrl.getMonacoHostId(result, match, $index)}}" class="cs-inline-monaco-host" ng-show="!match.loading"></div>
                                         </div>
@@ -1849,9 +1844,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                     <a class="cs-record-link" ng-href="{{result.url}}" target="_blank" title="Open record in new tab">{{result.displayValue}}</a>
                                     <span class="cs-status-pill cs-status-active" ng-if="result.hasActive &amp;&amp; result.isActive">Active</span>
                                     <span class="cs-status-pill cs-status-inactive" ng-if="result.hasActive &amp;&amp; !result.isActive">Inactive</span>
-                                    <span class="cs-secondary-badge" ng-repeat="sec in result.secondaryValues track by sec.field" title="{{sec.label}}: {{sec.value}}">
+                                    <span class="cs-secondary-badge" ng-repeat="sec in result.secondaryValues track by sec.field">
                                         <span class="cs-sec-label">{{sec.label}}:</span>
-                                        <span>{{sec.value}}</span>
+                                        <code>{{sec.value}}</code>
                                     </span>
                                 </div>
                                 <div class="cs-card-actions">
@@ -2378,7 +2373,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             vm.formatElapsed = function (ms) {
                 if (!ms && ms !== 0) return '';
                 var sec = ms / 1000;
-                return (sec < 10 ? sec.toFixed(2) : sec.toFixed(1)) + ' s';
+                return (sec < 10 ? sec.toFixed(2) : sec.toFixed(1)) + 's';
             };
 
             vm.onOptionChange = function () {
