@@ -161,5 +161,25 @@ test('code snippet renderer applies syntax classes while preserving search highl
     assert.ok(pageSource.includes('.cs-token-keyword'));
     assert.ok(pageSource.includes('vm.highlightCode = function'));
     assert.equal((pageSource.match(/ctrl\.highlightCode\(/g) || []).length, 4);
-    assert.ok(pageSource.includes('<mark class="cs-highlight">'));
+    assert.ok(pageSource.includes('<mark class="'), 'highlightCode should still wrap matches in a <mark> element');
+});
+
+test('code snippet renderer also highlights secondary CONTAINS filter terms with a distinct mark', () => {
+    const start = pageSource.indexOf('vm.highlightCode = function');
+    const end = pageSource.indexOf('function _disposeAllEditors');
+    const fnSource = pageSource.slice(start, end);
+
+    assert.ok(
+        fnSource.includes("f.operator === 'contains' && f.term && f.term.trim()"),
+        'Only enabled CONTAINS secondary filters with a non-empty term should be eligible for highlighting'
+    );
+    assert.ok(
+        fnSource.includes('_subtractRanges(secondaryRanges, primaryRanges)'),
+        'Secondary-filter matches that overlap the primary query match should yield to the primary highlight'
+    );
+    assert.ok(
+        fnSource.includes("range.kind === 'secondary' ? 'cs-highlight cs-highlight-secondary' : 'cs-highlight'"),
+        'Secondary-filter matches should render with the cs-highlight-secondary mark, distinct from the primary query highlight'
+    );
+    assert.ok(pageSource.includes('mark.cs-highlight-secondary'), 'CSS should style the secondary highlight distinctly from the primary one');
 });

@@ -1150,6 +1150,15 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             box-shadow: 0 0 0 1px rgba(var(--now-color_alert--warning-1, 245, 158, 11), 0.4);
         }
 
+        mark.cs-highlight-secondary {
+            background: rgb(var(--now-alert--info--background-color, var(--now-color_alert--info-0, 219, 234, 254)));
+            color: rgb(var(--now-alert--info--color, var(--now-color_alert--info-3, 30, 64, 175)));
+            border-radius: 2px;
+            padding: 0 2px;
+            font-weight: 700;
+            box-shadow: 0 0 0 1px rgba(var(--now-color_alert--info-1, 59, 130, 246), 0.4);
+        }
+
         .cs-token-comment {
             color: rgb(var(--now-color_text--tertiary, 92, 122, 92));
             font-style: italic;
@@ -1489,7 +1498,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         </div>
                     </div>
 
-                    <button type="button" class="btn btn-default" ng-click="ctrl.showAdvanced()" aria-expanded="{{!!ctrl.secondaryFilters.length}}" aria-controls="secondary-filters"><span class="icon-filter" aria-hidden="true"></span><span class="sr-only">Advanced conditions</span></button>
+                    <button type="button" class="btn btn-default" ng-click="ctrl.showAdvanced()" title="Additional conditions" aria-expanded="{{!!ctrl.secondaryFilters.length}}" aria-controls="secondary-filters"><span class="icon-filter" aria-hidden="true"></span><span class="sr-only">Advanced conditions</span></button>
 
                     <button type="submit"
                             class="btn btn-default"
@@ -2332,6 +2341,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 }
             };
 
+            function _validSecondaryFiltersForUrl() {
+                return (vm.secondaryFilters || []).filter(function (f) { return f && f.term && f.term.trim(); });
+            }
+
             function updateUrlParam(term) {
                 try {
                     var url = new URL(window.location.href);
@@ -2341,10 +2354,14 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         else url.searchParams.delete('case');
                         if (vm.activeOnly) url.searchParams.set('active', '1');
                         else url.searchParams.set('active', '0');
+                        var urlFilters = _validSecondaryFiltersForUrl();
+                        if (urlFilters.length) url.searchParams.set('filters', JSON.stringify(urlFilters));
+                        else url.searchParams.delete('filters');
                     } else {
                         url.searchParams.delete('q');
                         url.searchParams.delete('case');
                         url.searchParams.delete('active');
+                        url.searchParams.delete('filters');
                     }
                     window.history.replaceState({}, '', url.toString());
 
@@ -2365,6 +2382,27 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 } catch (e) {}
             }
 
+            function _parseUrlFilters(raw) {
+                if (!raw) return null;
+                try {
+                    var parsed = JSON.parse(raw);
+                    if (!Array.isArray(parsed) || !parsed.length || parsed.length > 20) return null;
+                    var out = [];
+                    for (var i = 0; i < parsed.length; i++) {
+                        var item = parsed[i];
+                        if (!item || (item.operator !== 'contains' && item.operator !== 'not_contains') ||
+                            typeof item.term !== 'string' || !item.term.trim() || item.term.length > 1000 ||
+                            (item.joiner !== 'and' && item.joiner !== 'or')) {
+                            return null;
+                        }
+                        out.push({ operator: item.operator, term: item.term, joiner: item.joiner });
+                    }
+                    return out;
+                } catch (e) {
+                    return null;
+                }
+            }
+
             var initialParams = new URLSearchParams(window.location.search);
             var urlQuery = initialParams.get('q') || initialParams.get('query') || '';
             var urlCase = initialParams.get('case');
@@ -2375,6 +2413,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             } else if (urlActive === '1' || urlActive === 'true') {
                 vm.activeOnly = true;
             }
+            var urlFilters = _parseUrlFilters(initialParams.get('filters'));
 
             if (!urlQuery && window.top && window.top !== window) {
                 try {
@@ -2394,11 +2433,13 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         } else if (topActive === '1' || topActive === 'true') {
                             vm.activeOnly = true;
                         }
+                        urlFilters = _parseUrlFilters(topTargetParams.get('filters'));
                     }
                 } catch (eTop) {}
             }
             if (urlQuery) {
                 vm.query = urlQuery;
+                if (urlFilters) vm.secondaryFilters = urlFilters;
             }
 
             function notify(msg) {
@@ -2842,7 +2883,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     _updateSortedResults();
                     $timeout(_updateCurrentViewedTable);
                     _requestTransactionCancel();
-                    notify('Search cancelled after ' + completedCount + ' of ' + total + ' tables. If a table was mid-search, it may take a moment for the server to fully stop it.');
+                    notify('Search cancelled after ' + completedCount + ' of ' + total + ' tables.');
                 };
 
                 function searchNext() {
@@ -3163,6 +3204,58 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 return tokens;
             }
 
+            function _findRanges(searchable, find) {
+                var out = [];
+                if (!find) return out;
+                var searchAt = 0;
+                var foundAt;
+                while ((foundAt = searchable.indexOf(find, searchAt)) !== -1) {
+                    out.push({ start: foundAt, end: foundAt + find.length });
+                    searchAt = foundAt + find.length;
+                }
+                return out;
+            }
+
+            function _mergeRanges(ranges) {
+                if (!ranges.length) return [];
+                var sorted = ranges.slice().sort(function (a, b) { return a.start - b.start; });
+                var out = [{ start: sorted[0].start, end: sorted[0].end }];
+                for (var i = 1; i < sorted.length; i++) {
+                    var last = out[out.length - 1];
+                    if (sorted[i].start <= last.end) {
+                        last.end = Math.max(last.end, sorted[i].end);
+                    } else {
+                        out.push({ start: sorted[i].start, end: sorted[i].end });
+                    }
+                }
+                return out;
+            }
+
+            // Clips ranges (sorted, non-overlapping) to remove any overlap with blockers
+            // (also sorted, non-overlapping), so a secondary-filter match that coincides with
+            // the primary query match yields to the primary highlight instead of stacking marks.
+            function _subtractRanges(ranges, blockers) {
+                if (!blockers.length) return ranges;
+                var out = [];
+                ranges.forEach(function (r) {
+                    var segments = [{ start: r.start, end: r.end }];
+                    blockers.forEach(function (b) {
+                        var next = [];
+                        segments.forEach(function (s) {
+                            if (b.end <= s.start || b.start >= s.end) {
+                                next.push(s);
+                                return;
+                            }
+                            if (b.start > s.start) next.push({ start: s.start, end: b.start });
+                            if (b.end < s.end) next.push({ start: b.end, end: s.end });
+                        });
+                        segments = next;
+                    });
+                    out = out.concat(segments);
+                });
+                return out;
+            }
+
             vm.highlightCode = function (text, startsInBlockComment) {
                 function esc(v) {
                     var div = document.createElement('div');
@@ -3171,7 +3264,11 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 }
                 var raw = String(text || '');
                 var needle = String(vm.query || '');
-                var cacheKey = needle + ' ' + (vm.caseSensitive ? '1' : '0') + ' ' + (startsInBlockComment ? '1' : '0');
+                var secondaryTerms = (vm.secondaryFilters || [])
+                    .filter(function (f) { return f.operator === 'contains' && f.term && f.term.trim(); })
+                    .map(function (f) { return f.term; });
+                var cacheKey = needle + '|' + secondaryTerms.join('') + '|' +
+                    (vm.caseSensitive ? '1' : '0') + ' ' + (startsInBlockComment ? '1' : '0');
                 if (cacheKey !== _highlightCacheKey) {
                     _highlightCache = {};
                     _highlightCacheKey = cacheKey;
@@ -3182,15 +3279,17 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
                 var searchable = vm.caseSensitive ? raw : raw.toLowerCase();
                 var find = vm.caseSensitive ? needle : needle.toLowerCase();
-                var ranges = [];
-                var searchAt = 0;
-                var foundAt;
-                if (find) {
-                    while ((foundAt = searchable.indexOf(find, searchAt)) !== -1) {
-                        ranges.push({ start: foundAt, end: foundAt + needle.length });
-                        searchAt = foundAt + needle.length;
-                    }
-                }
+                var primaryRanges = _findRanges(searchable, find);
+
+                var secondaryRanges = _mergeRanges(secondaryTerms.reduce(function (acc, term) {
+                    var secFind = vm.caseSensitive ? term : term.toLowerCase();
+                    return acc.concat(_findRanges(searchable, secFind));
+                }, []));
+                secondaryRanges = _subtractRanges(secondaryRanges, primaryRanges);
+
+                var ranges = primaryRanges.map(function (r) { return { start: r.start, end: r.end, kind: 'primary' }; })
+                    .concat(secondaryRanges.map(function (r) { return { start: r.start, end: r.end, kind: 'secondary' }; }))
+                    .sort(function (a, b) { return a.start - b.start; });
 
                 var offset = 0;
                 var rangeIndex = 0;
@@ -3212,7 +3311,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         if (range) boundary = Math.min(boundary, highlighted ? range.end : Math.max(globalAt, range.start));
                         if (boundary <= globalAt) boundary = globalAt + 1;
                         var piece = esc(token.text.substring(localAt, boundary - tokenStart));
-                        tokenHtml += highlighted ? '<mark class="cs-highlight">' + piece + '</mark>' : piece;
+                        var markClass = highlighted && range.kind === 'secondary' ? 'cs-highlight cs-highlight-secondary' : 'cs-highlight';
+                        tokenHtml += highlighted ? '<mark class="' + markClass + '">' + piece + '</mark>' : piece;
                         localAt = boundary - tokenStart;
                     }
                     out += token.type ? '<span class="cs-token-' + token.type + '">' + tokenHtml + '</span>' : tokenHtml;

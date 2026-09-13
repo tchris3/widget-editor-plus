@@ -49,6 +49,39 @@ test('table search always caps the GlideRecord scan, even with secondary filters
     assert.ok(serverSource.includes('MAX_SCAN_ROWS:'), 'MAX_SCAN_ROWS constant should bound the worst-case scan');
 });
 
+test('advanced conditions round-trip through the URL alongside the query, case and active-only params', () => {
+    assert.ok(
+        pageSource.includes("if (urlFilters.length) url.searchParams.set('filters', JSON.stringify(urlFilters));"),
+        'updateUrlParam should persist non-empty secondary filters as a filters URL param'
+    );
+    assert.ok(
+        pageSource.includes("url.searchParams.delete('filters');"),
+        'updateUrlParam should clear the filters URL param when there is no query or no valid filters'
+    );
+    assert.ok(
+        pageSource.includes('if (urlFilters) vm.secondaryFilters = urlFilters;'),
+        'Filters parsed from the URL on load should populate vm.secondaryFilters'
+    );
+
+    const start = pageSource.indexOf('            function _parseUrlFilters(raw) {');
+    const end = pageSource.indexOf('            var initialParams = new URLSearchParams', start);
+    const fnSource = pageSource.slice(start, end);
+    eval(fnSource);
+
+    assert.equal(_parseUrlFilters(null), null, 'Missing filters param should parse to null');
+    assert.equal(_parseUrlFilters('not json'), null, 'Malformed JSON should parse to null');
+    assert.equal(_parseUrlFilters(JSON.stringify([{ operator: 'contains', term: '', joiner: 'and' }])), null, 'A blank term should be rejected');
+    assert.equal(_parseUrlFilters(JSON.stringify([{ operator: 'bogus', term: 'x', joiner: 'and' }])), null, 'An invalid operator should be rejected');
+    assert.equal(_parseUrlFilters(JSON.stringify([{ operator: 'contains', term: 'x', joiner: 'maybe' }])), null, 'An invalid joiner should be rejected');
+    assert.equal(_parseUrlFilters(JSON.stringify(Array(21).fill({ operator: 'contains', term: 'x', joiner: 'and' }))), null, 'More than 20 filters should be rejected');
+
+    const valid = [
+        { operator: 'contains', term: 'incident', joiner: 'and' },
+        { operator: 'not_contains', term: 'test', joiner: 'or' }
+    ];
+    assert.deepEqual(_parseUrlFilters(JSON.stringify(valid)), valid, 'A valid filters array should round-trip unchanged');
+});
+
 test('changing Group/Sort resets the results pane without smooth scrolling', () => {
     const start = pageSource.indexOf("            $scope.$watch('ctrl.viewMode'");
     const end = pageSource.indexOf('            vm.clearInput = function', start);
