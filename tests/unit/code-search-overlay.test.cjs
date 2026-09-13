@@ -128,7 +128,8 @@ test('inline Monaco follows the ServiceNow UI theme instead of the Widget Editor
     );
     assert.ok(resolverSource.includes("? 'vs' : 'vs-dark'"), 'Should support both Monaco light and dark themes');
     assert.ok(resolverSource.includes('MutationObserver'), 'Should react when the ServiceNow UI theme changes');
-    assert.ok(createSource.includes('theme: _getUiMonacoTheme()'), 'Should resolve the UI theme when creating an editor');
+    assert.ok(source.slice(Math.max(0, createStart - 500), createStart).includes('var uiTheme = _getUiMonacoTheme();'), 'Should resolve the UI theme before creating an editor');
+    assert.ok(createSource.includes('theme: uiTheme'), 'Should create the editor with the resolved UI theme');
     assert.equal(resolverSource.includes('userPrefs'), false, 'Should not read Widget Editor+ preferences');
     assert.equal(createSource.includes("theme: 'vs-dark'"), false, 'Should not hard-code Monaco to dark mode');
 });
@@ -148,5 +149,23 @@ test('opening an inline Monaco editor is disabled while search is running', () =
     assert.ok(
         toggleSource.indexOf('if (match.expanded)') < toggleSource.indexOf('if (vm.loading) return;'),
         'An already-open editor should remain collapsible while searching'
+    );
+});
+
+test('light mode does not expose a dark surface while inline Monaco mounts', () => {
+    const cssStart = source.indexOf('        .cs-inline-monaco-wrap {');
+    const cssEnd = source.indexOf('        /* Drawer / Flyout Panel */', cssStart);
+    const inlineMonacoCss = source.slice(cssStart, cssEnd);
+    const createStart = source.indexOf('window.monaco.editor.create(container');
+    const beforeCreate = source.slice(Math.max(0, createStart - 500), createStart);
+
+    assert.ok(
+        inlineMonacoCss.includes('background: rgb(var(--now-color_background--primary'),
+        'The empty Monaco surface should use the current UI background'
+    );
+    assert.equal(inlineMonacoCss.includes('#1e1e1e'), false, 'The mounting surface should not be hard-coded dark');
+    assert.ok(
+        beforeCreate.includes('window.monaco.editor.setTheme(uiTheme);'),
+        'The UI theme should be active before Monaco creates its DOM'
     );
 });

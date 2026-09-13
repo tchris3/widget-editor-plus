@@ -1219,13 +1219,14 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         .cs-inline-monaco-wrap {
             position: relative;
             width: 100%;
-            background: #1e1e1e;
+            background: rgb(var(--now-color_background--primary, 255 255 255));
             border-top: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
         }
 
         .cs-inline-monaco-host {
             width: 100%;
             height: 380px;
+            background: rgb(var(--now-color_background--primary, 255 255 255));
         }
 
         .cs-inline-monaco-loading {
@@ -3445,10 +3446,14 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
                         if (window.monaco && window.monaco.editor) {
                             var lang = _detectLanguage(match.field, data.content);
+                            var uiTheme = _getUiMonacoTheme();
+                            // Set the global theme before Monaco creates any DOM so it never
+                            // paints its default dark theme on the way to a light editor.
+                            window.monaco.editor.setTheme(uiTheme);
                             var editor = window.monaco.editor.create(container, {
                                 value: data.content || '',
                                 language: lang,
-                                theme: _getUiMonacoTheme(),
+                                theme: uiTheme,
                                 readOnly: true,
                                 automaticLayout: true,
                                 lineNumbers: 'on',
