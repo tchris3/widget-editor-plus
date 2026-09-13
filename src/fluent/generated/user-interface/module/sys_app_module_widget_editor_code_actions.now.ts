@@ -14,7 +14,7 @@ Record({
         override_menu_roles: true,
         query: 'sys_ui_script.do?sys_id=5121643a8398031070b8b5dfeeaad368',
         require_confirmation: true,
-        roles: ['sp_admin'],
+        roles: ['admin'],
         sys_domain: 'global',
         sys_domain_path: '/',
         title: 'Code Actions',

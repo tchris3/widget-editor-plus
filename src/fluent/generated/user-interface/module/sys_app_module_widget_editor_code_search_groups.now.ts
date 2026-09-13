@@ -14,7 +14,7 @@ Record({
         order: 1477,
         override_menu_roles: true,
         require_confirmation: true,
-        roles: ['sp_admin'],
+        roles: ['admin'],
         sys_domain: 'global',
         sys_domain_path: '/',
         title: 'Code Search Groups',
