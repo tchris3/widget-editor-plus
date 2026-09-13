@@ -2548,8 +2548,20 @@ export const widgetEditorAssistantUiPage = UiPage({
 
             if (!ctrl.embeddedInModal) {
                 var siteTitle = assistantConfig.siteTitle || 'ServiceNow';
+                var titleTimer = null;
                 $scope.$watch(function () { return ctrl.primary.label; }, function (label) {
-                    document.title = (label ? label + ' - ' : '') + 'Widget Editor+ Assistant - ' + siteTitle;
+                    var title = (label ? label + ' - ' : '') + 'Widget Editor+ Assistant - ' + siteTitle;
+                    document.title = title;
+                    if (titleTimer) {
+                        $timeout.cancel(titleTimer);
+                    }
+                    titleTimer = $timeout(function () {
+                        try {
+                            if (window.parent !== window) {
+                                window.parent.document.title = title;
+                            }
+                        } catch (e) {}
+                    }, 1000);
                 });
             }
 

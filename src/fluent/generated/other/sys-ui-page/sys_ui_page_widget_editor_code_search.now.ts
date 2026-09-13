@@ -24,6 +24,12 @@ export const widgetEditorCodeSearchUiPage = UiPage({
     <g:requires name="scripts/angular_1.5.11/angular.min.js" position="last" />
     <link rel="stylesheet" href="/styles/retina_icons/retina_icons.css" />
 
+    <script>
+        window.WE_CODE_SEARCH_CONFIG = {
+            siteTitle: '\${gs.getProperty("glide.product.name", "ServiceNow")}'
+        };
+    </script>
+
     <style>
         #page_timing_div {
             display: none !important;
@@ -2088,6 +2094,27 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             // Sidebar Panes State
             vm.paneGroupOpen = true;
             vm.paneResultsOpen = false;
+
+            var siteTitle = (window.WE_CODE_SEARCH_CONFIG && window.WE_CODE_SEARCH_CONFIG.siteTitle) || 'ServiceNow';
+            var titleTimer = null;
+            $scope.$watch(function () {
+                return vm.query + '|' + vm.hasSearched + '|' + vm.loading + '|' + vm.results.length;
+            }, function () {
+                var term = vm.query && vm.query.trim();
+                var suffix = (vm.hasSearched && !vm.loading) ? ' (' + vm.results.length + ')' : '';
+                var title = (term ? term + suffix + ' - ' : '') + 'Widget Editor+ Code Search - ' + siteTitle;
+                document.title = title;
+                if (titleTimer) {
+                    $timeout.cancel(titleTimer);
+                }
+                titleTimer = $timeout(function () {
+                    try {
+                        if (window.parent !== window) {
+                            window.parent.document.title = title;
+                        }
+                    } catch (e) {}
+                }, 1000);
+            });
 
             function _updateTablesWithResults() {
                 if (!vm.hasSearched) {
