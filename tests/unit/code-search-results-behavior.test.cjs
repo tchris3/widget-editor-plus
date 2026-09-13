@@ -132,18 +132,45 @@ test('record header fields come only from each table display-fields property', (
 });
 
 test('all known code-search tables have display-field properties in the Monaco category', () => {
-    const tables = [
-        'sp_page',
-        'sp_widget',
-        'sc_cat_item_producer',
-        'sysevent_email_action',
-        'sp_angular_provider',
-        'sys_security_acl',
-        'sys_ui_action'
-    ];
-    tables.forEach(table => {
+    const expectedFields = {
+        catalog_script_client: 'cat_item,type',
+        catalog_ui_policy: 'catalog_item',
+        catalog_ui_policy_action: 'catalog_item,ui_policy,variable',
+        item_option_new: 'cat_item,type',
+        sc_cat_item_producer: 'table_name,category',
+        sp_angular_provider: 'type',
+        sp_ng_template: 'sp_widget',
+        sp_page: 'title',
+        sp_widget: 'id',
+        sysevent_email_action: 'collection,category',
+        sysevent_email_template: 'sys_scope',
+        sysevent_in_email_action: 'target_table,type',
+        sysevent_script_action: 'event_name',
+        sys_processor: 'type,path',
+        sys_relationship: 'applies_to,queries_from',
+        sys_script: 'collection,when',
+        sys_script_client: 'table,type',
+        sys_script_email: 'sys_scope',
+        sys_script_include: 'sys_scope',
+        sys_security_acl: 'type,operation',
+        sys_transform_map: 'source_table,target_table',
+        sys_ui_action: 'table',
+        sys_ui_macro: 'sys_scope',
+        sys_ui_page: 'sys_scope,category',
+        sys_ui_policy: 'table',
+        sys_ui_script: 'sys_scope,ui_type',
+        sys_ui_style: 'table,element',
+        sysauto_script: 'sys_scope,run_type'
+    };
+    Object.entries(expectedFields).forEach(([table, fields]) => {
         assert.ok(propertiesSource.includes(`name: 'monaco.plus.code_search.display_fields.${table}'`));
+        const propertyStart = propertiesSource.indexOf(`name: 'monaco.plus.code_search.display_fields.${table}'`);
+        assert.ok(propertiesSource.slice(propertyStart, propertyStart + 180).includes(`value: '${fields}'`));
         assert.ok(categorySource.includes(`code-search-display-fields-${table.replaceAll('_', '-')}`));
     });
-    assert.ok(propertiesSource.includes("value: 'type,operation'"));
+
+    ['cmn_map_page', 'sp_css', 'sp_search_source', 'sys_trigger'].forEach(table => {
+        assert.equal(propertiesSource.includes(`name: 'monaco.plus.code_search.display_fields.${table}'`), false);
+        assert.equal(categorySource.includes(`code-search-display-fields-${table.replaceAll('_', '-')}`), false);
+    });
 });
