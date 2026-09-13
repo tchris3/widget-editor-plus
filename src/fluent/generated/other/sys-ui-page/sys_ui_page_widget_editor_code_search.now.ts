@@ -2456,7 +2456,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 if (params) {
                     Object.keys(params).forEach(function (k) {
                         var val = params[k] != null ? String(params[k]) : '';
-                        ga.addParam(k, val);
                         ga.addParam('sysparm_' + k, val);
                     });
                 }

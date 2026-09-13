@@ -4,6 +4,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
     MAX_SNIPPETS_PER_FIELD: 5,
     MAX_INLINE_SNIPPET_GAP: 3,
     MAX_SCAN_ROWS: 20000,
+    MAX_TOTAL_SCAN_ROWS: 100000,
 
     _getParam: function (name) {
         var val = this.getParameter(name);
@@ -86,8 +87,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                 table: table,
                 label: this._tableLabel(table),
                 searchFields: this._validFields(table, cfg.getValue('search_fields')).join(','),
-                additionalFilter: cfg.getValue('additional_filter') || '',
-                canWrite: cfg.canWrite()
+                additionalFilter: cfg.getValue('additional_filter') || ''
             });
         }
         return this._answer({ success: true, tables: rows });
@@ -122,7 +122,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         var tableConfigId = String(this._getParam('table_config_id') || this._getParam('table') || '').trim();
         var overrides = {};
         try { overrides = JSON.parse(this._getParam('overrides') || '{}'); } catch (ignore) {}
-        var results = [], searched = 0, skipped = [];
+        var results = [], searched = 0, skipped = [], totalScanned = 0;
         var cfg = new GlideRecord('sn_codesearch_table');
         cfg.addQuery('search_group', groupId);
         if (tableConfigId) {
@@ -135,6 +135,10 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         cfg.orderBy('table');
         cfg.query();
         while (cfg.next()) {
+            if (totalScanned >= this.MAX_TOTAL_SCAN_ROWS) {
+                skipped.push(String(cfg.getValue('table') || '') + ': search scan budget exceeded, narrow the search group or query.');
+                continue;
+            }
             var configId = cfg.getUniqueValue();
             var override = overrides[configId] || {};
             if (override.enabled === false) continue;
@@ -179,7 +183,8 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             record.setLimit(!secondaryFilters.length && !caseSensitive ? limit + 1 : this.MAX_SCAN_ROWS);
             record.query();
             var count = 0;
-            while (record.next() && count < limit) {
+            while (record.next() && count < limit && totalScanned < this.MAX_TOTAL_SCAN_ROWS) {
+                totalScanned++;
                 if (!this._matchesSecondaryFilters(record, fields, secondaryFilters, caseSensitive)) continue;
                 var matches = [];
                 var termLower = term.toLowerCase();
@@ -258,16 +263,10 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                     var recSysId = record.getUniqueValue();
                     var isWidget = table === 'sp_widget';
 
-                    // Determine active status (active or u_active)
-                    var hasActiveField = false;
-                    var isActive = true;
-                    if (record.isValidField('active')) {
-                        hasActiveField = true;
-                        isActive = record.getValue('active') === '1' || record.getValue('active') === 'true';
-                    } else if (record.isValidField('u_active')) {
-                        hasActiveField = true;
-                        isActive = record.getValue('u_active') === '1' || record.getValue('u_active') === 'true';
-                    }
+                    // Determine active status, matching the OR semantics of the query above
+                    var hasActiveField = tableHasActive || tableHasUActive;
+                    var isActive = (tableHasActive && (record.getValue('active') === '1' || record.getValue('active') === 'true')) ||
+                        (tableHasUActive && (record.getValue('u_active') === '1' || record.getValue('u_active') === 'true'));
 
                     if (activeOnly && (!hasActiveField || !isActive)) {
                         continue;
@@ -421,37 +420,6 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         });
 
         return this._answer({ success: true, fields: fields });
-    },
-
-    saveTableConfig: function () {
-        var configId = this._getParam('config_id');
-        var cfg = this._getConfig(configId);
-        if (!cfg) return this._answer({ success: false, error: 'Configuration not found.' });
-        if (!cfg.canWrite()) return this._answer({ success: false, error: 'You do not have permission to update this configuration.' });
-        var table = String(cfg.getValue('table'));
-        var rawFields = String(this._getParam('search_fields') || '').split(',');
-        var fields = [];
-        var seen = {};
-        var probe = new GlideRecord(table);
-        for (var i = 0; i < rawFields.length; i++) {
-            var f = rawFields[i].trim();
-            if (!f) continue;
-            if (!/^[a-zA-Z0-9_]+$/.test(f) || !probe.isValidField(f)) {
-                return this._answer({ success: false, error: 'Field "' + f + '" does not exist on table ' + table + '.' });
-            }
-            if (!seen[f]) {
-                seen[f] = true;
-                fields.push(f);
-            }
-        }
-        if (!fields.length) return this._answer({ success: false, error: 'At least one valid search field is required.' });
-        var filter = this._getParam('filter');
-        var validation = this._validateFilter(table, filter);
-        if (!validation.valid) return this._answer({ success: false, error: validation.error });
-        cfg.setValue('search_fields', fields.join(','));
-        cfg.setValue('additional_filter', filter);
-        cfg.update();
-        return this._answer({ success: true, searchFields: fields.join(','), additionalFilter: filter });
     },
 
     _getConfig: function (sysId) {
@@ -636,12 +604,6 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             if (quote !== '`') quote = '';
         }
         return states;
-    },
-
-    _snippet: function (value, index, length) {
-        var start = Math.max(0, index - 80), end = Math.min(value.length, index + length + 140);
-        var sub = value.substring(start, end).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        return (start ? '…' : '') + sub + (end < value.length ? '…' : '');
     },
 
     _isSysId: function (value) { return /^[0-9a-f]{32}$/.test(value); },
