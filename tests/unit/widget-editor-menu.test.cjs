@@ -9,7 +9,7 @@ const source = fs.readFileSync(
 
 test('Code search follows Keyboard shortcuts in the Widget Editor+ menu', () => {
     const keyboard = source.indexOf('>Keyboard shortcuts</div>');
-    const codeSearch = source.indexOf('ng-click="openCodeSearch()">Code search');
+    const codeSearch = source.indexOf('ng-click="openCodeSearch()">Code Search+');
     const apiDocs = source.indexOf('ng-click="openApiDocs()">API documentation');
 
     assert.ok(keyboard >= 0, 'Keyboard shortcuts menu item should exist');
