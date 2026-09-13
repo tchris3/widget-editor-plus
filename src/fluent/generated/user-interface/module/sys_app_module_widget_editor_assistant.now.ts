@@ -6,6 +6,7 @@ Record({
     data: {
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
+        hint: 'Export XML context bundles for AI tools',
         link_type: 'DIRECT',
         mobile_title: 'AI Assistant',
         mobile_view_name: 'Mobile',

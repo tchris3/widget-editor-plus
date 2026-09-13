@@ -6,6 +6,7 @@ Record({
     data: {
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
+        hint: 'Configure Code Search+ tables and search groups',
         link_type: 'LIST',
         mobile_title: 'Code Search Groups',
         mobile_view_name: 'Mobile',

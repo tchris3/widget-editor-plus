@@ -6,6 +6,7 @@ Record({
     data: {
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
+        hint: 'Monaco-powered IDE for Service Portal widgets',
         link_type: 'DIRECT',
         mobile_title: 'Widget Editor+',
         mobile_view_name: 'Mobile',

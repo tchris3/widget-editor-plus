@@ -6,6 +6,7 @@ Record({
     data: {
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
+        hint: 'Custom Monaco code action UI Script',
         link_type: 'DIRECT',
         mobile_title: 'Code Actions',
         mobile_view_name: 'Mobile',
