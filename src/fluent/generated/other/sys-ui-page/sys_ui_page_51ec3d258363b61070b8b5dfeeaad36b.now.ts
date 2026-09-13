@@ -2110,8 +2110,10 @@ UiPage({
     clientScript: `(function() {
     'use strict';
 
-    // Config
-    var SITE_TITLE = (window.WE_DIFF_CONFIG && window.WE_DIFF_CONFIG.siteTitle) || 'ServiceNow';
+    // Config is populated by the Jelly template above. Keep all client-side
+    // normalization here so the rest of the page has one source of truth.
+    var pageConfig = window.WE_DIFF_CONFIG || {};
+    var SITE_TITLE = pageConfig.siteTitle || 'ServiceNow';
 
     // Suppress "Unexpected usage" rejections from language service workers
     window.addEventListener('unhandledrejection', function(e) {
@@ -2259,22 +2261,27 @@ UiPage({
         _bs.init({ language: 'html' });
     }
 
-    var urlParams    = new URLSearchParams(window.location.search);
-    var recordId     = urlParams.get('record_id')  || '';
-    var tableParam   = urlParams.get('table')       || 'sp_widget';
-    var version1Id   = urlParams.get('version_1')   || '';
-    var version2Id   = urlParams.get('version_2')   || '';
-    var daToken      = urlParams.get('da_token')    || '';
-    var isEmbedded   = urlParams.get('da_iframe')   === 'true';
-    var isFromList   = urlParams.get('da_source')   === 'list';
+    var recordId     = pageConfig.record_id || '';
+    var tableParam   = pageConfig.table || 'sp_widget';
+    var version1Id   = pageConfig.version_1 || '';
+    var version2Id   = pageConfig.version_2 || '';
+    var daToken      = pageConfig.da_token || '';
+    var isEmbedded   = pageConfig.da_iframe === 'true';
+    var isFromList   = pageConfig.da_source === 'list';
 
-    var diffPageSysId      = (window.WE_DIFF_CONFIG && window.WE_DIFF_CONFIG.diffPageSysId)      || '';
-    var widgetEditorSysId  = (window.WE_DIFF_CONFIG && window.WE_DIFF_CONFIG.widgetEditorSysId)  || '';
+    var diffPageSysId     = pageConfig.diffPageSysId || '';
+    var widgetEditorSysId = pageConfig.widgetEditorSysId || '';
+
+    function _queryString(params) {
+        return Object.keys(params)
+            .filter(function(k) { return params[k] !== undefined && params[k] !== null; })
+            .map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); })
+            .join('&');
+    }
 
     // Build a nav_to.do URL for a page identified by its sys_id (or page name as fallback).
     function _navUrl(pageSysId, pageNameFallback, params) {
-        var qs = Object.keys(params).filter(function(k) { return params[k] !== undefined && params[k] !== null; })
-            .map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+        var qs = _queryString(params);
         var uri = pageSysId
             ? ('ui_page.do?sys_id=' + encodeURIComponent(pageSysId) + (qs ? '&' + qs : ''))
             : (pageNameFallback + '.do?' + qs);
@@ -2283,8 +2290,7 @@ UiPage({
 
     // Build a direct page URL (for iframe src) without nav_to wrapper.
     function _iframeUrl(pageSysId, pageNameFallback, params) {
-        var qs = Object.keys(params).filter(function(k) { return params[k] !== undefined && params[k] !== null; })
-            .map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+        var qs = _queryString(params);
         if (pageSysId) {
             return '/ui_page.do?sys_id=' + encodeURIComponent(pageSysId) + (qs ? '&' + qs : '');
         }
@@ -3171,50 +3177,36 @@ UiPage({
             return Math.ceil(h.getBoundingClientRect().bottom);
         }
 
-        function _setWrapTop(index) {
-            var wrap = document.querySelector('#da-' + index + ' .da-editor-wrap');
-            if (!wrap) { return; }
-            var top = _headerHeight();
-            var h   = window.innerHeight - top;
-            wrap.style.top    = top + 'px';
-            wrap.style.height = h + 'px';
-            var outer = wrap.querySelector('.da-editor-canvas-outer');
-            if (outer) { outer.style.height = h + 'px'; }
-            var container = document.getElementById('da-ed-' + index);
-            if (container) { container.style.height = '100%'; }
+        function _getEditorElements(index, isExtra) {
+            var sectionPrefix = isExtra ? '#da-extra-' : '#da-';
+            var editorPrefix = isExtra ? 'da-ex-ed-' : 'da-ed-';
+            var wrap = document.querySelector(sectionPrefix + index + ' .da-editor-wrap');
+            return {
+                wrap: wrap,
+                outer: wrap ? wrap.querySelector('.da-editor-canvas-outer') : null,
+                container: document.getElementById(editorPrefix + index)
+            };
         }
 
-        function _clearWrapTop(index) {
-            var wrap = document.querySelector('#da-' + index + ' .da-editor-wrap');
+        function _setWrapTop(index, isExtra) {
+            var elements = _getEditorElements(index, isExtra);
+            if (!elements.wrap) { return; }
+            var top = _headerHeight();
+            var height = window.innerHeight - top;
+            elements.wrap.style.top = top + 'px';
+            elements.wrap.style.height = height + 'px';
+            if (elements.outer) { elements.outer.style.height = height + 'px'; }
+            if (elements.container) { elements.container.style.height = '100%'; }
+        }
+
+        function _clearWrapTop(index, isExtra) {
+            var elements = _getEditorElements(index, isExtra);
+            var wrap = elements.wrap;
             if (!wrap) { return; }
             wrap.style.top    = '';
             wrap.style.height = '';
-            var outer = wrap.querySelector('.da-editor-canvas-outer');
-            if (outer) { outer.style.height = ''; }
-            ctrl.updateEditorHeight(index, false);
-        }
-
-        function _setExtraWrapTop(index) {
-            var wrap = document.querySelector('#da-extra-' + index + ' .da-editor-wrap');
-            if (!wrap) { return; }
-            var top = _headerHeight();
-            var h   = window.innerHeight - top;
-            wrap.style.top    = top + 'px';
-            wrap.style.height = h + 'px';
-            var outer = wrap.querySelector('.da-editor-canvas-outer');
-            if (outer) { outer.style.height = h + 'px'; }
-            var container = document.getElementById('da-ex-ed-' + index);
-            if (container) { container.style.height = '100%'; }
-        }
-
-        function _clearExtraWrapTop(index) {
-            var wrap = document.querySelector('#da-extra-' + index + ' .da-editor-wrap');
-            if (!wrap) { return; }
-            wrap.style.top    = '';
-            wrap.style.height = '';
-            var outer = wrap.querySelector('.da-editor-canvas-outer');
-            if (outer) { outer.style.height = ''; }
-            ctrl.updateEditorHeight(index, true);
+            if (elements.outer) { elements.outer.style.height = ''; }
+            ctrl.updateEditorHeight(index, isExtra);
         }
 
         ctrl.updateEditorHeight = function(index, isExtra) {
@@ -3296,13 +3288,13 @@ UiPage({
 
             $timeout(function() {
                 if (!wasExpanded) {
-                    _setWrapTop(index);
+                    _setWrapTop(index, false);
                 } else {
-                    _clearWrapTop(index);
+                    _clearWrapTop(index, false);
                 }
                 if (ctrl.editors[index]) { ctrl.editors[index].layout(); }
                 if (prevIndex !== null && prevIndex !== index) {
-                    _clearWrapTop(prevIndex);
+                    _clearWrapTop(prevIndex, false);
                     if (ctrl.editors[prevIndex]) { ctrl.editors[prevIndex].layout(); }
                 }
                 if (!wasExpanded) {
@@ -3329,13 +3321,13 @@ UiPage({
 
             $timeout(function() {
                 if (!wasExpanded) {
-                    _setExtraWrapTop(index);
+                    _setWrapTop(index, true);
                 } else {
-                    _clearExtraWrapTop(index);
+                    _clearWrapTop(index, true);
                 }
                 if (ctrl.extraEditors[index]) { ctrl.extraEditors[index].layout(); }
                 if (prevIndex !== null && prevIndex !== index) {
-                    _clearExtraWrapTop(prevIndex);
+                    _clearWrapTop(prevIndex, true);
                     if (ctrl.extraEditors[prevIndex]) { ctrl.extraEditors[prevIndex].layout(); }
                 }
                 _scheduleChangedBelowIndicatorUpdate();
@@ -3346,7 +3338,7 @@ UiPage({
             var idx = ctrl.expandedExtraIndex;
             if (idx === null) { return; }
             ctrl.expandedExtraIndex = null;
-            _clearExtraWrapTop(idx);
+            _clearWrapTop(idx, true);
             $timeout(function() {
                 if (ctrl.extraEditors[idx]) { ctrl.extraEditors[idx].layout(); }
                 _scheduleChangedBelowIndicatorUpdate();
@@ -3362,7 +3354,7 @@ UiPage({
             var idx = ctrl.expandedIndex;
             if (idx === null) { return; }
             ctrl.expandedIndex = null;
-            _clearWrapTop(idx);
+            _clearWrapTop(idx, false);
             $timeout(function() {
                 if (ctrl.editors[idx]) { ctrl.editors[idx].layout(); }
                 _scheduleChangedBelowIndicatorUpdate();
@@ -3493,13 +3485,13 @@ UiPage({
 
         var _onWindowResize = function() {
             if (ctrl.expandedIndex !== null) {
-                _setWrapTop(ctrl.expandedIndex);
+                _setWrapTop(ctrl.expandedIndex, false);
                 if (ctrl.editors[ctrl.expandedIndex]) {
                     ctrl.editors[ctrl.expandedIndex].layout();
                 }
             }
             if (ctrl.expandedExtraIndex !== null) {
-                _setExtraWrapTop(ctrl.expandedExtraIndex);
+                _setWrapTop(ctrl.expandedExtraIndex, true);
                 if (ctrl.extraEditors[ctrl.expandedExtraIndex]) {
                     ctrl.extraEditors[ctrl.expandedExtraIndex].layout();
                 }

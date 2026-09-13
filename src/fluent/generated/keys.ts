@@ -175,10 +175,250 @@ declare global {
                         table: 'sys_security_acl'
                         id: '33195917e3c84b1f8afafe10a38f16b0'
                     }
+                    'widget-editor-code-search-display-fields-catalog-script-client': {
+                        table: 'sys_properties'
+                        id: '64fc931ebec44451b39c3c8d0b434d34'
+                    }
+                    'widget-editor-code-search-display-fields-catalog-ui-policy': {
+                        table: 'sys_properties'
+                        id: '1ce84470a95e48258409c353f7e2a997'
+                    }
+                    'widget-editor-code-search-display-fields-catalog-ui-policy-action': {
+                        table: 'sys_properties'
+                        id: '7d5f7c92038443eaabd933b3bddbb5e3'
+                    }
+                    'widget-editor-code-search-display-fields-item-option-new': {
+                        table: 'sys_properties'
+                        id: 'f2c760f320e94f4d95bc09e1d102874b'
+                    }
+                    'widget-editor-code-search-display-fields-sc-cat-item-producer': {
+                        table: 'sys_properties'
+                        id: '9490f846a6604ba387da2b32d0a3837f'
+                    }
+                    'widget-editor-code-search-display-fields-sp-angular-provider': {
+                        table: 'sys_properties'
+                        id: 'e2f5246061ae4fdf82a09630d112ca72'
+                    }
+                    'widget-editor-code-search-display-fields-sp-ng-template': {
+                        table: 'sys_properties'
+                        id: 'e577ef2f5b7f49ccb8a0b792f6d4e03a'
+                    }
+                    'widget-editor-code-search-display-fields-sp-page': {
+                        table: 'sys_properties'
+                        id: '874883e90d7b440993c4a25c4978d786'
+                    }
+                    'widget-editor-code-search-display-fields-sp-widget': {
+                        table: 'sys_properties'
+                        id: '099b103a903547e1a28ddb9d71ebf38d'
+                    }
+                    'widget-editor-code-search-display-fields-sys-processor': {
+                        table: 'sys_properties'
+                        id: '6f656d5483944ecea0b1793476555ebd'
+                    }
+                    'widget-editor-code-search-display-fields-sys-relationship': {
+                        table: 'sys_properties'
+                        id: 'dfe94627b7644b1ba3d2825f816fddcd'
+                    }
+                    'widget-editor-code-search-display-fields-sys-script': {
+                        table: 'sys_properties'
+                        id: '0a149371ce2e4c5e9baf500bdc9c694f'
+                    }
+                    'widget-editor-code-search-display-fields-sys-script-client': {
+                        table: 'sys_properties'
+                        id: '385de58b38e041769ba08e50b84efdfc'
+                    }
+                    'widget-editor-code-search-display-fields-sys-script-email': {
+                        table: 'sys_properties'
+                        id: '0a3b41e7aaf24b698ddc44f4b3bc886b'
+                    }
+                    'widget-editor-code-search-display-fields-sys-script-include': {
+                        table: 'sys_properties'
+                        id: 'b36744f588df4452a8d4610b0e12effb'
+                    }
+                    'widget-editor-code-search-display-fields-sys-security-acl': {
+                        table: 'sys_properties'
+                        id: '9499bca9fd5a4230870c82178ec77c46'
+                    }
+                    'widget-editor-code-search-display-fields-sys-transform-map': {
+                        table: 'sys_properties'
+                        id: '320e549837ac40e28cb26dc38d824956'
+                    }
+                    'widget-editor-code-search-display-fields-sys-ui-action': {
+                        table: 'sys_properties'
+                        id: 'cfae0df80ec6443f95b0f894bfbc3da0'
+                    }
+                    'widget-editor-code-search-display-fields-sys-ui-macro': {
+                        table: 'sys_properties'
+                        id: 'ec1ef5d8e2614a8c9a11aa1f9e21bb21'
+                    }
+                    'widget-editor-code-search-display-fields-sys-ui-page': {
+                        table: 'sys_properties'
+                        id: '6332e0f3c1174106b002d16d2cf48e2e'
+                    }
+                    'widget-editor-code-search-display-fields-sys-ui-policy': {
+                        table: 'sys_properties'
+                        id: 'da125bdc305643a8ab94f420ef3c42e4'
+                    }
+                    'widget-editor-code-search-display-fields-sys-ui-script': {
+                        table: 'sys_properties'
+                        id: '145a30b81b3d4fa88b11a664d4a82096'
+                    }
+                    'widget-editor-code-search-display-fields-sys-ui-style': {
+                        table: 'sys_properties'
+                        id: '6fbe78a4c8e44f60ba72acbfbcf8a80a'
+                    }
+                    'widget-editor-code-search-display-fields-sysauto-script': {
+                        table: 'sys_properties'
+                        id: 'afaedf6f3d6f45f890ec41e8a55e199b'
+                    }
+                    'widget-editor-code-search-display-fields-sysevent-email-action': {
+                        table: 'sys_properties'
+                        id: '6c3235b26fe84d74809fb4be2445e55e'
+                    }
+                    'widget-editor-code-search-display-fields-sysevent-email-template': {
+                        table: 'sys_properties'
+                        id: '757511f882f24c9bbd9da83afb6badb5'
+                    }
+                    'widget-editor-code-search-display-fields-sysevent-in-email-action': {
+                        table: 'sys_properties'
+                        id: 'de4e3bcda0394d23857b224a570cb5f6'
+                    }
+                    'widget-editor-code-search-display-fields-sysevent-script-action': {
+                        table: 'sys_properties'
+                        id: '4cf90698394047e0a12108d78fdf2148'
+                    }
+                    'widget-editor-code-search-module': {
+                        table: 'sys_app_module'
+                        id: '733b535096a94c97a08e61b74ea6c4fa'
+                    }
+                    'widget-editor-code-search-script-include': {
+                        table: 'sys_script_include'
+                        id: '7ea1f25eb1c7442394decf93e254ae6f'
+                    }
+                    'widget-editor-code-search-script-include-acl': {
+                        table: 'sys_security_acl'
+                        id: 'bd0822292b594c3f84bd890026315b62'
+                    }
+                    'widget-editor-code-search-ui-page-acl': {
+                        table: 'sys_security_acl'
+                        id: '3bd862d0819e4f9281df97d5d8ac9741'
+                    }
                     'widget-editor-html-class-stylesheets': {
                         table: 'sys_properties'
                         id: 'a66fcbb84e5a4e878ec6e60ec8dd9a5e'
                         deleted: true
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-catalog-script-client': {
+                        table: 'sys_properties_category_m2m'
+                        id: '7530719b6c5f4954a594cc8509d4f2d4'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-catalog-ui-policy': {
+                        table: 'sys_properties_category_m2m'
+                        id: '053cd53b4b4747eb9b7727b170d0619c'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-catalog-ui-policy-action': {
+                        table: 'sys_properties_category_m2m'
+                        id: '90b48dd1438e4b2a89d542a25e8fa113'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-item-option-new': {
+                        table: 'sys_properties_category_m2m'
+                        id: '21ae62e6df49488fba4a7136459eb41b'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sc-cat-item-producer': {
+                        table: 'sys_properties_category_m2m'
+                        id: '1c7701c89f394c2e9d25f3c22cd270b8'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sp-angular-provider': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'ba3244043b684c35ab667ed5c9acc0b6'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sp-ng-template': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'a873e603a2b14985a9b4b88cbe764b17'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sp-page': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'bbedf8e5f9544a04a7974712c98b13ec'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sp-widget': {
+                        table: 'sys_properties_category_m2m'
+                        id: '3e911215f965432e902b0bf491618363'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-processor': {
+                        table: 'sys_properties_category_m2m'
+                        id: '6daa774fc0f94412a106626034af125c'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-relationship': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'c89d0801f6214decb801d8b3453f41a1'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-script': {
+                        table: 'sys_properties_category_m2m'
+                        id: '488582ddd0cf42b4b2527175ad165950'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-script-client': {
+                        table: 'sys_properties_category_m2m'
+                        id: '214c953620724f399563bd152783629c'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-script-email': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'e9179445c28943a78f762e342f15a11e'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-script-include': {
+                        table: 'sys_properties_category_m2m'
+                        id: '8f30e9434182495fa01e0d6742af1461'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-security-acl': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'def7a60fb749489db3ea45a94533c2a1'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-transform-map': {
+                        table: 'sys_properties_category_m2m'
+                        id: '1c0ed4d866954130970babcfc364cfb5'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-ui-action': {
+                        table: 'sys_properties_category_m2m'
+                        id: '13e64137f41c4eb795a7ff92171d9fb7'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-ui-macro': {
+                        table: 'sys_properties_category_m2m'
+                        id: '195b45be8e8f415bb9808e276a947eb0'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-ui-page': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'd675872676654519984cd811624b94f7'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-ui-policy': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'd03d4c55b749460d83b970306bcdaa76'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-ui-script': {
+                        table: 'sys_properties_category_m2m'
+                        id: '04b06e117ee54349a367d2a86702a252'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sys-ui-style': {
+                        table: 'sys_properties_category_m2m'
+                        id: '3435902f41024a1a9da6a7c53e7482dc'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sysauto-script': {
+                        table: 'sys_properties_category_m2m'
+                        id: '36c4497227c44168b86d50e3764d6db2'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sysevent-email-action': {
+                        table: 'sys_properties_category_m2m'
+                        id: '24a61076792245a588d9607224f5bb16'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sysevent-email-template': {
+                        table: 'sys_properties_category_m2m'
+                        id: '5dff72618c324a94965e9f8177bc8c0a'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sysevent-in-email-action': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'a2448bbab5dd422b866cb6ed3dc7fc7c'
+                    }
+                    'widget-editor-plus-category-m2m-code-search-display-fields-sysevent-script-action': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'b52f38b1e8ea4927a0171198f6dc6f47'
                     }
                     'widget-editor-plus-category-m2m-css-variables': {
                         table: 'sys_properties_category_m2m'
@@ -269,9 +509,37 @@ declare global {
                 composite: [
                     {
                         table: 'sys_security_acl_role'
+                        id: '102584b8d6114f778e961ab7da3444fb'
+                        deleted: true
+                        key: {
+                            sys_security_acl: '3bd862d0819e4f9281df97d5d8ac9741'
+                            sys_user_role: {
+                                id: '28161fd90a14479a8fd00b5c294cde93'
+                                key: {
+                                    name: 'admin'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
                         id: '10b5cf0d83ebb21070b8b5dfeeaad3ea'
                         key: {
                             sys_security_acl: '90b5cf0d83ebb21070b8b5dfeeaad3bb'
+                            sys_user_role: {
+                                id: 'cd640d10d7101200a9addd173e24d4cd'
+                                key: {
+                                    name: 'sp_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: '11e13651395c432c89ad6d0de4fae1f7'
+                        deleted: false
+                        key: {
+                            sys_security_acl: '3bd862d0819e4f9281df97d5d8ac9741'
                             sys_user_role: {
                                 id: 'cd640d10d7101200a9addd173e24d4cd'
                                 key: {
@@ -416,12 +684,40 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_security_acl_role'
+                        id: 'a6b621a010514fa0905b7a9c4c460f09'
+                        deleted: false
+                        key: {
+                            sys_security_acl: 'bd0822292b594c3f84bd890026315b62'
+                            sys_user_role: {
+                                id: 'cd640d10d7101200a9addd173e24d4cd'
+                                key: {
+                                    name: 'sp_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_claim'
                         id: 'b73d3e0b83e7321070b8b5dfeeaad398'
                         key: {
                             claim_owner_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             previous_claim_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             metadata_update_name: 'sys_security_acl_role_792d35658363b61070b8b5dfeeaad32e'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: 'b7983abfee7a44a1985b811269a9d8bb'
+                        deleted: true
+                        key: {
+                            sys_security_acl: 'bd0822292b594c3f84bd890026315b62'
+                            sys_user_role: {
+                                id: '28161fd90a14479a8fd00b5c294cde93'
+                                key: {
+                                    name: 'admin'
+                                }
+                            }
                         }
                     },
                     {
@@ -471,6 +767,13 @@ declare global {
                             claim_owner_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             previous_claim_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             metadata_update_name: 'sys_security_acl_90b5cf0d83ebb21070b8b5dfeeaad3bb'
+                        }
+                    },
+                    {
+                        table: 'sys_ui_page'
+                        id: 'e7d81afae74144a89136e51d5cc38c09'
+                        key: {
+                            name: 'widget_editor_code_search'
                         }
                     },
                 ]
