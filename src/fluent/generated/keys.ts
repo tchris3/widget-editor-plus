@@ -159,6 +159,10 @@ declare global {
                         table: 'sys_module'
                         id: 'a4e68998db2a415d9539b57cb626d4a9'
                     }
+                    'widget-editor-admin-group-module': {
+                        table: 'sys_app_module'
+                        id: 'd0dadcb5e60a41f89819500a2c173522'
+                    }
                     'widget-editor-assistant-module': {
                         table: 'sys_app_module'
                         id: '103de88e324b475e8be325c0b08c71af'
@@ -174,6 +178,10 @@ declare global {
                     'widget-editor-assistant-ui-page-acl': {
                         table: 'sys_security_acl'
                         id: '33195917e3c84b1f8afafe10a38f16b0'
+                    }
+                    'widget-editor-code-actions-module': {
+                        table: 'sys_app_module'
+                        id: 'deaa8cc3dff245e1a514318575fe7e28'
                     }
                     'widget-editor-code-search-display-fields-catalog-script-client': {
                         table: 'sys_properties'
@@ -496,6 +504,10 @@ declare global {
                     'widget-editor-plus-properties-category': {
                         table: 'sys_properties_category'
                         id: '120d01222f6e41e8bf4eaf0c4b73490a'
+                    }
+                    'widget-editor-properties-module': {
+                        table: 'sys_app_module'
+                        id: '6af1a1baa17b46618b4388b11dc359f9'
                     }
                     'widget-editor-record-limit': {
                         table: 'sys_properties'
