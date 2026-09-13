@@ -190,7 +190,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         }
 
         /* Header action buttons matching Compare+ styling */
-        .cs-header-search > .btn {
+        .cs-header-search .btn {
             height: 2.25rem;
             padding: 0 0.875rem;
             font-size: var(--now-global-font-size--md, 14px);
@@ -204,33 +204,33 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
             box-shadow: none;
         }
-        .cs-header-search > .btn:focus-visible {
+        .cs-header-search .btn:focus-visible {
             outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142)));
             outline-offset: 2px;
         }
-        .cs-header-search > .btn:disabled,
-        .cs-header-search > .btn[disabled] {
+        .cs-header-search .btn:disabled,
+        .cs-header-search .btn[disabled] {
             opacity: 0.45;
             cursor: not-allowed;
             pointer-events: none;
         }
-        /* Primary button: Search submit & header bar primary buttons */
+        /* Primary button: Search submit &amp; header bar primary buttons */
         .dc-header .btn-primary,
-        .cs-header-search > .btn-primary {
+        .cs-header-search .btn-primary {
             background-color: rgb(var(--now-button--primary--background-color, var(--now-color--primary-1, 30, 133, 109))) !important;
             border: 1px solid rgb(var(--now-button--primary--border-color, var(--now-color--primary-3, 15, 67, 55))) !important;
             color: rgb(var(--now-button--primary--color, var(--now-color--neutral-0, 255, 255, 255))) !important;
         }
         .dc-header .btn-primary:hover:not(:disabled),
-        .cs-header-search > .btn-primary:hover:not(:disabled) {
+        .cs-header-search .btn-primary:hover:not(:disabled) {
             background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
             border-color: rgb(var(--now-button--primary--border-color--hover, var(--now-color--primary-3, 15, 67, 55))) !important;
             color: rgb(var(--now-button--primary--color--hover, var(--now-color--neutral-0, 255, 255, 255))) !important;
         }
         .dc-header .btn-primary:focus,
         .dc-header .btn-primary:focus:hover,
-        .cs-header-search > .btn-primary:focus,
-        .cs-header-search > .btn-primary:focus:hover {
+        .cs-header-search .btn-primary:focus,
+        .cs-header-search .btn-primary:focus:hover {
             background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
             border-color: rgb(var(--now-button--primary--border-color--hover, var(--now-color--primary-3, 15, 67, 55))) !important;
             color: rgb(var(--now-button--primary--color--hover, var(--now-color--neutral-0, 255, 255, 255))) !important;
@@ -241,24 +241,24 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         .dc-header .btn-primary.active,
         .dc-header .btn-primary:active:hover,
         .dc-header .btn-primary:active:focus,
-        .cs-header-search > .btn-primary:active:not(:disabled),
-        .cs-header-search > .btn-primary.active,
-        .cs-header-search > .btn-primary:active:hover,
-        .cs-header-search > .btn-primary:active:focus {
+        .cs-header-search .btn-primary:active:not(:disabled),
+        .cs-header-search .btn-primary.active,
+        .cs-header-search .btn-primary:active:hover,
+        .cs-header-search .btn-primary:active:focus {
             background-color: rgb(var(--now-button--primary--background-color--active, var(--now-color--primary-3, 15, 67, 55))) !important;
             border-color: rgb(var(--now-button--primary--border-color--active, var(--now-color--primary-3, 15, 67, 55))) !important;
             color: rgb(var(--now-button--primary--color--active, var(--now-color--neutral-0, 255, 255, 255))) !important;
         }
         .dc-header .btn-primary:disabled,
         .dc-header .btn-primary[disabled],
-        .cs-header-search > .btn-primary:disabled,
-        .cs-header-search > .btn-primary[disabled] {
+        .cs-header-search .btn-primary:disabled,
+        .cs-header-search .btn-primary[disabled] {
             opacity: 0.45 !important;
             cursor: not-allowed !important;
         }
-        /* Secondary button: Filter toggle & any btn-default in header (header chrome styling) */
+        /* Secondary button: Filter toggle &amp; any btn-default in header (header chrome styling) */
         .dc-header .btn-default,
-        .cs-header-search > .btn-default {
+        .cs-header-search .btn-default {
             background-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.12) !important;
             border: 1px solid rgba(var(--now-color--neutral-0, 255, 255, 255), 0.22) !important;
             color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
@@ -266,20 +266,20 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
         }
         .dc-header .btn-default *,
-        .cs-header-search > .btn-default * {
+        .cs-header-search .btn-default * {
             color: inherit !important;
             fill: currentColor !important;
         }
         .dc-header .btn-default:hover:not(:disabled),
-        .cs-header-search > .btn-default:hover:not(:disabled) {
+        .cs-header-search .btn-default:hover:not(:disabled) {
             background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
             border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
             color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
         }
         .dc-header .btn-default:focus,
         .dc-header .btn-default:focus:hover,
-        .cs-header-search > .btn-default:focus,
-        .cs-header-search > .btn-default:focus:hover {
+        .cs-header-search .btn-default:focus,
+        .cs-header-search .btn-default:focus:hover {
             background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
             border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
             color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
@@ -290,10 +290,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         .dc-header .btn-default.active,
         .dc-header .btn-default:active:hover,
         .dc-header .btn-default:active:focus,
-        .cs-header-search > .btn-default:active:not(:disabled),
-        .cs-header-search > .btn-default.active,
-        .cs-header-search > .btn-default:active:hover,
-        .cs-header-search > .btn-default:active:focus {
+        .cs-header-search .btn-default:active:not(:disabled),
+        .cs-header-search .btn-default.active,
+        .cs-header-search .btn-default:active:hover,
+        .cs-header-search .btn-default:active:focus {
             background-color: rgba(var(--now-button--bare_secondary--background-color--active, var(--now-color--secondary-2, 1, 89, 107)), 0.45) !important;
             border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
             color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
@@ -301,8 +301,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         }
         .dc-header .btn-default:disabled,
         .dc-header .btn-default[disabled],
-        .cs-header-search > .btn-default:disabled,
-        .cs-header-search > .btn-default[disabled] {
+        .cs-header-search .btn-default:disabled,
+        .cs-header-search .btn-default[disabled] {
             opacity: 0.45 !important;
             cursor: not-allowed !important;
         }
@@ -1638,7 +1638,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         </div>
                     </div>
 
-                    <button type="button" class="btn btn-default" ng-class="{'active': ctrl.hasActiveConditions()}" ng-click="ctrl.toggleAdvanced()" title="Additional conditions" aria-expanded="{{ctrl.isFilterPanelVisible()}}" aria-controls="secondary-filters"><span class="icon-filter" aria-hidden="true"></span><span class="sr-only">Advanced conditions</span></button>
+                    <button type="button" class="btn" ng-class="ctrl.hasActiveConditions() ? 'btn-primary active' : 'btn-default'" ng-click="ctrl.toggleAdvanced()" title="Additional conditions" aria-expanded="{{ctrl.isFilterPanelVisible()}}" aria-controls="secondary-filters"><span class="icon-filter" aria-hidden="true"></span><span class="sr-only">Advanced conditions</span></button>
 
                     <button type="submit"
                             class="btn btn-primary"
@@ -1684,7 +1684,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         </form>
         <!-- Body -->
         <div class="cs-body">
-            <!-- Sidebar: Search Group & Results Panes -->
+            <!-- Sidebar: Search Group &amp; Results Panes -->
             <aside class="cs-sidebar">
                 <!-- Pane 1: Search Group (Configured Tables) -->
                 <div class="cs-pane" ng-class="{'cs-pane-collapsed': !ctrl.paneGroupOpen, 'cs-pane-expanded': ctrl.paneGroupOpen}">
@@ -1789,7 +1789,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         <span ng-if="ctrl.elapsed">{{ctrl.formatElapsed(ctrl.elapsed)}}</span>
                     </div>
 
-                    <!-- Progress & Current Table being searched (during search) -->
+                    <!-- Progress &amp; Current Table being searched (during search) -->
                     <div class="cs-toolbar-searching-left" ng-if="ctrl.loading">
                         <div class="cs-toolbar-glass-wrap" aria-hidden="true">
                             <svg class="cs-toolbar-glass-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">

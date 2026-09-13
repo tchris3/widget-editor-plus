@@ -98,11 +98,7 @@ UiPage({
         }
 
         #diff-error {
-            padding: 0.875rem 1rem;
-            color: #f47878;
-            background: rgba(244, 120, 120, 0.08);
-            border-bottom: 1px solid rgba(244, 120, 120, 0.2);
-            font-size: var(--now-global-font-size--md, 14px);
+            margin: 1rem;
         }
 
         #diff-content {
@@ -1197,20 +1193,6 @@ UiPage({
         /* Hide uncompiled Angular template before bootstrap */
         [ng-cloak], .ng-cloak { display: none !important; }
 
-        /* Header label above the extra-changed-fields sections */
-        .dc-extra-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            color: rgb(var(--now-color_text--primary, 29 29 29));
-            opacity: 0.45;
-            padding: 1.5rem 1rem 0.5rem;
-        }
-        html.we-light .dc-extra-label {
-            opacity: 0.4;
-        }
-
         /* Light mode: boost opacity on elements dimmed for dark mode. */
         html.we-light .dc-meta-sep {
             opacity: 0.6;
@@ -1438,7 +1420,7 @@ UiPage({
         <div id="diff-loading" ng-show="ctrl.loading"><div class="dc-spinner"></div></div>
 
         <!-- Error -->
-        <div id="diff-error" ng-show="ctrl.errorMsg"><i class="icon-alert-triangle"></i>&nbsp;<span ng-bind="ctrl.errorMsg"></span></div>
+        <div id="diff-error" ng-show="ctrl.errorMsg" class="alert alert-danger"><i class="icon-alert-triangle"></i>&nbsp;<span ng-bind="ctrl.errorMsg"></span></div>
 
         <!-- Content -->
         <div id="diff-content" ng-show="!ctrl.errorMsg">
@@ -2572,6 +2554,11 @@ UiPage({
                 for (var k in ctrl.editors) {
                     if (ctrl.editors.hasOwnProperty(k) && ctrl.editors[k]) {
                         ctrl.editors[k].layout();
+                    }
+                }
+                for (var ek in ctrl.extraEditors) {
+                    if (ctrl.extraEditors.hasOwnProperty(ek) && ctrl.extraEditors[ek]) {
+                        ctrl.extraEditors[ek].layout();
                     }
                 }
             }, 50);
