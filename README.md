@@ -98,7 +98,7 @@ A non-intrusive runtime diagnostic popover (`sp_widget_widget_editor_debug_menu`
 
 A cross-table source search tool (`widget_editor_code_search.do`), accessible from the Widget Editor+ menu, for finding text across widget and related script fields without opening each record individually.
 
-- **Search Groups & Table Scopes**: Search runs against Code Search+'s own configurable search groups and tables (`sn_codesearch_search_group`, `sn_codesearch_table`), with a session indicator showing the active group and a direct link to its configuration record.
+- **Search Groups & Table Scopes**: Search runs against the platform's own built-in Code Search configuration (`sn_codesearch_search_group`, `sn_codesearch_table`), with a session indicator showing the active group and a direct link to its configuration record.
 - **Advanced Conditions**: Secondary CONTAINS/DOES NOT CONTAIN filters can be chained with AND/OR joiners, are highlighted in results alongside the primary term, and persist in the URL for shareable searches.
 - **Result Presentation**: Sticky, full-width table headers with scrollspy navigation between matched tables; overlapping snippet matches within a field are deduplicated and merged into a single excerpt box separated by horizontal rules.
 - **Scan Safeguards**: Per-table and total row-scan budgets prevent unbounded scans on large tables, with a progress bar and cancel option that terminates in-flight transactions via a hidden iframe rather than leaving them running server-side.

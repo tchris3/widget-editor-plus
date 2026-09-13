@@ -2267,19 +2267,18 @@ export const widgetEditorAssistantUiPage = UiPage({
 
         var EMAIL_ONLY_RE = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
         var REDACT_FIELDS = { sys_created_by: true, sys_updated_by: true };
-        var assistantConfig = window.WE_ASSISTANT_CONFIG || {};
 
         // Sourced from the same monaco.plus.assistant.export_blocklist_tables/prefixes
         // properties the Assistant script include (sys_script_include_widget_editor_assistant.server.js)
         // reads, rendered into window.WE_ASSISTANT_CONFIG at page-load time above — a single
         // admin-configured source of truth, not a hardcoded copy that can drift out of sync.
         var EXPORT_BLOCKLISTED_TABLES = {};
-        (assistantConfig.exportBlocklistTables || '').split(',').forEach(function (t) {
+        ((window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.exportBlocklistTables) || '').split(',').forEach(function (t) {
             t = t.trim();
             if (t) EXPORT_BLOCKLISTED_TABLES[t] = true;
         });
 
-        var EXPORT_BLOCKLISTED_PREFIXES = (assistantConfig.exportBlocklistPrefixes || '')
+        var EXPORT_BLOCKLISTED_PREFIXES = ((window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.exportBlocklistPrefixes) || '')
             .split(',')
             .map(function (p) { return p.trim(); })
             .filter(function (p) { return p.length > 0; });
@@ -2519,16 +2518,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return deferred.promise;
             }
 
-            function createDebouncedSearch(markLoading, search) {
-                var pending;
-                return function () {
-                    markLoading();
-                    $timeout.cancel(pending);
-                    pending = $timeout(search, 250);
-                };
-            }
-
-            ctrl.embeddedInModal = !!assistantConfig.embedded;
+            ctrl.embeddedInModal = !!(window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.embedded);
             ctrl.primary = { table: '', sysId: '', label: '', tableLabel: '', updatedOn: '' };
             ctrl.related = [];
             ctrl.updateSets = [];
@@ -2541,13 +2531,13 @@ export const widgetEditorAssistantUiPage = UiPage({
             var placeholderRowObj = { placeholder: true, checked: false };
             ctrl.generating = false;
             ctrl.addingUpdateSet = false;
-            ctrl.loadingInitial = !!assistantConfig.sysId;
+            ctrl.loadingInitial = !!(window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.sysId);
             ctrl.progress = { done: 0, total: 0 };
             ctrl.activeSidebarTab = 'xml';
             ctrl.sidebarCollapsed = false;
 
             if (!ctrl.embeddedInModal) {
-                var siteTitle = assistantConfig.siteTitle || 'ServiceNow';
+                var siteTitle = (window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.siteTitle) || 'ServiceNow';
                 var titleTimer = null;
                 $scope.$watch(function () { return ctrl.primary.label; }, function (label) {
                     var title = (label ? label + ' - ' : '') + 'Widget Editor+ Assistant - ' + siteTitle;
@@ -3830,12 +3820,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
             }
 
-            ctrl.onTableQueryChange = createDebouncedSearch(
-                function () { ctrl.lookup.tableLoading = true; },
-                function () {
+            var _tableSearchDebounce;
+            ctrl.onTableQueryChange = function () {
+                ctrl.lookup.tableLoading = true;
+                $timeout.cancel(_tableSearchDebounce);
+                _tableSearchDebounce = $timeout(function () {
                     loadTables(ctrl.lookup.tableQuery, false);
-                }
-            );
+                }, 250);
+            };
 
             ctrl.loadMoreTables = function () {
                 if (ctrl.lookup.tableLoading || ctrl.lookup.tableLoadingMore || !ctrl.lookup.tableHasMore) return;
@@ -3899,21 +3891,31 @@ export const widgetEditorAssistantUiPage = UiPage({
                 loadRecords(ctrl.lookup.recordQuery, true);
             };
 
-            ctrl.onRecordQueryChange = createDebouncedSearch(
-                function () { ctrl.lookup.loading = true; },
-                function () {
+            var _recordSearchDebounce;
+            ctrl.onRecordQueryChange = function () {
+                ctrl.lookup.loading = true;
+                $timeout.cancel(_recordSearchDebounce);
+                _recordSearchDebounce = $timeout(function () {
                     loadRecords(ctrl.lookup.recordQuery, false);
-                }
-            );
+                }, 250);
+            };
 
             // Keyboard nav for picker lists: Up/Down moves focus, Enter selects.
-            function focusBoundaryItem(listEl, fromEnd) {
+            function focusFirstItem(listEl) {
+                var first = listEl && listEl.querySelector('.we-picker-item');
+                if (first && first.focus) {
+                    first.focus();
+                    if (typeof first.scrollIntoView === 'function') first.scrollIntoView({ block: 'nearest' });
+                }
+            }
+
+            function focusLastItem(listEl) {
                 var items = listEl ? listEl.querySelectorAll('.we-picker-item') : null;
                 if (!items || !items.length) return;
-                var item = items[fromEnd ? items.length - 1 : 0];
-                if (item && item.focus) {
-                    item.focus();
-                    if (typeof item.scrollIntoView === 'function') item.scrollIntoView({ block: 'nearest' });
+                var last = items[items.length - 1];
+                if (last && last.focus) {
+                    last.focus();
+                    if (typeof last.scrollIntoView === 'function') last.scrollIntoView({ block: 'nearest' });
                 }
             }
 
@@ -3921,10 +3923,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                 var key = event && event.key;
                 if (key === 'ArrowDown') {
                     event.preventDefault();
-                    focusBoundaryItem(document.querySelector(listSelector), false);
+                    focusFirstItem(document.querySelector(listSelector));
                 } else if (key === 'ArrowUp') {
                     event.preventDefault();
-                    focusBoundaryItem(document.querySelector(listSelector), true);
+                    focusLastItem(document.querySelector(listSelector));
                 } else if (key === 'Enter' && typeof onEnterFirst === 'function') {
                     event.preventDefault();
                     onEnterFirst();
@@ -4188,12 +4190,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                 });
             }
 
-            ctrl.onUpdateSetQueryChange = createDebouncedSearch(
-                function () { ctrl.usPicker.loading = true; },
-                function () {
+            var _updateSetSearchDebounce;
+            ctrl.onUpdateSetQueryChange = function () {
+                ctrl.usPicker.loading = true;
+                $timeout.cancel(_updateSetSearchDebounce);
+                _updateSetSearchDebounce = $timeout(function () {
                     loadUpdateSets(ctrl.usPicker.query, false);
-                }
-            );
+                }, 250);
+            };
 
             ctrl.loadMoreUpdateSets = function () {
                 if (ctrl.usPicker.loading || ctrl.usPicker.loadingMore || !ctrl.usPicker.hasMore) return;
@@ -4606,10 +4610,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                 loadFavouriteTables();
                 loadFavouriteGroups();
                 loadTokenConfig();
-                if (assistantConfig.sysId) {
+                if (window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.sysId) {
                     ctrl.loadingInitial = true;
-                    var table = assistantConfig.table || 'sp_widget';
-                    var sysId = assistantConfig.sysId;
+                    var table = window.WE_ASSISTANT_CONFIG.table || 'sp_widget';
+                    var sysId = window.WE_ASSISTANT_CONFIG.sysId;
                     ajax('getRecordLabel', { table: table, sys_id: sysId }).then(function (res) {
                         ctrl.primary = {
                             table: table,
