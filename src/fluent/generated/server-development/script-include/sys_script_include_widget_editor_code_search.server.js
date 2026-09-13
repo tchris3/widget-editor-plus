@@ -2,6 +2,7 @@ var WidgetEditorCodeSearchAjax = Class.create();
 WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     MAX_RESULTS_PER_TABLE: 500,
     MAX_SNIPPETS_PER_FIELD: 5,
+    MAX_INLINE_SNIPPET_GAP: 3,
 
     _getParam: function (name) {
         var val = this.getParameter(name);
@@ -185,21 +186,21 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                     var haystack = caseSensitive ? value : value.toLowerCase();
                     var needle = caseSensitive ? term : termLower;
                     var searchPos = 0;
-                    var occurrencesInField = 0;
+                    var snippetWindowsInField = 0;
                     // Every occurrence in a field is merged into one match, its snippet windows
-                    // joined by a "…" separator line when they aren't contiguous — rather than a
-                    // separate match (and its own field pill/box) per occurrence. An occurrence
-                    // whose window (matched line ± 2) is already covered by the previous one is
-                    // skipped rather than merged in, since it would add nothing new to show.
+                    // joined by a "…" separator line only when the unmatched gap is wider than
+                    // the combined context around the two matches. Overlapping windows extend the
+                    // current excerpt; this prevents small holes such as omitting only one line.
                     var lastShownEndLine = 0;
                     var fieldMatch = null;
 
-                    while (occurrencesInField < this.MAX_SNIPPETS_PER_FIELD) {
+                    while (snippetWindowsInField < this.MAX_SNIPPETS_PER_FIELD) {
                         var at = haystack.indexOf(needle, searchPos);
                         if (at === -1) break;
                         searchPos = at + term.length;
                         var snippetInfo = this._extractSnippetWithLines(value, at, term.length);
-                        if (snippetInfo.matchLine <= lastShownEndLine) continue;
+                        var snippetEndLine = snippetInfo.startLine + snippetInfo.lines.length - 1;
+                        if (snippetEndLine <= lastShownEndLine) continue;
 
                         if (!fieldMatch) {
                             var fLabel = fieldName;
@@ -213,23 +214,37 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                                 lines: snippetInfo.lines.slice(),
                                 snippet: snippetInfo.text
                             };
+                            snippetWindowsInField++;
                         } else {
-                            if (snippetInfo.startLine > lastShownEndLine + 1) {
-                                fieldMatch.lines.push({ separator: true });
-                                fieldMatch.snippet += '\n…\n';
+                            var gapLineCount = snippetInfo.startLine - lastShownEndLine - 1;
+                            if (gapLineCount > 0) {
+                                if (gapLineCount <= this.MAX_INLINE_SNIPPET_GAP) {
+                                    for (var gapLine = lastShownEndLine + 1; gapLine < snippetInfo.startLine; gapLine++) {
+                                        fieldMatch.lines.push({
+                                            num: gapLine,
+                                            text: snippetInfo.allLines[gapLine - 1],
+                                            isMatch: false
+                                        });
+                                    }
+                                } else {
+                                    fieldMatch.lines.push({ separator: true });
+                                    fieldMatch.snippet += '\n…\n';
+                                    snippetWindowsInField++;
+                                }
                             }
                             snippetInfo.lines.forEach(function (l) {
                                 if (l.num > lastShownEndLine) fieldMatch.lines.push(l);
                             });
-                            fieldMatch.snippet += snippetInfo.text;
                         }
-                        occurrencesInField++;
-                        lastShownEndLine = snippetInfo.startLine + snippetInfo.lines.length - 1;
+                        lastShownEndLine = snippetEndLine;
                     }
 
                     if (fieldMatch) {
                         var shownLineCount = fieldMatch.lines.filter(function (l) { return !l.separator; }).length;
                         fieldMatch.allLinesShown = shownLineCount >= fieldMatch.totalLines;
+                        fieldMatch.snippet = fieldMatch.lines.map(function (l) {
+                            return l.separator ? '…' : l.text;
+                        }).join('\n');
                         matches.push(fieldMatch);
                     }
                 }
@@ -595,6 +610,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             totalLines: totalLines,
             singleLine: totalLines <= 1,
             allLinesShown: allLinesShown,
+            allLines: allLines,
             lines: resultLines,
             text: resultLines.map(function (r) { return r.text; }).join('\n')
         };
