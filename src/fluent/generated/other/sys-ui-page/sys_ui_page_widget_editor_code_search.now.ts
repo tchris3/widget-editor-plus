@@ -1725,6 +1725,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             </div>
                         </div>
                         <span class="cs-toolbar-progress-percent">{{ctrl.searchProgress.percent}}%</span>
+                        <button type="button" class="btn btn-icon" ng-click="ctrl.cancelSearch()" title="Cancel search" aria-label="Cancel search">
+                            <span class="icon-connect-close"></span>
+                        </button>
                     </div>
                 </div>
                 <div class="cs-results" id="cs-results-container">
@@ -1783,9 +1786,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                         <a class="cs-record-link" ng-href="{{result.url}}" target="_blank" title="Open record in new tab">{{result.displayValue}}</a>
                                         <span class="cs-status-pill cs-status-active" ng-if="result.hasActive &amp;&amp; result.isActive">Active</span>
                                         <span class="cs-status-pill cs-status-inactive" ng-if="result.hasActive &amp;&amp; !result.isActive">Inactive</span>
-                                        <span class="cs-secondary-badge" ng-repeat="sec in result.secondaryValues track by sec.field" title="{{sec.label}}: {{sec.value}}">
+                                        <span class="cs-secondary-badge" ng-repeat="sec in result.secondaryValues track by sec.field">
                                             <span class="cs-sec-label">{{sec.label}}:</span>
-                                            <span>{{sec.value}}</span>
+                                            <code>{{sec.value}}</code>
                                         </span>
                                     </div>
                                     <div class="cs-card-actions">
@@ -2866,6 +2869,20 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 var completedCount = 0;
                 var accumulatedResults = [];
                 var allSkipped = [];
+
+                vm.cancelSearch = function () {
+                    if (currentSearchGen !== gen) return;
+                    ++currentSearchGen;
+                    vm.loading = false;
+                    vm.results = accumulatedResults;
+                    vm.elapsed = Date.now() - started;
+                    vm.searchProgress.currentTable = '';
+                    _updateGroupedResults();
+                    _updateTablesWithResults();
+                    _updateSortedResults();
+                    $timeout(_updateCurrentViewedTable);
+                    notify('Search cancelled after ' + completedCount + ' of ' + total + ' tables');
+                };
 
                 function searchNext() {
                     if (currentSearchGen !== gen) return $q.when();

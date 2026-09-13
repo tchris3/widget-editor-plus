@@ -77,6 +77,21 @@ test('runSearch logic enables Pane 2 and updates sorted/grouped results in real-
     assert.ok(runSearchInitSnippet.includes('vm.paneGroupOpen = false;'), 'runSearch should collapse paneGroupOpen immediately');
 });
 
+test('cancelSearch stops the search while retaining accumulated results', () => {
+    assert.ok(
+        source.includes('ng-click="ctrl.cancelSearch()"'),
+        'Progress bar toolbar should include a cancel button wired to ctrl.cancelSearch()'
+    );
+
+    const cancelSnippet = source.slice(
+        source.indexOf('vm.cancelSearch = function ()'),
+        source.indexOf('function searchNext()')
+    );
+    assert.ok(cancelSnippet.includes('++currentSearchGen;'), 'cancelSearch should bump currentSearchGen to stop in-flight workers from continuing');
+    assert.ok(cancelSnippet.includes('vm.loading = false;'), 'cancelSearch should end the loading state');
+    assert.ok(cancelSnippet.includes('vm.results = accumulatedResults;'), 'cancelSearch should retain results gathered before cancellation');
+});
+
 test('inline Monaco find keeps the code-search query instead of seeding from the cursor word', () => {
     const start = source.indexOf('            function _highlightQueryInEditor');
     const end = source.indexOf('            vm.getMonacoHostId', start);
