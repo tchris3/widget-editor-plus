@@ -5697,7 +5697,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     showOpenHistory: true,
                     recentWidgets: [],
                     // Not surfaced in the Preferences dialog — just carried through load/save/export/import
-                    // so Code Search's own preference lives on the shared preference row.
+                    // so Code Search+'s own preference lives on the shared preference row.
                     lastCodeSearchGroup: null,
                     // Last-saved editor order/visibility, so the Preferences dialog reflects saved state, not live changes.
                     editorOrder: [],

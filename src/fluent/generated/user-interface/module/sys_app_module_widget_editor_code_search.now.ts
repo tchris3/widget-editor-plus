@@ -7,7 +7,7 @@ Record({
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
         link_type: 'DIRECT',
-        mobile_title: 'Widget Editor+ Code Search',
+        mobile_title: 'Code Search+',
         mobile_view_name: 'Mobile',
         order: 1474,
         override_menu_roles: true,
@@ -16,7 +16,7 @@ Record({
         roles: ['sp_admin'],
         sys_domain: 'global',
         sys_domain_path: '/',
-        title: 'Widget Editor+ Code Search',
+        title: 'Code Search+',
         uncancelable: false,
     },
 })

@@ -5,7 +5,7 @@ export const codeSearchDisplayFieldsSpPageProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sp_page',
     value: 'title',
-    description: 'Comma-separated sp_page fields to display in Code Search result record headers.',
+    description: 'Comma-separated sp_page fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -15,7 +15,7 @@ export const codeSearchDisplayFieldsSpWidgetProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sp_widget',
     value: 'id',
-    description: 'Comma-separated sp_widget fields to display in Code Search result record headers.',
+    description: 'Comma-separated sp_widget fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -25,7 +25,7 @@ export const codeSearchDisplayFieldsScCatItemProducerProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sc_cat_item_producer',
     value: 'table_name,category',
-    description: 'Comma-separated sc_cat_item_producer fields to display in Code Search result record headers.',
+    description: 'Comma-separated sc_cat_item_producer fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -35,7 +35,7 @@ export const codeSearchDisplayFieldsSyseventEmailActionProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sysevent_email_action',
     value: 'collection,category',
-    description: 'Comma-separated sysevent_email_action fields to display in Code Search result record headers.',
+    description: 'Comma-separated sysevent_email_action fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -45,7 +45,7 @@ export const codeSearchDisplayFieldsSpAngularProviderProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sp_angular_provider',
     value: 'type',
-    description: 'Comma-separated sp_angular_provider fields to display in Code Search result record headers.',
+    description: 'Comma-separated sp_angular_provider fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -55,7 +55,7 @@ export const codeSearchDisplayFieldsSysSecurityAclProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_security_acl',
     value: 'type,operation',
-    description: 'Comma-separated sys_security_acl fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_security_acl fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -65,7 +65,7 @@ export const codeSearchDisplayFieldsSysUiActionProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_ui_action',
     value: 'table',
-    description: 'Comma-separated sys_ui_action fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_ui_action fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -75,7 +75,7 @@ export const codeSearchDisplayFieldsCatalogScriptClientProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.catalog_script_client',
     value: 'cat_item,type',
-    description: 'Comma-separated catalog_script_client fields to display in Code Search result record headers.',
+    description: 'Comma-separated catalog_script_client fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -85,7 +85,7 @@ export const codeSearchDisplayFieldsCatalogUiPolicyProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.catalog_ui_policy',
     value: 'catalog_item',
-    description: 'Comma-separated catalog_ui_policy fields to display in Code Search result record headers.',
+    description: 'Comma-separated catalog_ui_policy fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -95,7 +95,7 @@ export const codeSearchDisplayFieldsCatalogUiPolicyActionProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.catalog_ui_policy_action',
     value: 'catalog_item,ui_policy,variable',
-    description: 'Comma-separated catalog_ui_policy_action fields to display in Code Search result record headers.',
+    description: 'Comma-separated catalog_ui_policy_action fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -105,7 +105,7 @@ export const codeSearchDisplayFieldsItemOptionNewProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.item_option_new',
     value: 'cat_item,type',
-    description: 'Comma-separated item_option_new fields to display in Code Search result record headers.',
+    description: 'Comma-separated item_option_new fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -115,7 +115,7 @@ export const codeSearchDisplayFieldsSpNgTemplateProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sp_ng_template',
     value: 'sp_widget',
-    description: 'Comma-separated sp_ng_template fields to display in Code Search result record headers.',
+    description: 'Comma-separated sp_ng_template fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -125,7 +125,7 @@ export const codeSearchDisplayFieldsSysScriptProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_script',
     value: 'collection,when',
-    description: 'Comma-separated sys_script fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_script fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -135,7 +135,7 @@ export const codeSearchDisplayFieldsSysScriptClientProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_script_client',
     value: 'table,type',
-    description: 'Comma-separated sys_script_client fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_script_client fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -145,7 +145,7 @@ export const codeSearchDisplayFieldsSyseventEmailTemplateProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sysevent_email_template',
     value: 'sys_scope',
-    description: 'Comma-separated sysevent_email_template fields to display in Code Search result record headers.',
+    description: 'Comma-separated sysevent_email_template fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -155,7 +155,7 @@ export const codeSearchDisplayFieldsSyseventInEmailActionProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sysevent_in_email_action',
     value: 'target_table,type',
-    description: 'Comma-separated sysevent_in_email_action fields to display in Code Search result record headers.',
+    description: 'Comma-separated sysevent_in_email_action fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -165,7 +165,7 @@ export const codeSearchDisplayFieldsSysTransformMapProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_transform_map',
     value: 'source_table,target_table',
-    description: 'Comma-separated sys_transform_map fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_transform_map fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -175,7 +175,7 @@ export const codeSearchDisplayFieldsSysProcessorProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_processor',
     value: 'type,path',
-    description: 'Comma-separated sys_processor fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_processor fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -185,7 +185,7 @@ export const codeSearchDisplayFieldsSysRelationshipProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_relationship',
     value: 'applies_to,queries_from',
-    description: 'Comma-separated sys_relationship fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_relationship fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -195,7 +195,7 @@ export const codeSearchDisplayFieldsSysautoScriptProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sysauto_script',
     value: 'sys_scope,run_type',
-    description: 'Comma-separated sysauto_script fields to display in Code Search result record headers.',
+    description: 'Comma-separated sysauto_script fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -205,7 +205,7 @@ export const codeSearchDisplayFieldsSyseventScriptActionProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sysevent_script_action',
     value: 'event_name',
-    description: 'Comma-separated sysevent_script_action fields to display in Code Search result record headers.',
+    description: 'Comma-separated sysevent_script_action fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -215,7 +215,7 @@ export const codeSearchDisplayFieldsSysScriptIncludeProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_script_include',
     value: 'sys_scope',
-    description: 'Comma-separated sys_script_include fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_script_include fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -225,7 +225,7 @@ export const codeSearchDisplayFieldsSysUiMacroProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_ui_macro',
     value: 'sys_scope',
-    description: 'Comma-separated sys_ui_macro fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_ui_macro fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -235,7 +235,7 @@ export const codeSearchDisplayFieldsSysUiPageProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_ui_page',
     value: 'sys_scope,category',
-    description: 'Comma-separated sys_ui_page fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_ui_page fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -245,7 +245,7 @@ export const codeSearchDisplayFieldsSysUiPolicyProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_ui_policy',
     value: 'table',
-    description: 'Comma-separated sys_ui_policy fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_ui_policy fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -255,7 +255,7 @@ export const codeSearchDisplayFieldsSysUiScriptProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_ui_script',
     value: 'sys_scope,ui_type',
-    description: 'Comma-separated sys_ui_script fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_ui_script fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -265,7 +265,7 @@ export const codeSearchDisplayFieldsSysUiStyleProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_ui_style',
     value: 'table,element',
-    description: 'Comma-separated sys_ui_style fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_ui_style fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })
@@ -275,7 +275,7 @@ export const codeSearchDisplayFieldsSysScriptEmailProperty = Property({
     $meta: { installMethod: 'first install' },
     name: 'monaco.plus.code_search.display_fields.sys_script_email',
     value: 'sys_scope',
-    description: 'Comma-separated sys_script_email fields to display in Code Search result record headers.',
+    description: 'Comma-separated sys_script_email fields to display in Code Search+ result record headers.',
     ignoreCache: true,
     roles: { read: ['sp_admin'] },
 })

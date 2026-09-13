@@ -7,7 +7,7 @@ Record({
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
         link_type: 'DIRECT',
-        mobile_title: 'Widget Editor+ Assistant',
+        mobile_title: 'AI Assistant',
         mobile_view_name: 'Mobile',
         order: 1475,
         override_menu_roles: false,
@@ -15,7 +15,7 @@ Record({
         require_confirmation: true,
         sys_domain: 'global',
         sys_domain_path: '/',
-        title: 'Widget Editor+ Assistant',
+        title: 'AI Assistant',
         uncancelable: false,
     },
 })

@@ -1483,7 +1483,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             <div class="dc-header-row">
                 <!-- Exact Assistant Title Style -->
                 <div class="dc-title">
-                    <span>Widget Editor+ Code Search</span>
+                    <span>Code Search+</span>
                 </div>
 
                 <!-- Horizon-Like Centered Search Bar -->
@@ -2102,7 +2102,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             }, function () {
                 var term = vm.query && vm.query.trim();
                 var suffix = (vm.hasSearched && !vm.loading) ? ' (' + vm.results.length + ')' : '';
-                var title = (term ? term + suffix + ' - ' : '') + 'Widget Editor+ Code Search - ' + siteTitle;
+                var title = (term ? term + suffix + ' - ' : '') + 'Code Search+ - ' + siteTitle;
                 document.title = title;
                 if (titleTimer) {
                     $timeout.cancel(titleTimer);
