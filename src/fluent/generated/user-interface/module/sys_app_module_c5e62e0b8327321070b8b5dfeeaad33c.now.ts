@@ -9,7 +9,7 @@ Record({
         link_type: 'DIRECT',
         mobile_title: 'Widget Editor+',
         mobile_view_name: 'Mobile',
-        order: 1475,
+        order: 1472,
         override_menu_roles: false,
         query: 'ui_page.do?sys_id=8b2e70458373fe1070b8b5dfeeaad35e',
         require_confirmation: true,

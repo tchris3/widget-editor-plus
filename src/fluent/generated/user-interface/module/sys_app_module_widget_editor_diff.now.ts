@@ -1,21 +1,21 @@
 import { Record } from '@servicenow/sdk/core'
 
 Record({
-    $id: Now.ID['widget-editor-assistant-module'],
+    $id: Now.ID['widget-editor-diff-module'],
     table: 'sys_app_module',
     data: {
         active: true,
         application: '1c00c11047322100ba13a5554ee490f2',
         link_type: 'DIRECT',
-        mobile_title: 'Widget Editor+ Assistant',
+        mobile_title: 'Compare+',
         mobile_view_name: 'Mobile',
-        order: 1475,
+        order: 1473,
         override_menu_roles: false,
-        query: 'ui_page.do?sys_id=584ed242cd934914bffa4b0bb3fb2974',
+        query: 'ui_page.do?sys_id=51ec3d258363b61070b8b5dfeeaad36b',
         require_confirmation: true,
         sys_domain: 'global',
         sys_domain_path: '/',
-        title: 'Widget Editor+ Assistant',
+        title: 'Compare+',
         uncancelable: false,
     },
 })

@@ -303,6 +303,14 @@ declare global {
                         table: 'sys_security_acl'
                         id: '3bd862d0819e4f9281df97d5d8ac9741'
                     }
+                    'widget-editor-diff-module': {
+                        table: 'sys_app_module'
+                        id: 'bc7f98e35baa4911b82d59b8365a264a'
+                    }
+                    'widget-editor-group-module': {
+                        table: 'sys_app_module'
+                        id: 'c53fae488d484f6c8a3a7bc5a664d148'
+                    }
                     'widget-editor-html-class-stylesheets': {
                         table: 'sys_properties'
                         id: 'a66fcbb84e5a4e878ec6e60ec8dd9a5e'

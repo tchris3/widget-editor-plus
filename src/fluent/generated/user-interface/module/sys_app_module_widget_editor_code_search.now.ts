@@ -9,7 +9,7 @@ Record({
         link_type: 'DIRECT',
         mobile_title: 'Widget Editor+ Code Search',
         mobile_view_name: 'Mobile',
-        order: 1478,
+        order: 1474,
         override_menu_roles: true,
         query: 'ui_page.do?sys_id=e7d81afae74144a89136e51d5cc38c09',
         require_confirmation: true,
