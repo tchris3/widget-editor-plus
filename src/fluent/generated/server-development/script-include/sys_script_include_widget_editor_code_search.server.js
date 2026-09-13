@@ -3,6 +3,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
     MAX_RESULTS_PER_TABLE: 500,
     MAX_SNIPPETS_PER_FIELD: 5,
     MAX_INLINE_SNIPPET_GAP: 3,
+    MAX_SCAN_ROWS: 20000,
 
     _getParam: function (name) {
         var val = this.getParameter(name);
@@ -171,8 +172,11 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             for (var i = 1; i < fields.length; i++) qc.addOrCondition(fields[i], 'CONTAINS', term);
             // Secondary filters can be combined with AND/OR, so they're checked in code
             // (in evaluation order) for consistent empty-field, case, and joiner semantics.
-            // Apply the result limit after secondary and case-sensitive matching.
-            if (!secondaryFilters.length && !caseSensitive) record.setLimit(limit + 1);
+            // Apply the result limit after secondary and case-sensitive matching. When those are
+            // in play, `count` only advances on rows that pass them, so a plain CONTAINS query on
+            // a large table could otherwise scan unbounded looking for enough passing rows -
+            // cap it well above the result limit to keep the transaction bounded.
+            record.setLimit(!secondaryFilters.length && !caseSensitive ? limit + 1 : this.MAX_SCAN_ROWS);
             record.query();
             var count = 0;
             while (record.next() && count < limit) {

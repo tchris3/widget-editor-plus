@@ -41,6 +41,14 @@ test('code search uses GlideRecord and is restricted to administrators', () => {
     assert.ok(moduleSource.includes("roles: ['admin']"));
 });
 
+test('table search always caps the GlideRecord scan, even with secondary filters or case-sensitive matching', () => {
+    assert.ok(
+        serverSource.includes('record.setLimit(!secondaryFilters.length && !caseSensitive ? limit + 1 : this.MAX_SCAN_ROWS);'),
+        'setLimit must always be applied so a CONTAINS query cannot scan a table unbounded when secondary filters or case-sensitive matching leave `count` under the limit'
+    );
+    assert.ok(serverSource.includes('MAX_SCAN_ROWS:'), 'MAX_SCAN_ROWS constant should bound the worst-case scan');
+});
+
 test('changing Group/Sort resets the results pane without smooth scrolling', () => {
     const start = pageSource.indexOf("            $scope.$watch('ctrl.viewMode'");
     const end = pageSource.indexOf('            vm.clearInput = function', start);

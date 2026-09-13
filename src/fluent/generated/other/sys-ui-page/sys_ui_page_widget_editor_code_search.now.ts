@@ -620,51 +620,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
         
         /* No Results Icon */
-        .cs-no-results-wrap {
-            position: relative;
-            width: 5.25rem;
-            height: 5.25rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1.25rem;
-            border-radius: 1.25rem;
-            background: radial-gradient(circle at 35% 35%, rgba(var(--now-color--primary-2, 23, 103, 91), 0.14) 0%, rgba(var(--now-color--primary-2, 23, 103, 91), 0.03) 70%, transparent 100%);
-            border: 1px solid rgba(var(--now-color--primary-2, 23, 103, 91), 0.2);
-            box-shadow: 0 8px 24px -4px rgba(var(--now-color--primary-2, 23, 103, 91), 0.12);
-        }
-
-        .cs-no-results-icon {
-            width: 3.25rem;
-            height: 3.25rem;
-            color: rgb(var(--now-color--primary-2, 23, 103, 91));
-        }
-        .cs-nores-question-mark {
-            animation: csQuestionFloat 4.5s ease-in-out infinite;
-            transform-origin: 24px 24px;
-        }
-
-        @keyframes csQuestionFloat {
-            0% {
-                transform: translate(0, 0) rotate(0deg);
-            }
-            20% {
-                transform: translate(2px, -3.5px) rotate(3deg);
-            }
-            45% {
-                transform: translate(-2.5px, -1px) rotate(-3deg);
-            }
-            70% {
-                transform: translate(1.5px, 2.5px) rotate(2deg);
-            }
-            85% {
-                transform: translate(-1px, 1.5px) rotate(-1.5deg);
-            }
-            100% {
-                transform: translate(0, 0) rotate(0deg);
-            }
-        }
-
         .cs-empty h2 {
             font-size: var(--now-font-size--lg, 1.15rem);
             font-weight: 700;
@@ -1739,14 +1694,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
                     <!-- No Results State -->
                     <div class="cs-empty cs-no-results-state" ng-if="ctrl.hasSearched &amp;&amp; !ctrl.loading &amp;&amp; !ctrl.results.length">
-                        <div class="cs-no-results-wrap" aria-hidden="true">
-                            <svg class="cs-no-results-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                <g class="cs-nores-question-mark">
-                                    <path d="M17 17C17 13.4 20.1 10.5 24 10.5C27.9 10.5 31 13.4 31 17C31 20.2 29 22.2 26 24.5C24.5 25.6 24 26.8 24 29" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-                                    <circle cx="24" cy="37" r="2" fill="currentColor" stroke="none"/>
-                                </g>
-                            </svg>
-                        </div>
                         <h2>No results found</h2>
                     </div>
 
@@ -2517,6 +2464,19 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 return deferred.promise;
             }
 
+            // GlideAjax has no client-side abort: once a request is dispatched the server keeps
+            // running it regardless of what the browser does next. cancel_my_transaction.do is the
+            // platform's own self-service kill switch (the same one behind the slow-transaction
+            // warning's Cancel link) — it's best-effort and can take a while to take effect, but
+            // it's the only way to actually stop a stalled table search server-side.
+            function _requestTransactionCancel() {
+                try {
+                    var req = new XMLHttpRequest();
+                    req.open('GET', '/cancel_my_transaction.do', true);
+                    req.send();
+                } catch (e) {}
+            }
+
             function _selectGroup(groupId) {
                 var match = groupId && vm.groups.filter(function (g) { return g.sysId === groupId; })[0];
                 vm.selectedGroup = match || vm.groups[0];
@@ -2881,7 +2841,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     _updateTablesWithResults();
                     _updateSortedResults();
                     $timeout(_updateCurrentViewedTable);
-                    notify('Search cancelled after ' + completedCount + ' of ' + total + ' tables');
+                    _requestTransactionCancel();
+                    notify('Search cancelled after ' + completedCount + ' of ' + total + ' tables. If a table was mid-search, it may take a moment for the server to fully stop it.');
                 };
 
                 function searchNext() {

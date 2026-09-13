@@ -90,6 +90,11 @@ test('cancelSearch stops the search while retaining accumulated results', () => 
     assert.ok(cancelSnippet.includes('++currentSearchGen;'), 'cancelSearch should bump currentSearchGen to stop in-flight workers from continuing');
     assert.ok(cancelSnippet.includes('vm.loading = false;'), 'cancelSearch should end the loading state');
     assert.ok(cancelSnippet.includes('vm.results = accumulatedResults;'), 'cancelSearch should retain results gathered before cancellation');
+    assert.ok(cancelSnippet.includes('_requestTransactionCancel();'), 'cancelSearch should also ask the platform to cancel the underlying transaction, since GlideAjax has no client-side abort');
+    assert.ok(
+        source.includes("req.open('GET', '/cancel_my_transaction.do', true);"),
+        'Should call the platform\'s self-service transaction cancel endpoint, the only way to actually stop a stalled server-side table search'
+    );
 });
 
 test('inline Monaco find keeps the code-search query instead of seeding from the cursor word', () => {
