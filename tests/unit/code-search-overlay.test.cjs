@@ -134,6 +134,19 @@ test('inline Monaco follows the ServiceNow UI theme instead of the Widget Editor
     assert.equal(createSource.includes("theme: 'vs-dark'"), false, 'Should not hard-code Monaco to dark mode');
 });
 
+test('grouped-results list title remains valid Jelly markup', () => {
+    const badgeStart = source.indexOf('<a class="cs-table-group-badge"');
+    const badgeEnd = source.indexOf('</a>', badgeStart);
+    const badgeSource = source.slice(badgeStart, badgeEnd);
+
+    assert.ok(badgeStart > 0, 'Should render the grouped-results list link');
+    assert.equal(badgeSource.includes('<span'), false, 'An HTML element cannot appear inside the title attribute');
+    assert.ok(
+        badgeSource.includes("title=\"Open {{group.tableLabel}} list{{ctrl.caseSensitive ? '' : ' (case insensitive)'}}\""),
+        'The conditional title should use a valid Angular expression'
+    );
+});
+
 test('opening an inline Monaco editor is disabled while search is running', () => {
     const disabledBindings = source.match(/ng-disabled="ctrl\.loading &amp;&amp; !match\.expanded"/g) || [];
     const toggleStart = source.indexOf('            vm.toggleMatchExpand = function');

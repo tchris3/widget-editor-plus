@@ -1764,7 +1764,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                         <span class="cs-session-dot" ng-if="ctrl.hasCustomSessionConfigForTable(group.table)" title="{{ctrl.getSessionConfigTooltipForTable(group.table)}}"></span>
                                         <span class="cs-table-group-name">{{group.table}}</span>
                                     </div>
-                                    <a class="cs-table-group-badge" ng-href="{{ctrl.getGroupListUrl(group)}}" target="_blank" title="Open {{group.tableLabel}} list (case insensitive)">{{group.records.length}} {{group.records.length === 1 ? 'record' : 'records'}}</a>
+                                    <a class="cs-table-group-badge" ng-href="{{ctrl.getGroupListUrl(group)}}" target="_blank" title="Open {{group.tableLabel}} list{{ctrl.caseSensitive ? '' : ' (case insensitive)'}}">{{group.records.length}} {{group.records.length === 1 ? 'record' : 'records'}}</a>
                                 </div>
 
                                 <div class="cs-field-toggle-row" ng-if="group.fields.length">
