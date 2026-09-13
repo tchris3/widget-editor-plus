@@ -1,6 +1,6 @@
 # Widget Editor+
 
-Widget Editor+ is a development and diagnostics suite for ServiceNow Service Portal developers. It replaces the standard widget editor with one built around the Microsoft Monaco Editor and ServiceNow-specific IntelliSense, alongside dedicated tools for version diffing (**Compare+**), runtime portal diagnostics (**Debug Context Menu**), cross-table source search (**Code Search**), and AI context extraction (**Widget Editor+ Assistant**).
+Widget Editor+ is a development and diagnostics suite for ServiceNow Service Portal developers. It replaces the standard widget editor with one built around the Microsoft Monaco Editor and ServiceNow-specific IntelliSense, alongside dedicated tools for version diffing (**Compare+**), runtime portal diagnostics (**Debug Context Menu**), and AI context extraction (**Widget Editor+ Assistant**).
 
 > **Zero External Dependencies**: Built entirely with native ServiceNow platform capabilities. All editor functionality, language tooling, and diagnostics rely strictly on libraries already present within the ServiceNow platform (Monaco Editor, AngularJS, Bootstrap, and standard ServiceNow client/server APIs).
 
@@ -11,8 +11,7 @@ Widget Editor+ is a development and diagnostics suite for ServiceNow Service Por
   - [1. Widget Editor+](#1-widget-editor)
   - [2. Compare+](#2-compare)
   - [3. Debug Context Menu](#3-debug-context-menu)
-  - [4. Code Search](#4-code-search)
-  - [5. Widget Editor+ Assistant](#5-widget-editor-assistant)
+  - [4. Widget Editor+ Assistant](#4-widget-editor-assistant)
 - [Installation & Deployment](#installation--deployment)
   - [Prerequisites](#prerequisites)
   - [Build with ServiceNow SDK](#build-with-servicenow-sdk)
@@ -33,7 +32,6 @@ Widget Editor+ is a development and diagnostics suite for ServiceNow Service Por
 | **Widget Editor+** | Monaco-powered IDE for Service Portal widgets, with ServiceNow client/server IntelliSense |
 | **Compare+** | Side-by-side Monaco diff viewer, including a condition-builder diff |
 | **Debug Context Menu** | Runtime diagnostics overlay on live Service Portal pages |
-| **Code Search** | Cross-table source search with advanced filtering and Monaco-highlighted results |
 | **Widget Editor+ Assistant** | AI-ready XML context bundle exporter and dependency traversal engine |
 
 ---
@@ -94,20 +92,7 @@ A non-intrusive runtime diagnostic popover (`sp_widget_widget_editor_debug_menu`
 
 ---
 
-### 4. Code Search
-
-A cross-table source search tool (`widget_editor_code_search.do`), accessible from the Widget Editor+ menu, for finding text across widget and related script fields without opening each record individually.
-
-- **Search Groups & Table Scopes**: Search runs against Code Search's own configurable search groups and tables (`sn_codesearch_search_group`, `sn_codesearch_table`), with a session indicator showing the active group and a direct link to its configuration record.
-- **Advanced Conditions**: Secondary CONTAINS/DOES NOT CONTAIN filters can be chained with AND/OR joiners, are highlighted in results alongside the primary term, and persist in the URL for shareable searches.
-- **Result Presentation**: Sticky, full-width table headers with scrollspy navigation between matched tables; overlapping snippet matches within a field are deduplicated and merged into a single excerpt box separated by horizontal rules.
-- **Scan Safeguards**: Per-table and total row-scan budgets prevent unbounded scans on large tables, with a progress bar and cancel option that terminates in-flight transactions via a hidden iframe rather than leaving them running server-side.
-- **Configurable Result Fields**: `monaco.plus.code_search.display_fields.<table_name>` properties control the secondary fields shown in each table's result headers.
-- **Restricted Access**: Limited to users with the `sp_admin` role.
-
----
-
-### 5. Widget Editor+ Assistant
+### 4. Widget Editor+ Assistant
 
 An AI context bundle exporter (`widget_editor_assistant.do`) available as a standalone tool and embedded directly within Widget Editor+. It solves the challenge of exporting complex, interconnected ServiceNow application records into structured XML context for Large Language Models (ChatGPT, Claude, Gemini, Copilot).
 
@@ -203,7 +188,6 @@ All system properties are managed under the `monaco.plus.*` namespace:
 | `monaco.plus.assistant.export_blocklist_tables` | *(credential & audit tables)* | Comma-separated table names excluded from Assistant search, browsing, and XML export. |
 | `monaco.plus.assistant.export_blocklist_prefixes` | `pwd,sys_activity,sys_amb,...` | Comma-separated table prefixes excluded from Assistant search, browsing, and XML export. |
 | `monaco.plus.assistant.table_config.<table_name>` | *(JSON rule configs)* | Declarative relationship rules for Assistant dependency detection per table (e.g. `sp_page`, `sp_widget`, `sc_cat_item_producer`, `sysevent_email_action`). |
-| `monaco.plus.code_search.display_fields.<table_name>` | *(table-specific)* | Comma-separated secondary fields shown in Code Search result headers. Properties are included for common Studio, Service Portal, and record-producer/catalog development tables. |
 
 ### UI Scripts Reference
 

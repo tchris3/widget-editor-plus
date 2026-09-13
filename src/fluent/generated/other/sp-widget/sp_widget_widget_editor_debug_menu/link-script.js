@@ -1668,60 +1668,17 @@ function link(scope, element, attrs, controller) {
 
 
     ///////////////////////////////////////////
-    // 10. ContextMenuState — transient state for the active right-click
+    // 10. Pending context-menu state
     ///////////////////////////////////////////
 
-    // The native Service Portal overlay is created asynchronously, so the
-    // context-menu handler and CustomMenu cannot pass this data directly.
-    // Keeping it behind one stable object avoids a group of loosely-related
-    // globals and gives target discovery a single owner.
-    const ContextMenuState = (function () {
-        const state = {
-            widgetSysId: null,
-            instanceSysId: null,
-            widgetEl: null,
-            embeddedWidgets: [], // [{ el, sysId, name }, ...] innermost-first
-            cursorX: 0,
-            cursorY: 0,
-            event: null
-        };
-
-        function reset(event) {
-            state.widgetSysId = null;
-            state.instanceSysId = null;
-            state.widgetEl = null;
-            state.embeddedWidgets = [];
-            state.cursorX = event.clientX;
-            state.cursorY = event.clientY;
-            state.event = event;
-        }
-
-        function captureTarget(target) {
-            state.widgetSysId = ScopeResolver.getWidgetSysId(target);
-            state.instanceSysId = ScopeResolver.getInstanceSysId(target);
-            state.embeddedWidgets = ScopeResolver.getEmbeddedWidgetInfos(target);
-            state.widgetEl = target.closest ? target.closest('[widget]') : null;
-            return !!(state.widgetSysId && state.widgetEl);
-        }
-
-        function snapshot() {
-            return {
-                widgetSysId: state.widgetSysId,
-                instanceSysId: state.instanceSysId,
-                widgetEl: state.widgetEl,
-                embeddedWidgets: state.embeddedWidgets.slice(),
-                cursorX: state.cursorX,
-                cursorY: state.cursorY,
-                event: state.event
-            };
-        }
-
-        function hasNativeMenuTrigger() {
-            return !!(state.widgetEl && state.widgetEl.querySelector('span.context'));
-        }
-
-        return { reset, captureTarget, snapshot, hasNativeMenuTrigger };
-    }());
+    // Captures the widget sys_id on contextmenu, then watches for the debug overlay and injects the preferred-editor link.
+    let _pendingWidgetSysId = null;
+    let _pendingInstanceSysId = null;
+    let _pendingWidgetEl = null;
+    let _pendingEmbeddedWidgets = []; // [{ el, sysId, name }, ...] innermost-first
+    let _pendingCursorX = 0;
+    let _pendingCursorY = 0;
+    let _pendingContextmenuEvent = null;
 
 
     ///////////////////////////////////////////
@@ -2177,9 +2134,8 @@ function link(scope, element, attrs, controller) {
             _lastIcon = null;
             _nativeOverlay = nativeOverlay;
             const native = harvestNativeItems(nativeOverlay ? nativeOverlay.querySelector('.dropdown-menu') : null);
-            const menuContext = ContextMenuState.snapshot();
 
-            const widgetSysId = menuContext.widgetSysId;
+            const widgetSysId = _pendingWidgetSysId;
             if (!widgetSysId) return;
 
             const prefs = controller.preferences || {};
@@ -2355,13 +2311,13 @@ function link(scope, element, attrs, controller) {
             }
 
             // Header row: widget name + preferences cog (bg-primary).
-            const headerName = (menuContext.embeddedWidgets.length > 0 && menuContext.embeddedWidgets[0].name) || '';
+            const headerName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || '';
             navStack[0].title = headerName;
             const headerLi = document.createElement('li');
             headerLi.setAttribute('role', 'presentation');
             headerLi.className = 'we-menu-header bg-primary';
 
-            const headerWidgetEl = menuContext.embeddedWidgets.length > 0 ? menuContext.embeddedWidgets[0].el : null;
+            const headerWidgetEl = _pendingEmbeddedWidgets.length > 0 ? _pendingEmbeddedWidgets[0].el : null;
             const headerWidgetScope = headerWidgetEl ? ScopeResolver.getActualWidgetScope(headerWidgetEl) : null;
             const titleSpan = document.createElement('span');
             titleSpan.className = 'we-header-title';
@@ -2436,8 +2392,8 @@ function link(scope, element, attrs, controller) {
             const recordParams = new URLSearchParams(location.search);
             let recordTable = recordParams.get('table');
             let recordSysId = recordParams.get('sys_id');
-            if ((!recordTable || !recordSysId) && menuContext.widgetEl) {
-                const wScope0 = ScopeResolver.getActualWidgetScope(menuContext.widgetEl);
+            if ((!recordTable || !recordSysId) && _pendingWidgetEl) {
+                const wScope0 = ScopeResolver.getActualWidgetScope(_pendingWidgetEl);
                 const wData = wScope0 && wScope0.data;
                 if (wData) {
                     if (!recordTable) recordTable = wData.table || wData.tableName || null;
@@ -2460,19 +2416,19 @@ function link(scope, element, attrs, controller) {
                     pageItems.push({ label: item.label || fallbackLabel, isLink: item.isLink, icon: 'icon-layout', onClick: forwardToNative(item) });
                 }
             });
-            if (menuContext.instanceSysId) {
+            if (_pendingInstanceSysId) {
                 pageItems.push({
                     label: 'Open portal',
                     icon: 'icon-panel-display-popout',
                     onClick: () => {
-                        PortalPicker.open(widgetSysId, menuContext.instanceSysId, recordTable, recordSysId, menuContext.cursorX, menuContext.cursorY);
+                        PortalPicker.open(widgetSysId, _pendingInstanceSysId, recordTable, recordSysId, _pendingCursorX, _pendingCursorY);
                     }
                 });
                 pageItems.push({
                     label: 'Open page',
                     icon: 'icon-document',
                     onClick: () => {
-                        PortalPicker.openPage(widgetSysId, menuContext.cursorX, menuContext.cursorY);
+                        PortalPicker.openPage(widgetSysId, _pendingCursorX, _pendingCursorY);
                     }
                 });
             }
@@ -2525,7 +2481,7 @@ function link(scope, element, attrs, controller) {
                         addDivider(subUl);
                     }
                     toggleItems.forEach((item) => {
-                        addRow(subUl, { label: item.label, icon: item.icon, onClick: () => item.fn(null, menuContext.event) });
+                        addRow(subUl, { label: item.label, icon: item.icon, onClick: () => item.fn(null, _pendingContextmenuEvent) });
                     });
                 }, 'icon-application-generic');
             }
@@ -2543,14 +2499,14 @@ function link(scope, element, attrs, controller) {
             // Diagnostics Section (no row icons)
             addSectionHeader(mainList, 'Diagnostics', 'icon-code');
 
-            const targetWidgetEl = menuContext.widgetEl || (menuContext.embeddedWidgets.length > 0 ? menuContext.embeddedWidgets[0].el : null);
+            const targetWidgetEl = _pendingWidgetEl || (_pendingEmbeddedWidgets.length > 0 ? _pendingEmbeddedWidgets[0].el : null);
             const logVerb = prefs.assignConsoleVars !== false ? 'Add to console: ' : 'Log to console: ';
             if (targetWidgetEl) {
                 addRow(mainList, {
                     label: 'Log to console: <code>$scope.data</code>',
                     onClick: () => {
                         const s = ScopeResolver.getActualWidgetScope(targetWidgetEl);
-                        const wName = (menuContext.embeddedWidgets.length > 0 && menuContext.embeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
+                        const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
                         const label = wName ? '$scope.data (' + wName + ')' : '$scope.data';
                         console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s && s.data);
                     }
@@ -2559,7 +2515,7 @@ function link(scope, element, attrs, controller) {
                     label: logVerb + '<code>$scope</code>',
                     onClick: () => {
                         const s = ScopeResolver.getActualWidgetScope(targetWidgetEl);
-                        const wName = (menuContext.embeddedWidgets.length > 0 && menuContext.embeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
+                        const wName = (_pendingEmbeddedWidgets.length > 0 && _pendingEmbeddedWidgets[0].name) || (s && s.widget && s.widget.name) || '';
                         const label = wName ? '$scope (' + wName + ')' : '$scope';
                         console.log('%c' + label + '\n', 'color: #0891b2; font-weight: bold;', s);
                         if (prefs.assignConsoleVars !== false) Utils.assignConsoleVar('$scope', s);
@@ -2576,7 +2532,7 @@ function link(scope, element, attrs, controller) {
             });
 
             // Embedding / Ancestor Widgets Hierarchy as Drill-Down Submenus
-            const embeddedWidgets = menuContext.embeddedWidgets.slice(1);
+            const embeddedWidgets = _pendingEmbeddedWidgets.slice(1);
             if (embeddedWidgets.length > 0) {
                 addDivider(mainList);
                 addSectionHeader(mainList, 'Widget Hierarchy', 'icon-tree');
@@ -2616,7 +2572,7 @@ function link(scope, element, attrs, controller) {
                                 label: 'Open page\u2026',
                                 icon: 'icon-layout',
                                 onClick: () => {
-                                    PortalPicker.open(info.sysId, parentInstSysId, recordTable, recordSysId, menuContext.cursorX, menuContext.cursorY);
+                                    PortalPicker.open(info.sysId, parentInstSysId, recordTable, recordSysId, _pendingCursorX, _pendingCursorY);
                                 }
                             });
                         }
@@ -2625,9 +2581,9 @@ function link(scope, element, attrs, controller) {
             }
 
             // Legacy widget-contributed items (widget._debugContextMenu / _weWidgetItems).
-            if (menuContext.widgetEl) {
+            if (_pendingWidgetEl) {
                 try {
-                    const wScope = ScopeResolver.getActualWidgetScope(menuContext.widgetEl);
+                    const wScope = ScopeResolver.getActualWidgetScope(_pendingWidgetEl);
                     let items = null;
                     let callbackScope = wScope;
                     if (wScope && wScope.widget && Array.isArray(wScope.widget._weWidgetItems) && wScope.widget._weWidgetItems.length) {
@@ -2652,7 +2608,7 @@ function link(scope, element, attrs, controller) {
                             } else {
                                 addRow(mainList, {
                                     label: item[0],
-                                    onClick: () => { try { item[1](callbackScope, menuContext.event); } catch (_ex) { } }
+                                    onClick: () => { try { item[1](callbackScope, _pendingContextmenuEvent); } catch (_ex) { } }
                                 });
                             }
                         });
@@ -2755,8 +2711,8 @@ function link(scope, element, attrs, controller) {
                 const pad = 8;
                 const vw = window.innerWidth;
                 const vh = window.innerHeight;
-                const cursorX = menuContext.cursorX;
-                const cursorY = menuContext.cursorY;
+                const cursorX = _pendingCursorX;
+                const cursorY = _pendingCursorY;
                 const menuW = 285;
 
                 const list = mainPanel.querySelector('.we-menu-list');
@@ -2912,7 +2868,13 @@ function link(scope, element, attrs, controller) {
             e.stopPropagation();
             return;
         }
-        ContextMenuState.reset(e);
+        _pendingWidgetSysId = null;
+        _pendingInstanceSysId = null;
+        _pendingWidgetEl = null;
+        _pendingEmbeddedWidgets = [];
+        _pendingCursorX = e.clientX;
+        _pendingCursorY = e.clientY;
+        _pendingContextmenuEvent = e;
 
         if (!e.ctrlKey) {
             return;
@@ -2930,11 +2892,23 @@ function link(scope, element, attrs, controller) {
         }
         // Only clean up stale overlays when SP will actually create a new one.
         OverlayManager.removeDebugOverlays();
-        if (!ContextMenuState.captureTarget(e.target)) {
+        _pendingWidgetSysId = ScopeResolver.getWidgetSysId(e.target);
+        _pendingInstanceSysId = ScopeResolver.getInstanceSysId(e.target);
+        _pendingEmbeddedWidgets = ScopeResolver.getEmbeddedWidgetInfos(e.target);
+        // Walk up to find the closest [widget] element for scope access
+        let el = e.target;
+        while (el && el !== document.body) {
+            if (el.hasAttribute && el.hasAttribute('widget')) {
+                _pendingWidgetEl = el;
+                break;
+            }
+            el = el.parentElement;
+        }
+        if (!_pendingWidgetSysId || !_pendingWidgetEl) {
             return;
         }
         e.preventDefault(); // suppress the browser's native context menu — CustomMenu replaces it entirely
-        if (!ContextMenuState.hasNativeMenuTrigger()) {
+        if (!_pendingWidgetEl.querySelector('span.context')) {
             // Header/footer widgets lack SP's span.context, so SP never creates a debug overlay for them.
             setTimeout(function () { CustomMenu.open(null); }, 50);
         }

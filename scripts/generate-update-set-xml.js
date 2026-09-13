@@ -37,32 +37,10 @@ function getJavaHashCode(str) {
     return hash;
 }
 
-// Builds a map of Now.ID key -> sys_id from keys.ts, so Now.ID['some-friendly-name']
-// references in source files can be resolved to the record's real sys_id.
-function buildKeyToSysIdMap(srcRoot) {
-    const keysPath = path.join(srcRoot, 'keys.ts');
-    const map = {};
-    if (!fs.existsSync(keysPath)) {
-        return map;
-    }
-    const content = fs.readFileSync(keysPath, 'utf8');
-    const entryPattern = /'([^']+)':\s*{\s*table:\s*'[^']*'\s*id:\s*'([^']+)'/g;
-    let match;
-    while ((match = entryPattern.exec(content)) !== null) {
-        map[match[1]] = match[2];
-    }
-    return map;
-}
-
-// Maps a dist XML basename's sys_id (e.g. the "2a53..." in "sys_properties_2a53....xml")
-// to its tracked source .now.ts file, so we can read that file's real git history. A
-// dist record's sys_id is resolved from each source file's Now.ID['...'] references
-// rather than the file's own name, since a file may be named descriptively and/or
-// define multiple records (e.g. a table of related properties in one file).
+// Maps a dist XML basename (e.g. "sys_properties_2a53...") to its tracked source
+// .now.ts file, so we can read that file's real git history.
 function indexSourceFiles(srcRoot) {
-    const keyToSysId = buildKeyToSysIdMap(srcRoot);
     const index = {};
-    const idRefPattern = /Now\.ID\[['"]([^'"]+)['"]\]/g;
     function walkSrc(dir) {
         for (const entry of fs.readdirSync(dir)) {
             const full = path.join(dir, entry);
@@ -70,12 +48,7 @@ function indexSourceFiles(srcRoot) {
             if (stat.isDirectory()) {
                 walkSrc(full);
             } else if (entry.endsWith('.now.ts')) {
-                const content = fs.readFileSync(full, 'utf8');
-                let match;
-                while ((match = idRefPattern.exec(content)) !== null) {
-                    const sysId = keyToSysId[match[1]] || match[1];
-                    index[sysId] = full;
-                }
+                index[entry.slice(0, -'.now.ts'.length)] = full;
             }
         }
     }
@@ -202,8 +175,7 @@ function main() {
         // re-import instead of being silently overwritten. Falls back to build time if the
         // source file has no git history (e.g. new/untracked).
         const basename = path.basename(file, '.xml');
-        const sysIdMatch = basename.match(/[0-9a-f]{32}$/i);
-        const srcFile = sysIdMatch ? sourceFileIndex[sysIdMatch[0]] : undefined;
+        const srcFile = sourceFileIndex[basename];
         const gitDate = srcFile ? getLastGitCommitIso(rootDir, srcFile) : null;
         const recordDate = gitDate
             ? new Date(gitDate).toISOString().replace('T', ' ').substring(0, 19)

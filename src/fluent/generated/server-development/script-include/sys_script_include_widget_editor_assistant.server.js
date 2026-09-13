@@ -679,7 +679,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     },
 
     /** Column internal types allowed in the record picker's list-view columns. */
-    PICKER_COLUMN_TYPES: { composite_name: true, reference: true, string: true, table_name: true, translated_field: true, translated_text: true },
+    PICKER_COLUMN_TYPES: { string: true, reference: true, table_name: true, translated_field: true, translated_text: true, composite_name: true },
 
     /**
      * Resolves picker column definitions from a table's default list view.
