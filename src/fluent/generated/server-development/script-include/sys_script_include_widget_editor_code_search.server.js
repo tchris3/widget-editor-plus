@@ -154,7 +154,8 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             var record = new GlideRecord(table);
             if (filter) record.addEncodedQuery(filter);
 
-            // Active only filter
+            // Active only filter. A table with neither field has no notion of active/inactive,
+            // so every one of its records is treated as active and no query filter is applied.
             var tableHasActive = record.isValidField('active');
             var tableHasUActive = record.isValidField('u_active');
             if (activeOnly) {
@@ -165,9 +166,6 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                     record.addQuery('active', true);
                 } else if (tableHasUActive) {
                     record.addQuery('u_active', true);
-                } else {
-                    // Skip tables without active or u_active fields when activeOnly is selected
-                    continue;
                 }
             }
 
@@ -263,12 +261,15 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                     var recSysId = record.getUniqueValue();
                     var isWidget = table === 'sp_widget';
 
-                    // Determine active status, matching the OR semantics of the query above
+                    // Determine active status, matching the OR semantics of the query above.
+                    // A table with neither field is always considered active, so it's never
+                    // excluded by the Active only filter.
                     var hasActiveField = tableHasActive || tableHasUActive;
-                    var isActive = (tableHasActive && (record.getValue('active') === '1' || record.getValue('active') === 'true')) ||
+                    var isActive = !hasActiveField ||
+                        (tableHasActive && (record.getValue('active') === '1' || record.getValue('active') === 'true')) ||
                         (tableHasUActive && (record.getValue('u_active') === '1' || record.getValue('u_active') === 'true'));
 
-                    if (activeOnly && (!hasActiveField || !isActive)) {
+                    if (activeOnly && !isActive) {
                         continue;
                     }
                     count++;
