@@ -2535,6 +2535,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             function updateUrlParam(term) {
                 try {
                     var url = new URL(window.location.href);
+                    if (vm.selectedGroupId) url.searchParams.set('group', vm.selectedGroupId);
+                    else url.searchParams.delete('group');
                     if (term) {
                         url.searchParams.set('q', term);
                         if (vm.caseSensitive) url.searchParams.set('case', '1');
@@ -2601,6 +2603,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 vm.activeOnly = true;
             }
             var urlFilters = _parseUrlFilters(initialParams.get('filters'));
+            var urlGroupId = initialParams.get('group') || '';
 
             if (!urlQuery && window.top && window.top !== window) {
                 try {
@@ -2621,6 +2624,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             vm.activeOnly = true;
                         }
                         urlFilters = _parseUrlFilters(topTargetParams.get('filters'));
+                        if (!urlGroupId) urlGroupId = topTargetParams.get('group') || '';
                     }
                 } catch (eTop) {}
             }
@@ -2721,17 +2725,25 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 vm.selectedGroup = match || vm.groups[0];
                 vm.selectedGroupId = vm.selectedGroup.sysId;
                 vm.loadTables();
+                updateUrlParam(vm.query.trim());
             }
 
             vm.loadGroups = function () {
                 ajax('getGroups').then(function (data) {
                     vm.groups = data.groups || [];
                     if (vm.groups.length > 0) {
-                        ajax('getLastSearchGroup').then(function (prefData) {
-                            _selectGroup(prefData && prefData.groupId);
-                        }).catch(function () {
-                            _selectGroup(null);
-                        });
+                        if (urlGroupId) {
+                            // A shared link's group takes priority over the saved preference, and
+                            // becomes the new default so re-sharing later reflects the latest choice.
+                            _selectGroup(urlGroupId);
+                            ajax('saveLastSearchGroup', { group_id: vm.selectedGroupId }).catch(function () {});
+                        } else {
+                            ajax('getLastSearchGroup').then(function (prefData) {
+                                _selectGroup(prefData && prefData.groupId);
+                            }).catch(function () {
+                                _selectGroup(null);
+                            });
+                        }
                     }
                 }).catch(function (e) {
                     notify('Could not load search groups: ' + e.message);
@@ -2746,6 +2758,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     }
                 }
                 vm.loadTables();
+                updateUrlParam(vm.query.trim());
                 ajax('saveLastSearchGroup', { group_id: vm.selectedGroupId }).catch(function () {});
             };
 
