@@ -1532,7 +1532,6 @@ Features version history, side-by-side diff comparison, related lists, and user 
             color: rgb(var(--now-color_text--primary));
             flex-shrink: 0;
         }
-        /* Horizon Design System Modal Close Button */
         .we-modal-close-btn {
             all: unset;
             box-sizing: border-box;

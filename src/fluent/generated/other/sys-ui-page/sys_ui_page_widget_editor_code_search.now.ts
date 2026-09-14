@@ -86,7 +86,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             background: rgb(var(--now-color_background--secondary, 246, 247, 249));
         }
 
-        /* Header Bar - Native ServiceNow Horizon Styling matching Widget Editor+ Assistant */
         .dc-header {
             grid-row: 1;
             background: rgb(var(--now-color_chrome--brand-5, var(--now-color--primary-0, 221, 237, 233)));
@@ -118,7 +117,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             font-weight: 700;
         }
 
-        /* Horizon-like Search Bar */
         .cs-header-search {
             display: flex;
             flex: 1;
@@ -1609,15 +1607,12 @@ export const widgetEditorCodeSearchUiPage = UiPage({
     </style>
 
     <div class="cs-app" id="codeSearchApp" ng-controller="CodeSearchController as ctrl" ng-cloak="true">
-        <!-- Header Bar matching Widget Editor+ Assistant -->
         <header class="dc-header">
             <div class="dc-header-row">
-                <!-- Exact Assistant Title Style -->
                 <div class="dc-title">
                     <span>Code Search+</span>
                 </div>
 
-                <!-- Horizon-Like Centered Search Bar -->
                 <form class="cs-header-search" ng-submit="ctrl.onSearchSubmit()">
                     <div class="cs-search-input-group">
                         <input type="text"
@@ -1949,9 +1944,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                 </div>
                                 <div class="cs-card-actions">
                                     <span class="cs-updated" ng-if="result.updatedOn">Updated on {{ctrl.formatDate(result.updatedOn)}}</span>
-                                    <a class="btn btn-primary" ng-if="result.isWidget" ng-href="{{result.widgetEditorUrl}}" target="_blank" title="Open widget in Widget Editor+">
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                                        <span>Widget Editor+</span>
+                                    <a class="btn btn-primary" ng-if="result.isWidget" ng-href="{{result.widgetEditorUrl}}" target="_blank" title="Open widget in Widget Editor+"> 
+                                        <span>Open widget</span>
                                     </a>
                                 </div>
                             </header>
