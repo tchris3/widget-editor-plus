@@ -183,7 +183,6 @@ export const widgetEditorAssistantUiPage = UiPage({
             height: 2rem;
         }
 
-        /* Horizon Contextual Sidebar: Spans top to bottom with zero gaps */
         .we-contextual-sidebar {
             display: flex;
             align-items: stretch;
@@ -252,7 +251,6 @@ export const widgetEditorAssistantUiPage = UiPage({
             gap: 1.125rem;
         }
 
-        /* Horizon Dock Rail */
         .we-sidebar-rail {
             width: 2.75rem;
             height: 100%;
@@ -1022,7 +1020,6 @@ export const widgetEditorAssistantUiPage = UiPage({
             margin-left: auto;
         }
 
-        /* Horizon Design System Modal Close Button */
         .we-modal-close-btn {
             all: unset;
             box-sizing: border-box;
@@ -1581,9 +1578,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 </div>
             </div>
 
-            <!-- Horizon Contextual Sidebar -->
             <aside class="we-contextual-sidebar">
-                <!-- Expanded Panel (2) -->
                 <div class="we-sidebar-panel-container" ng-show="!ctrl.sidebarCollapsed">
                     <!-- Tab 1: Context XML -->
                     <div class="we-sidebar-panel" ng-if="ctrl.activeSidebarTab === 'xml'">
@@ -1739,7 +1734,6 @@ export const widgetEditorAssistantUiPage = UiPage({
                     </div>
                 </div>
 
-                <!-- Horizon Dock Rail (1) -->
                 <div class="we-sidebar-rail">
                     <button type="button" class="btn btn-icon" ng-class="{'active': ctrl.activeSidebarTab === 'xml' &amp;&amp; !ctrl.sidebarCollapsed}" ng-click="ctrl.selectSidebarTab('xml')" title="Context XML">
                         <i class="icon-document" aria-hidden="true"></i>

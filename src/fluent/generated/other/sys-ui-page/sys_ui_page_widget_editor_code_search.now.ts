@@ -86,7 +86,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             background: rgb(var(--now-color_background--secondary, 246, 247, 249));
         }
 
-        /* Header Bar - Native ServiceNow Horizon Styling matching Widget Editor+ Assistant */
         .dc-header {
             grid-row: 1;
             background: rgb(var(--now-color_chrome--brand-5, var(--now-color--primary-0, 221, 237, 233)));
@@ -118,7 +117,6 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             font-weight: 700;
         }
 
-        /* Horizon-like Search Bar */
         .cs-header-search {
             display: flex;
             flex: 1;
@@ -259,9 +257,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         /* Secondary button: Filter toggle &amp; any btn-default in header (header chrome styling) */
         .dc-header .btn-default,
         .cs-header-search .btn-default {
-            background-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.12) !important;
-            border: 1px solid rgba(var(--now-color--neutral-0, 255, 255, 255), 0.22) !important;
-            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            background-color: rgb(var(--now-color_background--primary, 255, 255, 255)) !important;
+            border: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 205, 212, 217))) !important;
+            color: rgb(var(--now-button--secondary--color, var(--now-color--neutral-18, 22, 27, 28))) !important;
             border-radius: var(--now-button--border-radius, 4px) !important;
             transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
         }
@@ -272,17 +270,17 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         }
         .dc-header .btn-default:hover:not(:disabled),
         .cs-header-search .btn-default:hover:not(:disabled) {
-            background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
-            border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
-            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            background-color: rgba(var(--now-color--secondary-1, 1, 119, 142), 0.1) !important;
+            border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
+            color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
         }
         .dc-header .btn-default:focus,
         .dc-header .btn-default:focus:hover,
         .cs-header-search .btn-default:focus,
         .cs-header-search .btn-default:focus:hover {
-            background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
-            border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
-            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            background-color: rgba(var(--now-color--secondary-1, 1, 119, 142), 0.1) !important;
+            border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
+            color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
             outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
             outline-offset: 2px !important;
         }
@@ -294,10 +292,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
         .cs-header-search .btn-default.active,
         .cs-header-search .btn-default:active:hover,
         .cs-header-search .btn-default:active:focus {
-            background-color: rgba(var(--now-button--bare_secondary--background-color--active, var(--now-color--secondary-2, 1, 89, 107)), 0.45) !important;
-            border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
-            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
-            box-shadow: 0 0 0 1px rgba(var(--now-color--secondary-1, 1, 119, 142), 0.5), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+            background-color: rgba(var(--now-color--secondary-1, 1, 119, 142), 0.18) !important;
+            border-color: rgb(var(--now-color--secondary-2, 1, 89, 107)) !important;
+            color: rgb(var(--now-color--secondary-2, 1, 89, 107)) !important;
         }
         .dc-header .btn-default:disabled,
         .dc-header .btn-default[disabled],
@@ -1609,15 +1606,12 @@ export const widgetEditorCodeSearchUiPage = UiPage({
     </style>
 
     <div class="cs-app" id="codeSearchApp" ng-controller="CodeSearchController as ctrl" ng-cloak="true">
-        <!-- Header Bar matching Widget Editor+ Assistant -->
         <header class="dc-header">
             <div class="dc-header-row">
-                <!-- Exact Assistant Title Style -->
                 <div class="dc-title">
                     <span>Code Search+</span>
                 </div>
 
-                <!-- Horizon-Like Centered Search Bar -->
                 <form class="cs-header-search" ng-submit="ctrl.onSearchSubmit()">
                     <div class="cs-search-input-group">
                         <input type="text"
@@ -1889,8 +1883,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                     </div>
                                     <div class="cs-card-actions">
                                         <span class="cs-updated" ng-if="result.updatedOn">Updated on {{ctrl.formatDate(result.updatedOn)}}</span>
-                                        <a class="btn btn-primary" ng-if="result.isWidget" ng-href="{{result.widgetEditorUrl}}" target="_blank" title="Open widget in Widget Editor+">
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                                        <a class="btn btn-default" ng-if="result.isWidget" ng-href="{{result.widgetEditorUrl}}" target="_blank" title="Open widget in Widget Editor+">
                                             <span>Widget Editor+</span>
                                         </a>
                                     </div>
@@ -1950,9 +1943,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                                 </div>
                                 <div class="cs-card-actions">
                                     <span class="cs-updated" ng-if="result.updatedOn">Updated on {{ctrl.formatDate(result.updatedOn)}}</span>
-                                    <a class="btn btn-primary" ng-if="result.isWidget" ng-href="{{result.widgetEditorUrl}}" target="_blank" title="Open widget in Widget Editor+">
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                                        <span>Widget Editor+</span>
+                                    <a class="btn btn-primary" ng-if="result.isWidget" ng-href="{{result.widgetEditorUrl}}" target="_blank" title="Open widget in Widget Editor+"> 
+                                        <span>Open widget</span>
                                     </a>
                                 </div>
                             </header>
@@ -2536,6 +2528,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             function updateUrlParam(term) {
                 try {
                     var url = new URL(window.location.href);
+                    if (vm.selectedGroupId) url.searchParams.set('group', vm.selectedGroupId);
+                    else url.searchParams.delete('group');
                     if (term) {
                         url.searchParams.set('q', term);
                         if (vm.caseSensitive) url.searchParams.set('case', '1');
@@ -2602,6 +2596,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 vm.activeOnly = true;
             }
             var urlFilters = _parseUrlFilters(initialParams.get('filters'));
+            var urlGroupId = initialParams.get('group') || '';
 
             if (!urlQuery && window.top && window.top !== window) {
                 try {
@@ -2622,6 +2617,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             vm.activeOnly = true;
                         }
                         urlFilters = _parseUrlFilters(topTargetParams.get('filters'));
+                        if (!urlGroupId) urlGroupId = topTargetParams.get('group') || '';
                     }
                 } catch (eTop) {}
             }
@@ -2722,17 +2718,25 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 vm.selectedGroup = match || vm.groups[0];
                 vm.selectedGroupId = vm.selectedGroup.sysId;
                 vm.loadTables();
+                updateUrlParam(vm.query.trim());
             }
 
             vm.loadGroups = function () {
                 ajax('getGroups').then(function (data) {
                     vm.groups = data.groups || [];
                     if (vm.groups.length > 0) {
-                        ajax('getLastSearchGroup').then(function (prefData) {
-                            _selectGroup(prefData && prefData.groupId);
-                        }).catch(function () {
-                            _selectGroup(null);
-                        });
+                        if (urlGroupId) {
+                            // A shared link's group takes priority over the saved preference, and
+                            // becomes the new default so re-sharing later reflects the latest choice.
+                            _selectGroup(urlGroupId);
+                            ajax('saveLastSearchGroup', { group_id: vm.selectedGroupId }).catch(function () {});
+                        } else {
+                            ajax('getLastSearchGroup').then(function (prefData) {
+                                _selectGroup(prefData && prefData.groupId);
+                            }).catch(function () {
+                                _selectGroup(null);
+                            });
+                        }
                     }
                 }).catch(function (e) {
                     notify('Could not load search groups: ' + e.message);
@@ -2747,6 +2751,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     }
                 }
                 vm.loadTables();
+                updateUrlParam(vm.query.trim());
                 ajax('saveLastSearchGroup', { group_id: vm.selectedGroupId }).catch(function () {});
             };
 
@@ -3064,7 +3069,31 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 _updateGroupedResults();
                 _updateSortedResults();
 
-                var poolConcurrency = Math.min(3, total);
+                // Capture the search inputs once so edits cannot change a continuation.
+                // Finish every batch for the current table before starting the next table.
+                var pendingTables = enabledTables.map(function (table) {
+                    var overrides = {};
+                    overrides[table.sysId] = {
+                        enabled: true,
+                        searchFields: table.searchFields,
+                        additionalFilter: table.additionalFilter
+                    };
+                    return {
+                        table: table.table,
+                        label: table.label || table.table,
+                        params: {
+                            group_id: vm.selectedGroupId,
+                            table_config_id: table.sysId,
+                            query: vm.query,
+                            secondary_filters: JSON.stringify(vm.secondaryFilters),
+                            overrides: JSON.stringify(overrides),
+                            case_sensitive: vm.caseSensitive ? 'true' : 'false',
+                            active_only: vm.activeOnly ? 'true' : 'false',
+                            batch_size: 25,
+                            cursor: ''
+                        }
+                    };
+                });
                 var nextIndex = 0;
                 var completedCount = 0;
                 var accumulatedResults = [];
@@ -3087,31 +3116,31 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
                 function searchNext() {
                     if (currentSearchGen !== gen) return $q.when();
-                    if (nextIndex >= total) return $q.when();
-                    var table = enabledTables[nextIndex++];
-                    var overrides = {};
-                    overrides[table.sysId] = {
-                        enabled: true,
-                        searchFields: table.searchFields,
-                        additionalFilter: table.additionalFilter
-                    };
+                    if (nextIndex >= pendingTables.length) return $q.when();
+                    var table = pendingTables[nextIndex++];
 
                     vm.searchProgress.currentTable = table.label || table.table;
 
-                    return ajaxWithTimeout('search', {
-                        group_id: vm.selectedGroupId,
-                        table_config_id: table.sysId,
-                        query: vm.query,
-                        secondary_filters: JSON.stringify(vm.secondaryFilters),
-                        overrides: JSON.stringify(overrides),
-                        case_sensitive: vm.caseSensitive ? 'true' : 'false',
-                        active_only: vm.activeOnly ? 'true' : 'false'
-                    }, TABLE_SEARCH_TIMEOUT_MS).then(function (data) {
+                    return searchBatch(table).catch(function (err) {
+                        if (currentSearchGen !== gen) return;
+                        var label = table.label || table.table;
+                        allSkipped.push(err && err.message === 'Timed out' ?
+                            label + ': search took too long and was skipped' :
+                            label + ': ' + ((err && err.message) || 'search failed'));
+                    }).then(function () {
                         if (currentSearchGen !== gen) return;
                         completedCount++;
                         vm.searchedTables = completedCount;
                         vm.searchProgress.completed = completedCount;
                         vm.searchProgress.percent = Math.round((completedCount / total) * 100);
+                        return searchNext();
+                    });
+                }
+
+                function searchBatch(table) {
+                    if (currentSearchGen !== gen) return $q.when();
+                    return ajaxWithTimeout('search', table.params, TABLE_SEARCH_TIMEOUT_MS).then(function (data) {
+                        if (currentSearchGen !== gen) return;
 
                         var tableResults = (data && data.results) || [];
                         tableResults.forEach(function (r) {
@@ -3130,31 +3159,16 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             allSkipped = allSkipped.concat(data.skipped);
                         }
 
-                        if (nextIndex < total) {
-                            return searchNext();
-                        }
-                    }).catch(function (err) {
-                        if (currentSearchGen !== gen) return;
-                        completedCount++;
-                        vm.searchedTables = completedCount;
-                        vm.searchProgress.completed = completedCount;
-                        vm.searchProgress.percent = Math.round((completedCount / total) * 100);
-                        var label = table.label || table.table;
-                        allSkipped.push(err && err.message === 'Timed out' ?
-                            label + ': search took too long and was skipped' :
-                            label + ': ' + ((err && err.message) || 'search failed'));
-                        if (nextIndex < total) {
-                            return searchNext();
+                        vm.elapsed = Date.now() - started;
+                        if (data && data.nextCursor) {
+                            if (data.nextCursor === table.params.cursor) throw new Error('Search cursor did not advance');
+                            table.params.cursor = data.nextCursor;
+                            return searchBatch(table);
                         }
                     });
                 }
 
-                var workers = [];
-                for (var w = 0; w < poolConcurrency; w++) {
-                    workers.push(searchNext());
-                }
-
-                $q.all(workers).then(function () {
+                searchNext().then(function () {
                     if (currentSearchGen !== gen) return;
                     vm.results = accumulatedResults;
                     vm.elapsed = Date.now() - started;

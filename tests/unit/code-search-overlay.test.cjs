@@ -70,7 +70,7 @@ test('runSearch logic enables Pane 2 and updates sorted/grouped results in real-
     // Check that searchNext updates sortedResults in real time
     const searchNextSnippet = source.slice(
         source.indexOf('function searchNext()'),
-        source.indexOf('var workers = [];')
+        source.indexOf('searchNext().then(function () {')
     );
     assert.ok(searchNextSnippet.includes('_updateTablesWithResults();'), 'searchNext should update tablesWithResults');
     assert.ok(searchNextSnippet.includes('_updateGroupedResults();'), 'searchNext should update groupedResults');

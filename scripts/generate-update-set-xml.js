@@ -37,15 +37,11 @@ function getJavaHashCode(str) {
     return hash;
 }
 
-// Builds a map of Now.ID key -> sys_id from keys.ts, so Now.ID['some-friendly-name']
-// references in source files can be resolved to the record's real sys_id.
-function buildKeyToSysIdMap(srcRoot) {
-    const keysPath = path.join(srcRoot, 'keys.ts');
+// Builds a map of Now.ID key -> sys_id from keys.ts's `explicit` block, so
+// Now.ID['some-friendly-name'] references in source files can be resolved to the record's
+// real sys_id.
+function buildKeyToSysIdMap(content) {
     const map = {};
-    if (!fs.existsSync(keysPath)) {
-        return map;
-    }
-    const content = fs.readFileSync(keysPath, 'utf8');
     const entryPattern = /'([^']+)':\s*{\s*table:\s*'[^']*'\s*id:\s*'([^']+)'/g;
     let match;
     while ((match = entryPattern.exec(content)) !== null) {
@@ -54,13 +50,40 @@ function buildKeyToSysIdMap(srcRoot) {
     return map;
 }
 
+// Some record types (e.g. sys_ui_page) are declared `composite: true` in now-sdk's own
+// plugins, meaning they're ALWAYS identified by a coalescing key (table + a natural field
+// like `endpoint`), never a pinned explicit id — now-sdk's own KeysRegistry.commit() strips
+// any explicit entry that duplicates a composite one on the next build/deploy. Builds a
+// `table::name` -> sys_id map from keys.ts's `composite` array so those records can still
+// be resolved without fighting that behavior.
+function buildCompositeSysIdMap(content) {
+    const map = {};
+    const entryPattern = /\{\s*table:\s*'([^']+)'\s*id:\s*'([^']+)'\s*key:\s*\{\s*name:\s*'([^']+)'\s*\}/g;
+    let match;
+    while ((match = entryPattern.exec(content)) !== null) {
+        map[`${match[1]}::${match[3]}`] = match[2];
+    }
+    return map;
+}
+
+// A sys_ui_page's own coalescing name is its `endpoint` field with the trailing `.do`
+// stripped (see UiPagePlugin's `coalesce`), so a page defined without an explicit keys.ts
+// pin can still be located in the composite map via its own source.
+function getUiPageCoalesceName(fileContent) {
+    const endpointMatch = fileContent.match(/endpoint:\s*'([^']+)'/);
+    return endpointMatch ? endpointMatch[1].replace(/\.do$/, '') : null;
+}
+
 // Maps a dist XML basename's sys_id (e.g. the "2a53..." in "sys_properties_2a53....xml")
 // to its tracked source .now.ts file, so we can read that file's real git history. A
 // dist record's sys_id is resolved from each source file's Now.ID['...'] references
 // rather than the file's own name, since a file may be named descriptively and/or
 // define multiple records (e.g. a table of related properties in one file).
 function indexSourceFiles(srcRoot) {
-    const keyToSysId = buildKeyToSysIdMap(srcRoot);
+    const keysPath = path.join(srcRoot, 'keys.ts');
+    const keysContent = fs.existsSync(keysPath) ? fs.readFileSync(keysPath, 'utf8') : '';
+    const keyToSysId = buildKeyToSysIdMap(keysContent);
+    const compositeSysId = buildCompositeSysIdMap(keysContent);
     const index = {};
     const idRefPattern = /Now\.ID\[['"]([^'"]+)['"]\]/g;
     function walkSrc(dir) {
@@ -73,7 +96,23 @@ function indexSourceFiles(srcRoot) {
                 const content = fs.readFileSync(full, 'utf8');
                 let match;
                 while ((match = idRefPattern.exec(content)) !== null) {
-                    const sysId = keyToSysId[match[1]] || match[1];
+                    const key = match[1];
+                    let sysId = keyToSysId[key];
+                    if (!sysId && /^[0-9a-f]{32}$/i.test(key)) {
+                        sysId = key; // legacy self-referential Now.ID['<sys_id>']
+                    }
+                    if (!sysId && content.includes('UiPage(')) {
+                        const coalesceName = getUiPageCoalesceName(content);
+                        if (coalesceName) sysId = compositeSysId[`sys_ui_page::${coalesceName}`];
+                    }
+                    if (!sysId) {
+                        // Neither keys.ts's explicit nor composite entries resolve this symbolic
+                        // Now.ID, so it falls back to its own literal name here, which never matches
+                        // a real dist sys_id — the git-history lookup below then silently falls back
+                        // to build time, defeating the Preview-collision check entirely.
+                        console.warn(`Warning: Now.ID['${key}'] in ${full} could not be resolved to a real sys_id — its shipped sys_updated_on will fall back to build time instead of its real last-modified date.`);
+                        sysId = key;
+                    }
                     index[sysId] = full;
                 }
             }
@@ -97,6 +136,85 @@ function getLastGitCommitIso(rootDir, filePath) {
     } catch (e) {
         return null;
     }
+}
+
+// A single source file can define many sys_properties (see
+// sys_properties_widget_editor_code_search_display_fields.now.ts), so the whole file's last
+// commit date is too coarse — editing one property's description would bump every other
+// property's shipped sys_updated_on too. Finds the specific Property({...}) block for
+// `propertyName` and walks its own line history via `git log -L`, then filters for a commit
+// that actually changed the value section (not just description/roles/etc, and not a
+// remove-then-identical-restore from a revert-and-remerge, which reads as a false change).
+function findPropertyBlockLines(fileContent, propertyName) {
+    const lines = fileContent.split('\n');
+    const nameLineText = `name: '${propertyName}'`;
+    const nameLineIndex = lines.findIndex(l => l.includes(nameLineText));
+    if (nameLineIndex === -1) return null;
+    let start = nameLineIndex;
+    while (start > 0 && lines[start].indexOf('Property({') === -1) start--;
+    let end = nameLineIndex;
+    while (end < lines.length - 1 && lines[end].trim() !== '})') end++;
+    if (lines[start].indexOf('Property({') === -1 || lines[end].trim() !== '})') return null;
+    return { startLine: start + 1, endLine: end + 1 }; // 1-indexed, inclusive
+}
+
+// True while `line` (without its +/-/space diff prefix) is part of the value assignment,
+// from the `value:` line up to (excluding) the next top-level field.
+function valueSectionTracker() {
+    let inValue = false;
+    return function (body) {
+        if (/^\s*value:/.test(body)) { inValue = true; return true; }
+        if (inValue && /^\s*(description|ignoreCache|roles|\$meta):/.test(body)) { inValue = false; return false; }
+        return inValue;
+    };
+}
+
+function getLastPropertyValueChangeIso(rootDir, relFilePath, propertyName) {
+    const absPath = path.join(rootDir, relFilePath);
+    let block;
+    try {
+        block = findPropertyBlockLines(fs.readFileSync(absPath, 'utf8'), propertyName);
+    } catch (e) {
+        return null;
+    }
+    if (!block) return null;
+
+    let log;
+    try {
+        log = execFileSync(
+            'git',
+            ['log', `-L${block.startLine},${block.endLine}:${relFilePath}`, '--format=@@COMMIT@@%aI'],
+            { cwd: rootDir, encoding: 'utf8', maxBuffer: 1024 * 1024 * 50 }
+        );
+    } catch (e) {
+        return null;
+    }
+
+    const commits = log.split('@@COMMIT@@').filter(Boolean);
+    let fallbackDate = null;
+    for (const commitBlock of commits) {
+        const headerEnd = commitBlock.indexOf('\n');
+        const date = commitBlock.slice(0, headerEnd);
+        const diff = commitBlock.slice(headerEnd + 1);
+        if (!fallbackDate) fallbackDate = date;
+
+        const oldTracker = valueSectionTracker();
+        const newTracker = valueSectionTracker();
+        const oldValueLines = [];
+        const newValueLines = [];
+        diff.split('\n').forEach(line => {
+            const prefix = line[0];
+            if (prefix !== '+' && prefix !== '-' && prefix !== ' ') return;
+            const body = line.slice(1);
+            if (prefix !== '+' && oldTracker(body)) oldValueLines.push(body.trim());
+            if (prefix !== '-' && newTracker(body)) newValueLines.push(body.trim());
+        });
+
+        if (oldValueLines.join('\n') !== newValueLines.join('\n')) {
+            return date;
+        }
+    }
+    return fallbackDate;
 }
 
 const TABLE_TYPE_MAP = {
@@ -197,22 +315,6 @@ function main() {
     xmlFiles.forEach(file => {
         let content = fs.readFileSync(file, 'utf8').trim();
 
-        // Every record ships with its real last-git-commit date rather than the build time,
-        // so a local customization made after that date shows up as a Preview collision on
-        // re-import instead of being silently overwritten. Falls back to build time if the
-        // source file has no git history (e.g. new/untracked).
-        const basename = path.basename(file, '.xml');
-        const sysIdMatch = basename.match(/[0-9a-f]{32}$/i);
-        const srcFile = sysIdMatch ? sourceFileIndex[sysIdMatch[0]] : undefined;
-        const gitDate = srcFile ? getLastGitCommitIso(rootDir, srcFile) : null;
-        const recordDate = gitDate
-            ? new Date(gitDate).toISOString().replace('T', ' ').substring(0, 19)
-            : formattedDate;
-        content = content.replace(
-            /(<sys_id>[^<]*<\/sys_id>)/,
-            `$1\n    <sys_created_on>${recordDate}</sys_created_on>\n    <sys_updated_on>${recordDate}</sys_updated_on>`
-        );
-
         const updateNameMatch = content.match(/<sys_update_name>(.*?)<\/sys_update_name>/);
         const sysNameMatch = content.match(/<sys_name>(.*?)<\/sys_name>/) || content.match(/<name>(.*?)<\/name>/);
         const tableMatch = content.match(/<record_update table="([^"]+)">/);
@@ -220,6 +322,28 @@ function main() {
         const table = tableMatch ? unescapeXml(tableMatch[1]) : '';
         const updateName = updateNameMatch ? unescapeXml(updateNameMatch[1]) : path.basename(file, '.xml');
         const targetName = sysNameMatch ? unescapeXml(sysNameMatch[1]) : updateName;
+
+        // Every record ships with its real last-git-commit date rather than the build time,
+        // so a local customization made after that date shows up as a Preview collision on
+        // re-import instead of being silently overwritten. Falls back to build time if the
+        // source file has no git history (e.g. new/untracked).
+        const basename = path.basename(file, '.xml');
+        const sysIdMatch = basename.match(/[0-9a-f]{32}$/i);
+        const srcFile = sysIdMatch ? sourceFileIndex[sysIdMatch[0]] : undefined;
+        const relSrcFile = srcFile ? path.relative(rootDir, srcFile) : undefined;
+        // sys_properties can share one source file across many properties (see the code-search
+        // display-fields file), so resolve this specific property's own value-change history
+        // instead of the whole file's last commit.
+        const gitDate = (table === 'sys_properties' && relSrcFile)
+            ? (getLastPropertyValueChangeIso(rootDir, relSrcFile, targetName) || getLastGitCommitIso(rootDir, srcFile))
+            : (srcFile ? getLastGitCommitIso(rootDir, srcFile) : null);
+        const recordDate = gitDate
+            ? new Date(gitDate).toISOString().replace('T', ' ').substring(0, 19)
+            : formattedDate;
+        content = content.replace(
+            /(<sys_id>[^<]*<\/sys_id>)/,
+            `$1\n    <sys_created_on>${recordDate}</sys_created_on>\n    <sys_updated_on>${recordDate}</sys_updated_on>`
+        );
         const type = TABLE_TYPE_MAP[table] || table || 'Custom Record';
 
         const entrySysId = generateSysId();
