@@ -13435,6 +13435,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     });
                 };
 
+                $scope.openCodeSearch = function () {
+                    window.open(
+                        '/nav_to.do?uri=ui_page.do%3Fsys_id%3D27a85cdf06a14eba97d2ffc3b57c4a46',
+                        '_blank',
+                        'noopener,noreferrer'
+                    );
+                    $scope.openDropdown = null;
+                };
+
                 $scope.openApiDocs = function () {
                     var build = _getSnVersion();
                     var url = build
