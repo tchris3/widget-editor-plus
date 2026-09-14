@@ -3069,7 +3069,31 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 _updateGroupedResults();
                 _updateSortedResults();
 
-                var poolConcurrency = Math.min(3, total);
+                // Capture the search inputs once so edits cannot change a continuation.
+                // Finish every batch for the current table before starting the next table.
+                var pendingTables = enabledTables.map(function (table) {
+                    var overrides = {};
+                    overrides[table.sysId] = {
+                        enabled: true,
+                        searchFields: table.searchFields,
+                        additionalFilter: table.additionalFilter
+                    };
+                    return {
+                        table: table.table,
+                        label: table.label || table.table,
+                        params: {
+                            group_id: vm.selectedGroupId,
+                            table_config_id: table.sysId,
+                            query: vm.query,
+                            secondary_filters: JSON.stringify(vm.secondaryFilters),
+                            overrides: JSON.stringify(overrides),
+                            case_sensitive: vm.caseSensitive ? 'true' : 'false',
+                            active_only: vm.activeOnly ? 'true' : 'false',
+                            batch_size: 25,
+                            cursor: ''
+                        }
+                    };
+                });
                 var nextIndex = 0;
                 var completedCount = 0;
                 var accumulatedResults = [];
@@ -3092,31 +3116,31 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
                 function searchNext() {
                     if (currentSearchGen !== gen) return $q.when();
-                    if (nextIndex >= total) return $q.when();
-                    var table = enabledTables[nextIndex++];
-                    var overrides = {};
-                    overrides[table.sysId] = {
-                        enabled: true,
-                        searchFields: table.searchFields,
-                        additionalFilter: table.additionalFilter
-                    };
+                    if (nextIndex >= pendingTables.length) return $q.when();
+                    var table = pendingTables[nextIndex++];
 
                     vm.searchProgress.currentTable = table.label || table.table;
 
-                    return ajaxWithTimeout('search', {
-                        group_id: vm.selectedGroupId,
-                        table_config_id: table.sysId,
-                        query: vm.query,
-                        secondary_filters: JSON.stringify(vm.secondaryFilters),
-                        overrides: JSON.stringify(overrides),
-                        case_sensitive: vm.caseSensitive ? 'true' : 'false',
-                        active_only: vm.activeOnly ? 'true' : 'false'
-                    }, TABLE_SEARCH_TIMEOUT_MS).then(function (data) {
+                    return searchBatch(table).catch(function (err) {
+                        if (currentSearchGen !== gen) return;
+                        var label = table.label || table.table;
+                        allSkipped.push(err && err.message === 'Timed out' ?
+                            label + ': search took too long and was skipped' :
+                            label + ': ' + ((err && err.message) || 'search failed'));
+                    }).then(function () {
                         if (currentSearchGen !== gen) return;
                         completedCount++;
                         vm.searchedTables = completedCount;
                         vm.searchProgress.completed = completedCount;
                         vm.searchProgress.percent = Math.round((completedCount / total) * 100);
+                        return searchNext();
+                    });
+                }
+
+                function searchBatch(table) {
+                    if (currentSearchGen !== gen) return $q.when();
+                    return ajaxWithTimeout('search', table.params, TABLE_SEARCH_TIMEOUT_MS).then(function (data) {
+                        if (currentSearchGen !== gen) return;
 
                         var tableResults = (data && data.results) || [];
                         tableResults.forEach(function (r) {
@@ -3135,31 +3159,16 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             allSkipped = allSkipped.concat(data.skipped);
                         }
 
-                        if (nextIndex < total) {
-                            return searchNext();
-                        }
-                    }).catch(function (err) {
-                        if (currentSearchGen !== gen) return;
-                        completedCount++;
-                        vm.searchedTables = completedCount;
-                        vm.searchProgress.completed = completedCount;
-                        vm.searchProgress.percent = Math.round((completedCount / total) * 100);
-                        var label = table.label || table.table;
-                        allSkipped.push(err && err.message === 'Timed out' ?
-                            label + ': search took too long and was skipped' :
-                            label + ': ' + ((err && err.message) || 'search failed'));
-                        if (nextIndex < total) {
-                            return searchNext();
+                        vm.elapsed = Date.now() - started;
+                        if (data && data.nextCursor) {
+                            if (data.nextCursor === table.params.cursor) throw new Error('Search cursor did not advance');
+                            table.params.cursor = data.nextCursor;
+                            return searchBatch(table);
                         }
                     });
                 }
 
-                var workers = [];
-                for (var w = 0; w < poolConcurrency; w++) {
-                    workers.push(searchNext());
-                }
-
-                $q.all(workers).then(function () {
+                searchNext().then(function () {
                     if (currentSearchGen !== gen) return;
                     vm.results = accumulatedResults;
                     vm.elapsed = Date.now() - started;
