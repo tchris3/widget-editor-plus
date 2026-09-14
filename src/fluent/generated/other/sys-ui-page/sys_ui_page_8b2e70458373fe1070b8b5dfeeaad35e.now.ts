@@ -382,9 +382,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
         /* Override btn-default in the header bar */
         .we-header .btn-default {
-            background-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.12) !important;
-            border: 1px solid rgba(var(--now-color--neutral-0, 255, 255, 255), 0.22) !important;
-            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            background-color: rgb(var(--now-color_background--primary, 255, 255, 255)) !important;
+            border: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 205, 212, 217))) !important;
+            color: rgb(var(--now-button--secondary--color, var(--now-color--neutral-18, 22, 27, 28))) !important;
             border-radius: var(--now-button--border-radius, 4px) !important;
             transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
         }
@@ -393,15 +393,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
             fill: currentColor !important;
         }
         .we-header .btn-default:hover:not(:disabled) {
-            background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
-            border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
-            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            background-color: rgba(var(--now-color--secondary-1, 1, 119, 142), 0.1) !important;
+            border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
+            color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
         }
         .we-header .btn-default:focus,
         .we-header .btn-default:focus:hover {
-            background-color: rgba(var(--now-button--bare_secondary--background-color--hover, var(--now-color--secondary-1, 1, 119, 142)), var(--now-button--bare_secondary--background-color-alpha--hover, 0.25)) !important;
-            border-color: rgba(var(--now-color--neutral-0, 255, 255, 255), 0.45) !important;
-            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
+            background-color: rgba(var(--now-color--secondary-1, 1, 119, 142), 0.1) !important;
+            border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
+            color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
             outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
             outline-offset: 2px !important;
         }
@@ -409,10 +409,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
         .we-header .btn-default.active,
         .we-header .btn-default:active:hover,
         .we-header .btn-default:active:focus {
-            background-color: rgba(var(--now-button--bare_secondary--background-color--active, var(--now-color--secondary-2, 1, 89, 107)), 0.45) !important;
-            border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
-            color: rgb(var(--now-color--neutral-0, 255, 255, 255)) !important;
-            box-shadow: 0 0 0 1px rgba(var(--now-color--secondary-1, 1, 119, 142), 0.5), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+            background-color: rgba(var(--now-color--secondary-1, 1, 119, 142), 0.18) !important;
+            border-color: rgb(var(--now-color--secondary-2, 1, 89, 107)) !important;
+            color: rgb(var(--now-color--secondary-2, 1, 89, 107)) !important;
         }
         .we-header .btn-default:disabled,
         .we-header .btn-default[disabled] {
