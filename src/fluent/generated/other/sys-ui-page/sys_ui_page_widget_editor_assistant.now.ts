@@ -167,6 +167,98 @@ export const widgetEditorAssistantUiPage = UiPage({
             -webkit-overflow-scrolling: touch;
         }
 
+        .we-graph-container {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            background-color: rgb(var(--now-color_background--secondary, 246 246 248));
+        }
+        .we-record-graph-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            touch-action: none;
+            outline: none;
+        }
+        .we-record-graph-canvas.we-canvas-panning { cursor: grabbing; }
+        .we-graph-actions-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .we-graph-node-actions {
+            position: absolute;
+            display: flex;
+            gap: 0.25rem;
+            transform-origin: 0 0;
+            pointer-events: auto;
+        }
+        .we-graph-node-actions .btn-icon {
+            min-width: 1.75rem;
+            width: 1.75rem;
+            height: 1.75rem;
+            padding: 0;
+        }
+        .we-graph-recommended-icon,
+        .we-graph-node-pills {
+            position: absolute;
+            transform-origin: 0 0;
+            pointer-events: none;
+        }
+        .we-graph-recommended-icon {
+            color: rgb(var(--now-color--primary-1, 30 133 109));
+            line-height: 1;
+        }
+        .we-graph-node-pills {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+            width: 15.75rem;
+        }
+        .we-graph-pill-line {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+        .we-graph-controls {
+            position: absolute;
+            z-index: 2;
+            top: 0.75rem;
+            right: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem;
+            border: 1px solid rgb(var(--now-color_border--secondary, 228 230 235));
+            border-radius: 6px;
+            background: rgb(var(--now-color_background--primary, 255 255 255));
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .we-graph-controls .btn { min-width: 2rem; }
+        .we-graph-zoom-label {
+            min-width: 3rem;
+            text-align: center;
+            color: rgb(var(--now-color_text--secondary, 96 100 108));
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .we-graph-empty {
+            height: 100%;
+            min-height: 18rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            color: rgb(var(--now-color_text--secondary, 96 100 108));
+        }
+
         .we-table-loading-wrap {
             display: flex;
             flex-direction: column;
@@ -1414,6 +1506,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                         <div class="we-table-heading">
                             <span>Records</span>
                             <span class="we-type-count-pill" style="margin-left: 0.5rem;" ng-if="!ctrl.loadingInitial" ng-bind="ctrl.totalRowCount()"></span>
+                            <div class="btn-group" role="group" aria-label="Record view" ng-if="!ctrl.loadingInitial" style="margin-left: 1.5rem;">
+                                <button type="button" class="btn btn-default" ng-class="{'active': ctrl.viewMode === 'table'}" ng-click="ctrl.setViewMode('table')" aria-pressed="{{ctrl.viewMode === 'table'}}">
+                                    <span>Table</span>
+                                </button>
+                                <button type="button" class="btn btn-default" ng-class="{'active': ctrl.viewMode === 'graph'}" ng-click="ctrl.setViewMode('graph')" aria-pressed="{{ctrl.viewMode === 'graph'}}">
+                                    <span>Graph</span>
+                                </button>
+                            </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 1rem;">
                             <span class="we-scan-indicator" ng-if="ctrl.scanningSuggested">
@@ -1439,7 +1539,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         </div>
                     </div>
 
-                    <div class="we-table-scroll-container">
+                    <div class="we-table-scroll-container" ng-show="ctrl.viewMode === 'table'">
                         <!-- Initial Loading State -->
                         <div class="we-table-loading-wrap" ng-if="ctrl.loadingInitial">
                             <we-loader></we-loader>
@@ -1574,6 +1674,20 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <div class="we-graph-container" ng-if="!ctrl.loadingInitial &amp;&amp; ctrl.viewMode === 'graph'">
+                        <div class="we-graph-empty" ng-if="ctrl.graph.nodes.length === 0">
+                            <strong>No selected records</strong>
+                            <span>Select at least one record in Table mode to build the graph.</span>
+                        </div>
+                        <div class="we-graph-controls" ng-if="ctrl.graph.nodes.length" role="group" aria-label="Graph zoom controls">
+                            <button type="button" class="btn btn-default btn-icon" ng-click="ctrl.graphCanvasCommand('zoomOut')" title="Zoom out">−</button>
+                            <span class="we-graph-zoom-label">{{ctrl.graphZoom}}%</span>
+                            <button type="button" class="btn btn-default btn-icon" ng-click="ctrl.graphCanvasCommand('zoomIn')" title="Zoom in">+</button>
+                            <button type="button" class="btn btn-default" ng-click="ctrl.graphCanvasCommand('fit')" title="Fit all records">Fit</button>
+                        </div>
+                        <canvas class="we-record-graph-canvas" ng-if="ctrl.graph.nodes.length" we-record-graph-canvas="" graph="ctrl.graph" command="ctrl.graphCommand" zoom-percent="ctrl.graphZoom" on-scan="ctrl.scanRow(row)" on-open="ctrl.openGraphRecord(row)" on-remove="ctrl.removeRow(row)" tabindex="0" aria-label="Selected record relationship graph. Drag to pan and use the mouse wheel to zoom."></canvas>
                     </div>
                 </div>
             </div>
@@ -2070,6 +2184,603 @@ export const widgetEditorAssistantUiPage = UiPage({
             },
         ]);
 
+        // Canvas renderer for the selected-record graph. It owns drawing, wheel zoom and
+        // pointer panning; native HTML buttons over the canvas provide record actions.
+        weAssistantApp.directive('weRecordGraphCanvas', [
+            '$window',
+            '$timeout',
+            function ($window, $timeout) {
+                return {
+                    restrict: 'A',
+                    scope: {
+                        graph: '=',
+                        command: '=',
+                        zoomPercent: '=',
+                        onScan: '&',
+                        onOpen: '&',
+                        onRemove: '&',
+                    },
+                    link: function (scope, element) {
+                        var canvas = element[0];
+                        var ctx = canvas.getContext('2d');
+                        var host = canvas.parentElement;
+                        var actionLayer = document.createElement('div');
+                        actionLayer.className = 'we-graph-actions-layer';
+                        host.appendChild(actionLayer);
+                        var dpr = Math.max(1, $window.devicePixelRatio || 1);
+                        var viewportWidth = 1;
+                        var viewportHeight = 1;
+                        var camera = { x: 0, y: 0, scale: 1 };
+                        var layout = { nodes: [], byKey: {}, edges: [], width: 1, height: 1 };
+                        var pointer = null;
+                        var destroyed = false;
+                        var NODE_WIDTH = 280;
+                        var COLUMN_GAP = 260;
+                        var ROW_GAP = 46;
+                        var MIN_SCALE = 0.2;
+                        var MAX_SCALE = 2.5;
+                        var MIN_NODE_VISIBLE = 24;
+
+                        function cssColour(property, fallback) {
+                            var raw = $window.getComputedStyle(document.documentElement).getPropertyValue(property).trim();
+                            return raw ? 'rgb(' + raw.replace(/,/g, ' ') + ')' : fallback;
+                        }
+
+                        var colours = {
+                            background: cssColour('--now-color_background--secondary', '#f6f6f8'),
+                            surface: cssColour('--now-color_background--primary', '#ffffff'),
+                            primarySurface: cssColour('--now-color_surface--brand-1', '#ecf4f1'),
+                            text: cssColour('--now-color_text--primary', '#1d1d1d'),
+                            secondaryText: cssColour('--now-color_text--secondary', '#60646c'),
+                            tertiaryText: cssColour('--now-color_text--tertiary', '#82868e'),
+                            border: cssColour('--now-color_border--tertiary', '#acb4b5'),
+                            primary: cssColour('--now-color--primary-1', '#1e856d'),
+                            grid: 'rgba(130, 134, 142, 0.22)',
+                            danger: '#c83c36',
+                        };
+
+                        function roundedRect(x, y, width, height, radius) {
+                            var r = Math.min(radius, width / 2, height / 2);
+                            ctx.beginPath();
+                            ctx.moveTo(x + r, y);
+                            ctx.arcTo(x + width, y, x + width, y + height, r);
+                            ctx.arcTo(x + width, y + height, x, y + height, r);
+                            ctx.arcTo(x, y + height, x, y, r);
+                            ctx.arcTo(x, y, x + width, y, r);
+                            ctx.closePath();
+                        }
+
+                        // Wraps every character of the label, including long values with no spaces.
+                        // Node height grows with the returned lines, so names are never ellipsised.
+                        function wrapText(text, maxWidth) {
+                            text = String(text || '');
+                            if (!text) return [''];
+                            var words = text.split(/\\s+/);
+                            var lines = [];
+                            var current = '';
+                            words.forEach(function (word) {
+                                var candidate = current ? current + ' ' + word : word;
+                                if (ctx.measureText(candidate).width <= maxWidth) {
+                                    current = candidate;
+                                    return;
+                                }
+                                if (current) {
+                                    lines.push(current);
+                                    current = '';
+                                }
+                                while (ctx.measureText(word).width > maxWidth && word.length > 1) {
+                                    var cut = word.length - 1;
+                                    while (cut > 1 && ctx.measureText(word.slice(0, cut)).width > maxWidth) cut--;
+                                    lines.push(word.slice(0, cut));
+                                    word = word.slice(cut);
+                                }
+                                current = word;
+                            });
+                            if (current) lines.push(current);
+                            return lines.length ? lines : [''];
+                        }
+
+                        function actionDefinitions(node) {
+                            var actions = [{ type: 'scan', title: 'Scan for related records', iconClass: 'icon-search' }];
+                            if (!node.embeddedPrimary) actions.push({ type: 'open', title: 'Open record in platform', iconClass: 'icon-open-document-new-tab' });
+                            if (!node.primary) actions.push({ type: 'remove', title: 'Remove record', iconClass: 'icon-cross' });
+                            return actions;
+                        }
+
+                        function pillDefinitions(node) {
+                            var row = node.row;
+                            var lines = [];
+                            var status = [];
+                            if (node.primary) status.push({ className: 'we-pill-primary', label: 'Primary' });
+                            if (node.blocked) status.push({ className: 'we-pill-blocked', label: 'Blocked', iconBefore: 'icon-locked' });
+                            if (node.suggested) status.push({ className: 'we-pill-suggested', label: 'Recommended', iconAfter: 'icon-ai-sparkle-fill' });
+                            if (row.favouriteGroupName) status.push({
+                                className: 'we-pill-favourite',
+                                label: row.favouriteGroupName,
+                                title: row.favouriteGroupName,
+                                textClass: 'we-pill-favourite-text',
+                                iconAfter: 'icon-star',
+                            });
+                            while (status.length) lines.push(status.splice(0, 2));
+
+                            if (row.updateSetSysId) {
+                                var updateLine = [{
+                                    className: 'we-pill-update-set',
+                                    label: row.updateSetName,
+                                    title: row.updateSetName,
+                                    textClass: 'we-pill-update-set-text',
+                                    iconBefore: 'icon-document-code',
+                                }];
+                                if (node.includePreviousUpdates && row.isNewInUpdateSet) {
+                                    updateLine.push({ className: 'we-pill-new', label: 'New' });
+                                }
+                                if (row.updateSetAction === 'DELETE') {
+                                    updateLine.push({ className: 'we-pill-deleted', label: 'Deleted' });
+                                }
+                                lines.push(updateLine);
+                                if (node.includePreviousUpdates && !row.isNewInUpdateSet && row.previousVersion) {
+                                    lines.push([{
+                                        className: 'we-pill-update-set we-pill-update-set--previous',
+                                        label: row.previousVersion.updateSetName,
+                                        title: 'Previous Update Set: ' + row.previousVersion.updateSetName,
+                                        textClass: 'we-pill-update-set-text',
+                                    }]);
+                                }
+                            }
+                            return lines;
+                        }
+
+                        function createPill(definition) {
+                            var pill = document.createElement('span');
+                            pill.className = definition.className;
+                            if (definition.title) pill.title = definition.title;
+                            if (definition.iconBefore) {
+                                var before = document.createElement('i');
+                                before.className = definition.iconBefore;
+                                before.setAttribute('aria-hidden', 'true');
+                                pill.appendChild(before);
+                            }
+                            var text = document.createElement('span');
+                            if (definition.textClass) text.className = definition.textClass;
+                            text.textContent = definition.label || '';
+                            pill.appendChild(text);
+                            if (definition.iconAfter) {
+                                var after = document.createElement('i');
+                                after.className = definition.iconAfter;
+                                after.setAttribute('aria-hidden', 'true');
+                                pill.appendChild(after);
+                            }
+                            return pill;
+                        }
+
+                        function rebuildActionButtons() {
+                            actionLayer.innerHTML = '';
+                            layout.nodes.forEach(function (node) {
+                                var group = document.createElement('div');
+                                group.className = 'we-graph-node-actions';
+                                group.setAttribute('role', 'group');
+                                group.setAttribute('aria-label', 'Actions for ' + node.fullLabel);
+                                node.actions.forEach(function (action) {
+                                    action.node = node;
+                                    var button = document.createElement('button');
+                                    button.type = 'button';
+                                    button.className = 'btn btn-default btn-icon';
+                                    button.title = action.title;
+                                    button.setAttribute('aria-label', action.title);
+                                    var icon = document.createElement('i');
+                                    icon.className = action.iconClass;
+                                    icon.setAttribute('aria-hidden', 'true');
+                                    button.appendChild(icon);
+                                    button.addEventListener('click', function () { runAction(action); });
+                                    action.button = button;
+                                    group.appendChild(button);
+                                });
+                                actionLayer.appendChild(group);
+                                node.actionGroup = group;
+
+                                if (node.suggested) {
+                                    var recommended = document.createElement('span');
+                                    recommended.className = 'we-graph-recommended-icon';
+                                    recommended.title = 'Recommended';
+                                    recommended.setAttribute('aria-label', 'Recommended');
+                                    var sparkle = document.createElement('i');
+                                    sparkle.className = 'icon-ai-sparkle-fill';
+                                    sparkle.setAttribute('aria-hidden', 'true');
+                                    recommended.appendChild(sparkle);
+                                    actionLayer.appendChild(recommended);
+                                    node.recommendedIcon = recommended;
+                                }
+
+                                if (node.pillLines.length) {
+                                    var pills = document.createElement('div');
+                                    pills.className = 'we-graph-node-pills';
+                                    pills.setAttribute('aria-hidden', 'true');
+                                    node.pillLines.forEach(function (definitions) {
+                                        var line = document.createElement('div');
+                                        line.className = 'we-graph-pill-line';
+                                        definitions.forEach(function (definition) { line.appendChild(createPill(definition)); });
+                                        pills.appendChild(line);
+                                    });
+                                    actionLayer.appendChild(pills);
+                                    node.pillsElement = pills;
+                                }
+                            });
+                        }
+
+                        function buildLayout() {
+                            var graph = scope.graph || { nodes: [], edges: [] };
+                            var columns = {};
+                            ctx.font = '600 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                            (graph.nodes || []).forEach(function (sourceNode) {
+                                var node = angular.extend({}, sourceNode);
+                                node.labelLines = wrapText(node.fullLabel, NODE_WIDTH - 28);
+                                node.width = NODE_WIDTH;
+                                node.actions = actionDefinitions(node);
+                                node.pillLines = pillDefinitions(node);
+                                node.height = Math.max(82, 58 + node.labelLines.length * 19 + node.pillLines.length * 26);
+                                (columns[node.column] = columns[node.column] || []).push(node);
+                            });
+
+                            var columnKeys = Object.keys(columns).map(Number).sort(function (a, b) { return a - b; });
+                            var maxColumnHeight = 0;
+                            columnKeys.forEach(function (column) {
+                                columns[column].sort(function (a, b) { return a.order - b.order; });
+                                var total = columns[column].reduce(function (sum, node) { return sum + node.height; }, 0) +
+                                    Math.max(0, columns[column].length - 1) * ROW_GAP;
+                                maxColumnHeight = Math.max(maxColumnHeight, total);
+                            });
+
+                            var nodes = [];
+                            var byKey = {};
+                            columnKeys.forEach(function (column, columnIndex) {
+                                var rows = columns[column];
+                                var total = rows.reduce(function (sum, node) { return sum + node.height; }, 0) +
+                                    Math.max(0, rows.length - 1) * ROW_GAP;
+                                var y = 40 + (maxColumnHeight - total) / 2;
+                                rows.forEach(function (node) {
+                                    node.x = 40 + columnIndex * (NODE_WIDTH + COLUMN_GAP);
+                                    node.y = y;
+                                    y += node.height + ROW_GAP;
+                                    nodes.push(node);
+                                    byKey[node.key] = node;
+                                });
+                            });
+                            var edges = (graph.edges || []).filter(function (edge) {
+                                return byKey[edge.source] && byKey[edge.target];
+                            });
+                            edges.forEach(function (edge) {
+                                byKey[edge.source].hasOutgoing = true;
+                                byKey[edge.target].hasIncoming = true;
+                            });
+                            layout = {
+                                nodes: nodes,
+                                byKey: byKey,
+                                edges: edges,
+                                width: Math.max(NODE_WIDTH + 80, columnKeys.length * NODE_WIDTH + Math.max(0, columnKeys.length - 1) * COLUMN_GAP + 80),
+                                height: Math.max(180, maxColumnHeight + 80),
+                            };
+                            rebuildActionButtons();
+                        }
+
+                        function setZoomLabel() {
+                            scope.zoomPercent = Math.round(camera.scale * 100);
+                        }
+
+                        // Keep panning useful without allowing the entire graph to be lost off-screen.
+                        // If no card retains a visible patch, move the camera by the shortest amount
+                        // needed to bring the nearest card back into the viewport.
+                        function clampCameraToVisibleNode() {
+                            if (!layout.nodes.length) return;
+                            var nearest = null;
+                            layout.nodes.forEach(function (node) {
+                                var left = camera.x + node.x * camera.scale;
+                                var top = camera.y + node.y * camera.scale;
+                                var right = left + node.width * camera.scale;
+                                var bottom = top + node.height * camera.scale;
+                                var requiredX = Math.min(MIN_NODE_VISIBLE, node.width * camera.scale);
+                                var requiredY = Math.min(MIN_NODE_VISIBLE, node.height * camera.scale);
+                                var overlapX = Math.max(0, Math.min(right, viewportWidth) - Math.max(left, 0));
+                                var overlapY = Math.max(0, Math.min(bottom, viewportHeight) - Math.max(top, 0));
+                                if (overlapX >= requiredX && overlapY >= requiredY) {
+                                    nearest = { visible: true, dx: 0, dy: 0, distance: 0 };
+                                    return;
+                                }
+                                var dx = right < requiredX ? requiredX - right :
+                                    (left > viewportWidth - requiredX ? viewportWidth - requiredX - left : 0);
+                                var dy = bottom < requiredY ? requiredY - bottom :
+                                    (top > viewportHeight - requiredY ? viewportHeight - requiredY - top : 0);
+                                var distance = dx * dx + dy * dy;
+                                if (!nearest || distance < nearest.distance) nearest = { visible: false, dx: dx, dy: dy, distance: distance };
+                            });
+                            if (nearest && !nearest.visible) {
+                                camera.x += nearest.dx;
+                                camera.y += nearest.dy;
+                            }
+                        }
+
+                        function fitGraph() {
+                            if (!layout.nodes.length) return;
+                            var scale = Math.min((viewportWidth - 80) / layout.width, (viewportHeight - 80) / layout.height, 1.2);
+                            camera.scale = Math.max(MIN_SCALE, scale);
+                            camera.x = (viewportWidth - layout.width * camera.scale) / 2;
+                            camera.y = (viewportHeight - layout.height * camera.scale) / 2;
+                            setZoomLabel();
+                            draw();
+                        }
+
+                        function zoomAt(factor, screenX, screenY) {
+                            var oldScale = camera.scale;
+                            var nextScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, oldScale * factor));
+                            var worldX = (screenX - camera.x) / oldScale;
+                            var worldY = (screenY - camera.y) / oldScale;
+                            camera.scale = nextScale;
+                            camera.x = screenX - worldX * nextScale;
+                            camera.y = screenY - worldY * nextScale;
+                            clampCameraToVisibleNode();
+                            setZoomLabel();
+                            draw();
+                        }
+
+                        function drawGrid() {
+                            var spacing = 24;
+                            var left = -camera.x / camera.scale;
+                            var top = -camera.y / camera.scale;
+                            var right = left + viewportWidth / camera.scale;
+                            var bottom = top + viewportHeight / camera.scale;
+                            ctx.fillStyle = colours.grid;
+                            for (var x = Math.floor(left / spacing) * spacing; x <= right; x += spacing) {
+                                for (var y = Math.floor(top / spacing) * spacing; y <= bottom; y += spacing) {
+                                    ctx.beginPath();
+                                    ctx.arc(x, y, 1.15 / camera.scale, 0, Math.PI * 2);
+                                    ctx.fill();
+                                }
+                            }
+                        }
+
+                        function edgeEndpoints(from, to) {
+                            return {
+                                x1: from.x + from.width,
+                                y1: from.y + from.height / 2,
+                                x2: to.x,
+                                y2: to.y + to.height / 2,
+                            };
+                        }
+
+                        function drawEdge(edge) {
+                            var from = layout.byKey[edge.source];
+                            var to = layout.byKey[edge.target];
+                            var p = edgeEndpoints(from, to);
+                            ctx.save();
+                            ctx.globalAlpha = (from.dimmed || to.dimmed) ? 0.45 : 1;
+                            ctx.strokeStyle = colours.border;
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.moveTo(p.x1, p.y1);
+                            ctx.lineTo(p.x2, p.y2);
+                            ctx.stroke();
+
+                            var angle = Math.atan2(p.y2 - p.y1, p.x2 - p.x1);
+                            ctx.fillStyle = colours.border;
+                            ctx.beginPath();
+                            ctx.moveTo(p.x2, p.y2);
+                            ctx.lineTo(p.x2 - 10 * Math.cos(angle - Math.PI / 6), p.y2 - 10 * Math.sin(angle - Math.PI / 6));
+                            ctx.lineTo(p.x2 - 10 * Math.cos(angle + Math.PI / 6), p.y2 - 10 * Math.sin(angle + Math.PI / 6));
+                            ctx.closePath();
+                            ctx.fill();
+
+                            if (edge.label) {
+                                var label = String(edge.label);
+                                var mx = (p.x1 + p.x2) / 2;
+                                ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                                var labelLines = wrapText(label, COLUMN_GAP - 36);
+                                var lineHeight = 16;
+                                var labelWidth = labelLines.reduce(function (width, line) {
+                                    return Math.max(width, ctx.measureText(line).width);
+                                }, 0);
+                                var labelHeight = labelLines.length * lineHeight;
+                                var my = (p.y1 + p.y2) / 2 - labelHeight / 2;
+                                ctx.fillStyle = colours.background;
+                                ctx.fillRect(mx - labelWidth / 2 - 6, my - 12, labelWidth + 12, labelHeight + 6);
+                                ctx.fillStyle = colours.secondaryText;
+                                ctx.textAlign = 'center';
+                                labelLines.forEach(function (line, index) {
+                                    ctx.fillText(line, mx, my + index * lineHeight);
+                                });
+                                ctx.textAlign = 'left';
+                            }
+                            ctx.restore();
+                        }
+
+                        function fitText(text, maxWidth) {
+                            text = String(text || '');
+                            if (ctx.measureText(text).width <= maxWidth) return text;
+                            while (text.length > 1 && ctx.measureText(text + '…').width > maxWidth) text = text.slice(0, -1);
+                            return text + '…';
+                        }
+
+                        function drawNode(node) {
+                            ctx.save();
+                            ctx.globalAlpha = node.dimmed ? 0.5 : 1;
+                            ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+                            ctx.shadowBlur = 7;
+                            ctx.shadowOffsetY = 2;
+                            roundedRect(node.x, node.y, node.width, node.height, 8);
+                            ctx.fillStyle = node.primary ? colours.primarySurface : colours.surface;
+                            ctx.fill();
+                            ctx.shadowColor = 'transparent';
+                            ctx.strokeStyle = node.primary ? colours.primary : colours.border;
+                            ctx.lineWidth = node.primary ? 2 : 1.25;
+                            ctx.stroke();
+
+                            ctx.fillStyle = colours.secondaryText;
+                            ctx.font = '700 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                            var actionSpace = node.actions.length * 32 + 10;
+                            var recommendedSpace = node.suggested ? 18 : 0;
+                            var fittedTableLabel = fitText(String(node.tableLabel || node.table).toUpperCase(), node.width - 28 - actionSpace - recommendedSpace);
+                            ctx.fillText(fittedTableLabel, node.x + 14, node.y + 23);
+                            node.tableTextWidth = ctx.measureText(fittedTableLabel).width;
+
+                            ctx.fillStyle = colours.text;
+                            ctx.font = '600 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                            node.labelLines.forEach(function (line, index) {
+                                ctx.fillText(line, node.x + 14, node.y + 49 + index * 19);
+                            });
+
+                            // Only render ports that participate in at least one relationship.
+                            var ports = [];
+                            if (node.hasIncoming) ports.push(node.x);
+                            if (node.hasOutgoing) ports.push(node.x + node.width);
+                            ports.forEach(function (portX) {
+                                ctx.beginPath();
+                                ctx.arc(portX, node.y + node.height / 2, 5, 0, Math.PI * 2);
+                                ctx.fillStyle = colours.surface;
+                                ctx.fill();
+                                ctx.strokeStyle = colours.primary;
+                                ctx.lineWidth = 2;
+                                ctx.stroke();
+                            });
+                            ctx.restore();
+                        }
+
+                        function updateActionButtons() {
+                            layout.nodes.forEach(function (node) {
+                                if (!node.actionGroup) return;
+                                node.actions.forEach(function (action) {
+                                    if (action.button) action.button.disabled = action.type === 'scan' && !!node.row.scanning;
+                                });
+                                var groupWidth = node.actionGroup.offsetWidth;
+                                var screenX = camera.x + (node.x + node.width - 10 - groupWidth) * camera.scale;
+                                var screenY = camera.y + (node.y + 8) * camera.scale;
+                                node.actionGroup.style.transform = 'translate(' + screenX + 'px, ' + screenY + 'px) scale(' + camera.scale + ')';
+                                node.actionGroup.style.opacity = node.dimmed ? '0.5' : '1';
+                                if (node.recommendedIcon) {
+                                    var iconX = camera.x + (node.x + 20 + (node.tableTextWidth || 0)) * camera.scale;
+                                    var iconY = camera.y + (node.y + 9) * camera.scale;
+                                    node.recommendedIcon.style.transform = 'translate(' + iconX + 'px, ' + iconY + 'px) scale(' + camera.scale + ')';
+                                    node.recommendedIcon.style.opacity = node.dimmed ? '0.5' : '1';
+                                }
+                                if (node.pillsElement) {
+                                    var pillsX = camera.x + (node.x + 14) * camera.scale;
+                                    var pillsY = camera.y + (node.y + 59 + (node.labelLines.length - 1) * 19) * camera.scale;
+                                    node.pillsElement.style.transform = 'translate(' + pillsX + 'px, ' + pillsY + 'px) scale(' + camera.scale + ')';
+                                    node.pillsElement.style.opacity = node.dimmed ? '0.5' : '1';
+                                }
+                            });
+                        }
+
+                        function draw() {
+                            if (destroyed) return;
+                            ctx.setTransform(1, 0, 0, 1, 0, 0);
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.fillStyle = colours.background;
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            ctx.setTransform(dpr * camera.scale, 0, 0, dpr * camera.scale, dpr * camera.x, dpr * camera.y);
+                            drawGrid();
+                            layout.edges.forEach(drawEdge);
+                            layout.nodes.forEach(drawNode);
+                            updateActionButtons();
+                        }
+
+                        function resize() {
+                            viewportWidth = Math.max(1, host.clientWidth);
+                            viewportHeight = Math.max(1, host.clientHeight);
+                            dpr = Math.max(1, $window.devicePixelRatio || 1);
+                            canvas.width = Math.round(viewportWidth * dpr);
+                            canvas.height = Math.round(viewportHeight * dpr);
+                            canvas.style.width = viewportWidth + 'px';
+                            canvas.style.height = viewportHeight + 'px';
+                            clampCameraToVisibleNode();
+                            draw();
+                        }
+
+                        function screenPoint(event) {
+                            var rect = canvas.getBoundingClientRect();
+                            return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+                        }
+
+                        function runAction(action) {
+                            if (!action || !action.node) return;
+                            scope.$apply(function () {
+                                if (action.type === 'scan') scope.onScan({ row: action.node.row });
+                                if (action.type === 'open') scope.onOpen({ row: action.node.row });
+                                if (action.type === 'remove') scope.onRemove({ row: action.node.row });
+                            });
+                            $timeout(draw);
+                        }
+
+                        function onPointerDown(event) {
+                            if (event.button !== undefined && event.button !== 0) return;
+                            var p = screenPoint(event);
+                            pointer = { id: event.pointerId, x: p.x, y: p.y, cameraX: camera.x, cameraY: camera.y };
+                            canvas.setPointerCapture(event.pointerId);
+                            element.addClass('we-canvas-panning');
+                        }
+
+                        function onPointerMove(event) {
+                            if (!pointer || pointer.id !== event.pointerId) return;
+                            var p = screenPoint(event);
+                            var dx = p.x - pointer.x;
+                            var dy = p.y - pointer.y;
+                            camera.x = pointer.cameraX + dx;
+                            camera.y = pointer.cameraY + dy;
+                            clampCameraToVisibleNode();
+                            draw();
+                        }
+
+                        function onPointerUp(event) {
+                            if (!pointer || pointer.id !== event.pointerId) return;
+                            pointer = null;
+                            element.removeClass('we-canvas-panning');
+                            try { canvas.releasePointerCapture(event.pointerId); } catch (e) {}
+                        }
+
+                        function onWheel(event) {
+                            event.preventDefault();
+                            var p = screenPoint(event);
+                            zoomAt(event.deltaY < 0 ? 1.12 : 1 / 1.12, p.x, p.y);
+                            scope.$evalAsync();
+                        }
+
+                        canvas.addEventListener('pointerdown', onPointerDown);
+                        canvas.addEventListener('pointermove', onPointerMove);
+                        canvas.addEventListener('pointerup', onPointerUp);
+                        canvas.addEventListener('pointercancel', onPointerUp);
+                        canvas.addEventListener('wheel', onWheel, { passive: false });
+
+                        var resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
+                        if (resizeObserver) resizeObserver.observe(host);
+                        else angular.element($window).on('resize', resize);
+
+                        scope.$watch('graph', function () {
+                            buildLayout();
+                            $timeout(function () {
+                                resize();
+                                fitGraph();
+                            });
+                        });
+                        scope.$watch('command', function (command) {
+                            if (!command || !command.action) return;
+                            if (command.action === 'fit') fitGraph();
+                            if (command.action === 'zoomIn') zoomAt(1.2, viewportWidth / 2, viewportHeight / 2);
+                            if (command.action === 'zoomOut') zoomAt(1 / 1.2, viewportWidth / 2, viewportHeight / 2);
+                        });
+
+                        scope.$on('$destroy', function () {
+                            destroyed = true;
+                            canvas.removeEventListener('pointerdown', onPointerDown);
+                            canvas.removeEventListener('pointermove', onPointerMove);
+                            canvas.removeEventListener('pointerup', onPointerUp);
+                            canvas.removeEventListener('pointercancel', onPointerUp);
+                            canvas.removeEventListener('wheel', onWheel);
+                            if (resizeObserver) resizeObserver.disconnect();
+                            else angular.element($window).off('resize', resize);
+                            if (actionLayer.parentNode) actionLayer.parentNode.removeChild(actionLayer);
+                        });
+                    },
+                };
+            },
+        ]);
+
         // Directive: weModalDraggable — enables dragging a .we-picker-box modal by its
         // title row. Ported from Widget Editor+'s own we-modal-draggable directive so both
         // apps' modals behave identically, clamped so a modal can never be dragged off-screen.
@@ -2519,6 +3230,14 @@ export const widgetEditorAssistantUiPage = UiPage({
             ctrl.includePreviousUpdates = false;
             ctrl.rows = [];
             ctrl.visibleRows = [];
+            ctrl.viewMode = 'table';
+            ctrl.graph = { nodes: [], edges: [] };
+            ctrl.graphZoom = 100;
+            ctrl.graphCommand = null;
+            var graphCommandId = 0;
+            // Relationship provenance discovered by the suggestion scanner. Kept separately
+            // from rows because one record can be linked from more than one selected record.
+            var recordLinks = {};
             ctrl.typeCountsList = [];
             ctrl.activeTypeFilters = {};
             var primaryRowObj = null;
@@ -3100,6 +3819,111 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return row.table + ':' + row.sys_id;
             }
 
+            // Builds deterministic graph topology from every checked record. Active Context XML
+            // type filters affect export/table visibility, but graph nodes stay in place and dim.
+            // The canvas directive measures full labels and performs the final pixel layout.
+            function rebuildGraph() {
+                var selected = ctrl.rows.filter(function (r) {
+                    return !r.placeholder && r.checked && r.table && r.sys_id;
+                });
+                var byKey = {};
+                selected.forEach(function (r) { byKey[rowKey(r)] = r; });
+
+                var graphEdges = [];
+                var incoming = {};
+                var outgoing = {};
+                Object.keys(recordLinks).forEach(function (linkKey) {
+                    var link = recordLinks[linkKey];
+                    if (!byKey[link.source] || !byKey[link.target] || link.source === link.target) return;
+                    graphEdges.push(link);
+                    incoming[link.target] = (incoming[link.target] || 0) + 1;
+                    (outgoing[link.source] = outgoing[link.source] || []).push(link.target);
+                });
+
+                var level = {};
+                var queue = [];
+                selected.forEach(function (r) {
+                    var key = rowKey(r);
+                    if (r.primary || !incoming[key]) {
+                        level[key] = 0;
+                        queue.push(key);
+                    }
+                });
+                while (queue.length) {
+                    var source = queue.shift();
+                    (outgoing[source] || []).forEach(function (target) {
+                        var nextLevel = level[source] + 1;
+                        if (level[target] === undefined || nextLevel < level[target]) {
+                            level[target] = nextLevel;
+                            queue.push(target);
+                        }
+                    });
+                }
+                var maxLevel = 0;
+                Object.keys(level).forEach(function (key) { maxLevel = Math.max(maxLevel, level[key]); });
+                selected.forEach(function (r) {
+                    var key = rowKey(r);
+                    if (level[key] === undefined) level[key] = maxLevel + 1;
+                });
+
+                var columns = {};
+                selected.forEach(function (r) {
+                    var l = level[rowKey(r)];
+                    (columns[l] = columns[l] || []).push(r);
+                });
+                var columnKeys = Object.keys(columns).map(Number).sort(function (a, b) { return a - b; });
+                var nodes = [];
+                columnKeys.forEach(function (l, columnIndex) {
+                    var rows = columns[l];
+                    rows.sort(function (a, b) {
+                        if (!!a.primary !== !!b.primary) return a.primary ? -1 : 1;
+                        return String(a.label || '').localeCompare(String(b.label || ''));
+                    });
+                    rows.forEach(function (r, rowIndex) {
+                        nodes.push({
+                            key: rowKey(r),
+                            table: r.table,
+                            sysId: r.sys_id,
+                            tableLabel: r.tableLabel || tableLabel(r.table) || r.table,
+                            fullLabel: r.label || r.sys_id,
+                            primary: !!r.primary,
+                            suggested: !!r.suggested,
+                            blocked: ctrl.isExportBlocked(r.table, r),
+                            includePreviousUpdates: !!ctrl.includePreviousUpdates,
+                            dimmed: !rowMatchesActiveFilter(r),
+                            embeddedPrimary: !!(r.primary && ctrl.embeddedInModal),
+                            column: columnIndex,
+                            order: rowIndex,
+                            row: r,
+                        });
+                    });
+                });
+
+                var edges = graphEdges.map(function (link) {
+                    return {
+                        key: link.source + '>' + link.target,
+                        source: link.source,
+                        target: link.target,
+                        label: link.label,
+                    };
+                });
+                ctrl.graph = { nodes: nodes, edges: edges };
+            }
+
+            ctrl.setViewMode = function (mode) {
+                ctrl.viewMode = mode === 'graph' ? 'graph' : 'table';
+                if (ctrl.viewMode === 'graph') rebuildGraph();
+            };
+
+            ctrl.graphCanvasCommand = function (action) {
+                ctrl.graphCommand = { action: action, id: ++graphCommandId };
+            };
+
+            ctrl.openGraphRecord = function (row) {
+                if (!row || (row.primary && ctrl.embeddedInModal)) return;
+                window.open('/nav_to.do?uri=' + encodeURIComponent(row.table + '.do?sys_id=' + row.sys_id), '_blank', 'noopener,noreferrer');
+            };
+
             // Exported XML/SCHEMA byte size per row, keyed by rowKey — drives the real token estimate.
             ctrl.rowSizeBytes = {};
             var _sizeFetchInFlight = {};
@@ -3212,6 +4036,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             // type filter is active only matching types (plus the primary row) are included.
             function recomputeVisibleRows() {
                 ctrl.visibleRows = ctrl.rows.filter(rowMatchesActiveFilter);
+                rebuildGraph();
             }
 
             ctrl.toggleTypeFilter = function (label) {
@@ -3394,12 +4219,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.saveSelections();
                 recomputeTypeCounts();
                 ensureEstimatesForVisible();
+                rebuildGraph();
             };
 
             ctrl.onSelectionChange = function () {
                 ctrl.saveSelections();
                 recomputeTypeCounts();
                 ensureEstimatesForVisible();
+                rebuildGraph();
             };
 
             ctrl.updateSetRecordCount = function (us) {
@@ -3423,6 +4250,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.saveSelections();
                 recomputeTypeCounts();
                 ensureEstimatesForVisible();
+                rebuildGraph();
             };
 
             ctrl.removeRow = function (row) {
@@ -3489,6 +4317,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 }
                 ctrl.related = [];
                 ctrl.updateSets = [];
+                recordLinks = {};
                 ctrl.includePreviousUpdates = false;
                 dismissedSuggestionKeys = {};
                 _scannedScriptKeys = {};
@@ -3675,6 +4504,12 @@ export const widgetEditorAssistantUiPage = UiPage({
                     for (var i = 0; i < res.related.length; i++) {
                         var row = res.related[i];
                         var key = rowKey(row);
+                        var sourceKey = table + ':' + sysId;
+                        recordLinks[sourceKey + '>' + key] = {
+                            source: sourceKey,
+                            target: key,
+                            label: row.category || 'Related',
+                        };
                         if (existingKeys.has(key) || dismissedSuggestionKeys[key]) continue;
                         existingKeys.add(key);
                         ctrl.related.push({
@@ -3708,6 +4543,7 @@ export const widgetEditorAssistantUiPage = UiPage({
 
             function loadPrimaryContext() {
                 loadDismissedSuggestions();
+                recordLinks = {};
                 ctrl.related = [{
                     table: ctrl.primary.table,
                     sys_id: ctrl.primary.sysId,
