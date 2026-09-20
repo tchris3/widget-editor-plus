@@ -20,6 +20,7 @@ Features version history, side-by-side diff comparison, related lists, and user 
     </script>
 	<g:requires name="scripts/snc-code-editor/monaco.bundle.min.jsx" params="sysparm_substitute=false" />
 	<g:requires name="monaco_plus_bootstrap.jsdbx" params="sysparm_substitute=false" />
+	<g:requires name="we_history_sync.jsdbx" params="sysparm_substitute=false" />
 
     <g:requires name="scripts/angular_1.5.11/angular.min.js" position="last" />
     <g:requires name="scripts/js_includes_amb.jsx" params="sysparm_substitute=false" />
@@ -5393,6 +5394,12 @@ Features version history, side-by-side diff comparison, related lists, and user 
                             }
                         } catch (e) {}
                     }, 1000);
+                    if (window.WE_HISTORY_SYNC) {
+                        window.WE_HISTORY_SYNC.set({
+                            description: name || '',
+                            title: APP_TITLE,
+                        });
+                    }
                     $scope.headerDirty.name =
                         (name || '') !== originalHeader.name;
                 });

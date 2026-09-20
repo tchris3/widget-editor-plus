@@ -19,6 +19,7 @@ export const widgetEditorAssistantUiPage = UiPage({
         })();
     </script>
 
+    <g:requires name="we_history_sync.jsdbx" params="sysparm_substitute=false" />
     <g:requires name="scripts/angular_1.5.11/angular.min.js" position="last" />
     <script src="/scripts/angular_1.5.11/angular.min.js"></script>
 
@@ -3477,6 +3478,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                             }
                         } catch (e) {}
                     }, 1000);
+                    if (window.WE_HISTORY_SYNC) {
+                        window.WE_HISTORY_SYNC.set({ description: label || '', title: 'Widget Editor+ Assistant' });
+                    }
                 });
             }
 
