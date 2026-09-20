@@ -138,24 +138,22 @@ function getLastGitCommitIso(rootDir, filePath) {
     }
 }
 
-// A single source file can define many sys_properties (see
-// sys_properties_widget_editor_code_search_display_fields.now.ts), so the whole file's last
-// commit date is too coarse — editing one property's description would bump every other
-// property's shipped sys_updated_on too. Finds the specific Property({...}) block for
-// `propertyName` and walks its own line history via `git log -L`, then filters for a commit
-// that actually changed the value section (not just description/roles/etc, and not a
-// remove-then-identical-restore from a revert-and-remerge, which reads as a false change).
+// Scopes sys_updated_on to one property's own Property({...}) block instead of the whole file.
 function findPropertyBlockLines(fileContent, propertyName) {
     const lines = fileContent.split('\n');
     const nameLineText = `name: '${propertyName}'`;
-    const nameLineIndex = lines.findIndex(l => l.includes(nameLineText));
-    if (nameLineIndex === -1) return null;
-    let start = nameLineIndex;
-    while (start > 0 && lines[start].indexOf('Property({') === -1) start--;
-    let end = nameLineIndex;
-    while (end < lines.length - 1 && lines[end].trim() !== '})') end++;
-    if (lines[start].indexOf('Property({') === -1 || lines[end].trim() !== '})') return null;
-    return { startLine: start + 1, endLine: end + 1 }; // 1-indexed, inclusive
+    let start = 0;
+    while (start < lines.length) {
+        if (lines[start].indexOf('Property({') === -1) { start++; continue; }
+        let end = start;
+        while (end < lines.length - 1 && lines[end].trim() !== '})') end++;
+        if (lines[end].trim() !== '})') return null;
+        if (lines.slice(start, end + 1).some(l => l.includes(nameLineText))) {
+            return { startLine: start + 1, endLine: end + 1 }; // 1-indexed, inclusive
+        }
+        start = end + 1;
+    }
+    return null;
 }
 
 // True while `line` (without its +/-/space diff prefix) is part of the value assignment,

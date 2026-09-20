@@ -31,7 +31,8 @@ test('Assistant graph preserves discovered record-to-record links', () => {
     assert.ok(source.includes("var sourceKey = table + ':' + sysId;"));
     assert.ok(source.includes("recordLinks[sourceKey + '>' + key]"));
     assert.ok(source.includes("label: row.category || 'Related'"));
-    assert.ok(source.includes('layout.edges.forEach(drawEdge);'));
+    assert.ok(source.includes('layout.edges.forEach(drawEdgeLine);'));
+    assert.ok(source.includes('layout.edges.forEach(drawEdgeLabel);'));
 });
 
 test('Assistant canvas supports zoom, pan, full labels, and per-record actions', () => {

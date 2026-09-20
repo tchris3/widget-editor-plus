@@ -3168,7 +3168,12 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                     });
                 }
 
-                searchNext().then(function () {
+                var poolConcurrency = Math.min(3, total);
+                var workers = [];
+                for (var w = 0; w < poolConcurrency; w++) {
+                    workers.push(searchNext());
+                }
+                $q.all(workers).then(function () {
                     if (currentSearchGen !== gen) return;
                     vm.results = accumulatedResults;
                     vm.elapsed = Date.now() - started;

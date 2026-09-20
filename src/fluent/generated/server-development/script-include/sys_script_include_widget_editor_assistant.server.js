@@ -1027,20 +1027,8 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
      * @returns {{success: boolean, viewMode: string}} Return value.
      */
     getViewMode: function () {
-        var gr = new GlideRecordSecure('sys_user_preference');
-        gr.addQuery('user', gs.getUserID());
-        gr.addQuery('name', this.USER_PREF_NAME);
-        gr.setLimit(1);
-        gr.query();
-        var viewMode = 'table';
-        if (gr.next()) {
-            try {
-                if (JSON.parse(gr.getValue('value') || '{}').assistantViewMode === 'graph') {
-                    viewMode = 'graph';
-                }
-            } catch (e) {}
-        }
-        return this._answer({ success: true, viewMode: viewMode });
+        var viewMode = new WidgetEditorAjax().getMergedUserPref(this.USER_PREF_NAME, 'assistantViewMode', 'table');
+        return this._answer({ success: true, viewMode: viewMode === 'graph' ? 'graph' : 'table' });
     },
 
     /**
@@ -1051,27 +1039,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
      */
     saveViewMode: function () {
         var viewMode = this.getParameter('viewMode') === 'graph' ? 'graph' : 'table';
-        var gr = new GlideRecordSecure('sys_user_preference');
-        gr.addQuery('user', gs.getUserID());
-        gr.addQuery('name', this.USER_PREF_NAME);
-        gr.query();
-
-        var prefs = {};
-        if (gr.next()) {
-            try {
-                prefs = JSON.parse(gr.getValue('value')) || {};
-            } catch (e) {}
-            prefs.assistantViewMode = viewMode;
-            gr.setValue('value', JSON.stringify(prefs));
-            gr.update();
-        } else {
-            prefs.assistantViewMode = viewMode;
-            gr.initialize();
-            gr.setValue('user', gs.getUserID());
-            gr.setValue('name', this.USER_PREF_NAME);
-            gr.setValue('value', JSON.stringify(prefs));
-            gr.insert();
-        }
+        new WidgetEditorAjax().saveMergedUserPref(this.USER_PREF_NAME, 'assistantViewMode', viewMode);
         return this._answer({ success: true });
     },
 

@@ -3258,27 +3258,87 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     },
 
     /**
+     * Reads a shared JSON sys_user_preference blob for the current user.
+     * @param {string} prefName Preference name.
+     * @returns {Object} The parsed blob, or {} if missing/unparseable.
+     */
+    _readUserPrefsBlob: function (prefName) {
+        var gr = new GlideRecordSecure('sys_user_preference');
+        gr.addQuery('user', gs.getUserID());
+        gr.addQuery('name', prefName);
+        gr.setLimit(1);
+        gr.query();
+        if (!gr.next()) return {};
+        try {
+            return JSON.parse(gr.getValue('value')) || {};
+        } catch (e) {
+            return {};
+        }
+    },
+
+    /**
+     * Upserts a shared JSON sys_user_preference blob for the current user.
+     * @param {string} prefName Preference name.
+     * @param {Object} blob Value to store, JSON-encoded.
+     */
+    _writeUserPrefsBlob: function (prefName, blob) {
+        var gr = new GlideRecordSecure('sys_user_preference');
+        gr.addQuery('user', gs.getUserID());
+        gr.addQuery('name', prefName);
+        gr.query();
+        var json = JSON.stringify(blob);
+        if (gr.next()) {
+            gr.setValue('value', json);
+            gr.update();
+        } else {
+            gr.initialize();
+            gr.setValue('user', gs.getUserID());
+            gr.setValue('name', prefName);
+            gr.setValue('value', json);
+            gr.insert();
+        }
+    },
+
+    /**
+     * Reads one key out of a shared JSON sys_user_preference blob.
+     * @param {string} prefName Preference name.
+     * @param {string} key Key within the blob.
+     * @param {*} defaultValue Value to return when the blob or key is missing.
+     * @returns {*} The stored value, or defaultValue.
+     */
+    getMergedUserPref: function (prefName, key, defaultValue) {
+        var blob = this._readUserPrefsBlob(prefName);
+        return (key in blob) ? blob[key] : defaultValue;
+    },
+
+    /**
+     * Merges one key into a shared JSON sys_user_preference blob without disturbing
+     * other keys already stored there by other callers.
+     * @param {string} prefName Preference name.
+     * @param {string} key Key to set within the blob.
+     * @param {*} value Value to store.
+     */
+    saveMergedUserPref: function (prefName, key, value) {
+        var blob = this._readUserPrefsBlob(prefName);
+        blob[key] = value;
+        this._writeUserPrefsBlob(prefName, blob);
+    },
+
+    /**
      * Upserts the current user's Monaco+ preference.
      * Accepts `value` (JSON-encoded preference blob to store).
      * @returns {{success: boolean}} Return value.
      */
     saveUserPrefs: function () {
-        var value = this.getParameter('value');
-        var gr = new GlideRecordSecure('sys_user_preference');
-        gr.addQuery('user', gs.getUserID());
-        gr.addQuery('name', this.USER_PREF_NAME);
-        gr.query();
-
-        if (gr.next()) {
-            gr.setValue('value', value);
-            gr.update();
-        } else {
-            gr.initialize();
-            gr.setValue('user', gs.getUserID());
-            gr.setValue('name', this.USER_PREF_NAME);
-            gr.setValue('value', value);
-            gr.insert();
+        var incoming = {};
+        try {
+            incoming = JSON.parse(this.getParameter('value')) || {};
+        } catch (e) {}
+        var existing = this._readUserPrefsBlob(this.USER_PREF_NAME);
+        for (var key in incoming) {
+            existing[key] = incoming[key];
         }
+        this._writeUserPrefsBlob(this.USER_PREF_NAME, existing);
         return this._answer({
             success: true,
         });

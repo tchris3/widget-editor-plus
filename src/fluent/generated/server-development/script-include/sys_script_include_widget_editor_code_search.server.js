@@ -199,8 +199,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             var record = new GlideRecord(table);
             if (filter && !batched) record.addEncodedQuery(filter);
 
-            // Active only filter. A table with neither field has no notion of active/inactive,
-            // so every one of its records is treated as active and no query filter is applied.
+            // A table with neither field is treated as always-active, so no filter is applied.
             var tableHasActive = record.isValidField('active');
             var tableHasUActive = record.isValidField('u_active');
             if (activeOnly) {
@@ -747,16 +746,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
      * @returns {{success: boolean, groupId: string|null}} Return value.
      */
     getLastSearchGroup: function () {
-        var gr = new GlideRecord('sys_user_preference');
-        gr.addQuery('user', gs.getUserID());
-        gr.addQuery('name', this.USER_PREF_NAME);
-        gr.query();
-        var groupId = null;
-        if (gr.next()) {
-            try {
-                groupId = JSON.parse(gr.getValue('value')).lastCodeSearchGroup || null;
-            } catch (e) {}
-        }
+        var groupId = new WidgetEditorAjax().getMergedUserPref(this.USER_PREF_NAME, 'lastCodeSearchGroup', null);
         return this._answer({ success: true, groupId: groupId });
     },
 
@@ -768,27 +758,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
      */
     saveLastSearchGroup: function () {
         var groupId = this._getParam('group_id');
-        var gr = new GlideRecord('sys_user_preference');
-        gr.addQuery('user', gs.getUserID());
-        gr.addQuery('name', this.USER_PREF_NAME);
-        gr.query();
-
-        var prefs = {};
-        if (gr.next()) {
-            try {
-                prefs = JSON.parse(gr.getValue('value')) || {};
-            } catch (e) {}
-            prefs.lastCodeSearchGroup = groupId;
-            gr.setValue('value', JSON.stringify(prefs));
-            gr.update();
-        } else {
-            prefs.lastCodeSearchGroup = groupId;
-            gr.initialize();
-            gr.setValue('user', gs.getUserID());
-            gr.setValue('name', this.USER_PREF_NAME);
-            gr.setValue('value', JSON.stringify(prefs));
-            gr.insert();
-        }
+        new WidgetEditorAjax().saveMergedUserPref(this.USER_PREF_NAME, 'lastCodeSearchGroup', groupId);
         return this._answer({ success: true });
     },
 

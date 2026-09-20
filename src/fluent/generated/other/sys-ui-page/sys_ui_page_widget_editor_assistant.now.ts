@@ -2527,9 +2527,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             }
                         }
 
-                        // Fit never zooms in past 100% nor out past AUTO_FIT_MIN_SCALE (60%) — applies
-                        // both to the automatic fit on graph load and the explicit Fit button. Manual
-                        // zoom (wheel/buttons, via zoomAt) can still reach the true MIN_SCALE/MAX_SCALE range.
+                        // Clamps to [AUTO_FIT_MIN_SCALE, 100%]; manual zoom via zoomAt can go further.
                         function fitGraph() {
                             if (!layout.nodes.length) return;
                             var scale = Math.min((viewportWidth - 80) / layout.width, (viewportHeight - 80) / layout.height, 1);
@@ -4268,7 +4266,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             // type filter is active only matching types (plus the primary row) are included.
             function recomputeVisibleRows() {
                 ctrl.visibleRows = ctrl.rows.filter(rowMatchesActiveFilter);
-                rebuildGraph();
+                if (ctrl.viewMode === 'graph') rebuildGraph();
             }
 
             ctrl.toggleTypeFilter = function (label) {
@@ -4451,14 +4449,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.saveSelections();
                 recomputeTypeCounts();
                 ensureEstimatesForVisible();
-                rebuildGraph();
+                if (ctrl.viewMode === 'graph') rebuildGraph();
             };
 
             ctrl.onSelectionChange = function () {
                 ctrl.saveSelections();
                 recomputeTypeCounts();
                 ensureEstimatesForVisible();
-                rebuildGraph();
+                if (ctrl.viewMode === 'graph') rebuildGraph();
             };
 
             ctrl.updateSetRecordCount = function (us) {
@@ -4482,7 +4480,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.saveSelections();
                 recomputeTypeCounts();
                 ensureEstimatesForVisible();
-                rebuildGraph();
+                if (ctrl.viewMode === 'graph') rebuildGraph();
             };
 
             ctrl.removeRow = function (row) {
@@ -5445,7 +5443,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.saveSelections();
                 // Reflect the toggle immediately (including removing cached pills when switched
                 // off); the async refresh above rebuilds again when newly-fetched metadata lands.
-                rebuildGraph();
+                if (ctrl.viewMode === 'graph') rebuildGraph();
                 ensurePreviousVersionsForVisible();
             };
 
