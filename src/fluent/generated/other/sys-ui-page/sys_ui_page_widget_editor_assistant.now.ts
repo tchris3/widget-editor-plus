@@ -5664,9 +5664,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                     }
                 }, 8);
                 function addRecordUrl(el, row, payload) {
-                    if (el.tagName !== 'versioned_record' && el.tagName !== 'record') addExportModCount(el);
-                    // Identity and runtime context live once in the manifest or version wrapper.
-                    if (payload || (el.tagName === 'record' && row.updateSetSysId && ctrl.includePreviousUpdates)) return;
+                    if (payload) {
+                        addExportModCount(el);
+                        return;
+                    }
+                    // Record URLs and runtime context live once on the uniform record wrapper.
                     el.setAttribute('es12_override_at_export', exportEs12[row.table + ':' + row.sys_id] || 'unavailable');
                     var url = exportUrls[row.table + ':' + row.sys_id];
                     if (url) el.setAttribute('record_url', url);
@@ -5674,12 +5676,12 @@ export const widgetEditorAssistantUiPage = UiPage({
                 }
 
                 var combinedDoc = document.implementation.createDocument(null, 'context_bundle', null);
-                combinedDoc.documentElement.setAttribute('format_version', '2');
+                combinedDoc.documentElement.setAttribute('format_version', '3');
                 var notes = combinedDoc.createElement('format_notes');
-                notes.textContent = 'Compare previous to current raw field values; added/removed means snapshot presence. A field with no change attribute could not be compared — redacted, structured, or the whole record is missing on one side (see its status/change_type). sys_mod_count is a per-record saved update counter, not a global version; unsaved edits do not increment it. ES12 is the current server-side override at export/load, not historical or client-side mode; not_found/unavailable may inherit application defaults. Record URLs identify platform records, not historical versions.';
+                notes.textContent = 'Compare previous to current raw field values; added/removed means snapshot presence. A field with no change attribute could not be compared — redacted, structured, or the whole record is missing on one side (see its status/change_type). sys_mod_count is a per-record saved update counter, not a global version; unsaved edits do not increment it. ES12 is the current server-side override at export/load, not historical or client-side mode; not_found/unavailable may inherit application defaults. Record URLs identify platform records, not historical versions. Every payload has a record wrapper identified by table:sys_id, containing current_version and optionally previous_version. context_manifest contains relationship elements whose source and target refer to wrapper IDs; record names, roles, inclusion reasons, and blocked status live on the wrappers. The graph contains discovered relationships between exported records only; it is not a complete dependency inventory. previous_version update_set_name and update_set_sys_id identify the historical snapshot’s update set, which may differ from the selected update set.';
                 combinedDoc.documentElement.appendChild(notes);
 
-                // Update set metadata up front, before the manifest — a reader needs to know
+                // Update set metadata up front — a reader needs to know
                 // which sets are involved before the per-record update_set_name attributes below mean anything.
                 if (ctrl.updateSets.length) {
                     var updateSetsEl = combinedDoc.createElement('update_sets');
@@ -5695,39 +5697,20 @@ export const widgetEditorAssistantUiPage = UiPage({
                     combinedDoc.documentElement.appendChild(updateSetsEl);
                 }
 
-                // Manifest tells a reader what's here and why before it has to parse any record data.
-                var manifestEl = combinedDoc.createElement('context_manifest');
-                selected.forEach(function (row) {
-                    var entryEl = combinedDoc.createElement('record');
-                    entryEl.setAttribute('table', row.table);
-                    entryEl.setAttribute('sys_id', row.sys_id);
-                    addRecordUrl(entryEl, row);
-                    entryEl.setAttribute('name', row.label || row.sys_id);
-                    entryEl.setAttribute('role', row.primary ? 'primary' : 'related');
-                    if (row.suggested && row.category) {
-                        entryEl.setAttribute('reason', row.category);
-                    }
-                    if (row.updateSetSysId) {
-                        entryEl.setAttribute('update_set_sys_id', row.updateSetSysId);
-                        entryEl.setAttribute('update_set_name', row.updateSetName || '');
-                        if (row.updateSetAction) entryEl.setAttribute('action', row.updateSetAction);
-                        // change_type is always set for a DELETE (known from the update set itself,
-                        // no lookup needed); new vs. updated needs the previous-version lookup, so
-                        // it's only known once "Include previous version" has fetched that data.
-                        var changeType = null;
-                        if (row.updateSetAction === 'DELETE') {
-                            changeType = 'deleted';
-                        } else if (ctrl.includePreviousUpdates) {
-                            changeType = row.isNewInUpdateSet ? 'new' : 'updated';
-                        }
-                        if (changeType) entryEl.setAttribute('change_type', changeType);
-                    }
-                    if (!row.updateSetSysId && isTableExportBlocked(row.table)) {
-                        entryEl.setAttribute('blocked', 'true');
-                    }
-                    manifestEl.appendChild(entryEl);
+                // Export discovery links directly: canvas layout may omit cycles or hidden nodes.
+                var graphEl = combinedDoc.createElement('context_manifest');
+                var exportedKeys = Object.create(null);
+                selected.forEach(function (row) { exportedKeys[rowKey(row)] = true; });
+                Object.keys(recordLinks).sort().forEach(function (key) {
+                    var link = recordLinks[key];
+                    if (!exportedKeys[link.source] || !exportedKeys[link.target]) return;
+                    var relationshipEl = combinedDoc.createElement('relationship');
+                    relationshipEl.setAttribute('source', link.source);
+                    relationshipEl.setAttribute('target', link.target);
+                    relationshipEl.setAttribute('label', link.label || 'Related');
+                    graphEl.appendChild(relationshipEl);
                 });
-                combinedDoc.documentElement.appendChild(manifestEl);
+                combinedDoc.documentElement.appendChild(graphEl);
 
                 var primaryContainer = combinedDoc.createElement('primary_record');
                 var relatedContainer = combinedDoc.createElement('related_records');
@@ -5736,24 +5719,33 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                 await runPool(selected, async function (row) {
                     var targetContainer = row.primary ? primaryContainer : relatedContainer;
-                    // With "Include previous updates" on, an update-set row gets wrapped so a reader
-                    // can tell current and previous state apart at a glance instead of having to
-                    // diff two same-shaped records themselves.
+                    // All records share one envelope, whether or not history was requested.
                     var showsVersions = !!row.updateSetSysId && ctrl.includePreviousUpdates;
-                    var versionedEl = null;
-                    var destContainer = targetContainer;
-                    if (showsVersions) {
-                        versionedEl = combinedDoc.createElement('versioned_record');
-                        versionedEl.setAttribute('table', row.table);
-                        versionedEl.setAttribute('sys_id', row.sys_id);
-                        addRecordUrl(versionedEl, row);
-                        versionedEl.setAttribute('update_set_name', row.updateSetName || '');
-                        versionedEl.setAttribute('update_set_action', row.updateSetAction || '');
-                        versionedEl.setAttribute('change_type', row.updateSetAction === 'DELETE' ? 'deleted' : (row.isNewInUpdateSet ? 'new' : 'updated'));
-                        targetContainer.appendChild(versionedEl);
-                        destContainer = combinedDoc.createElement('current_version');
-                        versionedEl.appendChild(destContainer);
+                    var wrapperEl = combinedDoc.createElement('record');
+                    wrapperEl.setAttribute('id', rowKey(row));
+                    wrapperEl.setAttribute('table', row.table);
+                    wrapperEl.setAttribute('table_label', row.tableLabel || tableLabel(row.table));
+                    wrapperEl.setAttribute('sys_id', row.sys_id);
+                    wrapperEl.setAttribute('name', row.label || row.sys_id);
+                    wrapperEl.setAttribute('role', row.primary ? 'primary' : 'related');
+                    if (row.suggested && row.category) {
+                        wrapperEl.setAttribute('reason', row.category);
                     }
+                    if (!row.updateSetSysId && isTableExportBlocked(row.table)) {
+                        wrapperEl.setAttribute('blocked', 'true');
+                    }
+                    addRecordUrl(wrapperEl, row);
+                    if (row.updateSetSysId) {
+                        wrapperEl.setAttribute('update_set_sys_id', row.updateSetSysId);
+                        wrapperEl.setAttribute('update_set_name', row.updateSetName || '');
+                        wrapperEl.setAttribute('update_set_action', row.updateSetAction || '');
+                        if (row.updateSetAction === 'DELETE' || showsVersions) {
+                            wrapperEl.setAttribute('change_type', row.updateSetAction === 'DELETE' ? 'deleted' : (row.isNewInUpdateSet ? 'new' : 'updated'));
+                        }
+                    }
+                    targetContainer.appendChild(wrapperEl);
+                    var destContainer = combinedDoc.createElement('current_version');
+                    wrapperEl.appendChild(destContainer);
                     try {
                         if (row.updateSetAction === 'DELETE') {
                             // A DELETE record no longer exists on the live table — fetching it would
@@ -5804,21 +5796,20 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 redactRecordElement(recordEl);
                                 destContainer.appendChild(combinedDoc.importNode(recordEl, true));
                             }
-                            if (showsVersions && children.length === 0) {
+                            if (children.length === 0) {
                                 destContainer.setAttribute('status', 'unavailable');
                                 destContainer.setAttribute('reason', 'Record no longer exists on this table');
                             }
                         }
                     } catch (e) {
-                        if (showsVersions) {
-                            destContainer.setAttribute('status', 'unavailable');
-                        }
+                        destContainer.setAttribute('status', 'unavailable');
                     }
 
                     if (showsVersions) {
                         var previousEl = combinedDoc.createElement('previous_version');
                         if (row.previousVersion) {
                             previousEl.setAttribute('update_set_name', row.previousVersion.updateSetName || '');
+                            previousEl.setAttribute('update_set_sys_id', row.previousVersion.updateSetSysId || '');
                             previousEl.setAttribute('recorded_on', row.previousVersion.updatedOn || '');
                             var prevParsed = new DOMParser().parseFromString(row.previousVersion.payload || '', 'text/xml');
                             var prevChildren = prevParsed.documentElement ? prevParsed.documentElement.children : [];
@@ -5831,7 +5822,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             previousEl.setAttribute('status', 'new');
                             previousEl.textContent = 'No earlier version exists — this record is new as of this update set.';
                         }
-                        versionedEl.appendChild(previousEl);
+                        wrapperEl.appendChild(previousEl);
                         function recordChild(container) {
                             for (var i = 0; i < container.children.length; i++) {
                                 if (container.children[i].tagName === row.table) return container.children[i];
