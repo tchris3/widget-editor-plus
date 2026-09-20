@@ -163,6 +163,10 @@ declare global {
                         table: 'sys_properties'
                         id: 'f91740c6c1e13b438184f89dcda190f3'
                     }
+                    f9b36a6b0a89408580516b62837b5cc4: {
+                        table: 'sys_ui_script'
+                        id: 'f9b36a6b0a89408580516b62837b5cc4'
+                    }
                     package_json: {
                         table: 'sys_module'
                         id: '4d7818b806e648e987c6bdc42a124f78'

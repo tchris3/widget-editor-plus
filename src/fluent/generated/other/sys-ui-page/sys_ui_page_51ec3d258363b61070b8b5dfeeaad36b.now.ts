@@ -21,6 +21,7 @@ UiPage({
 
     <g:requires name="scripts/snc-code-editor/monaco.bundle.min.jsx" params="sysparm_substitute=false" />
     <g:requires name="monaco_plus_bootstrap.jsdbx" params="sysparm_substitute=false" />
+    <g:requires name="we_history_sync.jsdbx" params="sysparm_substitute=false" />
     <g:requires name="scripts/angular_1.5.11/angular.min.js" position="last" />
 
     <script>
@@ -1945,6 +1946,13 @@ UiPage({
     // normalization here so the rest of the page has one source of truth.
     var pageConfig = window.WE_DIFF_CONFIG || {};
     var SITE_TITLE = pageConfig.siteTitle || 'ServiceNow';
+    var APP_TITLE = 'Compare+';
+
+    function _syncHistoryEntry(description) {
+        if (window.WE_HISTORY_SYNC) {
+            window.WE_HISTORY_SYNC.set({ description: description || '', title: APP_TITLE });
+        }
+    }
 
     // Suppress "Unexpected usage" rejections from language service workers
     window.addEventListener('unhandledrejection', function(e) {
@@ -2602,6 +2610,7 @@ UiPage({
             setTimeout(function() {
                 try { if (window.parent !== window) window.parent.document.title = _title; } catch(e) {}
             }, 1000);
+            _syncHistoryEntry(ctrl.recordName + _tableSuffix);
 
             var _latestVer     = _allVersionsData.length > 0 ? _allVersionsData[0] : null;
             var _latestVerUsn  = _latestVer ? (_latestVer.update_set_name   || '') : '';
@@ -2971,6 +2980,7 @@ UiPage({
                     ctrl.recordNotFound = true;
                     var _notFoundSuffix = ctrl.tableLabel ? ' (' + ctrl.tableLabel + ')' : '';
                     document.title = 'Compare: Record not found' + _notFoundSuffix + ' - ' + SITE_TITLE;
+                    _syncHistoryEntry('Record not found' + _notFoundSuffix);
                     return;
                 }
                 if (!_fieldDefs) {
@@ -2983,6 +2993,7 @@ UiPage({
                         ctrl.recordName = _recordData.name || '(Unnamed)';
                         var _noVerSuffix = ctrl.tableLabel ? ' (' + ctrl.tableLabel + ')' : '';
                         document.title = 'Compare: ' + ctrl.recordName + _noVerSuffix + ' - ' + SITE_TITLE;
+                        _syncHistoryEntry(ctrl.recordName + _noVerSuffix);
                         return;
                     }
                     ctrl.errorMsg = 'Version load failed (record_id: ' + recordId + ')';

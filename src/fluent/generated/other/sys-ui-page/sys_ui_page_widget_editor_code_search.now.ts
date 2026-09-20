@@ -21,6 +21,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
 
     <g:requires name="scripts/snc-code-editor/monaco.bundle.min.jsx" params="sysparm_substitute=false" />
     <g:requires name="monaco_plus_bootstrap.jsdbx" params="sysparm_substitute=false" />
+    <g:requires name="we_history_sync.jsdbx" params="sysparm_substitute=false" />
     <g:requires name="scripts/angular_1.5.11/angular.min.js" position="last" />
     <link rel="stylesheet" href="/styles/retina_icons/retina_icons.css" />
 
@@ -2219,14 +2220,18 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             vm.paneGroupOpen = true;
             vm.paneResultsOpen = false;
 
+            var APP_TITLE = 'Code Search+';
             var siteTitle = (window.WE_CODE_SEARCH_CONFIG && window.WE_CODE_SEARCH_CONFIG.siteTitle) || 'ServiceNow';
             var titleTimer = null;
+            var historySyncedTerm = null;
+            // Match the History row by sys_id, not url: updateUrlParam() keeps rewriting location.search.
+            var historyMatch = 'urlLIKEsys_id=' + (new URLSearchParams(location.search).get('sys_id') || '');
             $scope.$watch(function () {
                 return vm.query + '|' + vm.hasSearched + '|' + vm.loading + '|' + vm.results.length;
             }, function () {
                 var term = vm.query && vm.query.trim();
                 var suffix = (vm.hasSearched && !vm.loading) ? ' (' + vm.results.length + ')' : '';
-                var title = (term ? term + suffix + ' - ' : '') + 'Code Search+ - ' + siteTitle;
+                var title = (term ? term + suffix + ' - ' : '') + APP_TITLE + ' - ' + siteTitle;
                 document.title = title;
                 if (titleTimer) {
                     $timeout.cancel(titleTimer);
@@ -2238,6 +2243,19 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                         }
                     } catch (e) {}
                 }, 1000);
+
+                // Syncs on load and again when the searched term changes, not as each table finishes.
+                var searched = (term && vm.hasSearched) ? term : '';
+                if (window.WE_HISTORY_SYNC && historySyncedTerm !== searched) {
+                    historySyncedTerm = searched;
+                    window.WE_HISTORY_SYNC.set({
+                        description: searched,
+                        match: historyMatch,
+                        title: APP_TITLE,
+                        // Rewrites the row url so reopening the entry restores this exact search.
+                        url: !!searched
+                    });
+                }
             });
 
             function _updateTablesWithResults() {
