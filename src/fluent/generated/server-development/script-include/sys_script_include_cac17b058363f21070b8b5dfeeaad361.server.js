@@ -570,6 +570,164 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     ////////////////////////////////////////////////////////////
 
     /**
+     * Resolves the two sys_update_version records needed to compare a Customer
+     * Update with the state immediately before its update set.
+     * Accepts `update_id` (sys_update_xml sys_id).
+     *
+     * @returns {{success: boolean, table: string, record_id: string,
+     *   version_1: string, version_2: string, error: string}} Comparison target.
+     */
+    getCustomerUpdateComparison: function () {
+        var updateId = this.getParameter('update_id');
+        var update = new GlideRecordSecure('sys_update_xml');
+        if (!updateId || !update.get(updateId)) {
+            return this._answer({
+                success: false,
+                error: 'Customer update not found.',
+            });
+        }
+
+        var targetRecord = this._parseCustomerUpdateTarget(
+            update.getValue('payload')
+        );
+        if (!targetRecord) {
+            return this._answer({
+                success: false,
+                error: 'The customer update payload has no target record.',
+            });
+        }
+
+        var name = update.getValue('name');
+        var updateSet = update.getValue('update_set') ||
+            update.getValue('remote_update_set');
+        var payload = update.getValue('payload');
+        var target = null;
+
+        // Prefer the same relationship used by the platform: Customer Update is
+        // one final payload per object/update set; Versions uses that set as its
+        // source. Retrieved/moved updates fall back to exact payload matching.
+        if (name && updateSet) {
+            var bySource = new GlideRecordSecure('sys_update_version');
+            bySource.addQuery('name', name);
+            bySource.addQuery('source', updateSet);
+            bySource.orderByDesc('sys_recorded_at');
+            bySource.setLimit(1);
+            bySource.query();
+            if (bySource.next()) {
+                target = bySource;
+            }
+        }
+
+        if (!target && name && payload) {
+            var byPayload = new GlideRecordSecure('sys_update_version');
+            byPayload.addQuery('name', name);
+            byPayload.orderByDesc('sys_recorded_at');
+            byPayload.query();
+            while (byPayload.next()) {
+                if (byPayload.getValue('payload') === payload) {
+                    target = byPayload;
+                    break;
+                }
+            }
+        }
+
+        if (!target) {
+            return this._answer({
+                success: false,
+                error: 'Compare+ could not find the version captured by this customer update.',
+            });
+        }
+
+        var recordedAt = target.getValue('sys_recorded_at');
+        var firstInSetAt = recordedAt;
+        var source = target.getValue('source');
+        if (source) {
+            var firstInSet = new GlideRecordSecure('sys_update_version');
+            firstInSet.addQuery('name', name);
+            firstInSet.addQuery('source', source);
+            firstInSet.addQuery('sys_recorded_at', '<=', recordedAt);
+            firstInSet.orderBy('sys_recorded_at');
+            firstInSet.setLimit(1);
+            firstInSet.query();
+            if (firstInSet.next()) {
+                firstInSetAt = firstInSet.getValue('sys_recorded_at');
+            }
+        }
+
+        var previous = new GlideRecordSecure('sys_update_version');
+        previous.addQuery('name', name);
+        previous.addQuery('sys_recorded_at', '<', firstInSetAt);
+        previous.orderByDesc('sys_recorded_at');
+        previous.setLimit(1);
+        previous.query();
+        if (!previous.next()) {
+            return this._answer({
+                success: false,
+                reason: 'no_previous_update_set',
+                error: 'No previous update set found.',
+            });
+        }
+
+        return this._answer({
+            success: true,
+            table: targetRecord.table,
+            record_id: targetRecord.sys_id,
+            version_1: previous.getUniqueValue(),
+            version_2: target.getUniqueValue(),
+        });
+    },
+
+    /**
+     * Resolves a widget/header-footer target from a Customer Update.
+     * Accepts `update_id` (sys_update_xml sys_id).
+     * @returns {{success: boolean, record_id: string, error: string}} Target.
+     */
+    getCustomerUpdateWidgetTarget: function () {
+        var updateId = this.getParameter('update_id');
+        var update = new GlideRecordSecure('sys_update_xml');
+        if (!updateId || !update.get(updateId)) {
+            return this._answer({ success: false, error: 'Customer update not found.' });
+        }
+
+        var target = this._parseCustomerUpdateTarget(update.getValue('payload'));
+        if (!target || (target.table !== 'sp_widget' && target.table !== 'sp_header_footer')) {
+            return this._answer({
+                success: false,
+                error: 'This customer update is not a widget or header/footer.',
+            });
+        }
+
+        return this._answer({ success: true, record_id: target.sys_id });
+    },
+
+    /**
+     * Resolves the target table and sys_id from a Customer Update.
+     * Accepts `update_id` (sys_update_xml sys_id).
+     * @returns {{success: boolean, table: string, record_id: string, error: string}} Target.
+     */
+    getCustomerUpdateTarget: function () {
+        var updateId = this.getParameter('update_id');
+        var update = new GlideRecordSecure('sys_update_xml');
+        if (!updateId || !update.get(updateId)) {
+            return this._answer({ success: false, error: 'Customer update not found.' });
+        }
+
+        var target = this._parseCustomerUpdateTarget(update.getValue('payload'));
+        if (!target) {
+            return this._answer({
+                success: false,
+                error: 'The customer update payload has no target record.',
+            });
+        }
+
+        return this._answer({
+            success: true,
+            table: target.table,
+            record_id: target.sys_id,
+        });
+    },
+
+    /**
      * Returns all sys_update_version records for a given widget, ordered newest-first.
      * Accepts `sys_id` (sp_widget sys_id).
      * @returns {{success: boolean, versions: Array.<{sys_id: string, sys_created_on: string,
@@ -3850,6 +4008,45 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
      */
     _answer: function (obj) {
         return this.setAnswer(JSON.stringify(obj));
+    },
+
+    /**
+     * Extracts the table and sys_id from a Customer Update/Version payload.
+     * @param {string} payload - Raw record_update XML.
+     * @returns {?{table: string, sys_id: string}} Parsed target, or null.
+     */
+    _parseCustomerUpdateTarget: function (payload) {
+        if (!payload) {
+            return null;
+        }
+        try {
+            var tableMatch = payload.match(/<([a-z_][a-z0-9_]*)\s[^>]*action=/i);
+            var table = tableMatch ? tableMatch[1] : '';
+            if (!table) {
+                return null;
+            }
+
+            var xmlDoc = new XMLDocument2();
+            xmlDoc.parseXML(payload);
+            var recordEl = xmlDoc.getFirstNode('//' + table);
+            if (!recordEl) {
+                return null;
+            }
+
+            var sysId = '';
+            var children = recordEl.getChildNodeIterator();
+            while (children.hasNext()) {
+                var child = children.next();
+                if (child.getNodeName() === 'sys_id') {
+                    sysId = child.getTextContent() || '';
+                    break;
+                }
+            }
+            return sysId ? { table: table, sys_id: sysId } : null;
+        } catch (e) {
+            gs.error('WidgetEditorAjax: customer update target parse failed: ' + e.message);
+            return null;
+        }
     },
 
     /**
