@@ -2758,8 +2758,25 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 <!-- ==================== 1. CRITICAL PILLS ==================== -->
 
+                <!-- Deleted widget pill -->
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; widget.deleted" we-close-on-outside-click="openDropdown" close-key="'alert-deleted'" ng-mouseenter="onAlertPillEnter('alert-deleted')" ng-mouseleave="onAlertPillLeave('alert-deleted')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-deleted'}" ng-focus="onAlertPillFocus('alert-deleted')" ng-keydown="onAlertPillKeydown($event, 'alert-deleted')" ng-click="toggleDropdown('alert-deleted'); $event.stopPropagation()" aria-label="Deleted widget details" aria-expanded="{{openDropdown === 'alert-deleted'}}">
+                        <i class="icon-error-circle" aria-hidden="true"></i>
+                        <span>Deleted Widget</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-deleted'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-deleted')" ng-click="$event.stopPropagation()" role="dialog">
+                        <div class="we-alert-popover-title">
+                            <i class="icon-error-circle" style="color:RGB(var(--now-alert--critical--color, var(--now-color_alert--critical-3, 180, 40, 40)));" aria-hidden="true"></i>
+                            <span>Deleted Widget</span>
+                        </div>
+                        <div class="we-alert-popover-body">
+                            This widget record no longer exists. You're viewing its content from the delete audit trail, and editing is disabled.
+                        </div>
+                    </div>
+                </div>
+
                 <!-- No write access / Scope mismatch pill -->
-                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; !canWriteWidget &amp;&amp; !widgetSysPolicy" we-close-on-outside-click="openDropdown" close-key="'alert-readonly'" ng-mouseenter="onAlertPillEnter('alert-readonly')" ng-mouseleave="onAlertPillLeave('alert-readonly')">
+                <div class="we-alert-pill-wrapper" ng-if="!isVersionView &amp;&amp; !canWriteWidget &amp;&amp; !widgetSysPolicy &amp;&amp; !widget.deleted" we-close-on-outside-click="openDropdown" close-key="'alert-readonly'" ng-mouseenter="onAlertPillEnter('alert-readonly')" ng-mouseleave="onAlertPillLeave('alert-readonly')">
                     <button type="button" class="btn we-alert-pill we-alert-pill--critical" ng-class="{'active': openDropdown === 'alert-readonly'}" ng-focus="onAlertPillFocus('alert-readonly')" ng-keydown="onAlertPillKeydown($event, 'alert-readonly')" ng-click="toggleDropdown('alert-readonly'); $event.stopPropagation()" aria-label="Read-only access details" aria-expanded="{{openDropdown === 'alert-readonly'}}">
                         <i class="icon-locked" aria-hidden="true" ng-if="!widget.scope_mismatch"></i>
                         <i class="icon-error-circle" aria-hidden="true" ng-if="widget.scope_mismatch"></i>

@@ -162,6 +162,14 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
 
         var gr = new GlideRecordSecure('sp_widget');
         if (!gr.get(sysId)) {
+            var deletedWidget = this._getDeletedWidget(sysId);
+            if (deletedWidget) {
+                return this._answer({
+                    success: true,
+                    widget: deletedWidget,
+                    additional_widget_fields: [],
+                });
+            }
             return this._answer({
                 success: false,
                 error: 'Widget not found',
@@ -3707,6 +3715,80 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             out.push(name);
         }
         return out;
+    },
+
+    /**
+     * Reconstructs a deleted sp_widget record from its sys_audit_delete field rows.
+     * @param {string} sysId - sys_id of the widget that no longer exists in sp_widget.
+     * @returns {Object|null} Widget-shaped object (all fields read-only, canWrite false)
+     *   with a `deleted` flag, or null when no delete audit trail exists for this sys_id.
+     */
+    _getDeletedWidget: function (sysId) {
+        var fields = {};
+        var deletedOn = '';
+        var deletedBy = '';
+        var auditGr = new GlideRecordSecure('sys_audit_delete');
+        auditGr.addQuery('tablename', 'sp_widget');
+        auditGr.addQuery('documentkey', sysId);
+        auditGr.orderByDesc('sys_created_on');
+        auditGr.query();
+        var found = false;
+        while (auditGr.next()) {
+            found = true;
+            var fieldName = auditGr.getValue('fieldname');
+            if (fieldName && !fields.hasOwnProperty(fieldName)) {
+                fields[fieldName] = auditGr.getValue('oldvalue') || '';
+            }
+            if (!deletedOn) {
+                deletedOn = auditGr.getValue('sys_created_on') || '';
+                deletedBy = auditGr.getValue('user') || '';
+            }
+        }
+        if (!found) {
+            return null;
+        }
+
+        return {
+            sys_id: sysId,
+            name: fields.name || '',
+            id: fields.id || '',
+            description: fields.description || '',
+            controller_as: fields.controller_as || 'c',
+            application: '',
+            application_sys_id: fields.sys_scope || '',
+            is_public: fields.public == '1',
+            roles: fields.roles || '',
+            template: fields.template || '',
+            css: fields.css || '',
+            client_script: fields.client_script || '',
+            script: fields.script || '',
+            link: fields.link || '',
+            es12: false,
+            es12_record_exists: false,
+            sys_updated_on: fields.sys_updated_on || '',
+            sys_updated_by: fields.sys_updated_by || '',
+            canWrite: false,
+            scope_mismatch: false,
+            widgetOrigin: null,
+            sys_policy: '',
+            sys_policy_display: '',
+            servicenow: false,
+            volatility_level: '',
+            volatility_level_display: '',
+            deprecated: false,
+            update_set_mismatch: false,
+            widget_update_set_id: '',
+            widget_update_set_name: '',
+            sys_class_name: 'sp_widget',
+            is_header_footer: false,
+            'static': false,
+            option_schema_has_value: false,
+            demo_data_has_value: false,
+            has_active_instances: false,
+            deleted: true,
+            deleted_on: deletedOn,
+            deleted_by: deletedBy,
+        };
     },
 
     /**
