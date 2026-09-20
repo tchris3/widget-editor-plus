@@ -1015,6 +1015,67 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     },
 
     ////////////////////////////////////////////////////////////
+    // Table/Graph view mode (User Preferences)
+    ////////////////////////////////////////////////////////////
+
+    /* Shared with the main Widget Editor+ tool so the view mode rides along with its preferences export/import. */
+    USER_PREF_NAME: 'monaco_plus.user_prefs',
+
+    /**
+     * Returns the current user's last-selected view mode ('table' or 'graph'),
+     * from the shared Widget Editor+ preference blob. Defaults to 'table'.
+     * @returns {{success: boolean, viewMode: string}} Return value.
+     */
+    getViewMode: function () {
+        var gr = new GlideRecordSecure('sys_user_preference');
+        gr.addQuery('user', gs.getUserID());
+        gr.addQuery('name', this.USER_PREF_NAME);
+        gr.setLimit(1);
+        gr.query();
+        var viewMode = 'table';
+        if (gr.next()) {
+            try {
+                if (JSON.parse(gr.getValue('value') || '{}').assistantViewMode === 'graph') {
+                    viewMode = 'graph';
+                }
+            } catch (e) {}
+        }
+        return this._answer({ success: true, viewMode: viewMode });
+    },
+
+    /**
+     * Persists the user's view mode into the shared Widget Editor+ preference blob, merging
+     * into whatever the main tool has already stored there rather than overwriting it.
+     * Accepts `viewMode` ('table' or 'graph'; anything else is treated as 'table').
+     * @returns {{success: boolean}} Return value.
+     */
+    saveViewMode: function () {
+        var viewMode = this.getParameter('viewMode') === 'graph' ? 'graph' : 'table';
+        var gr = new GlideRecordSecure('sys_user_preference');
+        gr.addQuery('user', gs.getUserID());
+        gr.addQuery('name', this.USER_PREF_NAME);
+        gr.query();
+
+        var prefs = {};
+        if (gr.next()) {
+            try {
+                prefs = JSON.parse(gr.getValue('value')) || {};
+            } catch (e) {}
+            prefs.assistantViewMode = viewMode;
+            gr.setValue('value', JSON.stringify(prefs));
+            gr.update();
+        } else {
+            prefs.assistantViewMode = viewMode;
+            gr.initialize();
+            gr.setValue('user', gs.getUserID());
+            gr.setValue('name', this.USER_PREF_NAME);
+            gr.setValue('value', JSON.stringify(prefs));
+            gr.insert();
+        }
+        return this._answer({ success: true });
+    },
+
+    ////////////////////////////////////////////////////////////
     // Update set picker
     ////////////////////////////////////////////////////////////
 

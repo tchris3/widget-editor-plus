@@ -172,7 +172,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             flex: 1;
             min-height: 0;
             overflow: hidden;
-            background-color: rgb(var(--now-color_background--secondary, 246 246 248));
+            background-color: rgb(var(--now-color_background--secondary));
         }
         .we-record-graph-canvas {
             display: block;
@@ -210,7 +210,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             pointer-events: none;
         }
         .we-graph-recommended-icon {
-            color: rgb(var(--now-color--primary-1, 30 133 109));
+            color: rgb(var(--now-color--primary-1));
             line-height: 1;
         }
         .we-graph-node-pills {
@@ -235,18 +235,30 @@ export const widgetEditorAssistantUiPage = UiPage({
             align-items: center;
             gap: 0.25rem;
             padding: 0.25rem;
-            border: 1px solid rgb(var(--now-color_border--secondary, 228 230 235));
+            border: 1px solid rgb(var(--now-color_border--secondary));
             border-radius: 6px;
-            background: rgb(var(--now-color_background--primary, 255 255 255));
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            background: rgb(var(--now-color_background--primary));
         }
         .we-graph-controls .btn { min-width: 2rem; }
         .we-graph-zoom-label {
             min-width: 3rem;
             text-align: center;
-            color: rgb(var(--now-color_text--secondary, 96 100 108));
+            color: rgb(var(--now-color_text--secondary));
             font-size: 0.75rem;
             font-weight: 600;
+        }
+        .we-graph-minimap {
+            position: absolute;
+            z-index: 2;
+            left: 0.75rem;
+            bottom: 0.75rem;
+            width: 8rem;
+            height: 5.25rem;
+            border: 1px solid rgb(var(--now-color_border--secondary));
+            border-radius: 6px;
+            background: rgb(var(--now-color_background--primary));
+            cursor: crosshair;
+            touch-action: none;
         }
         .we-graph-empty {
             height: 100%;
@@ -1679,7 +1691,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                     <div class="we-graph-container" ng-if="!ctrl.loadingInitial &amp;&amp; ctrl.viewMode === 'graph'">
                         <div class="we-graph-empty" ng-if="ctrl.graph.nodes.length === 0">
                             <strong>No selected records</strong>
-                            <span>Select at least one record in Table mode to build the graph.</span>
+                            <span>Select a record or update set.</span>
                         </div>
                         <div class="we-graph-controls" ng-if="ctrl.graph.nodes.length" role="group" aria-label="Graph zoom controls">
                             <button type="button" class="btn btn-default btn-icon" ng-click="ctrl.graphCanvasCommand('zoomOut')" title="Zoom out">−</button>
@@ -2207,6 +2219,16 @@ export const widgetEditorAssistantUiPage = UiPage({
                         var actionLayer = document.createElement('div');
                         actionLayer.className = 'we-graph-actions-layer';
                         host.appendChild(actionLayer);
+                        var minimap = document.createElement('canvas');
+                        minimap.className = 'we-graph-minimap';
+                        minimap.title = 'Graph overview — click or drag to pan';
+                        minimap.setAttribute('aria-label', 'Graph overview. Click or drag to pan the graph.');
+                        minimap.setAttribute('role', 'img');
+                        host.appendChild(minimap);
+                        var minimapCtx = minimap.getContext('2d');
+                        var minimapTransform = { scale: 1, x: 0, y: 0 };
+                        var minimapPointerId = null;
+                        var lastTopologySignature = '';
                         var dpr = Math.max(1, $window.devicePixelRatio || 1);
                         var viewportWidth = 1;
                         var viewportHeight = 1;
@@ -2221,23 +2243,26 @@ export const widgetEditorAssistantUiPage = UiPage({
                         var MAX_SCALE = 2.5;
                         var MIN_NODE_VISIBLE = 24;
 
-                        function cssColour(property, fallback) {
-                            var raw = $window.getComputedStyle(document.documentElement).getPropertyValue(property).trim();
-                            return raw ? 'rgb(' + raw.replace(/,/g, ' ') + ')' : fallback;
+                        function cssColour(property) {
+                            var raw = $window.getComputedStyle(host).getPropertyValue(property).trim();
+                            return 'rgb(' + raw.replace(/,/g, ' ') + ')';
                         }
 
-                        var colours = {
-                            background: cssColour('--now-color_background--secondary', '#f6f6f8'),
-                            surface: cssColour('--now-color_background--primary', '#ffffff'),
-                            primarySurface: cssColour('--now-color_surface--brand-1', '#ecf4f1'),
-                            text: cssColour('--now-color_text--primary', '#1d1d1d'),
-                            secondaryText: cssColour('--now-color_text--secondary', '#60646c'),
-                            tertiaryText: cssColour('--now-color_text--tertiary', '#82868e'),
-                            border: cssColour('--now-color_border--tertiary', '#acb4b5'),
-                            primary: cssColour('--now-color--primary-1', '#1e856d'),
-                            grid: 'rgba(130, 134, 142, 0.22)',
-                            danger: '#c83c36',
-                        };
+                        var colours = {};
+                        function refreshThemeColours() {
+                            colours.background = cssColour('--now-color_background--secondary');
+                            colours.surface = cssColour('--now-color_background--primary');
+                            colours.primarySurface = cssColour('--now-color_surface--brand-1');
+                            colours.text = cssColour('--now-color_text--primary');
+                            colours.secondaryText = cssColour('--now-color_text--secondary');
+                            colours.border = cssColour('--now-color_border--tertiary');
+                            colours.primary = cssColour('--now-color--primary-1');
+                            colours.positiveSurface = cssColour('--now-color_alert--positive-0');
+                            colours.positiveBorder = cssColour('--now-color_alert--positive-1');
+                            colours.criticalSurface = cssColour('--now-color_alert--critical-0');
+                            colours.criticalBorder = cssColour('--now-color_alert--critical-1');
+                        }
+                        refreshThemeColours();
 
                         function roundedRect(x, y, width, height, radius) {
                             var r = Math.min(radius, width / 2, height / 2);
@@ -2293,7 +2318,6 @@ export const widgetEditorAssistantUiPage = UiPage({
                             var status = [];
                             if (node.primary) status.push({ className: 'we-pill-primary', label: 'Primary' });
                             if (node.blocked) status.push({ className: 'we-pill-blocked', label: 'Blocked', iconBefore: 'icon-locked' });
-                            if (node.suggested) status.push({ className: 'we-pill-suggested', label: 'Recommended', iconAfter: 'icon-ai-sparkle-fill' });
                             if (row.favouriteGroupName) status.push({
                                 className: 'we-pill-favourite',
                                 label: row.favouriteGroupName,
@@ -2354,6 +2378,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                         }
 
                         function rebuildActionButtons() {
+                            // Overlay elements otherwise briefly render at absolute (0, 0) before
+                            // the next canvas draw positions them. Keep the layer hidden until the
+                            // canvas, cards and overlays have all been updated as one frame.
+                            actionLayer.style.visibility = 'hidden';
                             actionLayer.innerHTML = '';
                             layout.nodes.forEach(function (node) {
                                 var group = document.createElement('div');
@@ -2527,14 +2555,17 @@ export const widgetEditorAssistantUiPage = UiPage({
                             var top = -camera.y / camera.scale;
                             var right = left + viewportWidth / camera.scale;
                             var bottom = top + viewportHeight / camera.scale;
-                            ctx.fillStyle = colours.grid;
+                            ctx.save();
+                            ctx.fillStyle = colours.secondaryText;
+                            ctx.globalAlpha = 0.2;
                             for (var x = Math.floor(left / spacing) * spacing; x <= right; x += spacing) {
                                 for (var y = Math.floor(top / spacing) * spacing; y <= bottom; y += spacing) {
                                     ctx.beginPath();
-                                    ctx.arc(x, y, 1.15 / camera.scale, 0, Math.PI * 2);
+                                    ctx.arc(x, y, 0.85 / camera.scale, 0, Math.PI * 2);
                                     ctx.fill();
                                 }
                             }
+                            ctx.restore();
                         }
 
                         function edgeEndpoints(from, to) {
@@ -2598,18 +2629,39 @@ export const widgetEditorAssistantUiPage = UiPage({
                             return text + '…';
                         }
 
+                        function nodeStatusGradient(targetContext, node, positive, critical) {
+                            var gradient = targetContext.createLinearGradient(node.x, node.y, node.x + node.width, node.y);
+                            gradient.addColorStop(0, positive);
+                            gradient.addColorStop(1, critical);
+                            return gradient;
+                        }
+
+                        function nodeFillStyle(targetContext, node) {
+                            if (node.isNew && node.isDeleted) {
+                                return nodeStatusGradient(targetContext, node, colours.positiveSurface, colours.criticalSurface);
+                            }
+                            if (node.isDeleted) return colours.criticalSurface;
+                            if (node.isNew) return colours.positiveSurface;
+                            return node.primary ? colours.primarySurface : colours.surface;
+                        }
+
+                        function nodeBorderStyle(targetContext, node) {
+                            if (node.isNew && node.isDeleted) {
+                                return nodeStatusGradient(targetContext, node, colours.positiveBorder, colours.criticalBorder);
+                            }
+                            if (node.isDeleted) return colours.criticalBorder;
+                            if (node.isNew) return colours.positiveBorder;
+                            return node.primary ? colours.primary : colours.border;
+                        }
+
                         function drawNode(node) {
                             ctx.save();
                             ctx.globalAlpha = node.dimmed ? 0.5 : 1;
-                            ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
-                            ctx.shadowBlur = 7;
-                            ctx.shadowOffsetY = 2;
                             roundedRect(node.x, node.y, node.width, node.height, 8);
-                            ctx.fillStyle = node.primary ? colours.primarySurface : colours.surface;
+                            ctx.fillStyle = nodeFillStyle(ctx, node);
                             ctx.fill();
-                            ctx.shadowColor = 'transparent';
-                            ctx.strokeStyle = node.primary ? colours.primary : colours.border;
-                            ctx.lineWidth = node.primary ? 2 : 1.25;
+                            ctx.strokeStyle = nodeBorderStyle(ctx, node);
+                            ctx.lineWidth = (node.primary || node.isNew || node.isDeleted) ? 2 : 1.25;
                             ctx.stroke();
 
                             ctx.fillStyle = colours.secondaryText;
@@ -2668,8 +2720,70 @@ export const widgetEditorAssistantUiPage = UiPage({
                             });
                         }
 
+                        function drawMinimap() {
+                            if (!layout.nodes.length) return;
+                            var width = Math.max(1, minimap.clientWidth || 192);
+                            var height = Math.max(1, minimap.clientHeight || 128);
+                            var pixelWidth = Math.round(width * dpr);
+                            var pixelHeight = Math.round(height * dpr);
+                            if (minimap.width !== pixelWidth || minimap.height !== pixelHeight) {
+                                minimap.width = pixelWidth;
+                                minimap.height = pixelHeight;
+                            }
+                            minimapCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                            minimapCtx.clearRect(0, 0, width, height);
+                            minimapCtx.fillStyle = colours.surface;
+                            minimapCtx.fillRect(0, 0, width, height);
+
+                            var padding = 9;
+                            var scale = Math.min((width - padding * 2) / layout.width, (height - padding * 2) / layout.height);
+                            var offsetX = (width - layout.width * scale) / 2;
+                            var offsetY = (height - layout.height * scale) / 2;
+                            minimapTransform = { scale: scale, x: offsetX, y: offsetY };
+
+                            minimapCtx.save();
+                            minimapCtx.translate(offsetX, offsetY);
+                            minimapCtx.scale(scale, scale);
+                            minimapCtx.strokeStyle = colours.border;
+                            minimapCtx.lineWidth = Math.max(1 / scale, 1.5);
+                            layout.edges.forEach(function (edge) {
+                                var from = layout.byKey[edge.source];
+                                var to = layout.byKey[edge.target];
+                                minimapCtx.globalAlpha = (from.dimmed || to.dimmed) ? 0.35 : 0.75;
+                                minimapCtx.beginPath();
+                                minimapCtx.moveTo(from.x + from.width, from.y + from.height / 2);
+                                minimapCtx.lineTo(to.x, to.y + to.height / 2);
+                                minimapCtx.stroke();
+                            });
+                            layout.nodes.forEach(function (node) {
+                                minimapCtx.globalAlpha = node.dimmed ? 0.4 : 1;
+                                minimapCtx.fillStyle = (node.isNew || node.isDeleted) ? nodeFillStyle(minimapCtx, node) :
+                                    (node.primary ? colours.primary : colours.secondaryText);
+                                minimapCtx.fillRect(node.x, node.y, node.width, node.height);
+                                minimapCtx.strokeStyle = nodeBorderStyle(minimapCtx, node);
+                                minimapCtx.lineWidth = Math.max(1 / scale, 1.5);
+                                minimapCtx.strokeRect(node.x, node.y, node.width, node.height);
+                            });
+                            minimapCtx.restore();
+
+                            // Current main-canvas viewport, expressed in graph-world coordinates.
+                            var worldLeft = -camera.x / camera.scale;
+                            var worldTop = -camera.y / camera.scale;
+                            var worldWidth = viewportWidth / camera.scale;
+                            var worldHeight = viewportHeight / camera.scale;
+                            minimapCtx.save();
+                            minimapCtx.fillStyle = colours.primary;
+                            minimapCtx.globalAlpha = 0.12;
+                            minimapCtx.fillRect(offsetX + worldLeft * scale, offsetY + worldTop * scale, worldWidth * scale, worldHeight * scale);
+                            minimapCtx.restore();
+                            minimapCtx.strokeStyle = colours.primary;
+                            minimapCtx.lineWidth = 1.5;
+                            minimapCtx.strokeRect(offsetX + worldLeft * scale, offsetY + worldTop * scale, worldWidth * scale, worldHeight * scale);
+                        }
+
                         function draw() {
                             if (destroyed) return;
+                            refreshThemeColours();
                             ctx.setTransform(1, 0, 0, 1, 0, 0);
                             ctx.clearRect(0, 0, canvas.width, canvas.height);
                             ctx.fillStyle = colours.background;
@@ -2679,6 +2793,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                             layout.edges.forEach(drawEdge);
                             layout.nodes.forEach(drawNode);
                             updateActionButtons();
+                            drawMinimap();
+                            actionLayer.style.visibility = 'visible';
                         }
 
                         function resize() {
@@ -2741,22 +2857,84 @@ export const widgetEditorAssistantUiPage = UiPage({
                             scope.$evalAsync();
                         }
 
+                        function panFromMinimap(event) {
+                            var rect = minimap.getBoundingClientRect();
+                            var localX = event.clientX - rect.left;
+                            var localY = event.clientY - rect.top;
+                            var worldX = (localX - minimapTransform.x) / minimapTransform.scale;
+                            var worldY = (localY - minimapTransform.y) / minimapTransform.scale;
+                            camera.x = viewportWidth / 2 - worldX * camera.scale;
+                            camera.y = viewportHeight / 2 - worldY * camera.scale;
+                            clampCameraToVisibleNode();
+                            draw();
+                        }
+
+                        function onMinimapPointerDown(event) {
+                            if (event.button !== undefined && event.button !== 0) return;
+                            event.preventDefault();
+                            minimapPointerId = event.pointerId;
+                            minimap.setPointerCapture(event.pointerId);
+                            panFromMinimap(event);
+                        }
+
+                        function onMinimapPointerMove(event) {
+                            if (minimapPointerId !== event.pointerId) return;
+                            event.preventDefault();
+                            panFromMinimap(event);
+                        }
+
+                        function onMinimapPointerUp(event) {
+                            if (minimapPointerId !== event.pointerId) return;
+                            minimapPointerId = null;
+                            try { minimap.releasePointerCapture(event.pointerId); } catch (e) {}
+                        }
+
                         canvas.addEventListener('pointerdown', onPointerDown);
                         canvas.addEventListener('pointermove', onPointerMove);
                         canvas.addEventListener('pointerup', onPointerUp);
                         canvas.addEventListener('pointercancel', onPointerUp);
                         canvas.addEventListener('wheel', onWheel, { passive: false });
+                        minimap.addEventListener('pointerdown', onMinimapPointerDown);
+                        minimap.addEventListener('pointermove', onMinimapPointerMove);
+                        minimap.addEventListener('pointerup', onMinimapPointerUp);
+                        minimap.addEventListener('pointercancel', onMinimapPointerUp);
 
                         var resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
                         if (resizeObserver) resizeObserver.observe(host);
                         else angular.element($window).on('resize', resize);
 
+                        // Canvas pixels do not automatically repaint when CSS variables change.
+                        // Watch the theme-bearing document elements and redraw from the latest
+                        // ServiceNow colour tokens whenever a theme class/style changes.
+                        var themeObserver = typeof MutationObserver !== 'undefined' ? new MutationObserver(function () {
+                            $timeout(draw);
+                        }) : null;
+                        if (themeObserver) {
+                            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
+                            if (document.body) themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
+                        }
+                        var colourSchemeMedia = $window.matchMedia ? $window.matchMedia('(prefers-color-scheme: dark)') : null;
+                        function onColourSchemeChange() { $timeout(draw); }
+                        if (colourSchemeMedia && colourSchemeMedia.addEventListener) colourSchemeMedia.addEventListener('change', onColourSchemeChange);
+
                         scope.$watch('graph', function () {
+                            var graph = scope.graph || { nodes: [], edges: [] };
+                            var topologySignature = (graph.nodes || []).map(function (node) { return node.key; }).join('|') + '::' +
+                                (graph.edges || []).map(function (edge) { return edge.key; }).join('|');
+                            var topologyChanged = topologySignature !== lastTopologySignature;
+                            lastTopologySignature = topologySignature;
                             buildLayout();
-                            $timeout(function () {
+                            if (host.clientWidth > 1 && host.clientHeight > 1) {
                                 resize();
-                                fitGraph();
-                            });
+                                if (topologyChanged) fitGraph();
+                            } else {
+                                // Initial ng-if insertion can report zero dimensions for one turn.
+                                // The overlay remains hidden until a correctly-sized frame is ready.
+                                $timeout(function () {
+                                    resize();
+                                    if (topologyChanged) fitGraph();
+                                });
+                            }
                         });
                         scope.$watch('command', function (command) {
                             if (!command || !command.action) return;
@@ -2772,9 +2950,16 @@ export const widgetEditorAssistantUiPage = UiPage({
                             canvas.removeEventListener('pointerup', onPointerUp);
                             canvas.removeEventListener('pointercancel', onPointerUp);
                             canvas.removeEventListener('wheel', onWheel);
+                            minimap.removeEventListener('pointerdown', onMinimapPointerDown);
+                            minimap.removeEventListener('pointermove', onMinimapPointerMove);
+                            minimap.removeEventListener('pointerup', onMinimapPointerUp);
+                            minimap.removeEventListener('pointercancel', onMinimapPointerUp);
                             if (resizeObserver) resizeObserver.disconnect();
                             else angular.element($window).off('resize', resize);
+                            if (themeObserver) themeObserver.disconnect();
+                            if (colourSchemeMedia && colourSchemeMedia.removeEventListener) colourSchemeMedia.removeEventListener('change', onColourSchemeChange);
                             if (actionLayer.parentNode) actionLayer.parentNode.removeChild(actionLayer);
+                            if (minimap.parentNode) minimap.parentNode.removeChild(minimap);
                         });
                     },
                 };
@@ -3382,6 +3567,19 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return ajax('saveFavouriteGroups', { groups: JSON.stringify(serializable) }).then(angular.noop, angular.noop);
             }
 
+            ////////////////////////////////////////////////////////////
+            // Table/Graph view mode: persisted server-side so it survives across sessions.
+            ////////////////////////////////////////////////////////////
+
+            function loadViewMode() {
+                return ajax('getViewMode', {}).then(function (res) {
+                    if (res && res.success && res.viewMode === 'graph') {
+                        ctrl.viewMode = 'graph';
+                        rebuildGraph();
+                    }
+                }, angular.noop);
+            }
+
             function genGroupId() {
                 return 'fav_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
             }
@@ -3889,6 +4087,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                             primary: !!r.primary,
                             suggested: !!r.suggested,
                             blocked: ctrl.isExportBlocked(r.table, r),
+                            // Match the visible pill semantics: "New" is only meaningful/shown
+                            // while previous versions are included; Deleted is always shown.
+                            isNew: !!ctrl.includePreviousUpdates && !!r.isNewInUpdateSet,
+                            isDeleted: r.updateSetAction === 'DELETE',
                             includePreviousUpdates: !!ctrl.includePreviousUpdates,
                             dimmed: !rowMatchesActiveFilter(r),
                             embeddedPrimary: !!(r.primary && ctrl.embeddedInModal),
@@ -3913,6 +4115,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             ctrl.setViewMode = function (mode) {
                 ctrl.viewMode = mode === 'graph' ? 'graph' : 'table';
                 if (ctrl.viewMode === 'graph') rebuildGraph();
+                ajax('saveViewMode', { viewMode: ctrl.viewMode }).then(angular.noop, angular.noop);
             };
 
             ctrl.graphCanvasCommand = function (action) {
@@ -5185,7 +5388,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                     $timeout(angular.noop);
                 }, 8);
                 _pendingPreviousVersionFetches--;
-                $timeout(angular.noop);
+                $timeout(function () {
+                    // Previous-version pills are canvas overlay metadata; refresh the graph as
+                    // soon as the async lookups populate isNewInUpdateSet/previousVersion.
+                    if (ctrl.viewMode === 'graph') rebuildGraph();
+                });
             }
 
             // Fetches previous-version sizes only for rows actually contributing to the token
@@ -5207,6 +5414,9 @@ export const widgetEditorAssistantUiPage = UiPage({
 
             ctrl.toggleIncludePreviousUpdates = function () {
                 ctrl.saveSelections();
+                // Reflect the toggle immediately (including removing cached pills when switched
+                // off); the async refresh above rebuilds again when newly-fetched metadata lands.
+                rebuildGraph();
                 ensurePreviousVersionsForVisible();
             };
 
@@ -5439,6 +5649,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             function init() {
                 loadFavouriteTables();
                 loadFavouriteGroups();
+                loadViewMode();
                 loadTokenConfig();
                 if (window.WE_ASSISTANT_CONFIG && window.WE_ASSISTANT_CONFIG.sysId) {
                     ctrl.loadingInitial = true;
