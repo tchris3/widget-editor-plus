@@ -2241,6 +2241,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         var ROW_GAP = 46;
                         var MIN_SCALE = 0.2;
                         var MAX_SCALE = 2.5;
+                        var AUTO_FIT_MIN_SCALE = 0.6;
                         var MIN_NODE_VISIBLE = 24;
 
                         function cssColour(property) {
@@ -2526,10 +2527,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                             }
                         }
 
+                        // Fit never zooms in past 100% nor out past AUTO_FIT_MIN_SCALE (60%) — applies
+                        // both to the automatic fit on graph load and the explicit Fit button. Manual
+                        // zoom (wheel/buttons, via zoomAt) can still reach the true MIN_SCALE/MAX_SCALE range.
                         function fitGraph() {
                             if (!layout.nodes.length) return;
-                            var scale = Math.min((viewportWidth - 80) / layout.width, (viewportHeight - 80) / layout.height, 1.2);
-                            camera.scale = Math.max(MIN_SCALE, scale);
+                            var scale = Math.min((viewportWidth - 80) / layout.width, (viewportHeight - 80) / layout.height, 1);
+                            camera.scale = Math.max(AUTO_FIT_MIN_SCALE, scale);
                             camera.x = (viewportWidth - layout.width * camera.scale) / 2;
                             camera.y = (viewportHeight - layout.height * camera.scale) / 2;
                             setZoomLabel();
@@ -2577,7 +2581,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                             };
                         }
 
-                        function drawEdge(edge) {
+                        // Split into two passes (see draw()) so a neighbouring edge's line — drawn
+                        // after this one when several edges fan out from the same node — can never
+                        // cross back over a label that's already been drawn.
+                        function drawEdgeLine(edge) {
                             var from = layout.byKey[edge.source];
                             var to = layout.byKey[edge.target];
                             var p = edgeEndpoints(from, to);
@@ -2598,27 +2605,34 @@ export const widgetEditorAssistantUiPage = UiPage({
                             ctx.lineTo(p.x2 - 10 * Math.cos(angle + Math.PI / 6), p.y2 - 10 * Math.sin(angle + Math.PI / 6));
                             ctx.closePath();
                             ctx.fill();
+                            ctx.restore();
+                        }
 
-                            if (edge.label) {
-                                var label = String(edge.label);
-                                var mx = (p.x1 + p.x2) / 2;
-                                ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-                                var labelLines = wrapText(label, COLUMN_GAP - 36);
-                                var lineHeight = 16;
-                                var labelWidth = labelLines.reduce(function (width, line) {
-                                    return Math.max(width, ctx.measureText(line).width);
-                                }, 0);
-                                var labelHeight = labelLines.length * lineHeight;
-                                var my = (p.y1 + p.y2) / 2 - labelHeight / 2;
-                                ctx.fillStyle = colours.background;
-                                ctx.fillRect(mx - labelWidth / 2 - 6, my - 12, labelWidth + 12, labelHeight + 6);
-                                ctx.fillStyle = colours.secondaryText;
-                                ctx.textAlign = 'center';
-                                labelLines.forEach(function (line, index) {
-                                    ctx.fillText(line, mx, my + index * lineHeight);
-                                });
-                                ctx.textAlign = 'left';
-                            }
+                        function drawEdgeLabel(edge) {
+                            if (!edge.label) return;
+                            var from = layout.byKey[edge.source];
+                            var to = layout.byKey[edge.target];
+                            var p = edgeEndpoints(from, to);
+                            ctx.save();
+                            ctx.globalAlpha = (from.dimmed || to.dimmed) ? 0.45 : 1;
+                            var label = String(edge.label);
+                            var mx = (p.x1 + p.x2) / 2;
+                            ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                            var labelLines = wrapText(label, COLUMN_GAP - 36);
+                            var lineHeight = 16;
+                            var labelWidth = labelLines.reduce(function (width, line) {
+                                return Math.max(width, ctx.measureText(line).width);
+                            }, 0);
+                            var labelHeight = labelLines.length * lineHeight;
+                            var my = (p.y1 + p.y2) / 2 - labelHeight / 2;
+                            ctx.fillStyle = colours.background;
+                            ctx.fillRect(mx - labelWidth / 2 - 6, my - 12, labelWidth + 12, labelHeight + 6);
+                            ctx.fillStyle = colours.secondaryText;
+                            ctx.textAlign = 'center';
+                            labelLines.forEach(function (line, index) {
+                                ctx.fillText(line, mx, my + index * lineHeight);
+                            });
+                            ctx.textAlign = 'left';
                             ctx.restore();
                         }
 
@@ -2790,7 +2804,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                             ctx.fillRect(0, 0, canvas.width, canvas.height);
                             ctx.setTransform(dpr * camera.scale, 0, 0, dpr * camera.scale, dpr * camera.x, dpr * camera.y);
                             drawGrid();
-                            layout.edges.forEach(drawEdge);
+                            layout.edges.forEach(drawEdgeLine);
+                            layout.edges.forEach(drawEdgeLabel);
                             layout.nodes.forEach(drawNode);
                             updateActionButtons();
                             drawMinimap();
@@ -2933,6 +2948,20 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 $timeout(function () {
                                     resize();
                                     if (topologyChanged) fitGraph();
+                                });
+                            }
+                            if (topologyChanged) {
+                                // The host can still be mid-transition (e.g. a sidebar width
+                                // animation) when the fit above runs, so its clientWidth/Height
+                                // aren't final yet. Re-fit once more after paint settles so the
+                                // automatic fit lands on the same size a manual Fit click would see.
+                                $window.requestAnimationFrame(function () {
+                                    $window.requestAnimationFrame(function () {
+                                        if (destroyed) return;
+                                        resize();
+                                        fitGraph();
+                                        scope.$evalAsync();
+                                    });
                                 });
                             }
                         });
