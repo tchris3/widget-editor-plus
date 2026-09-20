@@ -184,6 +184,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             outline: none;
         }
         .we-record-graph-canvas.we-canvas-panning { cursor: grabbing; }
+        .we-record-graph-canvas.we-canvas-over-node { cursor: pointer; }
         .we-graph-actions-layer {
             position: absolute;
             inset: 0;
@@ -1691,7 +1692,7 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                     <div class="we-graph-container" ng-if="!ctrl.loadingInitial &amp;&amp; ctrl.viewMode === 'graph'">
                         <div class="we-graph-empty" ng-if="ctrl.graph.nodes.length === 0">
-                            <strong>No selected records</strong>
+                            <strong>No records</strong>
                             <span>Select a record or update set.</span>
                         </div>
                         <div class="we-graph-controls" ng-if="ctrl.graph.nodes.length" role="group" aria-label="Graph zoom controls">
@@ -1700,7 +1701,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             <button type="button" class="btn btn-default btn-icon" ng-click="ctrl.graphCanvasCommand('zoomIn')" title="Zoom in">+</button>
                             <button type="button" class="btn btn-default" ng-click="ctrl.graphCanvasCommand('fit')" title="Fit all records">Fit</button>
                         </div>
-                        <canvas class="we-record-graph-canvas" ng-if="ctrl.graph.nodes.length" we-record-graph-canvas="" graph="ctrl.graph" command="ctrl.graphCommand" zoom-percent="ctrl.graphZoom" on-scan="ctrl.scanRow(row)" on-open="ctrl.openGraphRecord(row)" on-remove="ctrl.removeRow(row)" tabindex="0" aria-label="Selected record relationship graph. Drag to pan and use the mouse wheel to zoom."></canvas>
+                        <canvas class="we-record-graph-canvas" ng-if="ctrl.graph.nodes.length" we-record-graph-canvas="" graph="ctrl.graph" command="ctrl.graphCommand" zoom-percent="ctrl.graphZoom" on-scan="ctrl.scanRow(row)" on-open="ctrl.openGraphRecord(row)" on-remove="ctrl.removeRow(row)" on-toggle="ctrl.toggleGraphRecord(row)" on-select-primary="ctrl.openLookup('primary')" tabindex="0" aria-label="Record relationship graph. Drag to pan and use the mouse wheel to zoom."></canvas>
                     </div>
                 </div>
             </div>
@@ -2212,6 +2213,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                         onScan: '&',
                         onOpen: '&',
                         onRemove: '&',
+                        onToggle: '&',
+                        onSelectPrimary: '&',
                     },
                     link: function (scope, element) {
                         var canvas = element[0];
@@ -2240,10 +2243,12 @@ export const widgetEditorAssistantUiPage = UiPage({
                         var NODE_WIDTH = 280;
                         var COLUMN_GAP = 260;
                         var ROW_GAP = 46;
+                        var COMPONENT_GAP = 110;
                         var MIN_SCALE = 0.2;
                         var MAX_SCALE = 2.5;
                         var AUTO_FIT_MIN_SCALE = 0.6;
                         var MIN_NODE_VISIBLE = 24;
+                        var CLICK_SLOP = 4;
 
                         function cssColour(property) {
                             var raw = $window.getComputedStyle(host).getPropertyValue(property).trim();
@@ -2307,8 +2312,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                             return lines.length ? lines : [''];
                         }
 
+                        // Same buttons, in the same order, as the table's actions column.
                         function actionDefinitions(node) {
-                            var actions = [{ type: 'scan', title: 'Scan for related records', iconClass: 'icon-search' }];
+                            var actions = [];
+                            if (node.primary && !node.embeddedPrimary) actions.push({ type: 'selectPrimary', title: 'Select primary record', iconClass: 'icon-target' });
+                            actions.push({ type: 'scan', title: 'Scan for related records', iconClass: 'icon-search' });
                             if (!node.embeddedPrimary) actions.push({ type: 'open', title: 'Open record in platform', iconClass: 'icon-open-document-new-tab' });
                             if (!node.primary) actions.push({ type: 'remove', title: 'Remove record', iconClass: 'icon-cross' });
                             return actions;
@@ -2437,9 +2445,138 @@ export const widgetEditorAssistantUiPage = UiPage({
                             });
                         }
 
+                        function columnX(column) {
+                            return 40 + column * (NODE_WIDTH + COLUMN_GAP);
+                        }
+
+                        // Splits nodes into connected components (undirected) so each related
+                        // group can be laid out on its own and stacked without interleaving.
+                        function groupComponents(nodes) {
+                            var seen = {};
+                            var components = [];
+                            nodes.forEach(function (start) {
+                                if (seen[start.key]) return;
+                                var component = [];
+                                var stack = [start];
+                                seen[start.key] = true;
+                                while (stack.length) {
+                                    var node = stack.pop();
+                                    component.push(node);
+                                    node.parents.concat(node.children).forEach(function (neighbour) {
+                                        if (seen[neighbour.key]) return;
+                                        seen[neighbour.key] = true;
+                                        stack.push(neighbour);
+                                    });
+                                }
+                                components.push(component);
+                            });
+                            return components;
+                        }
+
+                        // Neighbours in the direction of the sweep only; back edges and same-column
+                        // links would otherwise pull a node towards its own column.
+                        function sweepNeighbours(node, towardsParents) {
+                            return (towardsParents ? node.parents : node.children).filter(function (other) {
+                                return towardsParents ? other.column < node.column : other.column > node.column;
+                            });
+                        }
+
+                        function nodeCentre(node) {
+                            return node.y + node.height / 2;
+                        }
+
+                        // Moves each node in a column towards the average centre of its neighbours.
+                        // A top-down and a bottom-up greedy placement are averaged, which keeps the
+                        // column overlap-free while centring runs of siblings on their shared parent.
+                        function relaxColumn(column, towardsParents) {
+                            var desired = column.map(function (node) {
+                                var neighbours = sweepNeighbours(node, towardsParents);
+                                if (!neighbours.length) return node.y;
+                                return neighbours.reduce(function (sum, other) { return sum + nodeCentre(other); }, 0) / neighbours.length - node.height / 2;
+                            });
+                            var down = [];
+                            var floor = -Infinity;
+                            column.forEach(function (node, index) {
+                                var y = Math.max(desired[index], floor);
+                                down.push(y);
+                                floor = y + node.height + ROW_GAP;
+                            });
+                            var up = new Array(column.length);
+                            var ceiling = Infinity;
+                            for (var index = column.length - 1; index >= 0; index--) {
+                                var y = Math.min(desired[index], ceiling - column[index].height - ROW_GAP);
+                                up[index] = y;
+                                ceiling = y;
+                            }
+                            column.forEach(function (node, index) {
+                                node.y = (down[index] + up[index]) / 2;
+                            });
+                        }
+
+                        // Layered layout for one connected component: barycentre ordering to cut
+                        // edge crossings, then iterative vertical relaxation so children line up
+                        // with their parents. Returns the component height; node.y starts at 0.
+                        function placeComponent(component) {
+                            var columns = {};
+                            component.forEach(function (node) {
+                                (columns[node.column] = columns[node.column] || []).push(node);
+                            });
+                            var keys = Object.keys(columns).map(Number).sort(function (a, b) { return a - b; });
+                            var reversedKeys = keys.slice().reverse();
+                            function reindex(column) {
+                                column.forEach(function (node, index) { node.index = index; });
+                            }
+                            keys.forEach(function (key) {
+                                columns[key].sort(function (a, b) { return a.order - b.order; });
+                                reindex(columns[key]);
+                            });
+
+                            for (var sweep = 0; sweep < 4; sweep++) {
+                                var forward = sweep % 2 === 0;
+                                (forward ? keys : reversedKeys).forEach(function (key, position) {
+                                    if (position === 0) return;
+                                    var column = columns[key];
+                                    column.forEach(function (node) {
+                                        var neighbours = sweepNeighbours(node, forward);
+                                        node.barycentre = neighbours.length ?
+                                            neighbours.reduce(function (sum, other) { return sum + other.index; }, 0) / neighbours.length :
+                                            node.index;
+                                    });
+                                    column.sort(function (a, b) { return a.barycentre - b.barycentre || a.index - b.index; });
+                                    reindex(column);
+                                });
+                            }
+
+                            keys.forEach(function (key) {
+                                var y = 0;
+                                columns[key].forEach(function (node) {
+                                    node.y = y;
+                                    y += node.height + ROW_GAP;
+                                });
+                            });
+                            for (var pass = 0; pass < 3; pass++) {
+                                keys.forEach(function (key, position) { if (position > 0) relaxColumn(columns[key], true); });
+                                reversedKeys.forEach(function (key, position) { if (position > 0) relaxColumn(columns[key], false); });
+                            }
+                            keys.forEach(function (key, position) { if (position > 0) relaxColumn(columns[key], true); });
+
+                            var top = Infinity;
+                            var bottom = -Infinity;
+                            component.forEach(function (node) {
+                                top = Math.min(top, node.y);
+                                bottom = Math.max(bottom, node.y + node.height);
+                            });
+                            component.forEach(function (node) {
+                                node.x = columnX(node.column);
+                                node.y -= top;
+                            });
+                            return bottom - top;
+                        }
+
                         function buildLayout() {
                             var graph = scope.graph || { nodes: [], edges: [] };
-                            var columns = {};
+                            var nodes = [];
+                            var byKey = {};
                             ctx.font = '600 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                             (graph.nodes || []).forEach(function (sourceNode) {
                                 var node = angular.extend({}, sourceNode);
@@ -2448,46 +2585,75 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 node.actions = actionDefinitions(node);
                                 node.pillLines = pillDefinitions(node);
                                 node.height = Math.max(82, 58 + node.labelLines.length * 19 + node.pillLines.length * 26);
-                                (columns[node.column] = columns[node.column] || []).push(node);
-                            });
-
-                            var columnKeys = Object.keys(columns).map(Number).sort(function (a, b) { return a - b; });
-                            var maxColumnHeight = 0;
-                            columnKeys.forEach(function (column) {
-                                columns[column].sort(function (a, b) { return a.order - b.order; });
-                                var total = columns[column].reduce(function (sum, node) { return sum + node.height; }, 0) +
-                                    Math.max(0, columns[column].length - 1) * ROW_GAP;
-                                maxColumnHeight = Math.max(maxColumnHeight, total);
-                            });
-
-                            var nodes = [];
-                            var byKey = {};
-                            columnKeys.forEach(function (column, columnIndex) {
-                                var rows = columns[column];
-                                var total = rows.reduce(function (sum, node) { return sum + node.height; }, 0) +
-                                    Math.max(0, rows.length - 1) * ROW_GAP;
-                                var y = 40 + (maxColumnHeight - total) / 2;
-                                rows.forEach(function (node) {
-                                    node.x = 40 + columnIndex * (NODE_WIDTH + COLUMN_GAP);
-                                    node.y = y;
-                                    y += node.height + ROW_GAP;
-                                    nodes.push(node);
-                                    byKey[node.key] = node;
-                                });
+                                node.parents = [];
+                                node.children = [];
+                                nodes.push(node);
+                                byKey[node.key] = node;
                             });
                             var edges = (graph.edges || []).filter(function (edge) {
                                 return byKey[edge.source] && byKey[edge.target];
                             });
                             edges.forEach(function (edge) {
-                                byKey[edge.source].hasOutgoing = true;
-                                byKey[edge.target].hasIncoming = true;
+                                var from = byKey[edge.source];
+                                var to = byKey[edge.target];
+                                from.hasOutgoing = true;
+                                to.hasIncoming = true;
+                                from.children.push(to);
+                                to.parents.push(from);
                             });
+
+                            // Primary group first, then larger groups; unrelated single records are
+                            // packed into a grid underneath so they don't stretch the linked groups.
+                            var linked = [];
+                            var singles = [];
+                            groupComponents(nodes).forEach(function (component) {
+                                (component.length > 1 ? linked : singles).push(component);
+                            });
+                            linked.sort(function (a, b) {
+                                var aPrimary = a.some(function (node) { return node.primary; });
+                                var bPrimary = b.some(function (node) { return node.primary; });
+                                if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
+                                return b.length - a.length;
+                            });
+                            singles.sort(function (a, b) {
+                                if (!!a[0].primary !== !!b[0].primary) return a[0].primary ? -1 : 1;
+                                return a[0].order - b[0].order;
+                            });
+
+                            var columnCount = 0;
+                            linked.forEach(function (component) {
+                                component.forEach(function (node) { columnCount = Math.max(columnCount, node.column + 1); });
+                            });
+                            var gridColumns = Math.max(columnCount, Math.min(3, singles.length));
+
+                            var y = 40;
+                            linked.forEach(function (component) {
+                                var height = placeComponent(component);
+                                component.forEach(function (node) { node.y += y; });
+                                y += height + COMPONENT_GAP;
+                            });
+                            var rowTop = y;
+                            var rowHeight = 0;
+                            singles.forEach(function (component, index) {
+                                var node = component[0];
+                                var cell = index % gridColumns;
+                                if (cell === 0 && index > 0) {
+                                    rowTop += rowHeight + ROW_GAP;
+                                    rowHeight = 0;
+                                }
+                                node.x = columnX(cell);
+                                node.y = rowTop;
+                                rowHeight = Math.max(rowHeight, node.height);
+                            });
+                            if (singles.length) y = rowTop + rowHeight + COMPONENT_GAP;
+                            columnCount = Math.max(columnCount, singles.length ? gridColumns : 0, 1);
+
                             layout = {
                                 nodes: nodes,
                                 byKey: byKey,
                                 edges: edges,
-                                width: Math.max(NODE_WIDTH + 80, columnKeys.length * NODE_WIDTH + Math.max(0, columnKeys.length - 1) * COLUMN_GAP + 80),
-                                height: Math.max(180, maxColumnHeight + 80),
+                                width: columnX(columnCount - 1) + NODE_WIDTH + 40,
+                                height: Math.max(180, y - COMPONENT_GAP + 40),
                             };
                             rebuildActionButtons();
                         }
@@ -2571,13 +2737,30 @@ export const widgetEditorAssistantUiPage = UiPage({
                             ctx.restore();
                         }
 
+                        // Cubic bezier leaving the source's right port and entering the target's
+                        // left port horizontally. Backward links loop out and around.
                         function edgeEndpoints(from, to) {
+                            var x1 = from.x + from.width;
+                            var y1 = from.y + from.height / 2;
+                            var x2 = to.x;
+                            var y2 = to.y + to.height / 2;
+                            var reach = Math.max(48, Math.abs(x2 - x1) * 0.45);
+                            return { x1: x1, y1: y1, x2: x2, y2: y2, c1x: x1 + reach, c2x: x2 - reach };
+                        }
+
+                        // Bezier point at t = 0.5; the y control points equal the endpoints.
+                        function edgeMidpoint(p) {
                             return {
-                                x1: from.x + from.width,
-                                y1: from.y + from.height / 2,
-                                x2: to.x,
-                                y2: to.y + to.height / 2,
+                                x: (p.x1 + 3 * p.c1x + 3 * p.c2x + p.x2) / 8,
+                                y: (p.y1 + p.y2) / 2,
                             };
+                        }
+
+                        function traceEdge(targetContext, from, to) {
+                            var p = edgeEndpoints(from, to);
+                            targetContext.beginPath();
+                            targetContext.moveTo(p.x1, p.y1);
+                            targetContext.bezierCurveTo(p.c1x, p.y1, p.c2x, p.y2, p.x2, p.y2);
                         }
 
                         // Split into two passes (see draw()) so a neighbouring edge's line — drawn
@@ -2591,17 +2774,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                             ctx.globalAlpha = (from.dimmed || to.dimmed) ? 0.45 : 1;
                             ctx.strokeStyle = colours.border;
                             ctx.lineWidth = 2;
-                            ctx.beginPath();
-                            ctx.moveTo(p.x1, p.y1);
-                            ctx.lineTo(p.x2, p.y2);
+                            traceEdge(ctx, from, to);
                             ctx.stroke();
 
-                            var angle = Math.atan2(p.y2 - p.y1, p.x2 - p.x1);
                             ctx.fillStyle = colours.border;
                             ctx.beginPath();
                             ctx.moveTo(p.x2, p.y2);
-                            ctx.lineTo(p.x2 - 10 * Math.cos(angle - Math.PI / 6), p.y2 - 10 * Math.sin(angle - Math.PI / 6));
-                            ctx.lineTo(p.x2 - 10 * Math.cos(angle + Math.PI / 6), p.y2 - 10 * Math.sin(angle + Math.PI / 6));
+                            ctx.lineTo(p.x2 - 10, p.y2 - 5);
+                            ctx.lineTo(p.x2 - 10, p.y2 + 5);
                             ctx.closePath();
                             ctx.fill();
                             ctx.restore();
@@ -2611,11 +2791,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                             if (!edge.label) return;
                             var from = layout.byKey[edge.source];
                             var to = layout.byKey[edge.target];
-                            var p = edgeEndpoints(from, to);
+                            var mid = edgeMidpoint(edgeEndpoints(from, to));
                             ctx.save();
                             ctx.globalAlpha = (from.dimmed || to.dimmed) ? 0.45 : 1;
                             var label = String(edge.label);
-                            var mx = (p.x1 + p.x2) / 2;
+                            var mx = mid.x;
                             ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                             var labelLines = wrapText(label, COLUMN_GAP - 36);
                             var lineHeight = 16;
@@ -2623,7 +2803,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 return Math.max(width, ctx.measureText(line).width);
                             }, 0);
                             var labelHeight = labelLines.length * lineHeight;
-                            var my = (p.y1 + p.y2) / 2 - labelHeight / 2;
+                            var my = mid.y - labelHeight / 2;
                             ctx.fillStyle = colours.background;
                             ctx.fillRect(mx - labelWidth / 2 - 6, my - 12, labelWidth + 12, labelHeight + 6);
                             ctx.fillStyle = colours.secondaryText;
@@ -2763,9 +2943,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 var from = layout.byKey[edge.source];
                                 var to = layout.byKey[edge.target];
                                 minimapCtx.globalAlpha = (from.dimmed || to.dimmed) ? 0.35 : 0.75;
-                                minimapCtx.beginPath();
-                                minimapCtx.moveTo(from.x + from.width, from.y + from.height / 2);
-                                minimapCtx.lineTo(to.x, to.y + to.height / 2);
+                                traceEdge(minimapCtx, from, to);
                                 minimapCtx.stroke();
                             });
                             layout.nodes.forEach(function (node) {
@@ -2834,34 +3012,80 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 if (action.type === 'scan') scope.onScan({ row: action.node.row });
                                 if (action.type === 'open') scope.onOpen({ row: action.node.row });
                                 if (action.type === 'remove') scope.onRemove({ row: action.node.row });
+                                if (action.type === 'toggle') scope.onToggle({ row: action.node.row });
+                                if (action.type === 'selectPrimary') scope.onSelectPrimary();
                             });
                             $timeout(draw);
+                        }
+
+                        // Node under a screen point, if any — checked later ones win so
+                        // overlapping cards resolve to the one drawn on top.
+                        function nodeAt(p) {
+                            var worldX = (p.x - camera.x) / camera.scale;
+                            var worldY = (p.y - camera.y) / camera.scale;
+                            var hit = null;
+                            layout.nodes.forEach(function (node) {
+                                if (worldX >= node.x && worldX <= node.x + node.width && worldY >= node.y && worldY <= node.y + node.height) hit = node;
+                            });
+                            return hit;
+                        }
+
+                        function isToggleable(node) {
+                            return !!node && !node.primary && !node.blocked;
+                        }
+
+                        function updateHoverCursor(p) {
+                            element.toggleClass('we-canvas-over-node', !pointer && isToggleable(nodeAt(p)));
                         }
 
                         function onPointerDown(event) {
                             if (event.button !== undefined && event.button !== 0) return;
                             var p = screenPoint(event);
-                            pointer = { id: event.pointerId, x: p.x, y: p.y, cameraX: camera.x, cameraY: camera.y };
+                            pointer = { id: event.pointerId, x: p.x, y: p.y, cameraX: camera.x, cameraY: camera.y, moved: false };
                             canvas.setPointerCapture(event.pointerId);
+                            element.removeClass('we-canvas-over-node');
                             element.addClass('we-canvas-panning');
                         }
 
                         function onPointerMove(event) {
-                            if (!pointer || pointer.id !== event.pointerId) return;
                             var p = screenPoint(event);
+                            if (!pointer || pointer.id !== event.pointerId) {
+                                updateHoverCursor(p);
+                                return;
+                            }
                             var dx = p.x - pointer.x;
                             var dy = p.y - pointer.y;
+                            if (Math.abs(dx) > CLICK_SLOP || Math.abs(dy) > CLICK_SLOP) pointer.moved = true;
                             camera.x = pointer.cameraX + dx;
                             camera.y = pointer.cameraY + dy;
                             clampCameraToVisibleNode();
                             draw();
                         }
 
+                        // A press-and-release without a drag toggles the card under the cursor;
+                        // anything that moved beyond the slop was a pan.
                         function onPointerUp(event) {
+                            if (!pointer || pointer.id !== event.pointerId) return;
+                            var wasClick = !pointer.moved;
+                            pointer = null;
+                            element.removeClass('we-canvas-panning');
+                            try { canvas.releasePointerCapture(event.pointerId); } catch (e) {}
+                            var p = screenPoint(event);
+                            var node = wasClick ? nodeAt(p) : null;
+                            if (isToggleable(node)) runAction({ type: 'toggle', node: node });
+                            updateHoverCursor(p);
+                        }
+
+                        // A cancelled pointer (e.g. touch scroll takeover) ends the pan but never toggles.
+                        function onPointerCancel(event) {
                             if (!pointer || pointer.id !== event.pointerId) return;
                             pointer = null;
                             element.removeClass('we-canvas-panning');
                             try { canvas.releasePointerCapture(event.pointerId); } catch (e) {}
+                        }
+
+                        function onPointerLeave() {
+                            element.removeClass('we-canvas-over-node');
                         }
 
                         function onWheel(event) {
@@ -2906,7 +3130,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                         canvas.addEventListener('pointerdown', onPointerDown);
                         canvas.addEventListener('pointermove', onPointerMove);
                         canvas.addEventListener('pointerup', onPointerUp);
-                        canvas.addEventListener('pointercancel', onPointerUp);
+                        canvas.addEventListener('pointercancel', onPointerCancel);
+                        canvas.addEventListener('pointerleave', onPointerLeave);
                         canvas.addEventListener('wheel', onWheel, { passive: false });
                         minimap.addEventListener('pointerdown', onMinimapPointerDown);
                         minimap.addEventListener('pointermove', onMinimapPointerMove);
@@ -2976,7 +3201,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                             canvas.removeEventListener('pointerdown', onPointerDown);
                             canvas.removeEventListener('pointermove', onPointerMove);
                             canvas.removeEventListener('pointerup', onPointerUp);
-                            canvas.removeEventListener('pointercancel', onPointerUp);
+                            canvas.removeEventListener('pointercancel', onPointerCancel);
+                            canvas.removeEventListener('pointerleave', onPointerLeave);
                             canvas.removeEventListener('wheel', onWheel);
                             minimap.removeEventListener('pointerdown', onMinimapPointerDown);
                             minimap.removeEventListener('pointermove', onMinimapPointerMove);
@@ -3178,6 +3404,11 @@ export const widgetEditorAssistantUiPage = UiPage({
             catalog_ui_policy: 'Catalog UI Policy',
             catalog_ui_policy_action: 'Catalog UI Policy Action',
             catalog_script_client: 'Catalog Client Script',
+            sysevent_register: 'Event Registration',
+            sys_rest_message: 'REST Message',
+            sys_soap_message: 'SOAP Message',
+            sys_hub_flow: 'Flow',
+            wf_workflow: 'Workflow',
         };
         for (var i = 0; i < COMMON_TABLES.length; i++) {
             TABLE_LABELS[COMMON_TABLES[i].name] = COMMON_TABLES[i].label;
@@ -4048,12 +4279,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return row.table + ':' + row.sys_id;
             }
 
-            // Builds deterministic graph topology from every checked record. Active Context XML
-            // type filters affect export/table visibility, but graph nodes stay in place and dim.
+            // Builds deterministic graph topology from every record, checked or not. Unchecked
+            // records and those outside the active Context XML type filter stay in place but
+            // dim, so a node can be toggled back on from the graph itself.
             // The canvas directive measures full labels and performs the final pixel layout.
             function rebuildGraph() {
                 var selected = ctrl.rows.filter(function (r) {
-                    return !r.placeholder && r.checked && r.table && r.sys_id;
+                    return !r.placeholder && r.table && r.sys_id;
                 });
                 var byKey = {};
                 selected.forEach(function (r) { byKey[rowKey(r)] = r; });
@@ -4069,30 +4301,41 @@ export const widgetEditorAssistantUiPage = UiPage({
                     (outgoing[link.source] = outgoing[link.source] || []).push(link.target);
                 });
 
-                var level = {};
-                var queue = [];
-                selected.forEach(function (r) {
-                    var key = rowKey(r);
-                    if (r.primary || !incoming[key]) {
-                        level[key] = 0;
-                        queue.push(key);
-                    }
-                });
-                while (queue.length) {
-                    var source = queue.shift();
-                    (outgoing[source] || []).forEach(function (target) {
-                        var nextLevel = level[source] + 1;
-                        if (level[target] === undefined || nextLevel < level[target]) {
-                            level[target] = nextLevel;
-                            queue.push(target);
+                // Longest-path layering: a record sits one column right of its furthest parent,
+                // so every edge flows left to right. Back edges found by DFS are ignored so cycles
+                // can't push levels forever.
+                var visited = {};
+                var onStack = {};
+                var topo = [];
+                var backEdge = {};
+                function visit(key) {
+                    visited[key] = true;
+                    onStack[key] = true;
+                    (outgoing[key] || []).forEach(function (target) {
+                        if (onStack[target]) {
+                            backEdge[key + '>' + target] = true;
+                            return;
                         }
+                        if (!visited[target]) visit(target);
                     });
+                    onStack[key] = false;
+                    topo.push(key);
                 }
-                var maxLevel = 0;
-                Object.keys(level).forEach(function (key) { maxLevel = Math.max(maxLevel, level[key]); });
                 selected.forEach(function (r) {
                     var key = rowKey(r);
-                    if (level[key] === undefined) level[key] = maxLevel + 1;
+                    if ((r.primary || !incoming[key]) && !visited[key]) visit(key);
+                });
+                selected.forEach(function (r) {
+                    var key = rowKey(r);
+                    if (!visited[key]) visit(key);
+                });
+                var level = {};
+                topo.reverse().forEach(function (source) {
+                    if (level[source] === undefined) level[source] = 0;
+                    (outgoing[source] || []).forEach(function (target) {
+                        if (backEdge[source + '>' + target]) return;
+                        level[target] = Math.max(level[target] || 0, level[source] + 1);
+                    });
                 });
 
                 var columns = {};
@@ -4123,7 +4366,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                             isNew: !!ctrl.includePreviousUpdates && !!r.isNewInUpdateSet,
                             isDeleted: r.updateSetAction === 'DELETE',
                             includePreviousUpdates: !!ctrl.includePreviousUpdates,
-                            dimmed: !rowMatchesActiveFilter(r),
+                            checked: !!r.checked,
+                            dimmed: !r.checked || !rowMatchesActiveFilter(r),
                             embeddedPrimary: !!(r.primary && ctrl.embeddedInModal),
                             column: columnIndex,
                             order: rowIndex,
@@ -4151,6 +4395,14 @@ export const widgetEditorAssistantUiPage = UiPage({
 
             ctrl.graphCanvasCommand = function (action) {
                 ctrl.graphCommand = { action: action, id: ++graphCommandId };
+            };
+
+            // Clicking a graph node — same rules as the table checkbox, and the table
+            // reflects the change immediately since both bind to row.checked.
+            ctrl.toggleGraphRecord = function (row) {
+                if (!row || row.primary || ctrl.isExportBlocked(row.table, row)) return;
+                row.checked = !row.checked;
+                ctrl.onSelectionChange();
             };
 
             ctrl.openGraphRecord = function (row) {
@@ -5477,9 +5729,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                     }
                 }, 8);
                 function addRecordUrl(el, row, payload) {
-                    if (el.tagName !== 'versioned_record' && el.tagName !== 'record') addExportModCount(el);
-                    // Identity and runtime context live once in the manifest or version wrapper.
-                    if (payload || (el.tagName === 'record' && row.updateSetSysId && ctrl.includePreviousUpdates)) return;
+                    if (payload) {
+                        addExportModCount(el);
+                        return;
+                    }
+                    // Record URLs and runtime context live once on the uniform record wrapper.
                     el.setAttribute('es12_override_at_export', exportEs12[row.table + ':' + row.sys_id] || 'unavailable');
                     var url = exportUrls[row.table + ':' + row.sys_id];
                     if (url) el.setAttribute('record_url', url);
@@ -5487,12 +5741,12 @@ export const widgetEditorAssistantUiPage = UiPage({
                 }
 
                 var combinedDoc = document.implementation.createDocument(null, 'context_bundle', null);
-                combinedDoc.documentElement.setAttribute('format_version', '2');
+                combinedDoc.documentElement.setAttribute('format_version', '3');
                 var notes = combinedDoc.createElement('format_notes');
-                notes.textContent = 'Compare previous to current raw field values; added/removed means snapshot presence. A field with no change attribute could not be compared — redacted, structured, or the whole record is missing on one side (see its status/change_type). sys_mod_count is a per-record saved update counter, not a global version; unsaved edits do not increment it. ES12 is the current server-side override at export/load, not historical or client-side mode; not_found/unavailable may inherit application defaults. Record URLs identify platform records, not historical versions.';
+                notes.textContent = 'Compare previous to current raw field values; added/removed means snapshot presence. A field with no change attribute could not be compared — redacted, structured, or the whole record is missing on one side (see its status/change_type). sys_mod_count is a per-record saved update counter, not a global version; unsaved edits do not increment it. ES12 is the current server-side override at export/load, not historical or client-side mode; not_found/unavailable may inherit application defaults. Record URLs identify platform records, not historical versions. Every payload has a record wrapper identified by table:sys_id, containing current_version and optionally previous_version. context_manifest contains relationship elements whose source and target refer to wrapper IDs; record names, roles, inclusion reasons, and blocked status live on the wrappers. The graph contains discovered relationships between exported records only; it is not a complete dependency inventory. previous_version update_set_name and update_set_sys_id identify the historical snapshot’s update set, which may differ from the selected update set.';
                 combinedDoc.documentElement.appendChild(notes);
 
-                // Update set metadata up front, before the manifest — a reader needs to know
+                // Update set metadata up front — a reader needs to know
                 // which sets are involved before the per-record update_set_name attributes below mean anything.
                 if (ctrl.updateSets.length) {
                     var updateSetsEl = combinedDoc.createElement('update_sets');
@@ -5508,39 +5762,20 @@ export const widgetEditorAssistantUiPage = UiPage({
                     combinedDoc.documentElement.appendChild(updateSetsEl);
                 }
 
-                // Manifest tells a reader what's here and why before it has to parse any record data.
-                var manifestEl = combinedDoc.createElement('context_manifest');
-                selected.forEach(function (row) {
-                    var entryEl = combinedDoc.createElement('record');
-                    entryEl.setAttribute('table', row.table);
-                    entryEl.setAttribute('sys_id', row.sys_id);
-                    addRecordUrl(entryEl, row);
-                    entryEl.setAttribute('name', row.label || row.sys_id);
-                    entryEl.setAttribute('role', row.primary ? 'primary' : 'related');
-                    if (row.suggested && row.category) {
-                        entryEl.setAttribute('reason', row.category);
-                    }
-                    if (row.updateSetSysId) {
-                        entryEl.setAttribute('update_set_sys_id', row.updateSetSysId);
-                        entryEl.setAttribute('update_set_name', row.updateSetName || '');
-                        if (row.updateSetAction) entryEl.setAttribute('action', row.updateSetAction);
-                        // change_type is always set for a DELETE (known from the update set itself,
-                        // no lookup needed); new vs. updated needs the previous-version lookup, so
-                        // it's only known once "Include previous version" has fetched that data.
-                        var changeType = null;
-                        if (row.updateSetAction === 'DELETE') {
-                            changeType = 'deleted';
-                        } else if (ctrl.includePreviousUpdates) {
-                            changeType = row.isNewInUpdateSet ? 'new' : 'updated';
-                        }
-                        if (changeType) entryEl.setAttribute('change_type', changeType);
-                    }
-                    if (!row.updateSetSysId && isTableExportBlocked(row.table)) {
-                        entryEl.setAttribute('blocked', 'true');
-                    }
-                    manifestEl.appendChild(entryEl);
+                // Export discovery links directly: canvas layout may omit cycles or hidden nodes.
+                var graphEl = combinedDoc.createElement('context_manifest');
+                var exportedKeys = Object.create(null);
+                selected.forEach(function (row) { exportedKeys[rowKey(row)] = true; });
+                Object.keys(recordLinks).sort().forEach(function (key) {
+                    var link = recordLinks[key];
+                    if (!exportedKeys[link.source] || !exportedKeys[link.target]) return;
+                    var relationshipEl = combinedDoc.createElement('relationship');
+                    relationshipEl.setAttribute('source', link.source);
+                    relationshipEl.setAttribute('target', link.target);
+                    relationshipEl.setAttribute('label', link.label || 'Related');
+                    graphEl.appendChild(relationshipEl);
                 });
-                combinedDoc.documentElement.appendChild(manifestEl);
+                combinedDoc.documentElement.appendChild(graphEl);
 
                 var primaryContainer = combinedDoc.createElement('primary_record');
                 var relatedContainer = combinedDoc.createElement('related_records');
@@ -5549,24 +5784,33 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                 await runPool(selected, async function (row) {
                     var targetContainer = row.primary ? primaryContainer : relatedContainer;
-                    // With "Include previous updates" on, an update-set row gets wrapped so a reader
-                    // can tell current and previous state apart at a glance instead of having to
-                    // diff two same-shaped records themselves.
+                    // All records share one envelope, whether or not history was requested.
                     var showsVersions = !!row.updateSetSysId && ctrl.includePreviousUpdates;
-                    var versionedEl = null;
-                    var destContainer = targetContainer;
-                    if (showsVersions) {
-                        versionedEl = combinedDoc.createElement('versioned_record');
-                        versionedEl.setAttribute('table', row.table);
-                        versionedEl.setAttribute('sys_id', row.sys_id);
-                        addRecordUrl(versionedEl, row);
-                        versionedEl.setAttribute('update_set_name', row.updateSetName || '');
-                        versionedEl.setAttribute('update_set_action', row.updateSetAction || '');
-                        versionedEl.setAttribute('change_type', row.updateSetAction === 'DELETE' ? 'deleted' : (row.isNewInUpdateSet ? 'new' : 'updated'));
-                        targetContainer.appendChild(versionedEl);
-                        destContainer = combinedDoc.createElement('current_version');
-                        versionedEl.appendChild(destContainer);
+                    var wrapperEl = combinedDoc.createElement('record');
+                    wrapperEl.setAttribute('id', rowKey(row));
+                    wrapperEl.setAttribute('table', row.table);
+                    wrapperEl.setAttribute('table_label', row.tableLabel || tableLabel(row.table));
+                    wrapperEl.setAttribute('sys_id', row.sys_id);
+                    wrapperEl.setAttribute('name', row.label || row.sys_id);
+                    wrapperEl.setAttribute('role', row.primary ? 'primary' : 'related');
+                    if (row.suggested && row.category) {
+                        wrapperEl.setAttribute('reason', row.category);
                     }
+                    if (!row.updateSetSysId && isTableExportBlocked(row.table)) {
+                        wrapperEl.setAttribute('blocked', 'true');
+                    }
+                    addRecordUrl(wrapperEl, row);
+                    if (row.updateSetSysId) {
+                        wrapperEl.setAttribute('update_set_sys_id', row.updateSetSysId);
+                        wrapperEl.setAttribute('update_set_name', row.updateSetName || '');
+                        wrapperEl.setAttribute('update_set_action', row.updateSetAction || '');
+                        if (row.updateSetAction === 'DELETE' || showsVersions) {
+                            wrapperEl.setAttribute('change_type', row.updateSetAction === 'DELETE' ? 'deleted' : (row.isNewInUpdateSet ? 'new' : 'updated'));
+                        }
+                    }
+                    targetContainer.appendChild(wrapperEl);
+                    var destContainer = combinedDoc.createElement('current_version');
+                    wrapperEl.appendChild(destContainer);
                     try {
                         if (row.updateSetAction === 'DELETE') {
                             // A DELETE record no longer exists on the live table — fetching it would
@@ -5617,21 +5861,20 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 redactRecordElement(recordEl);
                                 destContainer.appendChild(combinedDoc.importNode(recordEl, true));
                             }
-                            if (showsVersions && children.length === 0) {
+                            if (children.length === 0) {
                                 destContainer.setAttribute('status', 'unavailable');
                                 destContainer.setAttribute('reason', 'Record no longer exists on this table');
                             }
                         }
                     } catch (e) {
-                        if (showsVersions) {
-                            destContainer.setAttribute('status', 'unavailable');
-                        }
+                        destContainer.setAttribute('status', 'unavailable');
                     }
 
                     if (showsVersions) {
                         var previousEl = combinedDoc.createElement('previous_version');
                         if (row.previousVersion) {
                             previousEl.setAttribute('update_set_name', row.previousVersion.updateSetName || '');
+                            previousEl.setAttribute('update_set_sys_id', row.previousVersion.updateSetSysId || '');
                             previousEl.setAttribute('recorded_on', row.previousVersion.updatedOn || '');
                             var prevParsed = new DOMParser().parseFromString(row.previousVersion.payload || '', 'text/xml');
                             var prevChildren = prevParsed.documentElement ? prevParsed.documentElement.children : [];
@@ -5644,7 +5887,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             previousEl.setAttribute('status', 'new');
                             previousEl.textContent = 'No earlier version exists — this record is new as of this update set.';
                         }
-                        versionedEl.appendChild(previousEl);
+                        wrapperEl.appendChild(previousEl);
                         function recordChild(container) {
                             for (var i = 0; i < container.children.length; i++) {
                                 if (container.children[i].tagName === row.table) return container.children[i];

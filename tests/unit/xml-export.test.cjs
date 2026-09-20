@@ -184,26 +184,152 @@ for (const path of [diffPath, root + 'other/sys-ui-page/sys_ui_page_widget_edito
         assert.equal(leftDeleted.children[1].attrs.change, undefined);
     });
 }
-test('Assistant keeps shared metadata once while retaining payload counters', () => {
+test('Assistant keeps URL/runtime metadata on wrappers and counters on payloads', () => {
     const script = template(root + 'other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts', 'clientScript');
     const start = script.indexOf('function addRecordUrl');
     const end = script.indexOf('var combinedDoc', start);
-    const row = { table: 'sp_widget', sys_id: 'a', updateSetSysId: 'set' };
-    const context = { ctrl: { includePreviousUpdates: true }, exportUrls: { 'sp_widget:a': 'https://example/record' },
+    const row = { table: 'sp_widget', sys_id: 'a' };
+    const context = { exportUrls: { 'sp_widget:a': 'https://example/record' },
         exportEs12: { 'sp_widget:a': 'enabled' }, addExportModCount(el) { el.attrs.sys_mod_count = '4'; } };
     vm.runInNewContext(script.slice(start, end), context);
     function el(tagName) { return { tagName, attrs: {}, setAttribute(key, value) { this.attrs[key] = value; } }; }
-    const manifest = el('record'), wrapper = el('versioned_record'), payload = el('sp_widget');
-    context.addRecordUrl(manifest, row);
+    const wrapper = el('record'), payload = el('sp_widget');
     context.addRecordUrl(wrapper, row);
     context.addRecordUrl(payload, row, true);
-    assert.equal(manifest.attrs.record_url, undefined);
     assert.equal(wrapper.attrs.record_url, 'https://example/record');
     assert.equal(wrapper.attrs.es12_override_at_export, 'enabled');
+    assert.equal(wrapper.attrs.sys_mod_count, undefined);
     assert.equal(payload.attrs.record_url, undefined);
     assert.equal(payload.attrs.es12_override_at_export, undefined);
     assert.equal(payload.attrs.sys_mod_count, '4');
-    context.ctrl.includePreviousUpdates = false;
-    context.addRecordUrl(manifest, row);
-    assert.equal(manifest.attrs.record_url, 'https://example/record');
 });
+
+// Execute the real Assistant exporter with a minimal DOM and controlled platform responses.
+async function exportAssistant(includePreviousUpdates) {
+    class Element {
+        constructor(tagName) { this.tagName = tagName; this.attrs = {}; this.children = []; this.textContent = ''; }
+        setAttribute(key, value) { this.attrs[key] = String(value); }
+        getAttribute(key) { return this.attrs[key] ?? null; }
+        appendChild(child) { this.children.push(child); return child; }
+    }
+    const element = (tag, children = []) => {
+        const el = new Element(tag);
+        children.forEach(child => el.appendChild(child));
+        return el;
+    };
+    const payload = (table, script) => {
+        const field = element('script');
+        field.textContent = script;
+        return element('record_update', [element(table, [field])]);
+    };
+    const selected = [
+        { table: 'sp_widget', sys_id: 'primary', primary: true, label: 'Primary widget', tableLabel: 'Widget' },
+        { table: 'sys_script_include', sys_id: 'related', suggested: true, category: 'Script Include', updateSetSysId: 'current-set', updateSetName: 'Current set',
+            previousVersion: { payload: 'previous', updateSetName: 'Earlier & original set', updateSetSysId: 'earlier-set', updatedOn: '2026-01-01' } },
+        { table: 'sys_script_include', sys_id: 'isolated' },
+        { table: 'sys_script_include', sys_id: 'deleted', updateSetSysId: 'current-set', updateSetAction: 'DELETE' },
+        { table: 'blocked_table', sys_id: 'blocked' },
+        { table: 'sys_script_include', sys_id: 'failed' },
+    ].map(row => ({ ...row, checked: true }));
+    const ctrl = { visibleRows: [...selected, { table: 'sp_widget', sys_id: 'unchecked', checked: false }],
+        primary: { label: 'Primary' }, updateSets: [], includePreviousUpdates };
+    const links = [
+        ['sp_widget:primary', 'sys_script_include:related', 'Script Include'],
+        ['sys_script_include:related', 'sp_widget:primary', 'Widget'],
+        ['sp_widget:primary', 'sp_widget:unchecked', 'Unchecked'],
+        ['sp_widget:primary', 'sp_widget:filtered', 'Filtered'],
+        ['sp_widget:removed', 'sp_widget:primary', 'Removed'],
+    ];
+    let exported;
+    const document = {
+        implementation: { createDocument: (_, tag) => {
+            exported = { documentElement: element(tag), createElement: element, importNode: node => node };
+            return exported;
+        } },
+        createElement: () => ({ click() {} }), body: { appendChild() {}, removeChild() {} }
+    };
+    const context = {
+        ctrl, document, window: { location: { origin: 'https://example.service-now.com' } },
+        recordLinks: Object.fromEntries(links.map(([source, target, label]) => [source + '>' + target, { source, target, label }])),
+        rowKey: row => row.table + ':' + row.sys_id,
+        tableLabel: table => ({ sys_script_include: 'Script Include' })[table] || table,
+        runPool: async (rows, worker) => Promise.all(rows.map(worker)),
+        ajax: async () => ({ success: true, url: 'https://example/record', es12Override: 'enabled' }),
+        fetch: async url => {
+            if (url.includes('sys_id=failed')) throw new Error('Unavailable');
+            return { text: async () => url.startsWith('/sp_widget') ? 'widget' : 'include' };
+        },
+        DOMParser: class { parseFromString(text) {
+            return { documentElement: payload(text === 'widget' ? 'sp_widget' : 'sys_script_include', text === 'previous' ? 'old' : 'new') };
+        } },
+        addExportModCount: el => el.setAttribute('sys_mod_count', '4'),
+        redactRecordElement() {}, isTableExportBlocked: table => table === 'blocked_table',
+        indentXmlDoc() {}, safeFileNameSegment: text => text, pad: n => String(n).padStart(2, '0'),
+        $timeout: fn => fn(), Blob: class {}, XMLSerializer: class { serializeToString() { return ''; } },
+        URL: { createObjectURL: () => 'blob:test', revokeObjectURL() {} }
+    };
+    const script = template(root + 'other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts', 'clientScript');
+    vm.createContext(context);
+    vm.runInContext(script.slice(script.indexOf('function annotateFieldChanges'), script.indexOf('// End field comparison helper.')), context);
+    vm.runInContext(script.slice(script.indexOf('ctrl.generateXml = async function'), script.indexOf('function init()', script.indexOf('ctrl.generateXml = async function'))), context);
+    await ctrl.generateXml();
+    return exported.documentElement;
+}
+
+for (const includePreviousUpdates of [false, true]) {
+    test('Assistant v3 exports uniform wrappers and selected dependency graph; history=' + includePreviousUpdates, async () => {
+        const bundle = await exportAssistant(includePreviousUpdates);
+        const child = (el, tag) => el.children.find(node => node.tagName === tag);
+        assert.equal(bundle.attrs.format_version, '3');
+        assert.equal(child(bundle, 'dependency_graph'), undefined);
+        const wrappers = [...child(bundle, 'primary_record').children, ...child(bundle, 'related_records').children];
+        assert.equal(wrappers.length, 6);
+        const byId = Object.fromEntries(wrappers.map(wrapper => [wrapper.attrs.id, wrapper]));
+        for (const wrapper of wrappers) {
+            assert.equal(wrapper.tagName, 'record');
+            assert.equal(wrapper.attrs.table, wrapper.attrs.id.split(':')[0]);
+            assert.ok(child(wrapper, 'current_version'));
+            assert.equal(wrapper.attrs.record_url, 'https://example/record');
+            assert.equal(wrapper.attrs.es12_override_at_export, 'enabled');
+        }
+        assert.equal(byId['sp_widget:primary'].attrs.name, 'Primary widget');
+        assert.equal(byId['sp_widget:primary'].attrs.table_label, 'Widget');
+        assert.equal(byId['sys_script_include:related'].attrs.table_label, 'Script Include');
+        assert.equal(byId['blocked_table:blocked'].attrs.table_label, 'blocked_table');
+        assert.equal(byId['sp_widget:primary'].attrs.role, 'primary');
+        assert.equal(byId['sp_widget:primary'].attrs.reason, undefined);
+        assert.equal(byId['sys_script_include:related'].attrs.role, 'related');
+        assert.equal(byId['sys_script_include:related'].attrs.reason, 'Script Include');
+        assert.equal(byId['sys_script_include:isolated'].attrs.name, 'isolated');
+        assert.equal(byId['blocked_table:blocked'].attrs.blocked, 'true');
+        assert.equal(byId['sp_widget:primary'].attrs.blocked, undefined);
+        assert.equal(byId['sys_script_include:deleted'].attrs.update_set_action, 'DELETE');
+        assert.equal(byId['sys_script_include:deleted'].attrs.change_type, 'deleted');
+        const graph = child(bundle, 'context_manifest');
+        assert.deepEqual(graph.children.map(relationship => ({ ...relationship.attrs })), [
+            { source: 'sp_widget:primary', target: 'sys_script_include:related', label: 'Script Include' },
+            { source: 'sys_script_include:related', target: 'sp_widget:primary', label: 'Widget' },
+        ]);
+        for (const relationship of graph.children) {
+            assert.equal(relationship.tagName, 'relationship');
+            assert.ok(byId[relationship.attrs.source]);
+            assert.ok(byId[relationship.attrs.target]);
+        }
+        assert.ok(byId['sys_script_include:isolated']);
+        assert.ok(child(child(byId['sys_script_include:deleted'], 'current_version'), 'deleted_record'));
+        assert.ok(child(child(byId['blocked_table:blocked'], 'current_version'), 'blocked_record'));
+        assert.equal(child(byId['sys_script_include:failed'], 'current_version').attrs.status, 'unavailable');
+        assert.equal(child(byId['sp_widget:primary'], 'previous_version'), undefined);
+        const related = byId['sys_script_include:related'];
+        const previous = child(related, 'previous_version');
+        if (includePreviousUpdates) {
+            assert.equal(related.attrs.update_set_name, 'Current set');
+            assert.equal(previous.attrs.update_set_name, 'Earlier & original set');
+            assert.equal(previous.attrs.update_set_sys_id, 'earlier-set');
+            assert.equal(previous.children[0].children[0].attrs.change, 'modified');
+            assert.equal(child(related, 'current_version').children[0].children[0].attrs.change, 'modified');
+        } else {
+            assert.equal(previous, undefined);
+        }
+    });
+}

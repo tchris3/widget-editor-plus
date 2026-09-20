@@ -38,7 +38,23 @@ export const tableConfigSpWidgetProperty = Property({
         "option_schema",
         "demo_data"
       ],
-      "pattern": "\\\\$sp\\\\.getWidget\\\\(\\\\s*['\\"]([^'\\"]+)['\\"]\\\\s*\\\\)",
+      "pattern": "\\\\$sp\\\\.getWidget\\\\(\\\\s*['\\"]([^'\\"]+)['\\"]",
+      "relatedTable": "sp_widget",
+      "relatedMatchField": "id",
+      "category": "Embedded Widget"
+    },
+    {
+      "type": "token",
+      "sourceField": ["client_script", "script"],
+      "pattern": "\\\\bspUtil\\\\.get\\\\(\\\\s*['\\"]([^'\\"]+)['\\"]",
+      "relatedTable": "sp_widget",
+      "relatedMatchField": "id",
+      "category": "Embedded Widget"
+    },
+    {
+      "type": "token",
+      "sourceField": "template",
+      "pattern": "<widget\\\\s+[^>]*\\\\bid=['\\"]([^'\\"]+)['\\"]",
       "relatedTable": "sp_widget",
       "relatedMatchField": "id",
       "category": "Embedded Widget"
@@ -47,7 +63,7 @@ export const tableConfigSpWidgetProperty = Property({
   "pickerFields": ["name", "id"]
 }`,
     description:
-        'Widget Editor+ Assistant table_config rules for sp_widget: linked templates/providers, embedded widget references, and record picker field order.',
+        'Widget Editor+ Assistant table_config rules for sp_widget: linked templates/providers, embedded widget references ($sp.getWidget, spUtil.get, <widget> tags), and record picker field order.',
     ignoreCache: true,
     roles: {
         read: ['sp_admin'],
