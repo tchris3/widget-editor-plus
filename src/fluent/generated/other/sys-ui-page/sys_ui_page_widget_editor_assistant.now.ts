@@ -184,6 +184,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             outline: none;
         }
         .we-record-graph-canvas.we-canvas-panning { cursor: grabbing; }
+        .we-record-graph-canvas.we-canvas-over-node { cursor: pointer; }
         .we-graph-actions-layer {
             position: absolute;
             inset: 0;
@@ -1691,7 +1692,7 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                     <div class="we-graph-container" ng-if="!ctrl.loadingInitial &amp;&amp; ctrl.viewMode === 'graph'">
                         <div class="we-graph-empty" ng-if="ctrl.graph.nodes.length === 0">
-                            <strong>No selected records</strong>
+                            <strong>No records</strong>
                             <span>Select a record or update set.</span>
                         </div>
                         <div class="we-graph-controls" ng-if="ctrl.graph.nodes.length" role="group" aria-label="Graph zoom controls">
@@ -1700,7 +1701,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             <button type="button" class="btn btn-default btn-icon" ng-click="ctrl.graphCanvasCommand('zoomIn')" title="Zoom in">+</button>
                             <button type="button" class="btn btn-default" ng-click="ctrl.graphCanvasCommand('fit')" title="Fit all records">Fit</button>
                         </div>
-                        <canvas class="we-record-graph-canvas" ng-if="ctrl.graph.nodes.length" we-record-graph-canvas="" graph="ctrl.graph" command="ctrl.graphCommand" zoom-percent="ctrl.graphZoom" on-scan="ctrl.scanRow(row)" on-open="ctrl.openGraphRecord(row)" on-remove="ctrl.removeRow(row)" tabindex="0" aria-label="Selected record relationship graph. Drag to pan and use the mouse wheel to zoom."></canvas>
+                        <canvas class="we-record-graph-canvas" ng-if="ctrl.graph.nodes.length" we-record-graph-canvas="" graph="ctrl.graph" command="ctrl.graphCommand" zoom-percent="ctrl.graphZoom" on-scan="ctrl.scanRow(row)" on-open="ctrl.openGraphRecord(row)" on-remove="ctrl.removeRow(row)" on-toggle="ctrl.toggleGraphRecord(row)" on-select-primary="ctrl.openLookup('primary')" tabindex="0" aria-label="Record relationship graph. Drag to pan and use the mouse wheel to zoom."></canvas>
                     </div>
                 </div>
             </div>
@@ -2212,6 +2213,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                         onScan: '&',
                         onOpen: '&',
                         onRemove: '&',
+                        onToggle: '&',
+                        onSelectPrimary: '&',
                     },
                     link: function (scope, element) {
                         var canvas = element[0];
@@ -2245,6 +2248,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         var MAX_SCALE = 2.5;
                         var AUTO_FIT_MIN_SCALE = 0.6;
                         var MIN_NODE_VISIBLE = 24;
+                        var CLICK_SLOP = 4;
 
                         function cssColour(property) {
                             var raw = $window.getComputedStyle(host).getPropertyValue(property).trim();
@@ -2308,8 +2312,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                             return lines.length ? lines : [''];
                         }
 
+                        // Same buttons, in the same order, as the table's actions column.
                         function actionDefinitions(node) {
-                            var actions = [{ type: 'scan', title: 'Scan for related records', iconClass: 'icon-search' }];
+                            var actions = [];
+                            if (node.primary && !node.embeddedPrimary) actions.push({ type: 'selectPrimary', title: 'Select primary record', iconClass: 'icon-target' });
+                            actions.push({ type: 'scan', title: 'Scan for related records', iconClass: 'icon-search' });
                             if (!node.embeddedPrimary) actions.push({ type: 'open', title: 'Open record in platform', iconClass: 'icon-open-document-new-tab' });
                             if (!node.primary) actions.push({ type: 'remove', title: 'Remove record', iconClass: 'icon-cross' });
                             return actions;
@@ -3005,34 +3012,80 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 if (action.type === 'scan') scope.onScan({ row: action.node.row });
                                 if (action.type === 'open') scope.onOpen({ row: action.node.row });
                                 if (action.type === 'remove') scope.onRemove({ row: action.node.row });
+                                if (action.type === 'toggle') scope.onToggle({ row: action.node.row });
+                                if (action.type === 'selectPrimary') scope.onSelectPrimary();
                             });
                             $timeout(draw);
+                        }
+
+                        // Node under a screen point, if any — checked later ones win so
+                        // overlapping cards resolve to the one drawn on top.
+                        function nodeAt(p) {
+                            var worldX = (p.x - camera.x) / camera.scale;
+                            var worldY = (p.y - camera.y) / camera.scale;
+                            var hit = null;
+                            layout.nodes.forEach(function (node) {
+                                if (worldX >= node.x && worldX <= node.x + node.width && worldY >= node.y && worldY <= node.y + node.height) hit = node;
+                            });
+                            return hit;
+                        }
+
+                        function isToggleable(node) {
+                            return !!node && !node.primary && !node.blocked;
+                        }
+
+                        function updateHoverCursor(p) {
+                            element.toggleClass('we-canvas-over-node', !pointer && isToggleable(nodeAt(p)));
                         }
 
                         function onPointerDown(event) {
                             if (event.button !== undefined && event.button !== 0) return;
                             var p = screenPoint(event);
-                            pointer = { id: event.pointerId, x: p.x, y: p.y, cameraX: camera.x, cameraY: camera.y };
+                            pointer = { id: event.pointerId, x: p.x, y: p.y, cameraX: camera.x, cameraY: camera.y, moved: false };
                             canvas.setPointerCapture(event.pointerId);
+                            element.removeClass('we-canvas-over-node');
                             element.addClass('we-canvas-panning');
                         }
 
                         function onPointerMove(event) {
-                            if (!pointer || pointer.id !== event.pointerId) return;
                             var p = screenPoint(event);
+                            if (!pointer || pointer.id !== event.pointerId) {
+                                updateHoverCursor(p);
+                                return;
+                            }
                             var dx = p.x - pointer.x;
                             var dy = p.y - pointer.y;
+                            if (Math.abs(dx) > CLICK_SLOP || Math.abs(dy) > CLICK_SLOP) pointer.moved = true;
                             camera.x = pointer.cameraX + dx;
                             camera.y = pointer.cameraY + dy;
                             clampCameraToVisibleNode();
                             draw();
                         }
 
+                        // A press-and-release without a drag toggles the card under the cursor;
+                        // anything that moved beyond the slop was a pan.
                         function onPointerUp(event) {
+                            if (!pointer || pointer.id !== event.pointerId) return;
+                            var wasClick = !pointer.moved;
+                            pointer = null;
+                            element.removeClass('we-canvas-panning');
+                            try { canvas.releasePointerCapture(event.pointerId); } catch (e) {}
+                            var p = screenPoint(event);
+                            var node = wasClick ? nodeAt(p) : null;
+                            if (isToggleable(node)) runAction({ type: 'toggle', node: node });
+                            updateHoverCursor(p);
+                        }
+
+                        // A cancelled pointer (e.g. touch scroll takeover) ends the pan but never toggles.
+                        function onPointerCancel(event) {
                             if (!pointer || pointer.id !== event.pointerId) return;
                             pointer = null;
                             element.removeClass('we-canvas-panning');
                             try { canvas.releasePointerCapture(event.pointerId); } catch (e) {}
+                        }
+
+                        function onPointerLeave() {
+                            element.removeClass('we-canvas-over-node');
                         }
 
                         function onWheel(event) {
@@ -3077,7 +3130,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                         canvas.addEventListener('pointerdown', onPointerDown);
                         canvas.addEventListener('pointermove', onPointerMove);
                         canvas.addEventListener('pointerup', onPointerUp);
-                        canvas.addEventListener('pointercancel', onPointerUp);
+                        canvas.addEventListener('pointercancel', onPointerCancel);
+                        canvas.addEventListener('pointerleave', onPointerLeave);
                         canvas.addEventListener('wheel', onWheel, { passive: false });
                         minimap.addEventListener('pointerdown', onMinimapPointerDown);
                         minimap.addEventListener('pointermove', onMinimapPointerMove);
@@ -3147,7 +3201,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                             canvas.removeEventListener('pointerdown', onPointerDown);
                             canvas.removeEventListener('pointermove', onPointerMove);
                             canvas.removeEventListener('pointerup', onPointerUp);
-                            canvas.removeEventListener('pointercancel', onPointerUp);
+                            canvas.removeEventListener('pointercancel', onPointerCancel);
+                            canvas.removeEventListener('pointerleave', onPointerLeave);
                             canvas.removeEventListener('wheel', onWheel);
                             minimap.removeEventListener('pointerdown', onMinimapPointerDown);
                             minimap.removeEventListener('pointermove', onMinimapPointerMove);
@@ -4224,12 +4279,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return row.table + ':' + row.sys_id;
             }
 
-            // Builds deterministic graph topology from every checked record. Active Context XML
-            // type filters affect export/table visibility, but graph nodes stay in place and dim.
+            // Builds deterministic graph topology from every record, checked or not. Unchecked
+            // records and those outside the active Context XML type filter stay in place but
+            // dim, so a node can be toggled back on from the graph itself.
             // The canvas directive measures full labels and performs the final pixel layout.
             function rebuildGraph() {
                 var selected = ctrl.rows.filter(function (r) {
-                    return !r.placeholder && r.checked && r.table && r.sys_id;
+                    return !r.placeholder && r.table && r.sys_id;
                 });
                 var byKey = {};
                 selected.forEach(function (r) { byKey[rowKey(r)] = r; });
@@ -4310,7 +4366,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                             isNew: !!ctrl.includePreviousUpdates && !!r.isNewInUpdateSet,
                             isDeleted: r.updateSetAction === 'DELETE',
                             includePreviousUpdates: !!ctrl.includePreviousUpdates,
-                            dimmed: !rowMatchesActiveFilter(r),
+                            checked: !!r.checked,
+                            dimmed: !r.checked || !rowMatchesActiveFilter(r),
                             embeddedPrimary: !!(r.primary && ctrl.embeddedInModal),
                             column: columnIndex,
                             order: rowIndex,
@@ -4338,6 +4395,14 @@ export const widgetEditorAssistantUiPage = UiPage({
 
             ctrl.graphCanvasCommand = function (action) {
                 ctrl.graphCommand = { action: action, id: ++graphCommandId };
+            };
+
+            // Clicking a graph node — same rules as the table checkbox, and the table
+            // reflects the change immediately since both bind to row.checked.
+            ctrl.toggleGraphRecord = function (row) {
+                if (!row || row.primary || ctrl.isExportBlocked(row.table, row)) return;
+                row.checked = !row.checked;
+                ctrl.onSelectionChange();
             };
 
             ctrl.openGraphRecord = function (row) {
