@@ -1015,6 +1015,35 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     },
 
     ////////////////////////////////////////////////////////////
+    // Table/Graph view mode (User Preferences)
+    ////////////////////////////////////////////////////////////
+
+    /* Shared with the main Widget Editor+ tool so the view mode rides along with its preferences export/import. */
+    USER_PREF_NAME: 'monaco_plus.user_prefs',
+
+    /**
+     * Returns the current user's last-selected view mode ('table' or 'graph'),
+     * from the shared Widget Editor+ preference blob. Defaults to 'table'.
+     * @returns {{success: boolean, viewMode: string}} Return value.
+     */
+    getViewMode: function () {
+        var viewMode = new WidgetEditorAjax().getMergedUserPref(this.USER_PREF_NAME, 'assistantViewMode', 'table');
+        return this._answer({ success: true, viewMode: viewMode === 'graph' ? 'graph' : 'table' });
+    },
+
+    /**
+     * Persists the user's view mode into the shared Widget Editor+ preference blob, merging
+     * into whatever the main tool has already stored there rather than overwriting it.
+     * Accepts `viewMode` ('table' or 'graph'; anything else is treated as 'table').
+     * @returns {{success: boolean}} Return value.
+     */
+    saveViewMode: function () {
+        var viewMode = this.getParameter('viewMode') === 'graph' ? 'graph' : 'table';
+        new WidgetEditorAjax().saveMergedUserPref(this.USER_PREF_NAME, 'assistantViewMode', viewMode);
+        return this._answer({ success: true });
+    },
+
+    ////////////////////////////////////////////////////////////
     // Update set picker
     ////////////////////////////////////////////////////////////
 

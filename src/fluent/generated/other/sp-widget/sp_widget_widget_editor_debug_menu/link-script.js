@@ -1697,9 +1697,9 @@ function link(scope, element, attrs, controller) {
         }
 
         function captureTarget(target) {
-            state.widgetSysId = ScopeResolver.getWidgetSysId(target);
             state.instanceSysId = ScopeResolver.getInstanceSysId(target);
             state.embeddedWidgets = ScopeResolver.getEmbeddedWidgetInfos(target);
+            state.widgetSysId = (state.embeddedWidgets[0] && state.embeddedWidgets[0].sysId) || ScopeResolver.getWidgetSysId(target);
             state.widgetEl = target.closest ? target.closest('[widget]') : null;
             return !!(state.widgetSysId && state.widgetEl);
         }

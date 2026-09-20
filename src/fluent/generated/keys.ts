@@ -25,6 +25,10 @@ declare global {
                         table: 'sys_ui_action'
                         id: '33c2c34f83e7321070b8b5dfeeaad3f0'
                     }
+                    '341d7f2780c78746be6dea94fccf416a': {
+                        table: 'sys_ui_action'
+                        id: '341d7f2780c78746be6dea94fccf416a'
+                    }
                     '3b5221458370075070b8b5dfeeaad36a': {
                         table: 'sys_properties'
                         id: '3b5221458370075070b8b5dfeeaad36a'
@@ -60,6 +64,10 @@ declare global {
                     '90b5cf0d83ebb21070b8b5dfeeaad3bb': {
                         table: 'sys_security_acl'
                         id: '90b5cf0d83ebb21070b8b5dfeeaad3bb'
+                    }
+                    '987709096eb2ae2febce3b58151f28f7': {
+                        table: 'sys_ui_action'
+                        id: '987709096eb2ae2febce3b58151f28f7'
                     }
                     '9996546a8327321070b8b5dfeeaad317': {
                         table: 'sys_ui_script'
@@ -138,6 +146,10 @@ declare global {
                     e26f703f034ce59c0206c4d0d01dc9ea: {
                         table: 'sys_properties'
                         id: 'e26f703f034ce59c0206c4d0d01dc9ea'
+                    }
+                    f4580c008d02765608b16502eaf4c340: {
+                        table: 'sys_ui_action'
+                        id: 'f4580c008d02765608b16502eaf4c340'
                     }
                     f4a1eed1837f725070b8b5dfeeaad394: {
                         table: 'sys_script_client'
@@ -705,10 +717,36 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_ui_action_role'
+                        id: '9d3b645f26114f328b8a267e8be08021'
+                        key: {
+                            sys_ui_action: '987709096eb2ae2febce3b58151f28f7'
+                            sys_user_role: {
+                                id: 'cd640d10d7101200a9addd173e24d4cd'
+                                key: {
+                                    name: 'sp_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_security_acl_role'
                         id: 'a44e4297f1d24ecebfcce369e8f658b0'
                         key: {
                             sys_security_acl: '33195917e3c84b1f8afafe10a38f16b0'
+                            sys_user_role: {
+                                id: 'cd640d10d7101200a9addd173e24d4cd'
+                                key: {
+                                    name: 'sp_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        table: 'sys_ui_action_role'
+                        id: 'b06c3eede1d94e56a335d02aaead4df6'
+                        key: {
+                            sys_ui_action: '341d7f2780c78746be6dea94fccf416a'
                             sys_user_role: {
                                 id: 'cd640d10d7101200a9addd173e24d4cd'
                                 key: {
@@ -724,6 +762,19 @@ declare global {
                             claim_owner_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             previous_claim_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             metadata_update_name: 'sys_security_acl_role_792d35658363b61070b8b5dfeeaad32e'
+                        }
+                    },
+                    {
+                        table: 'sys_ui_action_role'
+                        id: 'c5b53c2e60364bee962e986ae76efa4f'
+                        key: {
+                            sys_ui_action: 'f4580c008d02765608b16502eaf4c340'
+                            sys_user_role: {
+                                id: 'cd640d10d7101200a9addd173e24d4cd'
+                                key: {
+                                    name: 'sp_admin'
+                                }
+                            }
                         }
                     },
                     {

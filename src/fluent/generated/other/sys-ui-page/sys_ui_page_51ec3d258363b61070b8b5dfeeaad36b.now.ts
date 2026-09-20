@@ -1406,7 +1406,7 @@ UiPage({
             <div class="dc-header">
                 <div class="dc-header-row" ng-hide="ctrl.isEmbedded">
                     <div class="dc-title">
-                        <span class="dc-title-label" ng-if="ctrl.expandedIndex === null &amp;&amp; ctrl.expandedExtraIndex === null &amp;&amp; !ctrl.expandedString">Compare&nbsp;</span>
+                        <span class="dc-title-label" ng-if="ctrl.expandedIndex === null &amp;&amp; ctrl.expandedExtraIndex === null &amp;&amp; !ctrl.expandedString">Compare+&nbsp;</span>
                         <span class="dc-table-picker-wrap" ng-show="ctrl.expandedIndex === null &amp;&amp; ctrl.expandedExtraIndex === null &amp;&amp; !ctrl.expandedString" we-diff-table-picker="we-diff-table-picker"></span>
                         <span class="dc-title-colon" ng-if="ctrl.expandedIndex === null &amp;&amp; ctrl.expandedExtraIndex === null &amp;&amp; !ctrl.expandedString &amp;&amp; !ctrl.tableNoVersions">:</span>
                         <span class="dc-picker-wrap" ng-show="ctrl.expandedIndex === null &amp;&amp; ctrl.expandedExtraIndex === null &amp;&amp; !ctrl.expandedString &amp;&amp; !ctrl.tableNoVersions" we-diff-record-picker="we-diff-record-picker"></span>

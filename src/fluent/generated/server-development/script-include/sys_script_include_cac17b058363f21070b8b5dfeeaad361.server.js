@@ -162,6 +162,14 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
 
         var gr = new GlideRecordSecure('sp_widget');
         if (!gr.get(sysId)) {
+            var deletedResult = this._getDeletedWidget(sysId);
+            if (deletedResult) {
+                return this._answer({
+                    success: true,
+                    widget: deletedResult.widget,
+                    additional_widget_fields: deletedResult.additional_widget_fields,
+                });
+            }
             return this._answer({
                 success: false,
                 error: 'Widget not found',
@@ -568,6 +576,164 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     ////////////////////////////////////////////////////////////
     // Versions
     ////////////////////////////////////////////////////////////
+
+    /**
+     * Resolves the two sys_update_version records needed to compare a Customer
+     * Update with the state immediately before its update set.
+     * Accepts `update_id` (sys_update_xml sys_id).
+     *
+     * @returns {{success: boolean, table: string, record_id: string,
+     *   version_1: string, version_2: string, error: string}} Comparison target.
+     */
+    getCustomerUpdateComparison: function () {
+        var updateId = this.getParameter('update_id');
+        var update = new GlideRecordSecure('sys_update_xml');
+        if (!updateId || !update.get(updateId)) {
+            return this._answer({
+                success: false,
+                error: 'Customer update not found.',
+            });
+        }
+
+        var targetRecord = this._parseCustomerUpdateTarget(
+            update.getValue('payload')
+        );
+        if (!targetRecord) {
+            return this._answer({
+                success: false,
+                error: 'The customer update payload has no target record.',
+            });
+        }
+
+        var name = update.getValue('name');
+        var updateSet = update.getValue('update_set') ||
+            update.getValue('remote_update_set');
+        var payload = update.getValue('payload');
+        var target = null;
+
+        // Prefer the same relationship used by the platform: Customer Update is
+        // one final payload per object/update set; Versions uses that set as its
+        // source. Retrieved/moved updates fall back to exact payload matching.
+        if (name && updateSet) {
+            var bySource = new GlideRecordSecure('sys_update_version');
+            bySource.addQuery('name', name);
+            bySource.addQuery('source', updateSet);
+            bySource.orderByDesc('sys_recorded_at');
+            bySource.setLimit(1);
+            bySource.query();
+            if (bySource.next()) {
+                target = bySource;
+            }
+        }
+
+        if (!target && name && payload) {
+            var byPayload = new GlideRecordSecure('sys_update_version');
+            byPayload.addQuery('name', name);
+            byPayload.orderByDesc('sys_recorded_at');
+            byPayload.query();
+            while (byPayload.next()) {
+                if (byPayload.getValue('payload') === payload) {
+                    target = byPayload;
+                    break;
+                }
+            }
+        }
+
+        if (!target) {
+            return this._answer({
+                success: false,
+                error: 'Compare+ could not find the version captured by this customer update.',
+            });
+        }
+
+        var recordedAt = target.getValue('sys_recorded_at');
+        var firstInSetAt = recordedAt;
+        var source = target.getValue('source');
+        if (source) {
+            var firstInSet = new GlideRecordSecure('sys_update_version');
+            firstInSet.addQuery('name', name);
+            firstInSet.addQuery('source', source);
+            firstInSet.addQuery('sys_recorded_at', '<=', recordedAt);
+            firstInSet.orderBy('sys_recorded_at');
+            firstInSet.setLimit(1);
+            firstInSet.query();
+            if (firstInSet.next()) {
+                firstInSetAt = firstInSet.getValue('sys_recorded_at');
+            }
+        }
+
+        var previous = new GlideRecordSecure('sys_update_version');
+        previous.addQuery('name', name);
+        previous.addQuery('sys_recorded_at', '<', firstInSetAt);
+        previous.orderByDesc('sys_recorded_at');
+        previous.setLimit(1);
+        previous.query();
+        if (!previous.next()) {
+            return this._answer({
+                success: false,
+                reason: 'no_previous_update_set',
+                error: 'No previous update set found.',
+            });
+        }
+
+        return this._answer({
+            success: true,
+            table: targetRecord.table,
+            record_id: targetRecord.sys_id,
+            version_1: previous.getUniqueValue(),
+            version_2: target.getUniqueValue(),
+        });
+    },
+
+    /**
+     * Resolves a widget/header-footer target from a Customer Update.
+     * Accepts `update_id` (sys_update_xml sys_id).
+     * @returns {{success: boolean, record_id: string, error: string}} Target.
+     */
+    getCustomerUpdateWidgetTarget: function () {
+        var updateId = this.getParameter('update_id');
+        var update = new GlideRecordSecure('sys_update_xml');
+        if (!updateId || !update.get(updateId)) {
+            return this._answer({ success: false, error: 'Customer update not found.' });
+        }
+
+        var target = this._parseCustomerUpdateTarget(update.getValue('payload'));
+        if (!target || (target.table !== 'sp_widget' && target.table !== 'sp_header_footer')) {
+            return this._answer({
+                success: false,
+                error: 'This customer update is not a widget or header/footer.',
+            });
+        }
+
+        return this._answer({ success: true, record_id: target.sys_id });
+    },
+
+    /**
+     * Resolves the target table and sys_id from a Customer Update.
+     * Accepts `update_id` (sys_update_xml sys_id).
+     * @returns {{success: boolean, table: string, record_id: string, error: string}} Target.
+     */
+    getCustomerUpdateTarget: function () {
+        var updateId = this.getParameter('update_id');
+        var update = new GlideRecordSecure('sys_update_xml');
+        if (!updateId || !update.get(updateId)) {
+            return this._answer({ success: false, error: 'Customer update not found.' });
+        }
+
+        var target = this._parseCustomerUpdateTarget(update.getValue('payload'));
+        if (!target) {
+            return this._answer({
+                success: false,
+                error: 'The customer update payload has no target record.',
+            });
+        }
+
+        return this._answer({
+            success: true,
+            table: target.table,
+            record_id: target.sys_id,
+        });
+    },
 
     /**
      * Returns all sys_update_version records for a given widget, ordered newest-first.
@@ -3092,27 +3258,87 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     },
 
     /**
+     * Reads a shared JSON sys_user_preference blob for the current user.
+     * @param {string} prefName Preference name.
+     * @returns {Object} The parsed blob, or {} if missing/unparseable.
+     */
+    _readUserPrefsBlob: function (prefName) {
+        var gr = new GlideRecordSecure('sys_user_preference');
+        gr.addQuery('user', gs.getUserID());
+        gr.addQuery('name', prefName);
+        gr.setLimit(1);
+        gr.query();
+        if (!gr.next()) return {};
+        try {
+            return JSON.parse(gr.getValue('value')) || {};
+        } catch (e) {
+            return {};
+        }
+    },
+
+    /**
+     * Upserts a shared JSON sys_user_preference blob for the current user.
+     * @param {string} prefName Preference name.
+     * @param {Object} blob Value to store, JSON-encoded.
+     */
+    _writeUserPrefsBlob: function (prefName, blob) {
+        var gr = new GlideRecordSecure('sys_user_preference');
+        gr.addQuery('user', gs.getUserID());
+        gr.addQuery('name', prefName);
+        gr.query();
+        var json = JSON.stringify(blob);
+        if (gr.next()) {
+            gr.setValue('value', json);
+            gr.update();
+        } else {
+            gr.initialize();
+            gr.setValue('user', gs.getUserID());
+            gr.setValue('name', prefName);
+            gr.setValue('value', json);
+            gr.insert();
+        }
+    },
+
+    /**
+     * Reads one key out of a shared JSON sys_user_preference blob.
+     * @param {string} prefName Preference name.
+     * @param {string} key Key within the blob.
+     * @param {*} defaultValue Value to return when the blob or key is missing.
+     * @returns {*} The stored value, or defaultValue.
+     */
+    getMergedUserPref: function (prefName, key, defaultValue) {
+        var blob = this._readUserPrefsBlob(prefName);
+        return (key in blob) ? blob[key] : defaultValue;
+    },
+
+    /**
+     * Merges one key into a shared JSON sys_user_preference blob without disturbing
+     * other keys already stored there by other callers.
+     * @param {string} prefName Preference name.
+     * @param {string} key Key to set within the blob.
+     * @param {*} value Value to store.
+     */
+    saveMergedUserPref: function (prefName, key, value) {
+        var blob = this._readUserPrefsBlob(prefName);
+        blob[key] = value;
+        this._writeUserPrefsBlob(prefName, blob);
+    },
+
+    /**
      * Upserts the current user's Monaco+ preference.
      * Accepts `value` (JSON-encoded preference blob to store).
      * @returns {{success: boolean}} Return value.
      */
     saveUserPrefs: function () {
-        var value = this.getParameter('value');
-        var gr = new GlideRecordSecure('sys_user_preference');
-        gr.addQuery('user', gs.getUserID());
-        gr.addQuery('name', this.USER_PREF_NAME);
-        gr.query();
-
-        if (gr.next()) {
-            gr.setValue('value', value);
-            gr.update();
-        } else {
-            gr.initialize();
-            gr.setValue('user', gs.getUserID());
-            gr.setValue('name', this.USER_PREF_NAME);
-            gr.setValue('value', value);
-            gr.insert();
+        var incoming = {};
+        try {
+            incoming = JSON.parse(this.getParameter('value')) || {};
+        } catch (e) {}
+        var existing = this._readUserPrefsBlob(this.USER_PREF_NAME);
+        for (var key in incoming) {
+            existing[key] = incoming[key];
         }
+        this._writeUserPrefsBlob(this.USER_PREF_NAME, existing);
         return this._answer({
             success: true,
         });
@@ -3551,6 +3777,159 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         return out;
     },
 
+    /* Standard sp_widget fields to pull out of a sys_audit_delete payload XML. */
+    DELETED_WIDGET_PAYLOAD_FIELDS: [
+        'name',
+        'id',
+        'description',
+        'controller_as',
+        'public',
+        'roles',
+        'static',
+        'template',
+        'css',
+        'client_script',
+        'script',
+        'link',
+        'option_schema',
+        'demo_data',
+        'sys_policy',
+        'servicenow',
+        'sys_class_name',
+        'sys_updated_on',
+        'sys_updated_by',
+    ],
+
+    /**
+     * Parses an sp_widget XML snapshot (as stored in sys_audit_delete.payload) into a
+     * field name → text content map, mirroring how sys_update_version payloads are parsed.
+     * @param {string} payload - Raw XML string.
+     * @returns {{fields: Object, display_values: Object}} Parsed field values and any
+     *   accompanying display_value attributes (currently just sys_scope).
+     */
+    _parseDeletedWidgetPayload: function (payload) {
+        var fields = {};
+        var displayValues = {};
+        if (!payload) {
+            return { fields: fields, display_values: displayValues };
+        }
+        try {
+            var xmlDoc = new XMLDocument2();
+            xmlDoc.parseXML(payload);
+            var names = this.DELETED_WIDGET_PAYLOAD_FIELDS.concat(
+                this._getConfiguredAdditionalWidgetFields()
+            );
+            for (var i = 0; i < names.length; i++) {
+                var node = xmlDoc.getFirstNode('//' + names[i]);
+                if (node) {
+                    fields[names[i]] = node.getTextContent() || '';
+                }
+            }
+            var scopeNode = xmlDoc.getFirstNode('//sys_scope');
+            if (scopeNode) {
+                fields.sys_scope = scopeNode.getTextContent() || '';
+                var scopeDisplay = scopeNode.getAttribute('display_value');
+                if (scopeDisplay) {
+                    displayValues.sys_scope = scopeDisplay;
+                }
+            }
+        } catch (e) {
+            gs.error(
+                'WidgetEditorAjax: _parseDeletedWidgetPayload error: ' + e.message
+            );
+        }
+        return { fields: fields, display_values: displayValues };
+    },
+
+    /**
+     * Reconstructs a deleted sp_widget record from its sys_audit_delete XML payload.
+     * @param {string} sysId - sys_id of the widget that no longer exists in sp_widget.
+     * @returns {{widget: Object, additional_widget_fields: Array}|null} Widget-shaped
+     *   object (all fields read-only, canWrite false) with a `deleted` flag, plus
+     *   additional field defs — or null when no delete audit trail exists for this sys_id.
+     */
+    _getDeletedWidget: function (sysId) {
+        var auditGr = new GlideRecordSecure('sys_audit_delete');
+        auditGr.addQuery('tablename', 'sp_widget');
+        auditGr.addQuery('documentkey', sysId);
+        auditGr.orderByDesc('sys_created_on');
+        auditGr.setLimit(1);
+        auditGr.query();
+        if (!auditGr.next()) {
+            return null;
+        }
+
+        var parsed = this._parseDeletedWidgetPayload(
+            auditGr.getValue('payload')
+        );
+        var fields = parsed.fields;
+        var displayValues = parsed.display_values;
+        var isBool = function (v) {
+            return v === 'true' || v === '1';
+        };
+
+        var sysClassName = fields.sys_class_name || 'sp_widget';
+        var isHeaderFooter = sysClassName === 'sp_header_footer';
+        var additionalDefs = this._getAdditionalWidgetFieldDefs(
+            this._buildWidgetFieldAccessProbe()
+        );
+
+        var widget = {
+            sys_id: sysId,
+            name: fields.name || '',
+            id: fields.id || '',
+            description: fields.description || '',
+            controller_as: fields.controller_as || 'c',
+            application: displayValues.sys_scope || '',
+            application_sys_id: fields.sys_scope || '',
+            is_public: isBool(fields.public),
+            roles: fields.roles || '',
+            template: fields.template || '',
+            css: fields.css || '',
+            client_script: fields.client_script || '',
+            script: fields.script || '',
+            link: fields.link || '',
+            es12: false,
+            es12_record_exists: false,
+            sys_updated_on: fields.sys_updated_on || '',
+            sys_updated_by: fields.sys_updated_by || '',
+            canWrite: false,
+            scope_mismatch: false,
+            widgetOrigin: null,
+            sys_policy: fields.sys_policy || '',
+            sys_policy_display: fields.sys_policy || '',
+            servicenow: isBool(fields.servicenow),
+            volatility_level: '',
+            volatility_level_display: '',
+            deprecated: false,
+            update_set_mismatch: false,
+            widget_update_set_id: '',
+            widget_update_set_name: '',
+            sys_class_name: sysClassName,
+            is_header_footer: isHeaderFooter,
+            'static': isHeaderFooter && isBool(fields['static']),
+            option_schema_has_value: this._hasProperJsonObjectValue(
+                fields.option_schema
+            ),
+            demo_data_has_value: this._hasProperJsonObjectValue(
+                fields.demo_data
+            ),
+            has_active_instances: false,
+            deleted: true,
+            deleted_on: auditGr.getValue('sys_created_on') || '',
+            deleted_by: auditGr.getValue('sys_created_by') || '',
+        };
+
+        for (var ai = 0; ai < additionalDefs.length; ai++) {
+            var addDef = additionalDefs[ai];
+            var addVal = fields[addDef.name];
+            widget[addDef.name] =
+                addDef.type === 'boolean' ? isBool(addVal) : addVal || '';
+        }
+
+        return { widget: widget, additional_widget_fields: additionalDefs };
+    },
+
     /**
      * Evaluates the configured encoded query against the widget record to determine
      * whether the widget should be treated as deprecated.
@@ -3850,6 +4229,45 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
      */
     _answer: function (obj) {
         return this.setAnswer(JSON.stringify(obj));
+    },
+
+    /**
+     * Extracts the table and sys_id from a Customer Update/Version payload.
+     * @param {string} payload - Raw record_update XML.
+     * @returns {?{table: string, sys_id: string}} Parsed target, or null.
+     */
+    _parseCustomerUpdateTarget: function (payload) {
+        if (!payload) {
+            return null;
+        }
+        try {
+            var tableMatch = payload.match(/<([a-z_][a-z0-9_]*)\s[^>]*action=/i);
+            var table = tableMatch ? tableMatch[1] : '';
+            if (!table) {
+                return null;
+            }
+
+            var xmlDoc = new XMLDocument2();
+            xmlDoc.parseXML(payload);
+            var recordEl = xmlDoc.getFirstNode('//' + table);
+            if (!recordEl) {
+                return null;
+            }
+
+            var sysId = '';
+            var children = recordEl.getChildNodeIterator();
+            while (children.hasNext()) {
+                var child = children.next();
+                if (child.getNodeName() === 'sys_id') {
+                    sysId = child.getTextContent() || '';
+                    break;
+                }
+            }
+            return sysId ? { table: table, sys_id: sysId } : null;
+        } catch (e) {
+            gs.error('WidgetEditorAjax: customer update target parse failed: ' + e.message);
+            return null;
+        }
     },
 
     /**
