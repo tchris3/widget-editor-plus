@@ -135,7 +135,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
                 var refTables = this._findReferencedTables(refTableNames).filter(function (r) {
                     return r.sys_id !== sysId;
                 });
-                return this._answer({ success: true, related: refTables });
+                return this._answer({ success: true, related: refTables.concat(this._findTableChoices(sysId)) });
             } catch (e) {
                 return this._answer({ success: false, error: String(e), related: [] });
             }
@@ -870,6 +870,8 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
                 label: gr.getDisplayValue() || gr.getUniqueValue(),
                 updatedOn: gr.getDisplayValue('sys_updated_on'),
                 values: values,
+                choiceTable: String(table) === 'sys_choice_set' ? gr.getValue('name') : '',
+                choiceField: String(table) === 'sys_choice_set' ? gr.getValue('element') : '',
             });
         }
 
@@ -1039,7 +1041,9 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             // Confirm the record exists without leaking its display value (e.g. a person's name).
             return this._answer({ success: true, label: sysId, tableLabel: tableLabel, updatedOn: gr.getDisplayValue('sys_updated_on'), blocked: true });
         }
-        return this._answer({ success: true, label: gr.getDisplayValue() || sysId, tableLabel: tableLabel, updatedOn: gr.getDisplayValue('sys_updated_on') });
+        return this._answer({ success: true, label: gr.getDisplayValue() || sysId, tableLabel: tableLabel, updatedOn: gr.getDisplayValue('sys_updated_on'),
+            choiceTable: String(table) === 'sys_choice_set' ? gr.getValue('name') : '',
+            choiceField: String(table) === 'sys_choice_set' ? gr.getValue('element') : '' });
     },
 
     /**
@@ -1054,6 +1058,80 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         var gr = new GlideRecordSecure('sys_db_object');
         if (!gr.get(sysId)) return this._answer({ success: false, name: '' });
         return this._answer({ success: true, name: gr.getValue('name') || '' });
+    },
+
+    // One native Choice Set per table/field, never one suggestion per value.
+    _findTableChoices: function (sysId) {
+        if (this._isTableExportBlocked('sys_choice_set') || this._isTableExportBlocked('sys_choice')) return [];
+        var tables = [];
+        var seen = {};
+        while (sysId && !seen[sysId]) {
+            seen[sysId] = true;
+            var table = new GlideRecordSecure('sys_db_object');
+            if (!table.get(sysId)) break;
+            var name = table.getValue('name');
+            if (!name) break;
+            tables.push(String(name));
+            sysId = String(table.getValue('super_class') || '');
+        }
+        if (!tables.length) return [];
+        var sets = new GlideRecordSecure('sys_choice_set');
+        sets.addQuery('name', 'IN', tables.join(','));
+        sets.orderBy('name');
+        sets.orderBy('element');
+        sets.orderBy('sys_id');
+        sets.query();
+        var related = [];
+        var fields = {};
+        while (sets.next()) {
+            var source = sets.getValue('name') || '';
+            var field = sets.getValue('element') || '';
+            var key = source + '.' + field;
+            if (!field || fields[key]) continue;
+            fields[key] = true;
+            related.push({
+                table: 'sys_choice_set',
+                choiceTable: source,
+                choiceField: field,
+                sys_id: sets.getUniqueValue(),
+                label: key + ' choices',
+                category: source === tables[0] ? 'Choice Set' : 'Choice Set (inherited)',
+                updatedOn: sets.getDisplayValue('sys_updated_on')
+            });
+        }
+        return related;
+    },
+
+    // Resolve the grouping from a readable native record; never accept an arbitrary query.
+    getChoiceSetValues: function () {
+        var id = String(this.getParameter('sys_id') || '');
+        if (!/^[0-9a-f]{32}$/.test(id) || this._isTableExportBlocked('sys_choice_set') || this._isTableExportBlocked('sys_choice')) {
+            return this._answer({ success: false });
+        }
+        var set = new GlideRecordSecure('sys_choice_set');
+        if (!set.get(id)) return this._answer({ success: false });
+        var name = set.getValue('name');
+        var field = set.getValue('element');
+        if (!name || !field) return this._answer({ success: false });
+        var choices = new GlideRecordSecure('sys_choice');
+        if (!choices.canRead()) return this._answer({ success: false });
+        choices.addQuery('name', name);
+        choices.addQuery('element', field);
+        choices.orderBy('language');
+        choices.orderBy('sequence');
+        choices.orderBy('value');
+        choices.orderBy('dependent_value');
+        choices.orderBy('sys_id');
+        choices.query();
+        var values = [];
+        while (choices.next()) {
+            var value = { sys_id: choices.getUniqueValue() };
+            ['value', 'label', 'language', 'inactive', 'dependent_value', 'sequence', 'hint'].forEach(function (key) {
+                value[key] = choices.getValue(key);
+            });
+            values.push(value);
+        }
+        return this._answer({ success: true, name: name, element: field, choices: values });
     },
 
     /**
