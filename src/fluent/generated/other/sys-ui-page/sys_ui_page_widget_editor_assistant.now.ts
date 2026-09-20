@@ -3349,6 +3349,11 @@ export const widgetEditorAssistantUiPage = UiPage({
             catalog_ui_policy: 'Catalog UI Policy',
             catalog_ui_policy_action: 'Catalog UI Policy Action',
             catalog_script_client: 'Catalog Client Script',
+            sysevent_register: 'Event Registration',
+            sys_rest_message: 'REST Message',
+            sys_soap_message: 'SOAP Message',
+            sys_hub_flow: 'Flow',
+            wf_workflow: 'Workflow',
         };
         for (var i = 0; i < COMMON_TABLES.length; i++) {
             TABLE_LABELS[COMMON_TABLES[i].name] = COMMON_TABLES[i].label;

@@ -8,9 +8,16 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         RangeError: true, Map: true, Set: true, WeakMap: true, WeakSet: true, Promise: true,
         XMLHttpRequest: true, FormData: true, Blob: true, File: true, URL: true,
         URLSearchParams: true, Function: true, Number: true, String: true, Boolean: true,
+        JSON: true, Math: true, Symbol: true, Reflect: true, Intl: true, Class: true, Packages: true,
         GlideRecord: true, GlideRecordSecure: true, GlideAggregate: true, GlideDateTime: true,
         GlideDate: true, GlideDuration: true, GlideForm: true, GlideUser: true, GlideSession: true,
-        GlideAjax: true, GlideModal: true, GlideDialogWindow: true, GlideList2: true,
+        GlideAjax: true, GlideModal: true, GlideDialogWindow: true, GlideList2: true, GlideQuery: true,
+        GlideTime: true, GlideElement: true, GlideSystem: true, GlideStringUtil: true, GlideFilter: true,
+        GlideSchedule: true, GlideTableHierarchy: true, GlideEncrypter: true, GlideSecureRandomUtil: true,
+        GlideSysAttachment: true, GlideScopedEvaluator: true, GlideHTTPRequest: true, GlideURL: true,
+        GlideNavigation: true, GlideEmailOutbound: true, GlideExcelParser: true, GlideXMLUtil: true,
+        XMLDocument2: true, GlideImportSetTransformer: true, GlideSPScriptable: true, GlideElementDescriptor: true,
+        RESTMessageV2: true, SOAPMessageV2: true, FlowAPI: true, Workflow: true, NotifyClient: true,
     },
 
     // Resolve the navigation target separately from the historical record identity.
@@ -101,10 +108,11 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
 
     /**
      * Suggests related components for a record: admin-configured table_config rules
-     * (see _getTableConfig) plus, for every table, script-include/table references
-     * scanned from its own script-type field(s) and whatever table its table_name-type
-     * field(s) name. sys_db_object is special-cased to suggest tables referenced by the
-     * viewed table's own reference-type dictionary fields, rather than its own fields.
+     * (see _getTableConfig) plus, for every table, script include/table/property/event/
+     * integration/flow references scanned from its script-type field(s), whatever table
+     * its table_name-type field(s) name, and any reference field into an application-file
+     * table. sys_db_object is special-cased to suggest tables referenced by the viewed
+     * table's own reference-type dictionary fields, rather than its own fields.
      * Accepts `table` and `sys_id`.
      * @returns {{success: boolean, related: Array.<{table: string, sys_id: string,
      *   label: string, category: string, updatedOn: string}>}} Return value.
@@ -143,10 +151,11 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             var configured = this._evaluateRules(gr, this._getTableConfig(table).rules);
 
             // Generic fallback: any table with its own script-type field(s) gets scanned for
-            // further Script Include and table references, and any table_name-type field(s)
-            // suggest whatever table that field names — whatever the table happens to be.
-            // Always runs, alongside any table_config rules above.
-            var generic = [];
+            // further Script Include, table, property, event, integration and flow references;
+            // any table_name-type field(s) suggest whatever table that field names; and any
+            // reference field into an application-file table is followed — whatever the table
+            // happens to be. Always runs, alongside any table_config rules above.
+            var generic = this._findMetadataReferences(gr, table);
             var scriptFields = this._findScriptFields(table);
             var tableNameFields = this._findFieldsOfType(table, 'table_name');
             if (scriptFields.length) {
@@ -156,7 +165,11 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
                 var scriptNames = this._scanReferencedNamesInText(scriptContent);
                 var scriptIncludeMatches = this._findReferencedScriptIncludes(scriptNames, gr.getValue('sys_scope'));
                 var scriptTableNames = this._scanReferencedTableNamesInText(scriptContent);
-                generic = generic.concat(scriptIncludeMatches, this._findReferencedTables(scriptTableNames));
+                generic = generic.concat(scriptIncludeMatches, this._findReferencedTables(scriptTableNames),
+                    this._findReferencedResources(scriptContent));
+            }
+            if (table === 'sp_widget') {
+                generic = generic.concat(this._findInjectedAngularProviders(gr.getValue('client_script')));
             }
             if (tableNameFields.length) {
                 var seenTableNames = {};
@@ -399,20 +412,23 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     },
 
     /**
-     * Finds a table's own fields matching the given dictionary internal_type(s).
+     * Finds a table's fields (including those inherited from parent tables) matching the
+     * given dictionary internal_type(s).
      * @param {string} table - Table name.
      * @param {string} internalTypes - Comma-separated internal_type value(s).
      * @returns {Array.<string>} Field names.
      */
     _findFieldsOfType: function (table, internalTypes) {
         var fields = [];
+        var seen = {};
         var gr = new GlideRecordSecure('sys_dictionary');
-        gr.addQuery('name', table);
+        gr.addQuery('name', 'IN', this._tableHierarchyNames(table).join(','));
         gr.addQuery('internal_type', 'IN', internalTypes);
         gr.query();
         while (gr.next()) {
             var field = gr.getValue('element');
-            if (field) {
+            if (field && !seen[field]) {
+                seen[field] = true;
                 fields.push(field);
             }
         }
@@ -420,39 +436,85 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     },
 
     /**
-     * Regex-scans raw script text for `new SomeScriptInclude()` references.
+     * Angular providers a widget's client controller receives by dependency injection —
+     * the parameter names of its first function, matched against sp_angular_provider names.
+     * Catches providers used by the widget but never linked through m2m_sp_ng_pro_sp_widget.
+     * @param {string} clientScript - The widget's client_script.
+     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
+     */
+    _findInjectedAngularProviders: function (clientScript) {
+        var m = /\bfunction\b[^(]*\(([^)]*)\)/.exec(clientScript || '');
+        if (!m) return [];
+        var names = m[1].split(',').map(function (p) { return p.trim(); }).filter(function (p) {
+            return /^[a-zA-Z_$][\w$]*$/.test(p) && p.charAt(0) !== '$';
+        });
+        if (!names.length) return [];
+        return this._findRecordsByField('sp_angular_provider', 'name', names, 'Angular Provider (injected)');
+    },
+
+    // Each entry captures an optional scope prefix (group 1) and the class name (group 2).
+    SI_SCAN_PATTERNS: [
+        // new Foo( / new global.Foo(
+        /\bnew\s+(?:([a-zA-Z_][a-zA-Z0-9_]*)\.)?([A-Z][a-zA-Z0-9_]*)\s*\(/g,
+        // Object.extendsObject(Foo, / Object.extendsObject(global.Foo,
+        /\bextendsObject\s*\(\s*(?:([a-zA-Z_][a-zA-Z0-9_]*)\.)?([A-Z][a-zA-Z0-9_]*)\s*,/g,
+        // Static usage: Foo.bar( / global.Foo.bar( — not preceded by another member access
+        /(?:^|[^\w$.])(?:(global|sn_[a-z0-9_]+|x_[a-z0-9_]+)\.)?([A-Z][a-zA-Z0-9_]*)\.[a-zA-Z_$][\w$]*\s*\(/gm,
+        // new GlideAjax('Foo') / gs.include('Foo') — the name is a string argument
+        /\b(?:GlideAjax\s*\(|gs\.include\s*\()\s*['"](?:([a-zA-Z_][a-zA-Z0-9_]*)\.)?([A-Za-z_][a-zA-Z0-9_]*)['"]/g,
+    ],
+
+    /**
+     * Regex-scans raw script text for Script Include references: instantiation,
+     * extendsObject inheritance, static member calls, GlideAjax processors and gs.include.
      * @param {string} content - Script text to scan.
-     * @returns {Array.<string>} Candidate class names found (deduplicated, builtins excluded).
+     * @returns {Array.<{name: string, scope: string}>} Candidates (deduplicated, builtins
+     *   excluded); `scope` is the explicit `global.`/`sn_x.` prefix when one was written.
      */
     _scanReferencedNamesInText: function (content) {
         var seen = {};
-        var names = [];
-        // Matches `new Foo(` or `new ns.Foo(`, capturing just the class name.
-        var re = /\bnew\s+(?:[a-zA-Z_][a-zA-Z0-9_]*\.)?([A-Z][a-zA-Z0-9_]*)\s*\(/g;
-        var m;
-        while ((m = re.exec(content || '')) !== null) {
-            var name = m[1];
-            if (!seen[name] && !this.SI_SCAN_BUILTINS[name]) {
-                seen[name] = true;
-                names.push(name);
+        var candidates = [];
+        var builtins = this.SI_SCAN_BUILTINS;
+        this.SI_SCAN_PATTERNS.forEach(function (re) {
+            re.lastIndex = 0;
+            var m;
+            while ((m = re.exec(content || '')) !== null) {
+                var scope = m[1] || '';
+                var name = m[2];
+                if (builtins[name]) continue;
+                var key = scope + '.' + name;
+                if (seen[key]) continue;
+                seen[key] = true;
+                candidates.push({ name: name, scope: scope });
             }
-        }
-        return names;
+        });
+        return candidates;
     },
 
     /**
      * Matches candidate class names against active sys_script_include records.
      * Same-named script includes can exist in multiple scopes (different code,
-     * only one actually resolved by the widget's `new Name()` call) — picks the
-     * one in the widget's own scope, else the most recently updated, per name.
-     * @param {Array.<string>} names - Candidate class names from _scanReferencedNamesInText.
+     * only one actually resolved by the widget's `new Name()` call) — picks, per name,
+     * the one whose api_name matches an explicit scope prefix, else the one in the
+     * widget's own scope, else the most recently updated.
+     * @param {Array.<{name: string, scope: string}>} candidates - From _scanReferencedNamesInText.
      * @param {string} widgetScope - The widget's sys_scope sys_id, for scope preference.
      * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
      */
-    _findReferencedScriptIncludes: function (names, widgetScope) {
-        if (!names || names.length === 0) {
+    _findReferencedScriptIncludes: function (candidates, widgetScope) {
+        if (!candidates || candidates.length === 0) {
             return [];
         }
+        var explicitApiNames = {};
+        var names = [];
+        var seenNames = {};
+        candidates.forEach(function (c) {
+            if (c.scope) explicitApiNames[c.scope + '.' + c.name] = true;
+            if (!seenNames[c.name]) {
+                seenNames[c.name] = true;
+                names.push(c.name);
+            }
+        });
 
         var siGr = new GlideRecordSecure('sys_script_include');
         siGr.addQuery('active', true);
@@ -463,16 +525,16 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         var byName = {};
         while (siGr.next()) {
             var name = siGr.getValue('name');
-            var inWidgetScope = siGr.getValue('sys_scope') === widgetScope;
+            var rank = explicitApiNames[siGr.getValue('api_name')] ? 2 : (siGr.getValue('sys_scope') === widgetScope ? 1 : 0);
             var existing = byName[name];
-            if (!existing || (inWidgetScope && !existing.inWidgetScope)) {
+            if (!existing || rank > existing.rank) {
                 byName[name] = {
                     table: 'sys_script_include',
                     sys_id: siGr.getUniqueValue(),
                     label: name,
                     category: 'Script Include (referenced)',
                     updatedOn: siGr.getDisplayValue('sys_updated_on'),
-                    inWidgetScope: inWidgetScope,
+                    rank: rank,
                 };
             }
         }
@@ -486,22 +548,166 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     },
 
     /**
-     * Regex-scans raw script text for new GlideRecord/GlideRecordSecure/GlideAggregate('table_name') references.
+     * Regex-scans raw script text for new GlideRecord/GlideRecordSecure/GlideAggregate/GlideQuery('table_name') references.
      * @param {string} content - Script text to scan.
      * @returns {Array.<string>} Candidate table names (deduplicated).
      */
     _scanReferencedTableNamesInText: function (content) {
+        return this._scanCaptures(content, /\bnew\s+(?:global\.)?(?:GlideRecord|GlideRecordSecure|GlideAggregate|GlideQuery)\s*\(\s*['"]([a-zA-Z0-9_]+)['"]/g);
+    },
+
+    /**
+     * Collects the first capture group of every regex match, deduplicated in order.
+     * @param {string} content - Text to scan.
+     * @param {RegExp} re - Global regex with one capture group.
+     * @returns {Array.<string>}
+     */
+    _scanCaptures: function (content, re) {
         var seen = {};
-        var names = [];
-        var re = /\bnew\s+(?:GlideRecord|GlideRecordSecure|GlideAggregate)\s*\(\s*['"]([a-zA-Z0-9_]+)['"]/g;
+        var values = [];
+        re.lastIndex = 0;
         var m;
         while ((m = re.exec(content || '')) !== null) {
-            var name = m[1];
-            if (!seen[name]) {
-                seen[name] = true;
-                names.push(name);
+            var value = (m[1] || '').trim();
+            if (value && !seen[value]) {
+                seen[value] = true;
+                values.push(value);
             }
         }
+        return values;
+    },
+
+    // Script-referenced resources resolved by a literal name: each scan's capture is
+    // matched against `field` on `table`.
+    RESOURCE_SCANS: [
+        { re: /\bgs\.(?:getProperty|setProperty)\s*\(\s*['"]([a-zA-Z0-9_.\-]+)['"]/g, table: 'sys_properties', field: 'name', category: 'System Property (referenced)' },
+        { re: /\bgs\.eventQueue(?:Scheduled)?\s*\(\s*['"]([a-zA-Z0-9_.\-]+)['"]/g, table: 'sysevent_register', field: 'event_name', category: 'Event (referenced)' },
+        { re: /\bnew\s+(?:sn_ws\.)?RESTMessageV2\s*\(\s*['"]([^'"]+)['"]/g, table: 'sys_rest_message', field: 'name', category: 'REST Message (referenced)' },
+        { re: /\bnew\s+(?:sn_ws\.)?SOAPMessageV2\s*\(\s*['"]([^'"]+)['"]/g, table: 'sys_soap_message', field: 'name', category: 'SOAP Message (referenced)' },
+        { re: /\bFlowAPI\s*\.\s*(?:start|execute)(?:Flow|Subflow)\w*\s*\(\s*['"](?:[a-zA-Z0-9_]+\.)?([a-zA-Z0-9_]+)['"]/g, table: 'sys_hub_flow', field: 'internal_name', category: 'Flow (referenced)' },
+        { re: /\bstartFlow\s*\(\s*['"]([0-9a-f]{32})['"]/g, table: 'wf_workflow', field: 'sys_id', category: 'Workflow (referenced)' },
+    ],
+
+    /**
+     * Finds properties, events, REST/SOAP messages, flows and workflows named literally
+     * in script text.
+     * @param {string} content - Script text to scan.
+     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
+     */
+    _findReferencedResources: function (content) {
+        var results = [];
+        for (var i = 0; i < this.RESOURCE_SCANS.length; i++) {
+            var scan = this.RESOURCE_SCANS[i];
+            var values = this._scanCaptures(content, scan.re);
+            if (values.length) {
+                results = results.concat(this._findRecordsByField(scan.table, scan.field, values, scan.category));
+            }
+        }
+        return results;
+    },
+
+    /**
+     * Matches values against `field` on `table`, one suggestion per record found.
+     * @param {string} table - Table to query.
+     * @param {string} field - Field the values are matched against.
+     * @param {Array.<string>} values - Literal values to look up.
+     * @param {string} category - Suggestion category label.
+     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
+     */
+    _findRecordsByField: function (table, field, values, category) {
+        var results = [];
+        try {
+            var gr = new GlideRecordSecure(table);
+            if (!gr.isValid()) return results;
+            gr.addQuery(field, 'IN', values.join(','));
+            gr.query();
+            while (gr.next()) {
+                results.push({
+                    table: table,
+                    sys_id: gr.getUniqueValue(),
+                    label: gr.getDisplayValue() || gr.getValue(field) || gr.getUniqueValue(),
+                    category: category,
+                    updatedOn: gr.getDisplayValue('sys_updated_on'),
+                });
+            }
+        } catch (e) {
+            gs.warn('Widget Editor+ Assistant: lookup on ' + table + '.' + field + ' failed: ' + e.message);
+        }
+        return results;
+    },
+
+    /**
+     * Follows the record's own reference fields into any application-file table
+     * (hierarchy root sys_metadata), so e.g. a catalogue item links to its workflow and a
+     * notification to its email template without a per-table rule.
+     * @param {GlideRecordSecure} gr - The source record, already .get()'d.
+     * @param {string} table - Its table name.
+     * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
+     */
+    _findMetadataReferences: function (gr, table) {
+        var results = [];
+        var dict = new GlideRecordSecure('sys_dictionary');
+        dict.addQuery('name', 'IN', this._tableHierarchyNames(table).join(','));
+        dict.addQuery('internal_type', 'reference');
+        dict.addNotNullQuery('reference');
+        dict.query();
+        while (dict.next()) {
+            var field = dict.getValue('element');
+            var refTable = dict.getValue('reference');
+            if (!field || !refTable || !this._isMetadataTable(refTable)) continue;
+            var value = gr.getValue(field);
+            if (!value) continue;
+            try {
+                var target = new GlideRecordSecure(refTable);
+                if (!target.get(value)) continue;
+                results.push({
+                    table: target.getRecordClassName() || refTable,
+                    sys_id: target.getUniqueValue(),
+                    label: target.getDisplayValue() || value,
+                    category: (dict.getValue('column_label') || field) + ' (reference)',
+                    updatedOn: target.getDisplayValue('sys_updated_on'),
+                });
+            } catch (e) {
+                gs.warn('Widget Editor+ Assistant: could not follow ' + table + '.' + field + ': ' + e.message);
+            }
+        }
+        return results;
+    },
+
+    /**
+     * Whether a table is an application file (extends sys_metadata), per-call cached.
+     * @param {string} table - Table name.
+     * @returns {boolean}
+     */
+    _isMetadataTable: function (table) {
+        this._metadataTableCache = this._metadataTableCache || {};
+        if (this._metadataTableCache[table] === undefined) {
+            var isMetadata = false;
+            try {
+                isMetadata = String(new GlideTableHierarchy(table).getRoot()) === 'sys_metadata';
+            } catch (e) {}
+            this._metadataTableCache[table] = isMetadata;
+        }
+        return this._metadataTableCache[table];
+    },
+
+    /**
+     * The table plus every parent it extends, so fields declared up the hierarchy
+     * (e.g. sysauto for sysauto_script) are included in dictionary scans.
+     * @param {string} table - Table name.
+     * @returns {Array.<string>}
+     */
+    _tableHierarchyNames: function (table) {
+        var names = [table];
+        try {
+            var current = table;
+            while (names.length < 10) {
+                var base = String(new GlideTableHierarchy(current).getBase() || '');
+                if (!base || base === current || names.indexOf(base) !== -1) break;
+                names.push(base);
+                current = base;
+            }
+        } catch (e) {}
         return names;
     },
 
