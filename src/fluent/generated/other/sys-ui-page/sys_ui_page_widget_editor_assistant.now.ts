@@ -2240,6 +2240,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         var NODE_WIDTH = 280;
                         var COLUMN_GAP = 260;
                         var ROW_GAP = 46;
+                        var COMPONENT_GAP = 110;
                         var MIN_SCALE = 0.2;
                         var MAX_SCALE = 2.5;
                         var AUTO_FIT_MIN_SCALE = 0.6;
@@ -2437,9 +2438,138 @@ export const widgetEditorAssistantUiPage = UiPage({
                             });
                         }
 
+                        function columnX(column) {
+                            return 40 + column * (NODE_WIDTH + COLUMN_GAP);
+                        }
+
+                        // Splits nodes into connected components (undirected) so each related
+                        // group can be laid out on its own and stacked without interleaving.
+                        function groupComponents(nodes) {
+                            var seen = {};
+                            var components = [];
+                            nodes.forEach(function (start) {
+                                if (seen[start.key]) return;
+                                var component = [];
+                                var stack = [start];
+                                seen[start.key] = true;
+                                while (stack.length) {
+                                    var node = stack.pop();
+                                    component.push(node);
+                                    node.parents.concat(node.children).forEach(function (neighbour) {
+                                        if (seen[neighbour.key]) return;
+                                        seen[neighbour.key] = true;
+                                        stack.push(neighbour);
+                                    });
+                                }
+                                components.push(component);
+                            });
+                            return components;
+                        }
+
+                        // Neighbours in the direction of the sweep only; back edges and same-column
+                        // links would otherwise pull a node towards its own column.
+                        function sweepNeighbours(node, towardsParents) {
+                            return (towardsParents ? node.parents : node.children).filter(function (other) {
+                                return towardsParents ? other.column < node.column : other.column > node.column;
+                            });
+                        }
+
+                        function nodeCentre(node) {
+                            return node.y + node.height / 2;
+                        }
+
+                        // Moves each node in a column towards the average centre of its neighbours.
+                        // A top-down and a bottom-up greedy placement are averaged, which keeps the
+                        // column overlap-free while centring runs of siblings on their shared parent.
+                        function relaxColumn(column, towardsParents) {
+                            var desired = column.map(function (node) {
+                                var neighbours = sweepNeighbours(node, towardsParents);
+                                if (!neighbours.length) return node.y;
+                                return neighbours.reduce(function (sum, other) { return sum + nodeCentre(other); }, 0) / neighbours.length - node.height / 2;
+                            });
+                            var down = [];
+                            var floor = -Infinity;
+                            column.forEach(function (node, index) {
+                                var y = Math.max(desired[index], floor);
+                                down.push(y);
+                                floor = y + node.height + ROW_GAP;
+                            });
+                            var up = new Array(column.length);
+                            var ceiling = Infinity;
+                            for (var index = column.length - 1; index >= 0; index--) {
+                                var y = Math.min(desired[index], ceiling - column[index].height - ROW_GAP);
+                                up[index] = y;
+                                ceiling = y;
+                            }
+                            column.forEach(function (node, index) {
+                                node.y = (down[index] + up[index]) / 2;
+                            });
+                        }
+
+                        // Layered layout for one connected component: barycentre ordering to cut
+                        // edge crossings, then iterative vertical relaxation so children line up
+                        // with their parents. Returns the component height; node.y starts at 0.
+                        function placeComponent(component) {
+                            var columns = {};
+                            component.forEach(function (node) {
+                                (columns[node.column] = columns[node.column] || []).push(node);
+                            });
+                            var keys = Object.keys(columns).map(Number).sort(function (a, b) { return a - b; });
+                            var reversedKeys = keys.slice().reverse();
+                            function reindex(column) {
+                                column.forEach(function (node, index) { node.index = index; });
+                            }
+                            keys.forEach(function (key) {
+                                columns[key].sort(function (a, b) { return a.order - b.order; });
+                                reindex(columns[key]);
+                            });
+
+                            for (var sweep = 0; sweep < 4; sweep++) {
+                                var forward = sweep % 2 === 0;
+                                (forward ? keys : reversedKeys).forEach(function (key, position) {
+                                    if (position === 0) return;
+                                    var column = columns[key];
+                                    column.forEach(function (node) {
+                                        var neighbours = sweepNeighbours(node, forward);
+                                        node.barycentre = neighbours.length ?
+                                            neighbours.reduce(function (sum, other) { return sum + other.index; }, 0) / neighbours.length :
+                                            node.index;
+                                    });
+                                    column.sort(function (a, b) { return a.barycentre - b.barycentre || a.index - b.index; });
+                                    reindex(column);
+                                });
+                            }
+
+                            keys.forEach(function (key) {
+                                var y = 0;
+                                columns[key].forEach(function (node) {
+                                    node.y = y;
+                                    y += node.height + ROW_GAP;
+                                });
+                            });
+                            for (var pass = 0; pass < 3; pass++) {
+                                keys.forEach(function (key, position) { if (position > 0) relaxColumn(columns[key], true); });
+                                reversedKeys.forEach(function (key, position) { if (position > 0) relaxColumn(columns[key], false); });
+                            }
+                            keys.forEach(function (key, position) { if (position > 0) relaxColumn(columns[key], true); });
+
+                            var top = Infinity;
+                            var bottom = -Infinity;
+                            component.forEach(function (node) {
+                                top = Math.min(top, node.y);
+                                bottom = Math.max(bottom, node.y + node.height);
+                            });
+                            component.forEach(function (node) {
+                                node.x = columnX(node.column);
+                                node.y -= top;
+                            });
+                            return bottom - top;
+                        }
+
                         function buildLayout() {
                             var graph = scope.graph || { nodes: [], edges: [] };
-                            var columns = {};
+                            var nodes = [];
+                            var byKey = {};
                             ctx.font = '600 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                             (graph.nodes || []).forEach(function (sourceNode) {
                                 var node = angular.extend({}, sourceNode);
@@ -2448,46 +2578,75 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 node.actions = actionDefinitions(node);
                                 node.pillLines = pillDefinitions(node);
                                 node.height = Math.max(82, 58 + node.labelLines.length * 19 + node.pillLines.length * 26);
-                                (columns[node.column] = columns[node.column] || []).push(node);
-                            });
-
-                            var columnKeys = Object.keys(columns).map(Number).sort(function (a, b) { return a - b; });
-                            var maxColumnHeight = 0;
-                            columnKeys.forEach(function (column) {
-                                columns[column].sort(function (a, b) { return a.order - b.order; });
-                                var total = columns[column].reduce(function (sum, node) { return sum + node.height; }, 0) +
-                                    Math.max(0, columns[column].length - 1) * ROW_GAP;
-                                maxColumnHeight = Math.max(maxColumnHeight, total);
-                            });
-
-                            var nodes = [];
-                            var byKey = {};
-                            columnKeys.forEach(function (column, columnIndex) {
-                                var rows = columns[column];
-                                var total = rows.reduce(function (sum, node) { return sum + node.height; }, 0) +
-                                    Math.max(0, rows.length - 1) * ROW_GAP;
-                                var y = 40 + (maxColumnHeight - total) / 2;
-                                rows.forEach(function (node) {
-                                    node.x = 40 + columnIndex * (NODE_WIDTH + COLUMN_GAP);
-                                    node.y = y;
-                                    y += node.height + ROW_GAP;
-                                    nodes.push(node);
-                                    byKey[node.key] = node;
-                                });
+                                node.parents = [];
+                                node.children = [];
+                                nodes.push(node);
+                                byKey[node.key] = node;
                             });
                             var edges = (graph.edges || []).filter(function (edge) {
                                 return byKey[edge.source] && byKey[edge.target];
                             });
                             edges.forEach(function (edge) {
-                                byKey[edge.source].hasOutgoing = true;
-                                byKey[edge.target].hasIncoming = true;
+                                var from = byKey[edge.source];
+                                var to = byKey[edge.target];
+                                from.hasOutgoing = true;
+                                to.hasIncoming = true;
+                                from.children.push(to);
+                                to.parents.push(from);
                             });
+
+                            // Primary group first, then larger groups; unrelated single records are
+                            // packed into a grid underneath so they don't stretch the linked groups.
+                            var linked = [];
+                            var singles = [];
+                            groupComponents(nodes).forEach(function (component) {
+                                (component.length > 1 ? linked : singles).push(component);
+                            });
+                            linked.sort(function (a, b) {
+                                var aPrimary = a.some(function (node) { return node.primary; });
+                                var bPrimary = b.some(function (node) { return node.primary; });
+                                if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
+                                return b.length - a.length;
+                            });
+                            singles.sort(function (a, b) {
+                                if (!!a[0].primary !== !!b[0].primary) return a[0].primary ? -1 : 1;
+                                return a[0].order - b[0].order;
+                            });
+
+                            var columnCount = 0;
+                            linked.forEach(function (component) {
+                                component.forEach(function (node) { columnCount = Math.max(columnCount, node.column + 1); });
+                            });
+                            var gridColumns = Math.max(columnCount, Math.min(3, singles.length));
+
+                            var y = 40;
+                            linked.forEach(function (component) {
+                                var height = placeComponent(component);
+                                component.forEach(function (node) { node.y += y; });
+                                y += height + COMPONENT_GAP;
+                            });
+                            var rowTop = y;
+                            var rowHeight = 0;
+                            singles.forEach(function (component, index) {
+                                var node = component[0];
+                                var cell = index % gridColumns;
+                                if (cell === 0 && index > 0) {
+                                    rowTop += rowHeight + ROW_GAP;
+                                    rowHeight = 0;
+                                }
+                                node.x = columnX(cell);
+                                node.y = rowTop;
+                                rowHeight = Math.max(rowHeight, node.height);
+                            });
+                            if (singles.length) y = rowTop + rowHeight + COMPONENT_GAP;
+                            columnCount = Math.max(columnCount, singles.length ? gridColumns : 0, 1);
+
                             layout = {
                                 nodes: nodes,
                                 byKey: byKey,
                                 edges: edges,
-                                width: Math.max(NODE_WIDTH + 80, columnKeys.length * NODE_WIDTH + Math.max(0, columnKeys.length - 1) * COLUMN_GAP + 80),
-                                height: Math.max(180, maxColumnHeight + 80),
+                                width: columnX(columnCount - 1) + NODE_WIDTH + 40,
+                                height: Math.max(180, y - COMPONENT_GAP + 40),
                             };
                             rebuildActionButtons();
                         }
@@ -2571,13 +2730,30 @@ export const widgetEditorAssistantUiPage = UiPage({
                             ctx.restore();
                         }
 
+                        // Cubic bezier leaving the source's right port and entering the target's
+                        // left port horizontally. Backward links loop out and around.
                         function edgeEndpoints(from, to) {
+                            var x1 = from.x + from.width;
+                            var y1 = from.y + from.height / 2;
+                            var x2 = to.x;
+                            var y2 = to.y + to.height / 2;
+                            var reach = Math.max(48, Math.abs(x2 - x1) * 0.45);
+                            return { x1: x1, y1: y1, x2: x2, y2: y2, c1x: x1 + reach, c2x: x2 - reach };
+                        }
+
+                        // Bezier point at t = 0.5; the y control points equal the endpoints.
+                        function edgeMidpoint(p) {
                             return {
-                                x1: from.x + from.width,
-                                y1: from.y + from.height / 2,
-                                x2: to.x,
-                                y2: to.y + to.height / 2,
+                                x: (p.x1 + 3 * p.c1x + 3 * p.c2x + p.x2) / 8,
+                                y: (p.y1 + p.y2) / 2,
                             };
+                        }
+
+                        function traceEdge(targetContext, from, to) {
+                            var p = edgeEndpoints(from, to);
+                            targetContext.beginPath();
+                            targetContext.moveTo(p.x1, p.y1);
+                            targetContext.bezierCurveTo(p.c1x, p.y1, p.c2x, p.y2, p.x2, p.y2);
                         }
 
                         // Split into two passes (see draw()) so a neighbouring edge's line — drawn
@@ -2591,17 +2767,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                             ctx.globalAlpha = (from.dimmed || to.dimmed) ? 0.45 : 1;
                             ctx.strokeStyle = colours.border;
                             ctx.lineWidth = 2;
-                            ctx.beginPath();
-                            ctx.moveTo(p.x1, p.y1);
-                            ctx.lineTo(p.x2, p.y2);
+                            traceEdge(ctx, from, to);
                             ctx.stroke();
 
-                            var angle = Math.atan2(p.y2 - p.y1, p.x2 - p.x1);
                             ctx.fillStyle = colours.border;
                             ctx.beginPath();
                             ctx.moveTo(p.x2, p.y2);
-                            ctx.lineTo(p.x2 - 10 * Math.cos(angle - Math.PI / 6), p.y2 - 10 * Math.sin(angle - Math.PI / 6));
-                            ctx.lineTo(p.x2 - 10 * Math.cos(angle + Math.PI / 6), p.y2 - 10 * Math.sin(angle + Math.PI / 6));
+                            ctx.lineTo(p.x2 - 10, p.y2 - 5);
+                            ctx.lineTo(p.x2 - 10, p.y2 + 5);
                             ctx.closePath();
                             ctx.fill();
                             ctx.restore();
@@ -2611,11 +2784,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                             if (!edge.label) return;
                             var from = layout.byKey[edge.source];
                             var to = layout.byKey[edge.target];
-                            var p = edgeEndpoints(from, to);
+                            var mid = edgeMidpoint(edgeEndpoints(from, to));
                             ctx.save();
                             ctx.globalAlpha = (from.dimmed || to.dimmed) ? 0.45 : 1;
                             var label = String(edge.label);
-                            var mx = (p.x1 + p.x2) / 2;
+                            var mx = mid.x;
                             ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                             var labelLines = wrapText(label, COLUMN_GAP - 36);
                             var lineHeight = 16;
@@ -2623,7 +2796,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 return Math.max(width, ctx.measureText(line).width);
                             }, 0);
                             var labelHeight = labelLines.length * lineHeight;
-                            var my = (p.y1 + p.y2) / 2 - labelHeight / 2;
+                            var my = mid.y - labelHeight / 2;
                             ctx.fillStyle = colours.background;
                             ctx.fillRect(mx - labelWidth / 2 - 6, my - 12, labelWidth + 12, labelHeight + 6);
                             ctx.fillStyle = colours.secondaryText;
@@ -2763,9 +2936,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 var from = layout.byKey[edge.source];
                                 var to = layout.byKey[edge.target];
                                 minimapCtx.globalAlpha = (from.dimmed || to.dimmed) ? 0.35 : 0.75;
-                                minimapCtx.beginPath();
-                                minimapCtx.moveTo(from.x + from.width, from.y + from.height / 2);
-                                minimapCtx.lineTo(to.x, to.y + to.height / 2);
+                                traceEdge(minimapCtx, from, to);
                                 minimapCtx.stroke();
                             });
                             layout.nodes.forEach(function (node) {
@@ -4069,30 +4240,41 @@ export const widgetEditorAssistantUiPage = UiPage({
                     (outgoing[link.source] = outgoing[link.source] || []).push(link.target);
                 });
 
-                var level = {};
-                var queue = [];
-                selected.forEach(function (r) {
-                    var key = rowKey(r);
-                    if (r.primary || !incoming[key]) {
-                        level[key] = 0;
-                        queue.push(key);
-                    }
-                });
-                while (queue.length) {
-                    var source = queue.shift();
-                    (outgoing[source] || []).forEach(function (target) {
-                        var nextLevel = level[source] + 1;
-                        if (level[target] === undefined || nextLevel < level[target]) {
-                            level[target] = nextLevel;
-                            queue.push(target);
+                // Longest-path layering: a record sits one column right of its furthest parent,
+                // so every edge flows left to right. Back edges found by DFS are ignored so cycles
+                // can't push levels forever.
+                var visited = {};
+                var onStack = {};
+                var topo = [];
+                var backEdge = {};
+                function visit(key) {
+                    visited[key] = true;
+                    onStack[key] = true;
+                    (outgoing[key] || []).forEach(function (target) {
+                        if (onStack[target]) {
+                            backEdge[key + '>' + target] = true;
+                            return;
                         }
+                        if (!visited[target]) visit(target);
                     });
+                    onStack[key] = false;
+                    topo.push(key);
                 }
-                var maxLevel = 0;
-                Object.keys(level).forEach(function (key) { maxLevel = Math.max(maxLevel, level[key]); });
                 selected.forEach(function (r) {
                     var key = rowKey(r);
-                    if (level[key] === undefined) level[key] = maxLevel + 1;
+                    if ((r.primary || !incoming[key]) && !visited[key]) visit(key);
+                });
+                selected.forEach(function (r) {
+                    var key = rowKey(r);
+                    if (!visited[key]) visit(key);
+                });
+                var level = {};
+                topo.reverse().forEach(function (source) {
+                    if (level[source] === undefined) level[source] = 0;
+                    (outgoing[source] || []).forEach(function (target) {
+                        if (backEdge[source + '>' + target]) return;
+                        level[target] = Math.max(level[target] || 0, level[source] + 1);
+                    });
                 });
 
                 var columns = {};
