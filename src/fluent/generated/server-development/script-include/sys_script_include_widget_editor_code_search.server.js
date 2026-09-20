@@ -5,6 +5,9 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
     MAX_INLINE_SNIPPET_GAP: 3,
     MAX_SCAN_ROWS: 20000,
     MAX_TOTAL_SCAN_ROWS: 100000,
+    MAX_BATCH_RESULTS: 100,
+    MAX_BATCH_SCAN_ROWS: 250,
+    MAX_BATCH_PROCESSING_MS: 250,
 
     _getParam: function (name) {
         var val = this.getParameter(name);
@@ -14,14 +17,24 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         return val != null ? String(val) : '';
     },
 
-    _matchesSecondaryFilters: function (record, fields, filters, caseSensitive) {
+    _getSearchValue: function (record, field, caseSensitive, cache) {
+        var key = '$' + field;
+        if (!cache[key]) {
+            var raw = String(record.getValue(field) || '');
+            cache[key] = { raw: raw, searchable: caseSensitive ? raw : raw.toLowerCase() };
+        }
+        return cache[key];
+    },
+
+    _matchesSecondaryFilters: function (record, fields, filters, caseSensitive, cache) {
         if (!filters.length) return true;
+        var self = this;
+        cache = cache || {};
 
         function evalFilter(filter) {
             var term = caseSensitive ? filter.term : filter.term.toLowerCase();
             var found = fields.some(function (field) {
-                var value = String(record.getValue(field) || '');
-                return (caseSensitive ? value : value.toLowerCase()).indexOf(term) !== -1;
+                return self._getSearchValue(record, field, caseSensitive, cache).searchable.indexOf(term) !== -1;
             });
             return filter.operator === 'contains' ? found : !found;
         }
@@ -94,6 +107,8 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
     },
 
     search: function () {
+        var started = Date.now();
+        var timings = { queryMs: 0, processingMs: 0, totalMs: 0 };
         var groupId = this._getParam('group_id');
         var term = String(this._getParam('query') || this._getParam('term') || '').trim();
         var limit = parseInt(this._getParam('limit'), 10) || this.MAX_RESULTS_PER_TABLE;
@@ -101,6 +116,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         if (!this._isSysId(groupId)) return this._answer({ success: false, error: 'Invalid search group.' });
         if (!term) return this._answer({ success: false, error: 'Enter code to search for.' });
         var caseSensitive = this._getParam('case_sensitive') === 'true' || this._getParam('case_sensitive') === '1';
+        var needle = caseSensitive ? term : term.toLowerCase();
         var activeOnly = this._getParam('active_only') === 'true' || this._getParam('active_only') === '1';
         var secondaryFilters;
         try {
@@ -120,6 +136,32 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         }
 
         var tableConfigId = String(this._getParam('table_config_id') || this._getParam('table') || '').trim();
+        // Batching is opt-in so existing callers can still search an entire group.
+        var batchSize = this._getParam('batch_size');
+        var batched = batchSize !== '';
+        var cursor = { sysId: '', scanned: 0, matched: 0 };
+        if (batched) {
+            batchSize = Number(batchSize);
+            if (!this._isSysId(tableConfigId) || !isFinite(batchSize) || batchSize < 1 || Math.floor(batchSize) !== batchSize) {
+                return this._answer({ success: false, error: 'Provide a table configuration and a positive batch size.' });
+            }
+            batchSize = Math.min(batchSize, this.MAX_BATCH_RESULTS);
+            try {
+                var rawCursor = this._getParam('cursor');
+                if (rawCursor) {
+                    cursor = JSON.parse(rawCursor);
+                    if (!cursor || !this._isSysId(cursor.sysId) ||
+                        typeof cursor.scanned !== 'number' || !isFinite(cursor.scanned) ||
+                        cursor.scanned < 1 || cursor.scanned > this.MAX_SCAN_ROWS || Math.floor(cursor.scanned) !== cursor.scanned ||
+                        typeof cursor.matched !== 'number' || !isFinite(cursor.matched) ||
+                        cursor.matched < 0 || cursor.matched > limit || Math.floor(cursor.matched) !== cursor.matched ||
+                        cursor.matched > cursor.scanned) throw new Error('Invalid cursor');
+                }
+            } catch (invalidCursor) {
+                return this._answer({ success: false, error: 'Invalid search cursor.' });
+            }
+        }
+        var nextCursor = '';
         var overrides = {};
         try { overrides = JSON.parse(this._getParam('overrides') || '{}'); } catch (ignore) {}
         var results = [], searched = 0, skipped = [], totalScanned = 0;
@@ -151,10 +193,14 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             if (!validation.valid) { skipped.push(table + ': ' + validation.error); continue; }
 
             var displayCfg = this._getTableDisplayConfig(table);
+            var tableLabel = this._tableLabel(table);
+            var fieldLabels = {};
+            if (batched && (cursor.matched >= limit || cursor.scanned >= this.MAX_SCAN_ROWS)) break;
             var record = new GlideRecord(table);
-            if (filter) record.addEncodedQuery(filter);
+            if (filter && !batched) record.addEncodedQuery(filter);
 
-            // Active only filter
+            // Active only filter. A table with neither field has no notion of active/inactive,
+            // so every one of its records is treated as active and no query filter is applied.
             var tableHasActive = record.isValidField('active');
             var tableHasUActive = record.isValidField('u_active');
             if (activeOnly) {
@@ -165,9 +211,6 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                     record.addQuery('active', true);
                 } else if (tableHasUActive) {
                     record.addQuery('u_active', true);
-                } else {
-                    // Skip tables without active or u_active fields when activeOnly is selected
-                    continue;
                 }
             }
 
@@ -180,20 +223,68 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             // in play, `count` only advances on rows that pass them, so a plain CONTAINS query on
             // a large table could otherwise scan unbounded looking for enough passing rows -
             // cap it well above the result limit to keep the transaction bounded.
-            record.setLimit(!secondaryFilters.length && !caseSensitive ? limit + 1 : this.MAX_SCAN_ROWS);
+            var resultLimit = batched ? Math.min(batchSize, limit - cursor.matched) : limit;
+            var scanLimit = batched ? Math.min(this.MAX_BATCH_SCAN_ROWS, this.MAX_SCAN_ROWS - cursor.scanned) : this.MAX_SCAN_ROWS;
+            if (batched) {
+                // Resume after the last candidate examined, including candidates rejected by
+                // secondary filters. Stable key ordering avoids increasingly costly offsets.
+                if (cursor.sysId) record.addQuery('sys_id', '>', cursor.sysId);
+                if (filter) {
+                    // Apply the cursor and search conditions to every NQ branch. Saved list
+                    // ordering must not override the stable sys_id order used for paging.
+                    var searchConditions = record.getEncodedQuery();
+                    var branches = filter.split('^NQ').map(function (branch) {
+                        var conditions = branch.split('^').filter(function (part) {
+                            return part && part !== 'EQ' && !/^(ORDERBY|GROUPBY)/.test(part);
+                        }).join('^');
+                        return searchConditions + (conditions ? '^' + conditions : '');
+                    });
+                    record = new GlideRecord(table);
+                    record.addEncodedQuery(branches.join('^NQ'));
+                }
+                record.orderBy('sys_id');
+                if (!secondaryFilters.length && !caseSensitive) scanLimit = Math.min(scanLimit, resultLimit);
+                record.setLimit(scanLimit + 1);
+            } else {
+                record.setLimit(!secondaryFilters.length && !caseSensitive ? limit + 1 : this.MAX_SCAN_ROWS);
+            }
+            var queryStarted = Date.now();
             record.query();
-            var count = 0;
-            while (record.next() && count < limit && totalScanned < this.MAX_TOTAL_SCAN_ROWS) {
+            timings.queryMs += Date.now() - queryStarted;
+            // GlideRecord can defer fetching rows until next(), so include that time
+            // with the query instead of attributing it to snippet processing.
+            var nextRecord = function () {
+                var readStarted = Date.now();
+                var found = record.next();
+                timings.queryMs += Date.now() - readStarted;
+                return found;
+            };
+            var batchStarted = Date.now();
+            var queryMsBeforeRows = timings.queryMs;
+            var processingLimitReached = false;
+            var count = 0, tableScanned = 0, lastScannedId = '';
+            while (count < resultLimit && tableScanned < scanLimit && totalScanned < this.MAX_TOTAL_SCAN_ROWS) {
+                // Always examine at least one candidate so an early response advances
+                // the cursor, even when filters reject every result in this batch.
+                if (batched && tableScanned > 0 && Date.now() - batchStarted >= this.MAX_BATCH_PROCESSING_MS) {
+                    processingLimitReached = true;
+                    break;
+                }
+                if (!nextRecord()) break;
                 totalScanned++;
-                if (!this._matchesSecondaryFilters(record, fields, secondaryFilters, caseSensitive)) continue;
+                tableScanned++;
+                lastScannedId = String(record.getUniqueValue());
+                var fieldValues = {};
+                if (!this._matchesSecondaryFilters(record, fields, secondaryFilters, caseSensitive, fieldValues)) continue;
                 var matches = [];
-                var termLower = term.toLowerCase();
                 for (var f = 0; f < fields.length; f++) {
                     var fieldName = fields[f];
-                    var value = String(record.getValue(fieldName) || '');
+                    var fieldValue = this._getSearchValue(record, fieldName, caseSensitive, fieldValues);
+                    var value = fieldValue.raw;
                     if (!value) continue;
-                    var haystack = caseSensitive ? value : value.toLowerCase();
-                    var needle = caseSensitive ? term : termLower;
+                    var haystack = fieldValue.searchable;
+                    var snippetSource = null;
+                    var nextSnippetLineStart = 0;
                     var searchPos = 0;
                     var snippetWindowsInField = 0;
                     // Every occurrence in a field is merged into one match, its snippet windows
@@ -207,13 +298,22 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                         var at = haystack.indexOf(needle, searchPos);
                         if (at === -1) break;
                         searchPos = at + term.length;
-                        var snippetInfo = this._extractSnippetWithLines(value, at, term.length);
+                        if (!snippetSource) snippetSource = this._prepareSnippetSource(value);
+                        // Further occurrences on the same line have identical context.
+                        if (at < nextSnippetLineStart) continue;
+                        var snippetInfo = this._extractSnippetWithLines(value, at, term.length, snippetSource);
+                        nextSnippetLineStart = snippetSource.lineStarts[snippetInfo.matchLine];
+                        if (nextSnippetLineStart === undefined) nextSnippetLineStart = value.length + 1;
                         var snippetEndLine = snippetInfo.startLine + snippetInfo.lines.length - 1;
                         if (snippetEndLine <= lastShownEndLine) continue;
 
                         if (!fieldMatch) {
-                            var fLabel = fieldName;
-                            try { fLabel = record.getElement(fieldName).getLabel() || fieldName; } catch (efl) {}
+                            var fLabel = fieldLabels['$' + fieldName];
+                            if (!fLabel) {
+                                fLabel = fieldName;
+                                try { fLabel = record.getElement(fieldName).getLabel() || fieldName; } catch (efl) {}
+                                fieldLabels['$' + fieldName] = fLabel;
+                            }
                             fieldMatch = {
                                 field: fieldName,
                                 fieldLabel: fLabel,
@@ -247,6 +347,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                             });
                         }
                         lastShownEndLine = snippetEndLine;
+                        if (lastShownEndLine === snippetInfo.totalLines) break;
                     }
 
                     if (fieldMatch) {
@@ -263,12 +364,15 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                     var recSysId = record.getUniqueValue();
                     var isWidget = table === 'sp_widget';
 
-                    // Determine active status, matching the OR semantics of the query above
+                    // Determine active status, matching the OR semantics of the query above.
+                    // A table with neither field is always considered active, so it's never
+                    // excluded by the Active only filter.
                     var hasActiveField = tableHasActive || tableHasUActive;
-                    var isActive = (tableHasActive && (record.getValue('active') === '1' || record.getValue('active') === 'true')) ||
+                    var isActive = !hasActiveField ||
+                        (tableHasActive && (record.getValue('active') === '1' || record.getValue('active') === 'true')) ||
                         (tableHasUActive && (record.getValue('u_active') === '1' || record.getValue('u_active') === 'true'));
 
-                    if (activeOnly && (!hasActiveField || !isActive)) {
+                    if (activeOnly && !isActive) {
                         continue;
                     }
                     count++;
@@ -303,7 +407,7 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
 
                     results.push({
                         table: table,
-                        tableLabel: this._tableLabel(table),
+                        tableLabel: tableLabel,
                         sysId: recSysId,
                         displayValue: primaryVal,
                         secondaryValues: secondaryVals,
@@ -317,13 +421,27 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
                     });
                 }
             }
+            if (batched) {
+                var scannedSoFar = cursor.scanned + tableScanned;
+                var matchedSoFar = cursor.matched + count;
+                // Only probe for another row if the loop stopped at a batch boundary.
+                // The probe is not consumed: the next request resumes after lastScannedId.
+                var hasMore = (count >= resultLimit || tableScanned >= scanLimit || processingLimitReached) && nextRecord();
+                if (hasMore && matchedSoFar < limit && scannedSoFar < this.MAX_SCAN_ROWS) {
+                    nextCursor = JSON.stringify({ sysId: lastScannedId, scanned: scannedSoFar, matched: matchedSoFar });
+                } else if (hasMore && matchedSoFar < limit && scannedSoFar >= this.MAX_SCAN_ROWS) {
+                    skipped.push(table + ': search scan budget exceeded, narrow the query or filters.');
+                }
+            }
+            timings.processingMs += Date.now() - batchStarted - (timings.queryMs - queryMsBeforeRows);
         }
         results.sort(function (a, b) {
             var valA = String(a.displayValue || '').toLowerCase();
             var valB = String(b.displayValue || '').toLowerCase();
             return valA.localeCompare(valB);
         });
-        return this._answer({ success: true, results: results, searchedTables: searched, skipped: skipped });
+        timings.totalMs = Date.now() - started;
+        return this._answer({ success: true, results: results, searchedTables: searched, skipped: skipped, nextCursor: nextCursor, scanned: totalScanned, timings: timings });
     },
 
     validateFilter: function () {
@@ -515,20 +633,32 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
         };
     },
 
-    _extractSnippetWithLines: function (value, at, termLen) {
-        var norm = value.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        var allLines = norm.split('\n');
-        var blockCommentStates = this._getBlockCommentStates(allLines);
-        var charCount = 0;
-        var matchLineIdx = 0;
-        for (var l = 0; l < allLines.length; l++) {
-            var lineLen = allLines[l].length + 1; // +1 for newline
-            if (charCount + lineLen > at) {
-                matchLineIdx = l;
-                break;
-            }
-            charCount += lineLen;
+    _prepareSnippetSource: function (value) {
+        var allLines = [], lineStarts = [0];
+        var newline = /\r\n|\r|\n/g;
+        var match, start = 0;
+        while ((match = newline.exec(value)) !== null) {
+            allLines.push(value.slice(start, match.index));
+            start = match.index + match[0].length;
+            lineStarts.push(start);
         }
+        allLines.push(value.slice(start));
+        return { allLines: allLines, lineStarts: lineStarts, blockCommentStates: this._getBlockCommentStates(allLines) };
+    },
+
+    _extractSnippetWithLines: function (value, at, termLen, source) {
+        source = source || this._prepareSnippetSource(value);
+        var allLines = source.allLines;
+        var blockCommentStates = source.blockCommentStates;
+        // Offsets refer to the original text, including CRLF. Binary lookup avoids
+        // walking from the beginning of a long script for every occurrence.
+        var low = 0, high = source.lineStarts.length - 1;
+        while (low < high) {
+            var mid = Math.floor((low + high + 1) / 2);
+            if (source.lineStarts[mid] <= at) low = mid;
+            else high = mid - 1;
+        }
+        var matchLineIdx = low;
 
         var matchLineNum = matchLineIdx + 1;
         var startIdx = Math.max(0, matchLineIdx - 2);

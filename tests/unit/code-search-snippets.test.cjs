@@ -12,7 +12,7 @@ const pageSource = fs.readFileSync(
     'utf8'
 );
 
-function searchOneScript(script, query) {
+function searchOneScript(script, query, configure = () => {}) {
     let configRead = false;
     let recordRead = false;
 
@@ -67,8 +67,67 @@ function searchOneScript(script, query) {
     instance._getTableDisplayConfig = () => ({ primaryField: '', secondaryFields: [] });
     instance._tableLabel = () => 'Test script';
     instance._answer = value => value;
+    configure(instance);
     return instance.search().results[0].matches[0];
 }
+
+test('dense matches parse a field once and retain every line of the merged snippet', () => {
+    const lines = Array.from({ length: 2000 }, (_, index) => `var incident${index} = 'incident';`);
+    let parses = 0;
+    const match = searchOneScript(lines.join('\n'), 'incident', instance => {
+        const parse = instance._getBlockCommentStates;
+        instance._getBlockCommentStates = function (sourceLines) {
+            parses++;
+            return parse.call(this, sourceLines);
+        };
+    });
+    assert.equal(parses, 1, 'Repeated occurrences must reuse the parsed field');
+    assert.equal(match.totalLines, lines.length);
+    assert.equal(match.allLinesShown, true);
+    assert.deepEqual(Array.from(match.lines, line => line.text), lines);
+});
+
+test('line positions and comment context stay correct with CRLF and mixed newlines', () => {
+    for (const newline of ['\r\n', '\r', '\n']) {
+        const lines = ['/*', 'detail', 'detail', 'detail', 'detail', 'incident', '*/', 'after'];
+        const match = searchOneScript(lines.join(newline), 'incident');
+        assert.equal(match.line, 6);
+        assert.equal(match.totalLines, 8);
+        assert.deepEqual(Array.from(match.lines, line => line.num), [4, 5, 6, 7, 8]);
+        assert.equal(match.lines.find(line => line.num === 6).inBlockComment, true);
+        assert.equal(match.lines.find(line => line.num === 8).inBlockComment, false);
+    }
+    const mixed = searchOneScript('first\r\nsecond\rthird\nfourth\r\nincident\r\n', 'incident');
+    assert.equal(mixed.line, 5);
+    assert.equal(mixed.totalLines, 6);
+});
+
+test('repeated occurrences on a line reuse its excerpt and stop once the field is fully shown', () => {
+    for (const script of [
+        'var incident = true;'.repeat(5000),
+        ['incident '.repeat(1000), ...Array(10).fill('context')].join('\n')
+    ]) {
+        let excerpts = 0;
+        const match = searchOneScript(script, 'incident', instance => {
+            const extract = instance._extractSnippetWithLines;
+            instance._extractSnippetWithLines = function (...args) {
+                excerpts++;
+                return extract.apply(this, args);
+            };
+        });
+        assert.equal(excerpts, 1);
+        assert.equal(match.snippet, script.split('\n').slice(0, 3).join('\n'));
+        assert.equal(match.allLinesShown, !script.includes('\n'));
+    }
+});
+
+test('separated snippets retain the five-window limit in long scripts', () => {
+    const lines = Array.from({ length: 150 }, (_, index) => index % 20 === 5 ? 'incident' : 'context');
+    const match = searchOneScript(lines.join('\n'), 'incident');
+    assert.equal(match.lines.filter(line => line.separator).length, 4);
+    assert.equal(match.allLinesShown, false);
+    assert.equal(match.lines.at(-1).num, 88);
+});
 
 test('nearby keyword matches extend one continuous snippet instead of leaving tiny holes', () => {
     const lines = Array.from({ length: 21 }, (_, index) => {

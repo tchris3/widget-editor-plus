@@ -12,7 +12,7 @@ Record({
         mobile_view_name: 'Mobile',
         order: 1474,
         override_menu_roles: true,
-        query: 'ui_page.do?sys_id=e7d81afae74144a89136e51d5cc38c09',
+        query: 'ui_page.do?sys_id=27a85cdf06a14eba97d2ffc3b57c4a46',
         require_confirmation: true,
         roles: ['sp_admin'],
         sys_domain: 'global',

@@ -25,7 +25,7 @@ test('Code search opens its UI Page record in a new tab and closes the menu', ()
     assert.ok(functionStart >= 0 && functionEnd > functionStart, 'openCodeSearch should exist');
     assert.ok(
         implementation.includes(
-            "'/nav_to.do?uri=ui_page.do%3Fsys_id%3De7d81afae74144a89136e51d5cc38c09'"
+            "'/nav_to.do?uri=ui_page.do%3Fsys_id%3D27a85cdf06a14eba97d2ffc3b57c4a46'"
         )
     );
     assert.ok(implementation.includes("'_blank'"));
