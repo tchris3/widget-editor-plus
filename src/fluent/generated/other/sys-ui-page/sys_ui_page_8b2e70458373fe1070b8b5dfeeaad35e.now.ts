@@ -10690,10 +10690,14 @@ Features version history, side-by-side diff comparison, related lists, and user 
                 };
 
                 function _buildUserPrefsBlob() {
-                    _snapshotEditorPrefs();
+                    // Editor order/visibility come from the last saved snapshot, not the
+                    // live tab state, so session-only tab changes never get persisted as
+                    // the default via unrelated saves (recent widgets, history pane, etc).
+                    var storedOrder = $scope.userPrefs.editorOrder || [];
+                    var storedVis = $scope.userPrefs.editorVisibility || {};
                     var prefs = {};
                     $scope.coreEditorDefs.forEach(function (d) {
-                        prefs[d.key] = d.visible;
+                        prefs[d.key] = storedVis.hasOwnProperty(d.key) ? storedVis[d.key] : d.visible;
                     });
                     prefs.formatTabsToSpaces =
                         $scope.userPrefs.formatTabsToSpaces;
@@ -10743,9 +10747,13 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     prefs.htmlClassIncludeStandardCss =
                         !!$scope.userPrefs.htmlClassIncludeStandardCss;
                     prefs.recentWidgets = $scope.userPrefs.recentWidgets;
-                    prefs.order = $scope.coreEditorDefs.map(function (d) {
-                        return d.key;
-                    });
+                    prefs.order = storedOrder.length
+                        ? storedOrder.concat(
+                            $scope.coreEditorDefs
+                                .map(function (d) { return d.key; })
+                                .filter(function (k) { return storedOrder.indexOf(k) === -1; })
+                          )
+                        : $scope.coreEditorDefs.map(function (d) { return d.key; });
                     return prefs;
                 }
 
@@ -12941,6 +12949,9 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         }
                     }
                     $scope.onEditorVisibilityChange();
+                    // Editor layout is only committed as the new default here, since this
+                    // is the one place the user explicitly chose to change it.
+                    _snapshotEditorPrefs();
                     saveUserPrefs();
                     if ($scope.userPrefsEdit.debugMenu) {
                         var debugMenuPrefs = $scope.userPrefsEdit.debugMenu;
