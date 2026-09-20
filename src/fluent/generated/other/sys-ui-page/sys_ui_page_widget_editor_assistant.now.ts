@@ -3102,8 +3102,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                     var pillsX = camera.x + (node.x + 14) * camera.scale;
                                     var pillsY = camera.y + (node.y + 59 + (node.labelLines.length - 1) * 19 + node.fieldHeight) * camera.scale;
                                     node.pillsElement.style.transform = 'translate(' + pillsX + 'px, ' + pillsY + 'px) scale(' + camera.scale + ')';
-                                    var pillsDimmed = node.dimmed && (!node.row.choiceGroup || (typeof rowMatchesActiveFilter === 'function' && !rowMatchesActiveFilter(node.row)));
-                                    node.pillsElement.style.opacity = String((pillsDimmed ? 0.5 : 1) * (node.alpha == null ? 1 : node.alpha));
+                                    node.pillsElement.style.opacity = String(nodeAlpha(node));
                                 }
                             });
                         }
@@ -3292,6 +3291,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         }
 
                         function panFromMinimap(event) {
+                            cancelCameraTween();
                             var rect = minimap.getBoundingClientRect();
                             var localX = event.clientX - rect.left;
                             var localY = event.clientY - rect.top;
@@ -4496,7 +4496,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         group = groups[row.choiceTable] = {
                             table: 'sys_choice_set', sys_id: 'table:' + row.choiceTable,
                             choiceTable: row.choiceTable, choiceGroup: true,
-                            tableLabel: 'Table choices', label: row.choiceTable,
+                            tableLabel: tableLabel('sys_choice_set'), label: row.choiceTable,
                             members: [], checked: false
                         };
                         grouped.push(group);
@@ -4647,10 +4647,9 @@ export const widgetEditorAssistantUiPage = UiPage({
             function deselectChoicesForTable(tableRow) {
                 if (!tableRow || tableRow.table !== 'sys_db_object') return;
                 var tableKey = rowKey(tableRow);
+                // Only choice tables reached through record links count; the display label is
+                // not a table name and can collide across tables.
                 var tableNames = {};
-                if (tableRow.name) tableNames[String(tableRow.name).toLowerCase()] = true;
-                if (tableRow.tableName) tableNames[String(tableRow.tableName).toLowerCase()] = true;
-                if (tableRow.label) tableNames[String(tableRow.label).toLowerCase()] = true;
 
                 var linkedChoiceKeys = {};
                 if (typeof recordLinks !== 'undefined' && recordLinks) {
