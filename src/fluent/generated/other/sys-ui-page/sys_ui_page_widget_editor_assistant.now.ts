@@ -2263,6 +2263,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                         var AUTO_FIT_MIN_SCALE = 0.6;
                         var MIN_NODE_VISIBLE = 24;
                         var CLICK_SLOP = 4;
+                        var LAYOUT_ANIMATION_MS = 420;
+                        var nodeTween = null;
+                        var cameraTween = null;
+                        var animationFrame = null;
+                        var reducedMotionMedia = $window.matchMedia ? $window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
                         function cssColour(property) {
                             var raw = $window.getComputedStyle(host).getPropertyValue(property).trim();
@@ -2771,18 +2776,124 @@ export const widgetEditorAssistantUiPage = UiPage({
                             }
                         }
 
+                        function easeOutCubic(t) {
+                            return 1 - Math.pow(1 - t, 3);
+                        }
+
+                        function animationsAllowed() {
+                            return !(reducedMotionMedia && reducedMotionMedia.matches);
+                        }
+
+                        function nodeAlpha(node) {
+                            return (node.dimmed ? 0.5 : 1) * (node.alpha == null ? 1 : node.alpha);
+                        }
+
+                        function snapshotPositions() {
+                            var positions = {};
+                            layout.nodes.forEach(function (node) { positions[node.key] = { x: node.x, y: node.y }; });
+                            return positions;
+                        }
+
+                        // Slide cards from their previous spot to the new layout and fade in
+                        // newcomers, so a shifted record stays traceable rather than jumping.
+                        function animateLayoutFrom(previous) {
+                            nodeTween = null;
+                            if (!animationsAllowed()) return;
+                            var moves = [];
+                            layout.nodes.forEach(function (node) {
+                                var from = previous[node.key];
+                                if (!from) {
+                                    node.alpha = 0;
+                                    moves.push({ node: node, fromX: node.x, fromY: node.y, toX: node.x, toY: node.y, fade: true });
+                                    return;
+                                }
+                                if (from.x === node.x && from.y === node.y) return;
+                                moves.push({ node: node, fromX: from.x, fromY: from.y, toX: node.x, toY: node.y });
+                                node.x = from.x;
+                                node.y = from.y;
+                            });
+                            if (!moves.length) return;
+                            nodeTween = { start: null, moves: moves };
+                            scheduleAnimationFrame();
+                        }
+
+                        function animateCameraTo(target) {
+                            if (!animationsAllowed()) {
+                                camera.x = target.x;
+                                camera.y = target.y;
+                                camera.scale = target.scale;
+                                return;
+                            }
+                            cameraTween = { start: null, from: { x: camera.x, y: camera.y, scale: camera.scale }, to: target };
+                            scheduleAnimationFrame();
+                        }
+
+                        function cancelCameraTween() {
+                            cameraTween = null;
+                        }
+
+                        function scheduleAnimationFrame() {
+                            if (animationFrame !== null) return;
+                            animationFrame = $window.requestAnimationFrame(stepAnimation);
+                        }
+
+                        function stepAnimation(now) {
+                            animationFrame = null;
+                            if (destroyed) return;
+                            var active = false;
+                            if (nodeTween) {
+                                if (nodeTween.start === null) nodeTween.start = now;
+                                var nodeProgress = Math.min(1, (now - nodeTween.start) / LAYOUT_ANIMATION_MS);
+                                var nodeEase = easeOutCubic(nodeProgress);
+                                nodeTween.moves.forEach(function (move) {
+                                    move.node.x = move.fromX + (move.toX - move.fromX) * nodeEase;
+                                    move.node.y = move.fromY + (move.toY - move.fromY) * nodeEase;
+                                    if (move.fade) move.node.alpha = nodeEase;
+                                });
+                                if (nodeProgress >= 1) {
+                                    nodeTween.moves.forEach(function (move) { move.node.alpha = null; });
+                                    nodeTween = null;
+                                } else active = true;
+                            }
+                            if (cameraTween) {
+                                if (cameraTween.start === null) cameraTween.start = now;
+                                var cameraProgress = Math.min(1, (now - cameraTween.start) / LAYOUT_ANIMATION_MS);
+                                var cameraEase = easeOutCubic(cameraProgress);
+                                camera.x = cameraTween.from.x + (cameraTween.to.x - cameraTween.from.x) * cameraEase;
+                                camera.y = cameraTween.from.y + (cameraTween.to.y - cameraTween.from.y) * cameraEase;
+                                camera.scale = cameraTween.from.scale + (cameraTween.to.scale - cameraTween.from.scale) * cameraEase;
+                                setZoomLabel();
+                                if (cameraProgress >= 1) cameraTween = null;
+                                else active = true;
+                            }
+                            draw();
+                            if (active) scheduleAnimationFrame();
+                            else scope.$evalAsync();
+                        }
+
                         // Clamps to [AUTO_FIT_MIN_SCALE, 100%]; manual zoom via zoomAt can go further.
-                        function fitGraph() {
+                        function fitGraph(animate) {
                             if (!layout.nodes.length) return;
-                            var scale = Math.min((viewportWidth - 80) / layout.width, (viewportHeight - 80) / layout.height, 1);
-                            camera.scale = Math.max(AUTO_FIT_MIN_SCALE, scale);
-                            camera.x = (viewportWidth - layout.width * camera.scale) / 2;
-                            camera.y = (viewportHeight - layout.height * camera.scale) / 2;
+                            var scale = Math.max(AUTO_FIT_MIN_SCALE, Math.min((viewportWidth - 80) / layout.width, (viewportHeight - 80) / layout.height, 1));
+                            var target = {
+                                scale: scale,
+                                x: (viewportWidth - layout.width * scale) / 2,
+                                y: (viewportHeight - layout.height * scale) / 2,
+                            };
+                            if (animate) {
+                                animateCameraTo(target);
+                            } else {
+                                cancelCameraTween();
+                                camera.x = target.x;
+                                camera.y = target.y;
+                                camera.scale = target.scale;
+                            }
                             setZoomLabel();
                             draw();
                         }
 
                         function zoomAt(factor, screenX, screenY) {
+                            cancelCameraTween();
                             var oldScale = camera.scale;
                             var nextScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, oldScale * factor));
                             var worldX = (screenX - camera.x) / oldScale;
@@ -2926,7 +3037,7 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                         function drawNode(node) {
                             ctx.save();
-                            ctx.globalAlpha = node.dimmed ? 0.5 : 1;
+                            ctx.globalAlpha = nodeAlpha(node);
                             roundedRect(node.x, node.y, node.width, node.height, 8);
                             ctx.fillStyle = nodeFillStyle(ctx, node);
                             ctx.fill();
@@ -2980,18 +3091,19 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 var screenX = camera.x + (node.x + node.width - 10 - groupWidth) * camera.scale;
                                 var screenY = camera.y + (node.y + 8) * camera.scale;
                                 node.actionGroup.style.transform = 'translate(' + screenX + 'px, ' + screenY + 'px) scale(' + camera.scale + ')';
-                                node.actionGroup.style.opacity = node.dimmed ? '0.5' : '1';
+                                node.actionGroup.style.opacity = String(nodeAlpha(node));
                                 if (node.recommendedIcon) {
                                     var iconX = camera.x + (node.x + 20 + (node.tableTextWidth || 0)) * camera.scale;
                                     var iconY = camera.y + (node.y + 9) * camera.scale;
                                     node.recommendedIcon.style.transform = 'translate(' + iconX + 'px, ' + iconY + 'px) scale(' + camera.scale + ')';
-                                    node.recommendedIcon.style.opacity = node.dimmed ? '0.5' : '1';
+                                    node.recommendedIcon.style.opacity = String(nodeAlpha(node));
                                 }
                                 if (node.pillsElement) {
                                     var pillsX = camera.x + (node.x + 14) * camera.scale;
                                     var pillsY = camera.y + (node.y + 59 + (node.labelLines.length - 1) * 19 + node.fieldHeight) * camera.scale;
                                     node.pillsElement.style.transform = 'translate(' + pillsX + 'px, ' + pillsY + 'px) scale(' + camera.scale + ')';
-                                    node.pillsElement.style.opacity = (node.dimmed && (!node.row.choiceGroup || (typeof rowMatchesActiveFilter === 'function' && !rowMatchesActiveFilter(node.row)))) ? '0.5' : '1';
+                                    var pillsDimmed = node.dimmed && (!node.row.choiceGroup || (typeof rowMatchesActiveFilter === 'function' && !rowMatchesActiveFilter(node.row)));
+                                    node.pillsElement.style.opacity = String((pillsDimmed ? 0.5 : 1) * (node.alpha == null ? 1 : node.alpha));
                                 }
                             });
                         }
@@ -3124,6 +3236,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                         function onPointerDown(event) {
                             if (event.button !== undefined && event.button !== 0) return;
                             var p = screenPoint(event);
+                            cancelCameraTween();
                             pointer = { id: event.pointerId, x: p.x, y: p.y, cameraX: camera.x, cameraY: camera.y, moved: false };
                             canvas.setPointerCapture(event.pointerId);
                             element.removeClass('we-canvas-over-node');
@@ -3245,16 +3358,19 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 (graph.edges || []).map(function (edge) { return edge.key; }).join('|');
                             var topologyChanged = topologySignature !== lastTopologySignature;
                             lastTopologySignature = topologySignature;
+                            var previous = snapshotPositions();
+                            var animate = Object.keys(previous).length > 0;
                             buildLayout();
+                            if (animate) animateLayoutFrom(previous);
                             if (host.clientWidth > 1 && host.clientHeight > 1) {
                                 resize();
-                                if (topologyChanged) fitGraph();
+                                if (topologyChanged) fitGraph(animate);
                             } else {
                                 // Initial ng-if insertion can report zero dimensions for one turn.
                                 // The overlay remains hidden until a correctly-sized frame is ready.
                                 $timeout(function () {
                                     resize();
-                                    if (topologyChanged) fitGraph();
+                                    if (topologyChanged) fitGraph(animate);
                                 });
                             }
                             if (topologyChanged) {
@@ -3266,7 +3382,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                     $window.requestAnimationFrame(function () {
                                         if (destroyed) return;
                                         resize();
-                                        fitGraph();
+                                        fitGraph(animate);
                                         scope.$evalAsync();
                                     });
                                 });
@@ -3281,6 +3397,7 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                         scope.$on('$destroy', function () {
                             destroyed = true;
+                            if (animationFrame !== null) $window.cancelAnimationFrame(animationFrame);
                             canvas.removeEventListener('pointerdown', onPointerDown);
                             canvas.removeEventListener('pointermove', onPointerMove);
                             canvas.removeEventListener('pointerup', onPointerUp);

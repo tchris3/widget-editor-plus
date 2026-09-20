@@ -131,7 +131,7 @@ test('Graph metadata updates draw atomically without flashing overlays at the or
     const watchEnd = source.indexOf("scope.$watch('command'", watchStart);
     const watchSource = source.slice(watchStart, watchEnd);
     assert.ok(watchSource.includes('resize();'));
-    assert.ok(watchSource.includes('if (topologyChanged) fitGraph();'));
+    assert.ok(watchSource.includes('if (topologyChanged) fitGraph(animate);'));
     assert.ok(watchSource.includes('lastTopologySignature = topologySignature;'));
 });
 
@@ -166,8 +166,9 @@ test('Context XML filters dim graph records instead of removing them', () => {
     assert.ok(graphSource.includes('var selected = ctrl.rows.filter'));
     assert.equal(graphSource.includes('var selected = ctrl.visibleRows.filter'), false);
     assert.ok(graphSource.includes('dimmed: (!r.checked && !r.partiallyChecked) || !rowMatchesActiveFilter(r)'));
-    assert.ok(source.includes('ctx.globalAlpha = node.dimmed ? 0.5 : 1;'));
-    assert.ok(source.includes("node.actionGroup.style.opacity = node.dimmed ? '0.5' : '1';"));
+    assert.ok(source.includes('ctx.globalAlpha = nodeAlpha(node);'));
+    assert.ok(source.includes('return (node.dimmed ? 0.5 : 1) * (node.alpha == null ? 1 : node.alpha);'));
+    assert.ok(source.includes('node.actionGroup.style.opacity = String(nodeAlpha(node));'));
 });
 
 test('Canvas panning keeps at least one record card visible', () => {
