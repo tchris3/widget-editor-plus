@@ -162,12 +162,12 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
 
         var gr = new GlideRecordSecure('sp_widget');
         if (!gr.get(sysId)) {
-            var deletedWidget = this._getDeletedWidget(sysId);
-            if (deletedWidget) {
+            var deletedResult = this._getDeletedWidget(sysId);
+            if (deletedResult) {
                 return this._answer({
                     success: true,
-                    widget: deletedWidget,
-                    additional_widget_fields: [],
+                    widget: deletedResult.widget,
+                    additional_widget_fields: deletedResult.additional_widget_fields,
                 });
             }
             return this._answer({
@@ -3717,46 +3717,112 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
         return out;
     },
 
+    /* Standard sp_widget fields to pull out of a sys_audit_delete payload XML. */
+    DELETED_WIDGET_PAYLOAD_FIELDS: [
+        'name',
+        'id',
+        'description',
+        'controller_as',
+        'public',
+        'roles',
+        'static',
+        'template',
+        'css',
+        'client_script',
+        'script',
+        'link',
+        'option_schema',
+        'demo_data',
+        'sys_policy',
+        'servicenow',
+        'sys_class_name',
+        'sys_updated_on',
+        'sys_updated_by',
+    ],
+
     /**
-     * Reconstructs a deleted sp_widget record from its sys_audit_delete field rows.
+     * Parses an sp_widget XML snapshot (as stored in sys_audit_delete.payload) into a
+     * field name → text content map, mirroring how sys_update_version payloads are parsed.
+     * @param {string} payload - Raw XML string.
+     * @returns {{fields: Object, display_values: Object}} Parsed field values and any
+     *   accompanying display_value attributes (currently just sys_scope).
+     */
+    _parseDeletedWidgetPayload: function (payload) {
+        var fields = {};
+        var displayValues = {};
+        if (!payload) {
+            return { fields: fields, display_values: displayValues };
+        }
+        try {
+            var xmlDoc = new XMLDocument2();
+            xmlDoc.parseXML(payload);
+            var names = this.DELETED_WIDGET_PAYLOAD_FIELDS.concat(
+                this._getConfiguredAdditionalWidgetFields()
+            );
+            for (var i = 0; i < names.length; i++) {
+                var node = xmlDoc.getFirstNode('//' + names[i]);
+                if (node) {
+                    fields[names[i]] = node.getTextContent() || '';
+                }
+            }
+            var scopeNode = xmlDoc.getFirstNode('//sys_scope');
+            if (scopeNode) {
+                fields.sys_scope = scopeNode.getTextContent() || '';
+                var scopeDisplay = scopeNode.getAttribute('display_value');
+                if (scopeDisplay) {
+                    displayValues.sys_scope = scopeDisplay;
+                }
+            }
+        } catch (e) {
+            gs.error(
+                'WidgetEditorAjax: _parseDeletedWidgetPayload error: ' + e.message
+            );
+        }
+        return { fields: fields, display_values: displayValues };
+    },
+
+    /**
+     * Reconstructs a deleted sp_widget record from its sys_audit_delete XML payload.
      * @param {string} sysId - sys_id of the widget that no longer exists in sp_widget.
-     * @returns {Object|null} Widget-shaped object (all fields read-only, canWrite false)
-     *   with a `deleted` flag, or null when no delete audit trail exists for this sys_id.
+     * @returns {{widget: Object, additional_widget_fields: Array}|null} Widget-shaped
+     *   object (all fields read-only, canWrite false) with a `deleted` flag, plus
+     *   additional field defs — or null when no delete audit trail exists for this sys_id.
      */
     _getDeletedWidget: function (sysId) {
-        var fields = {};
-        var deletedOn = '';
-        var deletedBy = '';
         var auditGr = new GlideRecordSecure('sys_audit_delete');
         auditGr.addQuery('tablename', 'sp_widget');
         auditGr.addQuery('documentkey', sysId);
         auditGr.orderByDesc('sys_created_on');
+        auditGr.setLimit(1);
         auditGr.query();
-        var found = false;
-        while (auditGr.next()) {
-            found = true;
-            var fieldName = auditGr.getValue('fieldname');
-            if (fieldName && !fields.hasOwnProperty(fieldName)) {
-                fields[fieldName] = auditGr.getValue('oldvalue') || '';
-            }
-            if (!deletedOn) {
-                deletedOn = auditGr.getValue('sys_created_on') || '';
-                deletedBy = auditGr.getValue('user') || '';
-            }
-        }
-        if (!found) {
+        if (!auditGr.next()) {
             return null;
         }
 
-        return {
+        var parsed = this._parseDeletedWidgetPayload(
+            auditGr.getValue('payload')
+        );
+        var fields = parsed.fields;
+        var displayValues = parsed.display_values;
+        var isBool = function (v) {
+            return v === 'true' || v === '1';
+        };
+
+        var sysClassName = fields.sys_class_name || 'sp_widget';
+        var isHeaderFooter = sysClassName === 'sp_header_footer';
+        var additionalDefs = this._getAdditionalWidgetFieldDefs(
+            this._buildWidgetFieldAccessProbe()
+        );
+
+        var widget = {
             sys_id: sysId,
             name: fields.name || '',
             id: fields.id || '',
             description: fields.description || '',
             controller_as: fields.controller_as || 'c',
-            application: '',
+            application: displayValues.sys_scope || '',
             application_sys_id: fields.sys_scope || '',
-            is_public: fields.public == '1',
+            is_public: isBool(fields.public),
             roles: fields.roles || '',
             template: fields.template || '',
             css: fields.css || '',
@@ -3770,25 +3836,38 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             canWrite: false,
             scope_mismatch: false,
             widgetOrigin: null,
-            sys_policy: '',
-            sys_policy_display: '',
-            servicenow: false,
+            sys_policy: fields.sys_policy || '',
+            sys_policy_display: fields.sys_policy || '',
+            servicenow: isBool(fields.servicenow),
             volatility_level: '',
             volatility_level_display: '',
             deprecated: false,
             update_set_mismatch: false,
             widget_update_set_id: '',
             widget_update_set_name: '',
-            sys_class_name: 'sp_widget',
-            is_header_footer: false,
-            'static': false,
-            option_schema_has_value: false,
-            demo_data_has_value: false,
+            sys_class_name: sysClassName,
+            is_header_footer: isHeaderFooter,
+            'static': isHeaderFooter && isBool(fields['static']),
+            option_schema_has_value: this._hasProperJsonObjectValue(
+                fields.option_schema
+            ),
+            demo_data_has_value: this._hasProperJsonObjectValue(
+                fields.demo_data
+            ),
             has_active_instances: false,
             deleted: true,
-            deleted_on: deletedOn,
-            deleted_by: deletedBy,
+            deleted_on: auditGr.getValue('sys_created_on') || '',
+            deleted_by: auditGr.getValue('sys_created_by') || '',
         };
+
+        for (var ai = 0; ai < additionalDefs.length; ai++) {
+            var addDef = additionalDefs[ai];
+            var addVal = fields[addDef.name];
+            widget[addDef.name] =
+                addDef.type === 'boolean' ? isBool(addVal) : addVal || '';
+        }
+
+        return { widget: widget, additional_widget_fields: additionalDefs };
     },
 
     /**

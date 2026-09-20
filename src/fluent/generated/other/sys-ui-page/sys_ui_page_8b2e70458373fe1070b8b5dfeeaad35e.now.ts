@@ -3380,16 +3380,16 @@ Features version history, side-by-side diff comparison, related lists, and user 
                         <button class="btn btn-default" ng-click="toggleDropdown('burger')" title="Menu" aria-label="Menu" style="padding:0.125rem 0.625rem;line-height:1.2"><span class="icon-menu"></span></button>
                         <div class="we-dropdown-menu we-dropdown-menu-right" ng-show="openDropdown === 'burger'" we-dropdown-auto-pos="we-dropdown-auto-pos">
                             <div class="we-dropdown-item" ng-click="newWidget()">New widget</div>
-                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="cloneWidget()">Clone widget</div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-class="{'disabled': widget.deleted}" ng-click="cloneWidget()">Clone widget</div>
                             <div class="we-dropdown-divider--group" ng-if="!isNewWidget"></div>
-                            <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-click="openOptionSchemaModal()">Edit option schema <span class="we-status-dot we-status-dot--green" ng-if="widget.option_schema_has_value" title="Has an option schema defined"></span></div>
-                            <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-click="openDemoDataModal()">Edit demo data <span class="we-status-dot we-status-dot--green" ng-if="widget.demo_data_has_value" title="Has demo data defined"></span></div>
-                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="openXmlModal()">Show XML</div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-class="{'disabled': widget.deleted}" ng-click="openOptionSchemaModal()">Edit option schema <span class="we-status-dot we-status-dot--green" ng-if="widget.option_schema_has_value" title="Has an option schema defined"></span></div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget &amp;&amp; !widget.is_header_footer" ng-class="{'disabled': widget.deleted}" ng-click="openDemoDataModal()">Edit demo data <span class="we-status-dot we-status-dot--green" ng-if="widget.demo_data_has_value" title="Has demo data defined"></span></div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-class="{'disabled': widget.deleted}" ng-click="openXmlModal()">Show XML</div>
                             <div class="we-dropdown-divider--group" ng-if="!isNewWidget"></div>
-                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="copyWidgetUrl()">Copy widget URL</div>
-                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-class="{'disabled': !widget.has_active_instances}" ng-click="openOnPortalModal()" title="{{widget.has_active_instances ? '' : 'This widget is not placed on any active page'}}">Open in portal</div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-class="{'disabled': widget.deleted}" ng-click="copyWidgetUrl()">Copy widget URL</div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-class="{'disabled': !widget.has_active_instances || widget.deleted}" ng-click="openOnPortalModal()" title="{{widget.deleted ? 'This widget has been deleted' : (widget.has_active_instances ? '' : 'This widget is not placed on any active page')}}">Open in portal</div>
                             <div class="we-dropdown-divider" ng-if="!isNewWidget"></div>
-                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-click="openInPlatform()">Open in platform</div>
+                            <div class="we-dropdown-item" ng-if="!isNewWidget" ng-class="{'disabled': widget.deleted}" ng-click="openInPlatform()">Open in platform</div>
                             <div class="we-dropdown-divider--group" ng-if="!isNewWidget"></div>
                             <div class="we-dropdown-item" ng-click="openUserPrefsModal()">User preferences</div>
                             <div class="we-dropdown-item" ng-click="openKeyboardShortcutsModal()">Keyboard shortcuts</div>
