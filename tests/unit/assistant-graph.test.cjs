@@ -13,8 +13,8 @@ test('Assistant offers table and graph modes for selected records', () => {
     assert.ok(source.includes('class="btn-group" role="group" aria-label="Record view"'));
     assert.ok(source.includes('class="we-record-graph-canvas"'));
     assert.ok(
-        source.includes('return !r.placeholder && r.checked && r.table && r.sys_id;'),
-        'Graph nodes must be limited to selected real records'
+        source.includes('return !r.placeholder && r.table && r.sys_id;'),
+        'Graph includes unchecked records so they can be selected'
     );
 });
 
@@ -51,12 +51,12 @@ test('Assistant canvas supports zoom, pan, full labels, and per-record actions',
 });
 
 test('Assistant canvas connects directional ports and fully wraps edge labels', () => {
-    assert.ok(source.includes('x1: from.x + from.width'));
-    assert.ok(source.includes('x2: to.x'));
+    assert.ok(source.includes('var x1 = from.x + from.width;'));
+    assert.ok(source.includes('var x2 = to.x;'));
     assert.ok(source.includes('if (node.hasIncoming) ports.push(node.x);'));
     assert.ok(source.includes('if (node.hasOutgoing) ports.push(node.x + node.width);'));
-    assert.ok(source.includes('byKey[edge.source].hasOutgoing = true;'));
-    assert.ok(source.includes('byKey[edge.target].hasIncoming = true;'));
+    assert.ok(source.includes('from.hasOutgoing = true;'));
+    assert.ok(source.includes('to.hasIncoming = true;'));
     assert.ok(source.includes('var labelLines = wrapText(label, COLUMN_GAP - 36);'));
     assert.ok(source.includes('labelLines.forEach(function (line, index)'));
 });
@@ -76,7 +76,7 @@ test('Graph cards mirror the remaining table-view pills', () => {
     assert.ok(source.includes("className: 'we-pill-update-set'"));
     assert.ok(source.includes("className: 'we-pill-new'"));
     assert.ok(source.includes("className: 'we-pill-deleted'"));
-    assert.ok(source.includes('node.height = Math.max(82, 58 + node.labelLines.length * 19 + node.pillLines.length * 26);'));
+    assert.ok(source.includes('node.height = Math.max(82, 58 + node.labelLines.length * 19 + node.fieldHeight + node.pillLines.length * 26);'));
 });
 
 test('Canvas colours come only from live ServiceNow theme variables', () => {
@@ -165,7 +165,7 @@ test('Context XML filters dim graph records instead of removing them', () => {
 
     assert.ok(graphSource.includes('var selected = ctrl.rows.filter'));
     assert.equal(graphSource.includes('var selected = ctrl.visibleRows.filter'), false);
-    assert.ok(graphSource.includes('dimmed: !rowMatchesActiveFilter(r)'));
+    assert.ok(graphSource.includes('dimmed: (!r.checked && !r.partiallyChecked) || !rowMatchesActiveFilter(r)'));
     assert.ok(source.includes('ctx.globalAlpha = node.dimmed ? 0.5 : 1;'));
     assert.ok(source.includes("node.actionGroup.style.opacity = node.dimmed ? '0.5' : '1';"));
 });

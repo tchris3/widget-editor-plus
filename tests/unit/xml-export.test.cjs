@@ -205,7 +205,7 @@ test('Assistant keeps URL/runtime metadata on wrappers and counters on payloads'
 });
 
 // Execute the real Assistant exporter with a minimal DOM and controlled platform responses.
-async function exportAssistant(includePreviousUpdates) {
+async function exportAssistant(includePreviousUpdates, choiceChecked) {
     class Element {
         constructor(tagName) { this.tagName = tagName; this.attrs = {}; this.children = []; this.textContent = ''; }
         setAttribute(key, value) { this.attrs[key] = String(value); }
@@ -231,9 +231,11 @@ async function exportAssistant(includePreviousUpdates) {
         { table: 'blocked_table', sys_id: 'blocked' },
         { table: 'sys_script_include', sys_id: 'failed' },
     ].map(row => ({ ...row, checked: true }));
+    if (choiceChecked !== undefined) selected.push({ table: 'sys_choice_set', sys_id: 'choice', checked: choiceChecked });
     const ctrl = { visibleRows: [...selected, { table: 'sp_widget', sys_id: 'unchecked', checked: false }],
         primary: { label: 'Primary' }, updateSets: [], includePreviousUpdates };
     const links = [
+        ['sp_widget:primary', 'sys_choice_set:choice', 'Choice'],
         ['sp_widget:primary', 'sys_script_include:related', 'Script Include'],
         ['sys_script_include:related', 'sp_widget:primary', 'Widget'],
         ['sp_widget:primary', 'sp_widget:unchecked', 'Unchecked'],
@@ -257,10 +259,10 @@ async function exportAssistant(includePreviousUpdates) {
         ajax: async () => ({ success: true, url: 'https://example/record', es12Override: 'enabled' }),
         fetch: async url => {
             if (url.includes('sys_id=failed')) throw new Error('Unavailable');
-            return { text: async () => url.startsWith('/sp_widget') ? 'widget' : 'include' };
+            return { text: async () => url.startsWith('/sys_choice_set') ? 'choice' : url.startsWith('/sp_widget') ? 'widget' : 'include' };
         },
         DOMParser: class { parseFromString(text) {
-            return { documentElement: payload(text === 'widget' ? 'sp_widget' : 'sys_script_include', text === 'previous' ? 'old' : 'new') };
+            return { documentElement: payload(text === 'choice' ? 'sys_choice_set' : text === 'widget' ? 'sp_widget' : 'sys_script_include', text === 'previous' ? 'old' : 'new') };
         } },
         addExportModCount: el => el.setAttribute('sys_mod_count', '4'),
         redactRecordElement() {}, isTableExportBlocked: table => table === 'blocked_table',
@@ -269,6 +271,7 @@ async function exportAssistant(includePreviousUpdates) {
         URL: { createObjectURL: () => 'blob:test', revokeObjectURL() {} }
     };
     const script = template(root + 'other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts', 'clientScript');
+    context.fetchExportRecordXml = async row => (await context.fetch('/' + row.table + '.do?sys_id=' + row.sys_id)).text();
     vm.createContext(context);
     vm.runInContext(script.slice(script.indexOf('function annotateFieldChanges'), script.indexOf('// End field comparison helper.')), context);
     vm.runInContext(script.slice(script.indexOf('ctrl.generateXml = async function'), script.indexOf('function init()', script.indexOf('ctrl.generateXml = async function'))), context);
@@ -333,3 +336,20 @@ for (const includePreviousUpdates of [false, true]) {
         }
     });
 }
+
+
+test('Choice selection controls both record payload and relationship export', async () => {
+    for (const checked of [false, true]) {
+        const bundle = await exportAssistant(false, checked);
+        const related = bundle.children.find(el => el.tagName === 'related_records');
+        const choice = related.children.find(el => el.attrs.table === 'sys_choice_set');
+        const manifest = bundle.children.find(el => el.tagName === 'context_manifest');
+        const relationship = manifest.children.find(el => el.attrs.target === 'sys_choice_set:choice');
+        assert.equal(!!choice, checked);
+        assert.equal(!!relationship, checked);
+        if (checked) {
+            assert.equal(choice.children[0].tagName, 'current_version');
+            assert.equal(choice.children[0].children[0].tagName, 'sys_choice_set');
+        }
+    }
+});

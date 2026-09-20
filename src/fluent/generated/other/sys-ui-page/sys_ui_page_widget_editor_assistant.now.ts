@@ -550,6 +550,7 @@ export const widgetEditorAssistantUiPage = UiPage({
 
         /* Update-set origin pill: shown in full (no truncation) since the whole name matters for
            telling update sets apart; sits on its own line via .we-record-pill-stack below. */
+        .we-pill-choice,
         .we-pill-update-set {
             display: inline-flex;
             align-items: center;
@@ -564,10 +565,23 @@ export const widgetEditorAssistantUiPage = UiPage({
             color: rgb(var(--now-color_text--secondary, 96 100 108));
             cursor: default;
         }
+        .we-pill-choice {
+            cursor: pointer;
+            pointer-events: auto;
+            transition: opacity 0.15s ease, background-color 0.15s ease;
+        }
+        .we-pill-choice:hover {
+            background: rgba(var(--now-color_text--secondary, 96 100 108), 0.22);
+        }
+        .we-pill-choice--deselected {
+            opacity: 0.5;
+        }
+        .we-pill-choice i,
         .we-pill-update-set i {
             font-size: 0.75rem;
             flex-shrink: 0;
         }
+        .we-pill-choice-text,
         .we-pill-update-set-text {
             min-width: 0;
             overflow-wrap: anywhere;
@@ -1627,7 +1641,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 </tr>
                                 <tr ng-repeat-end="ng-repeat-end" ng-if="!row.placeholder" ng-class="{'we-primary-row': row.primary, 'we-row-just-added': row._justAdded}" style="--we-sticky-top: {{2.75 + ctrl.updateSets.length * 2.75}}rem;" data-row-key="{{row.table}}:{{row.sys_id}}">
                                     <td class="we-cell-check">
-                                        <input type="checkbox" class="we-checkbox" ng-model="row.checked" ng-disabled="row.primary || ctrl.isExportBlocked(row.table, row)" ng-change="ctrl.onSelectionChange()" />
+                                        <input type="checkbox" class="we-checkbox" ng-model="row.checked" ng-disabled="row.primary || ctrl.isExportBlocked(row.table, row)" ng-change="ctrl.onSelectionChange(row)" />
                                     </td>
                                     <td>
                                         <span ng-class="{'we-lookup-link': !(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; !row.updateSetSysId, 'we-record-name-deleted': row.updateSetAction === 'DELETE'}" ng-click="!(row.primary &amp;&amp; ctrl.embeddedInModal) &amp;&amp; !row.updateSetSysId &amp;&amp; ctrl.openLookupForRow(row, 'table')" title="{{((row.primary &amp;&amp; ctrl.embeddedInModal) || row.updateSetSysId) ? '' : 'Click to change table'}}">
@@ -2314,6 +2328,9 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                         // Same buttons, in the same order, as the table's actions column.
                         function actionDefinitions(node) {
+                            if (node.row.choiceGroup) return node.blocked ? [] : [{ type: 'toggle',
+                                title: (node.checked ? 'Exclude' : 'Include') + ' all fields',
+                                iconClass: node.checked ? 'icon-check' : 'icon-add', choiceToggle: true }];
                             var actions = [];
                             if (node.primary && !node.embeddedPrimary) actions.push({ type: 'selectPrimary', title: 'Select primary record', iconClass: 'icon-target' });
                             actions.push({ type: 'scan', title: 'Scan for related records', iconClass: 'icon-search' });
@@ -2324,6 +2341,52 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                         function pillDefinitions(node) {
                             var row = node.row;
+                            if (row.choiceGroup) {
+                                var lines = [];
+                                var currentLine = [];
+                                var currentWidth = 0;
+                                var maxLineWidth = 252;
+                                if (ctx && ctx.measureText) {
+                                    ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                                }
+                                var members = (row.members || []).slice().sort(function (a, b) {
+                                    var nameA = String(a.choiceField || a.label || '');
+                                    var nameB = String(b.choiceField || b.label || '');
+                                    return nameA.localeCompare(nameB);
+                                });
+                                members.forEach(function (member) {
+                                    var fieldName = member.choiceField || member.label || '';
+                                    var isIncluded = !!member.checked;
+                                    var def = {
+                                        className: 'we-pill-choice' + (isIncluded ? '' : ' we-pill-choice--deselected'),
+                                        label: fieldName,
+                                        title: fieldName + (isIncluded ? ' (included)' : ' (deselected)'),
+                                        opacity: isIncluded ? 1 : 0.5,
+                                        onClick: function () {
+                                            if (typeof scope !== 'undefined' && scope.$apply && scope.onToggle) {
+                                                scope.$apply(function () {
+                                                    scope.onToggle({ row: member });
+                                                });
+                                                if (typeof $timeout !== 'undefined' && typeof draw === 'function') {
+                                                    $timeout(draw);
+                                                }
+                                            }
+                                        }
+                                    };
+                                    var textWidth = (ctx && ctx.measureText) ? ctx.measureText(fieldName).width : (fieldName.length * 7);
+                                    var pillWidth = textWidth + 15;
+                                    if (currentLine.length > 0 && currentWidth + 4 + pillWidth > maxLineWidth) {
+                                        lines.push(currentLine);
+                                        currentLine = [def];
+                                        currentWidth = pillWidth;
+                                    } else {
+                                        currentLine.push(def);
+                                        currentWidth += (currentLine.length > 1 ? 4 : 0) + pillWidth;
+                                    }
+                                });
+                                if (currentLine.length) lines.push(currentLine);
+                                return lines;
+                            }
                             var lines = [];
                             var status = [];
                             if (node.primary) status.push({ className: 'we-pill-primary', label: 'Primary' });
@@ -2368,6 +2431,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                             var pill = document.createElement('span');
                             pill.className = definition.className;
                             if (definition.title) pill.title = definition.title;
+                            if (definition.opacity !== undefined) pill.style.opacity = String(definition.opacity);
+                            if (definition.onClick) {
+                                pill.addEventListener('click', function (e) {
+                                    e.stopPropagation();
+                                    definition.onClick(e);
+                                });
+                            }
                             if (definition.iconBefore) {
                                 var before = document.createElement('i');
                                 before.className = definition.iconBefore;
@@ -2405,6 +2475,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                                     button.className = 'btn btn-default btn-icon';
                                     button.title = action.title;
                                     button.setAttribute('aria-label', action.title);
+                                    if (action.choiceToggle) {
+                                        button.setAttribute('aria-pressed', node.row.partiallyChecked ? 'mixed' : String(node.checked));
+                                    }
                                     var icon = document.createElement('i');
                                     icon.className = action.iconClass;
                                     icon.setAttribute('aria-hidden', 'true');
@@ -2580,11 +2653,15 @@ export const widgetEditorAssistantUiPage = UiPage({
                             ctx.font = '600 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                             (graph.nodes || []).forEach(function (sourceNode) {
                                 var node = angular.extend({}, sourceNode);
+                                ctx.font = '600 14px -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif';
                                 node.labelLines = wrapText(node.fullLabel, NODE_WIDTH - 28);
+                                ctx.font = '400 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                                node.fieldLines = [];
+                                node.fieldHeight = node.fieldLines.length ? 6 + node.fieldLines.length * 16 : 0;
                                 node.width = NODE_WIDTH;
                                 node.actions = actionDefinitions(node);
                                 node.pillLines = pillDefinitions(node);
-                                node.height = Math.max(82, 58 + node.labelLines.length * 19 + node.pillLines.length * 26);
+                                node.height = Math.max(82, 58 + node.labelLines.length * 19 + node.fieldHeight + node.pillLines.length * 26);
                                 node.parents = [];
                                 node.children = [];
                                 nodes.push(node);
@@ -2871,6 +2948,12 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 ctx.fillText(line, node.x + 14, node.y + 49 + index * 19);
                             });
 
+                            ctx.fillStyle = colours.secondaryText;
+                            ctx.font = '400 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                            node.fieldLines.forEach(function (line, index) {
+                                ctx.fillText(line, node.x + 14, node.y + 49 + node.labelLines.length * 19 + 3 + index * 16);
+                            });
+
                             // Only render ports that participate in at least one relationship.
                             var ports = [];
                             if (node.hasIncoming) ports.push(node.x);
@@ -2906,9 +2989,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 }
                                 if (node.pillsElement) {
                                     var pillsX = camera.x + (node.x + 14) * camera.scale;
-                                    var pillsY = camera.y + (node.y + 59 + (node.labelLines.length - 1) * 19) * camera.scale;
+                                    var pillsY = camera.y + (node.y + 59 + (node.labelLines.length - 1) * 19 + node.fieldHeight) * camera.scale;
                                     node.pillsElement.style.transform = 'translate(' + pillsX + 'px, ' + pillsY + 'px) scale(' + camera.scale + ')';
-                                    node.pillsElement.style.opacity = node.dimmed ? '0.5' : '1';
+                                    node.pillsElement.style.opacity = (node.dimmed && (!node.row.choiceGroup || (typeof rowMatchesActiveFilter === 'function' && !rowMatchesActiveFilter(node.row)))) ? '0.5' : '1';
                                 }
                             });
                         }
@@ -3377,6 +3460,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             { name: 'sys_ui_action', label: 'UI Action' },
             { name: 'sys_security_acl', label: 'Access Control (ACL)' },
             { name: 'sys_db_object', label: 'Table' },
+            { name: 'sys_choice_set', label: 'Choice Set' },
             { name: 'sys_properties', label: 'System Property' },
             { name: 'sys_script_fix', label: 'Fix Script' },
             { name: 'sysauto', label: 'Scheduled Job' },
@@ -3450,6 +3534,7 @@ export const widgetEditorAssistantUiPage = UiPage({
         // much larger suggestion mechanism (table schema refs, portal layout, catalog metadata, widget scan).
         var NON_GENERIC_SCAN_TABLES = {
             sys_db_object: true,
+            sys_choice_set: true,
             sp_page: true,
             sc_cat_item_producer: true,
             sp_widget: true,
@@ -4279,6 +4364,41 @@ export const widgetEditorAssistantUiPage = UiPage({
                 return row.table + ':' + row.sys_id;
             }
 
+            // Graph-only aggregation: real rows remain the source for persistence and XML.
+            function groupGraphChoices(rows) {
+                var groups = Object.create(null);
+                var aliases = Object.create(null);
+                var grouped = [];
+                rows.forEach(function (row) {
+                    if (row.table !== 'sys_choice_set' || row.primary || !row.choiceTable) {
+                        grouped.push(row);
+                        return;
+                    }
+                    var group = groups[row.choiceTable];
+                    if (!group) {
+                        group = groups[row.choiceTable] = {
+                            table: 'sys_choice_set', sys_id: 'table:' + row.choiceTable,
+                            choiceTable: row.choiceTable, choiceGroup: true,
+                            tableLabel: 'Table choices', label: row.choiceTable,
+                            members: [], checked: false
+                        };
+                        grouped.push(group);
+                    }
+                    group.members.push(row);
+                    aliases[rowKey(row)] = rowKey(group);
+                });
+                Object.keys(groups).forEach(function (table) {
+                    var group = groups[table];
+                    var included = group.members.filter(function (row) { return row.checked; }).length;
+                    group.checked = included === group.members.length;
+                    group.partiallyChecked = included > 0 && !group.checked;
+                    group.selectionLabel = included + ' / ' + group.members.length + ' fields included';
+                    group.fieldNames = group.members.map(function (row) { return row.choiceField || row.label; }).sort().join(', ');
+                    group.label = table;
+                });
+                return { rows: grouped, aliases: aliases };
+            }
+
             // Builds deterministic graph topology from every record, checked or not. Unchecked
             // records and those outside the active Context XML type filter stay in place but
             // dim, so a node can be toggled back on from the graph itself.
@@ -4287,14 +4407,23 @@ export const widgetEditorAssistantUiPage = UiPage({
                 var selected = ctrl.rows.filter(function (r) {
                     return !r.placeholder && r.table && r.sys_id;
                 });
+                var choiceGroups = groupGraphChoices(selected);
+                selected = choiceGroups.rows;
                 var byKey = {};
                 selected.forEach(function (r) { byKey[rowKey(r)] = r; });
 
                 var graphEdges = [];
+                var edgeKeys = {};
                 var incoming = {};
                 var outgoing = {};
                 Object.keys(recordLinks).forEach(function (linkKey) {
-                    var link = recordLinks[linkKey];
+                    var original = recordLinks[linkKey];
+                    var link = { source: choiceGroups.aliases[original.source] || original.source,
+                        target: choiceGroups.aliases[original.target] || original.target, label: original.label };
+                    var edgeKey = link.source + '>' + link.target;
+                    if (edgeKeys[edgeKey]) return;
+                    edgeKeys[edgeKey] = true;
+                    if (choiceGroups.aliases[original.target]) link.label = 'Choices';
                     if (!byKey[link.source] || !byKey[link.target] || link.source === link.target) return;
                     graphEdges.push(link);
                     incoming[link.target] = (incoming[link.target] || 0) + 1;
@@ -4360,14 +4489,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                             fullLabel: r.label || r.sys_id,
                             primary: !!r.primary,
                             suggested: !!r.suggested,
-                            blocked: ctrl.isExportBlocked(r.table, r),
+                            blocked: r.choiceGroup ? r.members.every(function (member) { return ctrl.isExportBlocked(member.table, member); }) : ctrl.isExportBlocked(r.table, r),
                             // Match the visible pill semantics: "New" is only meaningful/shown
                             // while previous versions are included; Deleted is always shown.
                             isNew: !!ctrl.includePreviousUpdates && !!r.isNewInUpdateSet,
                             isDeleted: r.updateSetAction === 'DELETE',
                             includePreviousUpdates: !!ctrl.includePreviousUpdates,
                             checked: !!r.checked,
-                            dimmed: !r.checked || !rowMatchesActiveFilter(r),
+                            dimmed: (!r.checked && !r.partiallyChecked) || !rowMatchesActiveFilter(r),
                             embeddedPrimary: !!(r.primary && ctrl.embeddedInModal),
                             column: columnIndex,
                             order: rowIndex,
@@ -4397,18 +4526,97 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.graphCommand = { action: action, id: ++graphCommandId };
             };
 
+            var _prevTableChecked = {};
+            function deselectChoicesForTable(tableRow) {
+                if (!tableRow || tableRow.table !== 'sys_db_object') return;
+                var tableKey = rowKey(tableRow);
+                var tableNames = {};
+                if (tableRow.name) tableNames[String(tableRow.name).toLowerCase()] = true;
+                if (tableRow.tableName) tableNames[String(tableRow.tableName).toLowerCase()] = true;
+                if (tableRow.label) tableNames[String(tableRow.label).toLowerCase()] = true;
+
+                var linkedChoiceKeys = {};
+                if (typeof recordLinks !== 'undefined' && recordLinks) {
+                    Object.keys(recordLinks).forEach(function (linkKey) {
+                        var link = recordLinks[linkKey];
+                        if (link && link.source === tableKey && link.target && link.target.indexOf('sys_choice_set:') === 0) {
+                            linkedChoiceKeys[link.target] = true;
+                        }
+                    });
+                }
+
+                var allRows = (typeof ctrl !== 'undefined' && (ctrl.rows || ctrl.related)) || [];
+                allRows.forEach(function (r) {
+                    if (r.table === 'sys_choice_set' && linkedChoiceKeys[rowKey(r)]) {
+                        if (r.choiceTable) tableNames[String(r.choiceTable).toLowerCase()] = true;
+                    }
+                });
+
+                allRows.forEach(function (r) {
+                    if (r.table === 'sys_choice_set') {
+                        var key = rowKey(r);
+                        var matchesName = r.choiceTable && tableNames[String(r.choiceTable).toLowerCase()];
+                        if (linkedChoiceKeys[key] || matchesName) {
+                            r.checked = false;
+                        }
+                    }
+                });
+            }
+            ctrl.deselectChoicesForTable = deselectChoicesForTable;
+
             // Clicking a graph node — same rules as the table checkbox, and the table
             // reflects the change immediately since both bind to row.checked.
             ctrl.toggleGraphRecord = function (row) {
-                if (!row || row.primary || ctrl.isExportBlocked(row.table, row)) return;
-                row.checked = !row.checked;
-                ctrl.onSelectionChange();
+                if (!row || row.primary) return;
+                if (row.choiceGroup) {
+                    var include = !row.members.every(function (member) { return member.checked; });
+                    row.members.forEach(function (member) {
+                        if (!ctrl.isExportBlocked(member.table, member)) member.checked = include;
+                    });
+                } else {
+                    if (ctrl.isExportBlocked(row.table, row)) return;
+                    row.checked = !row.checked;
+                    if (row.table === 'sys_db_object' && !row.checked) {
+                        deselectChoicesForTable(row);
+                    }
+                }
+                ctrl.onSelectionChange(row);
             };
 
             ctrl.openGraphRecord = function (row) {
                 if (!row || (row.primary && ctrl.embeddedInModal)) return;
                 window.open('/nav_to.do?uri=' + encodeURIComponent(row.table + '.do?sys_id=' + row.sys_id), '_blank', 'noopener,noreferrer');
             };
+
+            async function fetchExportRecordXml(row) {
+                var response = await fetch('/' + row.table + '.do?sys_id=' + encodeURIComponent(row.sys_id) + '&XML', { credentials: 'same-origin' });
+                var text = await response.text();
+                if (row.table !== 'sys_choice_set') return text;
+                var parsed = new DOMParser().parseFromString(text, 'text/xml');
+                var set = parsed.documentElement.querySelector('sys_choice_set');
+                if (!set) throw new Error('Choice Set export unavailable');
+                var values = parsed.createElement('choice_values');
+                set.appendChild(values);
+                try {
+                    var result = await ajax('getChoiceSetValues', { sys_id: row.sys_id });
+                    if (!result || !result.success) {
+                        values.setAttribute('status', 'unavailable');
+                    } else {
+                        values.setAttribute('table', result.name);
+                        values.setAttribute('field', result.element);
+                        (result.choices || []).forEach(function (choice) {
+                            var el = parsed.createElement('choice');
+                            ['sys_id', 'value', 'label', 'language', 'inactive', 'dependent_value', 'sequence', 'hint'].forEach(function (key) {
+                                if (choice[key] !== null && choice[key] !== undefined) el.setAttribute(key, choice[key]);
+                            });
+                            values.appendChild(el);
+                        });
+                    }
+                } catch (e) {
+                    values.setAttribute('status', 'unavailable');
+                }
+                return new XMLSerializer().serializeToString(parsed);
+            }
 
             // Exported XML/SCHEMA byte size per row, keyed by rowKey — drives the real token estimate.
             ctrl.rowSizeBytes = {};
@@ -4430,8 +4638,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 .then(function (text) { return new Blob([text]).size; });
                         });
                 } else {
-                    p = fetch('/' + row.table + '.do?sys_id=' + encodeURIComponent(row.sys_id) + '&XML', { credentials: 'same-origin' })
-                        .then(function (r) { return r.text(); })
+                    p = fetchExportRecordXml(row)
                         .then(function (text) { return new Blob([text]).size; });
                 }
                 return p.then(function (size) {
@@ -4588,6 +4795,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                 }
 
                 ctrl.rows = rows;
+                (ctrl.rows || []).forEach(function (r) {
+                    if (r.table === 'sys_db_object') {
+                        _prevTableChecked[rowKey(r)] = !!r.checked;
+                    }
+                });
                 recomputeTypeCounts();
                 recomputeVisibleRows();
                 ensureRowSizesLoaded();
@@ -4709,6 +4921,20 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             ctrl.onSelectionChange = function () {
+                var changedRow = arguments[0];
+                if (changedRow && changedRow.table === 'sys_db_object' && !changedRow.checked) {
+                    deselectChoicesForTable(changedRow);
+                }
+                var allRows = (ctrl.rows || ctrl.related || []);
+                allRows.forEach(function (r) {
+                    if (r.table === 'sys_db_object') {
+                        var k = rowKey(r);
+                        if (_prevTableChecked[k] === true && !r.checked) {
+                            deselectChoicesForTable(r);
+                        }
+                        _prevTableChecked[k] = !!r.checked;
+                    }
+                });
                 ctrl.saveSelections();
                 recomputeTypeCounts();
                 ensureEstimatesForVisible();
@@ -4954,6 +5180,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                             r.label = res.label;
                             r.updatedOn = res.updatedOn || '';
                             r.tableLabel = res.tableLabel || tableLabel(r.table);
+                            r.choiceTable = res.choiceTable;
+                            r.choiceField = res.choiceField;
                         }
                     }, function () {
                         ctrl.related = ctrl.related.filter(function (x) { return x !== r; });
@@ -5003,11 +5231,13 @@ export const widgetEditorAssistantUiPage = UiPage({
                             sys_id: row.sys_id,
                             label: row.label,
                             tableLabel: tableLabel(row.table),
+                            choiceTable: row.choiceTable,
+                            choiceField: row.choiceField,
                             category: row.category,
                             updatedOn: row.updatedOn,
                             manual: false,
                             suggested: true,
-                            checked: true,
+                            checked: row.table !== 'sys_choice_set',
                         });
                         // Only expand one extra layer deep — items found at that layer aren't scanned further.
                         if (depth === 0 && !NON_GENERIC_SCAN_TABLES[row.table] && !_scannedScriptKeys[key]) {
@@ -5340,6 +5570,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                     ctrl.lookup.targetRow.sys_id = r.sys_id;
                     ctrl.lookup.targetRow.label = r.label;
                     ctrl.lookup.targetRow.updatedOn = r.updatedOn;
+                    ctrl.lookup.targetRow.choiceTable = r.choiceTable;
+                    ctrl.lookup.targetRow.choiceField = r.choiceField;
                     ctrl.saveSelections();
                     ctrl.closeLookup();
                     rebuildRows();
@@ -5375,6 +5607,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                         label: r.label,
                         tableLabel: ctrl.lookup.tableLabel,
                         category: 'Manual',
+                        choiceTable: r.choiceTable,
+                        choiceField: r.choiceField,
                         updatedOn: r.updatedOn,
                         manual: true,
                         suggested: false,
@@ -5851,8 +6085,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                             blockedEl.setAttribute('reason', 'Table is on the export blocklist — record data withheld');
                             destContainer.appendChild(blockedEl);
                         } else {
-                            var resp = await fetch('/' + row.table + '.do?sys_id=' + encodeURIComponent(row.sys_id) + '&XML', { credentials: 'same-origin' });
-                            var text = await resp.text();
+                            var text = await fetchExportRecordXml(row);
                             var parsed = new DOMParser().parseFromString(text, 'text/xml');
                             var children = parsed.documentElement.children;
                             for (var c = 0; c < children.length; c++) {
