@@ -56,11 +56,16 @@ test('widget customer updates open in Widget Editor+ above Show Related Record',
     assert.match(updateWidgetSource, /table: 'sys_update_xml'/);
     assert.match(updateWidgetSource, /sp_widget_/);
     assert.match(updateWidgetSource, /sp_header_footer_/);
-    assert.match(updateWidgetSource, /showContextMenu: true/);
+    assert.match(updateWidgetSource, /showLink: true/);
     assert.match(updateWidgetSource, /order: 990/);
     assert.match(updateWidgetSource, /new GlideAjax\('WidgetEditorAjax'\)/);
     assert.match(updateWidgetSource, /getCustomerUpdateWidgetTarget/);
     assert.match(ajaxSource, /getCustomerUpdateWidgetTarget: function \(\)/);
+});
+
+test('Open in Widget Editor+ is form-only, since the condition cannot hide it from list context menus', () => {
+    assert.doesNotMatch(updateWidgetSource, /showContextMenu/);
+    assert.doesNotMatch(updateWidgetSource, /list:\s*{/);
 });
 
 test('customer updates copy their target record URL below Copy URL to clipboard', () => {
@@ -78,6 +83,15 @@ test('customer updates copy their target record URL below Copy URL to clipboard'
     assert.ok(legacyCopy > modernCopy, 'legacy copy should only be a fallback');
     assert.doesNotMatch(copyRecordUrlSource, /copyToClipboard\(value\)/);
     assert.match(ajaxSource, /getCustomerUpdateTarget: function \(\)/);
+});
+
+test('customer update UI action scripts stay out of the isolated sandbox', () => {
+    // Isolated scripts run without window, document, navigator, and gel,
+    // which all three of these scripts rely on (clipboard, window.location,
+    // NOW.CustomEvent, gel('sys_uniqueValue')).
+    assert.match(compareSource, /isolateScript: false/);
+    assert.match(updateWidgetSource, /isolateScript: false/);
+    assert.match(copyRecordUrlSource, /isolateScript: false/);
 });
 
 test('copying the record URL notifies once the clipboard write succeeds', () => {

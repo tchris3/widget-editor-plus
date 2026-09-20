@@ -7,10 +7,6 @@ UiAction({
     actionName: 'open_customer_update_widget_editor_plus',
     form: {
         showLink: true,
-        showContextMenu: true,
-    },
-    list: {
-        showContextMenu: true,
     },
     client: {
         isClient: true,
@@ -32,9 +28,7 @@ UiAction({
     // The platform Show Related Record action is 1000.
     order: 990,
     script: `function openCustomerUpdateInWidgetEditorPlus() {
-    var updateSysId = typeof rowSysId !== 'undefined'
-        ? rowSysId
-        : gel('sys_uniqueValue').value;
+    var updateSysId = gel('sys_uniqueValue').value;
     if (!updateSysId) { return; }
 
     var ga = new GlideAjax('WidgetEditorAjax');
@@ -63,6 +57,6 @@ UiAction({
 `,
     showUpdate: true,
     showInsert: false,
-    isolateScript: true,
+    isolateScript: false,
     roles: ['sp_admin'],
 })
