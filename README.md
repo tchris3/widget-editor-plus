@@ -19,9 +19,6 @@ Widget Editor+ is a development and diagnostics suite for ServiceNow Service Por
   - [Direct Deployment](#direct-deployment)
 - [End-to-End Testing](#end-to-end-testing)
 - [Configuration](#configuration)
-  - [System Properties](#system-properties)
-  - [UI Scripts Reference](#ui-scripts-reference)
-  - [User Preferences](#user-preferences)
 - [AI Disclosure](#ai-disclosure)
 
 ---
@@ -40,98 +37,55 @@ Widget Editor+ is a development and diagnostics suite for ServiceNow Service Por
 
 ### 1. Widget Editor+
 
-A full-featured IDE for Service Portal widgets that replaces the standard editor experience with rich language intelligence and developer conveniences.
+A Monaco-based editor for Service Portal widgets.
 
-- **Monaco Multi-Pane Editor**: Edit HTML Templates, CSS/SCSS, Client Controllers, Server Scripts, Link Functions, Option Schemas, and Demo Data within high-performance Monaco editor panes.
-- **Intelligent ServiceNow IntelliSense**:
-  - **Client-Side Autocomplete**: Full autocompletion and hover documentation for `g_form`, `g_user`, `spUtil`, and AngularJS core services (`$scope`, `$http`, `$q`, `$timeout`, `$interval`, `$location`).
-  - **Dynamic Controller Injection**: Injected AngularJS dependencies in `api.controller` are resolved and typed dynamically by parameter name in any order.
-  - **Server-Side Autocomplete**: Comprehensive API completions for `GlideRecord`, `GlideRecordSecure`, and `$sp`.
-  - **Table Schema & Inheritance Completion**: Field autocompletions recursively traverse extended table hierarchies (e.g. `incident` inheriting from `task`).
-  - **Script Include Dot-Walking**: Live dot-walk autocompletion and JSDoc type inference across Script Includes, including PrototypeJS methods and `this.property` assignments.
-  - **Native JSDoc `@typedef` Support**: Type inference and code completion for custom widget data models defined via JSDoc annotations.
-  - **HTML Class-Name Completion**: `class="..."` completions sourced from the user's chosen portal/theme's own compiled CSS bundles, cached client-side and refreshed only when a bundle's `Last-Modified` header changes.
-  - **Angular Provider Directive IntelliSense**: `data-<prop>` completions, hover docs, and AngularJS expression validation for a linked directive's `scope` bindings, parsed from the provider's own script (JSDoc comments above each scope property become the hover documentation).
-  - **Angular Provider Service/Factory IntelliSense**: an `api.controller` parameter named after a service/factory provider (AngularJS DI, e.g. `function(myFactory) {...}`) is typed from that provider's own script, giving method/property completions — independent of whether it's linked to the current widget.
-- **AngularJS Expression Validation & Highlighting**:
-  - Real-time syntax checking on `{{ }}` interpolations and `ng-*` directive expressions using AngularJS `$parse`.
-  - Rich token syntax highlighting for embedded Angular expressions within HTML templates.
-- **Productivity & Safety Tools**:
-  - **Per-Field Saving**: Save individual widget scripts (e.g. only the Server Script) independently without updating unchanged fields.
-  - **Angular Provider Scaffolding**: Automatically inserts boilerplate starter code when creating Directives, Factories, or Services.
-  - **Demo Data Editor**: Built-in JSON editor modal with real-time JSON syntax validation.
-  - **Real-Time Presence**: Live indicators showing other developers currently viewing or editing the same widget.
-  - **SN Utils Integration**: Direct "Open in VS Code" button integration for users with the SN Utils browser extension.
-  - **Fast Navigation**: Infinite-scrolling widget picker with search match highlighting and recent widget history.
+- Edit widget templates, styles, scripts and JSON, with per-field saving.
+- ServiceNow and AngularJS IntelliSense, including table fields, Script Includes and providers.
+- AngularJS expression validation and syntax highlighting.
+- Widget search, recent history, live developer presence and SN Utils integration.
 
 ---
 
 ### 2. Compare+
 
-A purpose-built version comparison and merge inspection tool (`widget_editor_diff.do`) available directly within the editor, via the Debug Context Menu, or as a list action on `sys_update_version` records.
+Compare record versions from the editor, Debug Context Menu or version lists.
 
-- **XML Context Export**: The export icon beside Revert downloads both selected versions in one XML file, including all loaded fields, version labels, record URLs, and unsaved values when applicable.
-- **Monaco Code Diff Viewer**: Side-by-side Monaco diff inspection across all widget fields with synchronised scrolling and line-change badges.
-- **Visual Condition Builder Diff**: Side-by-side comparison for encoded condition queries, resolving raw query strings into human-readable field labels and condition statements.
-- **Display Value Resolution**: Automatically resolves reference values and `glide_list` fields into human-readable display values with sys_id tooltips.
-- **Composite-Key Target Support**: Accurately resolves version targets from XML update payloads for composite-keyed records (e.g. `sys_dictionary`).
+- Side-by-side code and condition-builder diffs.
+- Readable reference and list values.
+- Export both versions as XML, including unsaved changes where applicable.
 
 ---
 
 ### 3. Debug Context Menu
 
-A non-intrusive runtime diagnostic popover (`sp_widget_widget_editor_debug_menu`) embedded directly into Service Portal pages, accessible via **Ctrl + Right-Click** on any widget instance.
+Use **Ctrl + Right-Click** on a Service Portal widget to inspect it.
 
-- **Hierarchy & Navigation**:
-  - **Widget Hierarchy**: Drill down through nested and embedded widget trees to pinpoint child components.
-  - **Quick Editor Switching**: Seamlessly jump to Widget Editor+, ServiceNow Widget Editor, Compare+, Page in Designer, Page Editor, or the backend platform record.
-  - **Portal Navigation**: Smart URL resolution for opening widgets in their parent portal pages with interactive parameter prompts for widgets that read URL query strings (`$sp.getParameter`).
-- **Runtime Performance & Diagnostics**:
-  - **Generation-Time Indicators**: Visual latency indicators showing server generation time on widget rows with instant hover tooltips.
-  - **Console Debugging**: Log widget `$scope`, `$scope.data`, or `$rootScope` directly to the browser console, or expose `$scope` globally on `window` for live debugging.
-  - **Instance Customisation Checks**: Visual indicators highlighting whether an instance is customized or out-of-the-box, with inline editing for container background properties and options schemas.
-- **User Preference Controls**: Three-state toggle (**Enhanced / Standard / Off**) configurable from within the Widget Editor+ User Preferences modal.
+- Navigate nested widgets and open editors or platform records.
+- Inspect generation times, scopes, data and instance customisations.
+- Choose Enhanced, Standard or Off in User Preferences.
 
 ---
 
 ### 4. Code Search+
 
-A cross-table source search tool (`widget_editor_code_search.do`), accessible from the Widget Editor+ menu, for finding text across widget and related script fields without opening each record individually.
+Search across widget and related script fields from the Widget Editor+ menu.
 
-- **Search Groups & Table Scopes**: Search runs against the platform's own built-in Code Search configuration (`sn_codesearch_search_group`, `sn_codesearch_table`), with a session indicator showing the active group and a direct link to its configuration record.
-- **Advanced Conditions**: Secondary CONTAINS/DOES NOT CONTAIN filters can be chained with AND/OR joiners, are highlighted in results alongside the primary term, and persist in the URL for shareable searches.
-- **Result Presentation**: Sticky, full-width table headers with scrollspy navigation between matched tables; overlapping snippet matches within a field are deduplicated and merged into a single excerpt box separated by horizontal rules.
-- **Scan Safeguards**: Per-table and total row-scan budgets prevent unbounded scans on large tables, with a progress bar and cancel option that terminates in-flight transactions via a hidden iframe rather than leaving them running server-side.
-- **Configurable Result Fields**: `monaco.plus.code_search.display_fields.<table_name>` properties control the secondary fields shown in each table's result headers.
-- **Restricted Access**: Limited to users with the `sp_admin` role.
+- Use ServiceNow search groups with additional AND/OR conditions.
+- Browse highlighted results with configurable display fields.
+- Share searches by URL, monitor progress and cancel scans.
+- Access requires the `sp_admin` role.
 
 ---
 
 ### 5. Widget Editor+ Assistant
 
-An AI context bundle exporter (`widget_editor_assistant.do`) available as a standalone tool and embedded directly within Widget Editor+. It solves the challenge of exporting complex, interconnected ServiceNow application records into structured XML context for Large Language Models (ChatGPT, Claude, Gemini, Copilot).
+Export selected ServiceNow records as XML context for AI tools.
 
-- **Automated Dependency Detection**:
-  - **Service Portal Pages (`sp_page`)**: Traverses complete page layout trees (`sp_container` → `sp_row` → `sp_column` → `sp_instance` → `sp_widget`).
-  - **Widgets (`sp_widget`)**: Scans scripts and templates for referenced Script Includes, Tables, Angular Templates (`sp_ng_template`), Angular Providers (`sp_angular_provider`), and embedded directives (`<sp-widget>`).
-  - **Server-Side Scripts**: Unified dependency resolution across Script Includes, Business Rules, Fix Scripts, and Scheduled Script Executions.
-  - **Record Producers (`sc_cat_item_producer`)**: Detects catalog variables (`item_option_new`), catalog UI policies, catalog client scripts, and target table definitions.
-  - **Notifications (`sysevent_email_action`)**: Identifies `${mail_script:Name}` tags and resolves referenced Mail Scripts (`sys_script_email`).
-  - **Tables (`sys_db_object`)**: Scans dictionary reference fields to resolve related table schemas (`?SCHEMA`).
-- **Extensible Relationship Engine**: Admin-configurable relationship rules defined through `monaco.plus.assistant.table_config.<table>` system properties.
-- **Favourites & Bundles**: Save and group frequently referenced record sets with user preference persistence and JSON export/import.
-- **ES12 Context**: XML explicitly identifies the readable per-record ES12 override as enabled, disabled, not found, or unavailable. It labels the setting as current context rather than historical version state, and explains that application defaults may apply when no override is available.
-- **Field Change Status**: Version comparisons annotate fields with `change="unchanged|modified|added|removed"`, comparing exact exported values from previous to current; added/removed means presence in the snapshots. A field left without a `change` attribute couldn't be compared — redacted, structured, or the whole record missing on one side (see its `status`/`change_type` instead).
-- **Uniform Record Structure**: Every Assistant payload uses `<record id="table:sys_id" table="…" sys_id="…"><current_version>…</current_version></record>`, with an optional `<previous_version update_set_name="…" update_set_sys_id="…">` identifying the historical snapshot’s update set. Each wrapper carries the technical table name (`table`), readable table label (`table_label`), record name, role, inclusion reason (when available), and blocked status (when applicable). Record metadata is not duplicated in the context manifest.
-- **Context Manifest**: `<context_manifest>` contains directed `<relationship source="table:sys_id" target="table:sys_id" label="…"/>` relationships discovered between exported records. Cycles are preserved; filtered, unchecked, or removed endpoints are excluded. Isolated records retain their record wrappers. This graph describes discovered relationships, not a complete dependency inventory.
-- **Compact Context**: One `format_notes` element explains conventions. Record URLs and current ES12 settings appear once on each record wrapper. Both full versions and field change statuses are retained.
-- **Export Metadata**: Assistant exports use a `<context_bundle format_version="3">` root for AI context (Compare+ remains at format version 2) and include a UTC `generated_at` timestamp and each available record version’s `sys_mod_count`. Counters absent from the source are marked unavailable; unsaved edits do not increment the saved counter.
-- **Absolute Record URLs**: XML includes platform navigation URLs once per record. Deleted records link to their `sys_metadata_delete` entry; unavailable or unreadable deletion entries are marked with `record_url_status="unavailable"`.
-- **Update Set Markdown export**: Copy linked records for all customer updates matching the current list filter, across every page, without selecting rows.
-- **Table hierarchy**: Configure alphabetical parent grouping in Properties using UI or JSON. Only saved relationships are used.
-- **Markdown display fields**: Configure display and secondary fields per table, including validated reference dot-walks. Secondary values follow the record link, separated by ` | `.
-- **Live Token Estimation**: Real-time token count estimation based on payload size, with a proportional loading wheel while row and previous-version sizes are still being measured.
-- **Security Guardrails**: Table search blocklists, credential table withholding, and automated password redaction.
+- Discover related records and inspect their relationships in a graph.
+- Select records or update sets, and save favourites and bundles.
+- Include previous versions, field changes, record links and ES12 context.
+- Estimate token counts, with export blocklists and password redaction.
+- **Export Markdown+**: Copy filtered Customer Updates as linked, grouped Markdown.
 
 ---
 
@@ -194,115 +148,10 @@ Widget Editor+ features a comprehensive Playwright test suite validating editor 
 
 ## Configuration
 
-### System Properties
-All system properties are managed under the `monaco.plus.*` namespace:
-
-Admins can edit settings in **Widget Editor+ → Properties**. Values are limited to 4,000 characters, except for Markdown display and grouping settings, which have no application character limit.
-
-| Property Name | Default | Description |
-|---|---|---|
-| `monaco.plus.record_limit` | `500` | Page size for record pickers (widgets, versions, providers, dependencies) with infinite scroll. |
-| `monaco.plus.widget.fields` | *(empty)* | Comma-separated list of additional fields on `sp_widget` to display inside Widget Editor+. |
-| `monaco.plus.widget.deprecated` | `descriptionLIKEdeprecated` | Encoded query string evaluated against `sp_widget` to flag widgets as deprecated. |
-| `monaco.plus.widget.related_list_exclusions` | *(empty)* | Comma-separated list of `sys_ui_related_list_entry.related_list` values to exclude from related lists. |
-| `monaco.plus.css.variables` | `{ "example-variable": "#a4c5ea" }` | JSON string of CSS custom property name-value pairs for autocomplete suggestions. |
-| `monaco.plus.scss.variables` | `{ "$breakpoint-xs": "480px", ... }` | JSON string of SCSS variable name-value pairs for autocomplete suggestions. |
-| `monaco.plus.update_sets.markdown_groups.<table>` | Explicit child table arrays for Access Control, Group, Record Producer, Widget, Variable and Catalog UI Policy | Edited together as one hierarchy. Only parents with child configuration need a property; saving empty or removed configurations deletes their system properties. |
-| `monaco.plus.update_sets.markdown_display.<table>` | `{"display_value":"name","additional_fields":"operation"}` for `sys_security_acl` | Display and secondary field paths by table for update set Markdown export. |
-| `monaco.plus.assistant.export_blocklist_tables` | *(credential & audit tables)* | Comma-separated table names excluded from Assistant search, browsing, and XML export. |
-| `monaco.plus.assistant.export_blocklist_prefixes` | `pwd,sys_activity,sys_amb,...` | Comma-separated table prefixes excluded from Assistant search, browsing, and XML export. |
-| `monaco.plus.assistant.table_config.<table_name>` | *(JSON rule configs)* | Declarative relationship rules for Assistant dependency detection per table (e.g. `sp_page`, `sp_widget`, `sc_cat_item_producer`, `sysevent_email_action`). |
-| `monaco.plus.code_search.display_fields.<table_name>` | *(table-specific)* | Comma-separated secondary fields shown in Code Search+ result headers. Properties are included for common Studio, Service Portal, and record-producer/catalog development tables. |
-
-### UI Scripts Reference
-
-| UI Script | Purpose |
-|---|---|
-| `monaco_plus_core` | Core engine. Manages Script Include IntelliSense, GlideRecord field completions, JSDoc hovers, and property suggestions. |
-| `monaco_plus_bootstrap` | Initialises and upgrades Monaco Editor instances on target ServiceNow pages. |
-| `monaco_language_client` | Client-side TypeScript ambient declarations covering AngularJS, `g_form`, `g_user`, `spUtil`, `$sp`, and jQuery. |
-| `monaco_language_server` | Server-side TypeScript ambient declarations covering `GlideRecord`, `GlideRecordSecure`, and `$sp`. |
-| `monaco_language_html` | Monarch tokenizer and directive autocompletion provider for HTML and AngularJS directives (`ng-*`, `sp-widget`, etc.). |
-| `monaco_language_css` | Completion provider for CSS/SCSS at-rules and style descriptors. |
-| `monaco_code_actions` | Built-in code actions for JavaScript (JSDoc generation) and SCSS (`px` to `rem` conversion). |
-| `monaco_custom_code_actions` | Extension point for custom per-language code actions. |
-
-#### Embedding Monaco on Any Form Field
-
-`monaco_plus_bootstrap` isn't limited to Widget Editor+ itself — add it as a UI Script dependency on an `onLoad` Client Script for any table/field to mount a full Monaco editor in place of the native textarea, in whatever language you choose:
-
-```javascript
-function onLoad() {
-    if (typeof SNMonacoPlusBootstrap === 'undefined') {
-        return;
-    }
-    SNMonacoPlusBootstrap.upgradeEditor({
-        gForm: g_form,
-        field: 'my_json_field',
-        language: 'json',
-        editorOptions: {
-            minimap: { enabled: true },
-            tabSize: 4,
-        },
-    });
-}
-```
-
-- `field` / `language` — the form field to mount on, and the Monaco language id (`json`, `javascript`, `css`, `scss`, `html`, etc.).
-- By default the editor auto-grows with content, like a native expanding textarea, starting from the replaced textarea's rendered height (floored at `125px` — enough room for Monaco's quick-input widget, e.g. F1 — even for a short or hidden/collapsed field) and capped at `maxHeight` (default `'80vh'`) before it scrolls internally.
-- `height` — pass a fixed height (a number is treated as px, or a CSS size string like `'40vh'`) to opt out of auto-grow entirely.
-- `maxHeight` — override the auto-grow cap (ignored once `height` or `containerStyle` is set).
-- `showToggle` — set `false` to omit the toggle-syntax-editor button (default: `true`).
-- `editorOptions` — any [`IStandaloneEditorConstructionOptions`](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor_editor_api.editor.IStandaloneEditorConstructionOptions.html) accepted by `monaco.editor.create()`, applied before the editor is created and taking precedence over the user's synced editor preferences.
-- `onEditorReady(editor)` — optional callback given the created Monaco editor instance for further customisation.
-
-Need full control over the container instead? Pass `containerStyle` (a CSS string) — it overrides `height`/`maxHeight` and disables auto-grow.
-
-The bootstrap script lazy-loads `monaco_plus_core` on demand, so completions/IntelliSense for the chosen `language` come free without any additional wiring.
-
-### User Preferences
-User preferences (including editor themes, Assistant visibility, and Debug Menu settings) persist in `localStorage` and synchronise to the ServiceNow instance as `sys_user_preference` records under `monaco_plus.user_prefs`.
+Admins can edit settings in **Widget Editor+ → Properties**. See the [configuration guide](CONFIGURATION.md) for system properties, UI scripts, Monaco embedding and user preferences.
 
 ---
 
 ## AI Disclosure
 
-This project was developed using Claude and Gemini.
-
-Markdown grouping JSON maps parent table names to child-table arrays, for example:
-
-```json
-{
-    "sp_widget": ["sp_ng_template", "m2m_sp_widget_dependency"],
-    "sc_cat_item_producer": ["catalog_ui_policy"],
-    "catalog_ui_policy": ["catalog_ui_policy_action"]
-}
-```
-
-The Properties page combines these into one UI/JSON editor with Save property and Revert. Saving writes each array to its own `monaco.plus.update_sets.markdown_groups.<table>` property. Labels and reference fields are resolved from table metadata. No additional related tables are included implicitly. The counter shows the largest individual property value. The pre-install fix script **Split Markdown table properties** migrates the legacy hierarchy, preserving existing per-table settings. For update-set installations, run that fix script before installing the new defaults.
-
-The Properties page combines `monaco.plus.code_search.display_fields.*` and `monaco.plus.assistant.table_config.*` into separate tables. Each row has its own save and remove buttons; removing a saved row deletes its system property. Saves validate tables and fields against the instance dictionary. Assistant JSON also validates the configuration schema and nested relationship rules.
-
-`monaco.plus.update_sets.markdown_display.*` uses a table with Table, Display fields, Additional fields and Actions columns. Each row saves JSON containing comma-separated `display_value` and `additional_fields` strings. Display fields are ordered fallbacks: for example, `name,short_description` uses the first non-empty display value. If all display values are empty, raw values are tried in the same order before the normal record-name fallback. Saves validate the selected table and all field paths; Remove deletes the property. Legacy display configurations remain readable and migrate per row when saved. Table selectors use Select2 across all property tables.
-
-Knowledge defaults display `display_number` with `short_description`, and group `kb_version` and `kb_knowledge_summary` beneath articles. Page defaults group `sp_container → sp_row → sp_column → sp_instance`, plus `sp_metatag` and `sp_page_title_variable` beneath `sp_page`. UI policy defaults include `sys_ui_policy_action` and `sys_ui_policy_rl_action`. The post-install fix script **Move default widget instances into page hierarchy** removes `sp_instance` from unchanged former Widget defaults; custom configurations are preserved. For update-set installations, run this fix script after installing the page defaults. If a customised Widget configuration still includes `sp_instance`, move that relationship to `sp_column` in the combined editor before using the new hierarchy.
-
-Additional grouping defaults place Scripted REST Resources (`sys_ws_operation`) beneath Scripted REST APIs (`sys_ws_definition`), HTTP methods (`sys_rest_message_fn`) beneath REST Messages (`sys_rest_message`), and Modules (`sys_app_module`) beneath Application Menus (`sys_app_application`).
-
-Markdown display defaults also include:
-
-| Table | Display field | Additional fields |
-|---|---|---|
-| `item_option_new` | `name` | `type` |
-| `sp_widget` | `name` | `id` |
-| `sp_page` | `title` | `id` |
-| `sys_script` | `name` | `collection,when` |
-| `sys_script_client` | `name` | `table,type` |
-| `sys_ui_action` | `name` | `table` |
-| `sys_ws_operation` | `name` | `http_method,relative_path` |
-
-Context-only entries start with a non-italic `∉`, followed by italicised record text and additional values in parentheses. When present, a note below the list explains: “∉ For context only - not included in update set.” Parents captured in the source update set are treated as included even when excluded by the list filter. Additional fields use display values when available, fall back to raw values, and are omitted when both are empty. Status and update-set emoji follow additional values. These defaults use first-install properties to preserve existing per-table customisations.
-
-Properties created or saved through the table and Markdown hierarchy editors are linked to the **Widget Editor+** category through `sys_properties_category_m2m`, without duplicate links. Theme grouping defaults include `sp_header_footer`, `m2m_sp_theme_css_include`, `m2m_sp_theme_js_include`, and `m2m_sp_theme_sp_theme_variant`.
-
-Markdown exports start with linked update set names. When multiple sets are represented, a numbered keycap legend identifies each set and matching markers identify the records it contains. Records remain consolidated across sets. For update-set upgrades, run the post-install fix script **Remove obsolete Markdown export options page** to delete the retired combine/separate dialog and its ACL.
+This project was developed with assistance from OpenAI GPT, Anthropic Claude and Google Gemini.
