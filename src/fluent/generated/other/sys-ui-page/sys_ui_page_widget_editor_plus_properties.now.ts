@@ -202,10 +202,11 @@ UiPage({
       border-radius: var(--now-form-field--border-radius, 6px) !important;
       background: rgb(var(--now-color_background--primary, 255, 255, 255)) !important;
       margin-bottom: 1rem !important;
-      overflow: hidden;
+      overflow: visible;
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
     .wep-card .panel-heading {
+      border-radius: var(--now-form-field--border-radius, 6px) var(--now-form-field--border-radius, 6px) 0 0;
       border-bottom: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235))) !important;
       background: rgb(var(--now-color_background--secondary, 246, 248, 249)) !important;
       color: rgb(var(--now-color_text--primary, 22, 27, 28)) !important;
@@ -253,6 +254,25 @@ UiPage({
       margin: 0 0 0.75rem;
     }
 
+    /* Shared table headers stick to the page viewport within each table. */
+    .wep-config-table, .wep-rule-table { border-collapse: separate; border-spacing: 0; }
+    .wep-card .wep-config-table > thead > tr > th,
+    .wep-card .wep-rule-table > thead > tr > th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      padding: 10px;
+      text-align: left;
+      vertical-align: middle;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: rgb(var(--now-color_text--primary, 22, 27, 28));
+      background: rgb(var(--now-color_background--secondary, 246, 248, 249));
+      border: 0;
+      box-shadow: inset 0 -1px rgb(var(--now-color_border--secondary, 205, 212, 217));
+    }
+
     /* Form Inputs */
     .wep-config-table { width:100%; table-layout:fixed; }
     .wep-config-table td { vertical-align:top !important; overflow-wrap:anywhere; }
@@ -275,6 +295,7 @@ UiPage({
 
     /* Buttons */
     .wep-character-count { display: block; text-align: right; margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .wep-actions > button[hidden] { display: none !important; }
     .wep-actions {
       display: flex;
       align-items: center;
@@ -308,19 +329,18 @@ UiPage({
     /* Compact alphabetical table hierarchy */
     .wep-hierarchy-toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
     .wep-tree[hidden] { display: none; }
-    .wep-rule-scroll { overflow-x: auto; }
-    .wep-rule-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .wep-rule-table th { text-align: left; font-weight: 600; }
-    .wep-rule-table th, .wep-rule-table td {
+    .wep-rule-scroll { overflow: visible; }
+    .wep-rule-table { width: 100%; font-size: 13px; }
+    .wep-rule-table td {
       padding: 7px 10px;
       border-bottom: 1px solid rgb(var(--now-color_border--secondary, 205, 212, 217));
       vertical-align: middle;
     }
-    .wep-rule-table th { background: rgb(var(--now-color_background--secondary, 246, 248, 249)); }
-    .wep-rule-name { display: flex; align-items: center; gap: 6px; }
+    .wep-rule-name { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; column-gap: 16px; }
+    .wep-rule-label { grid-column: 2; grid-row: 1; min-width: 0; }
     .wep-rule-name code { display: block; padding: 0; background: transparent; color: inherit; font-size: 11px; }
     .wep-rule-name > .wep-rule-toggle, .wep-rule-name > .wep-rule-spacer {
-      display: inline-block; flex: 0 0 22px; width: 22px; min-width: 22px; margin: 0; padding: 0;
+      grid-column: 1; grid-row: 1; display: inline-block; width: 22px; min-width: 0; max-width: 22px; margin: 0; padding: 0;
     }
     .wep-rule-name > .wep-rule-toggle { height: 28px; }
     .wep-rule-reference { font-family: monospace; font-size: 12px; }

@@ -278,6 +278,7 @@
             save.disabled = true;
             function updateDirty() {
                 countValue();
+                reset.hidden = readValue() === property.value;
                 if (readValue() === property.value) { delete dirty[property.name]; save.disabled = true; status(note, ''); }
                 else { dirty[property.name] = true; var error = valueError(); save.disabled = !!error;
                     status(note, error || 'Unsaved changes', error ? 'error' : 'dirty'); }
@@ -289,6 +290,7 @@
             var reset = button('Revert', function () {
                 writeValue(property.value); updateDirty();
             });
+            reset.hidden = true;
             var note = el('span', 'wep-status');
             actions.appendChild(save); actions.appendChild(reset); actions.appendChild(note); actions.appendChild(counter);
             countValue();
@@ -550,7 +552,7 @@
                         savedTables = Object.keys(config).filter(function (table) { return config[table].length; });
                         property.propertyCount = savedTables.length; property._refreshCount();
                         savedConfig = JSON.parse(JSON.stringify(config));
-                        rulesDirty = revision !== submitted;
+                        refreshRulesDirty();
                         status(note, rulesDirty ? 'Unsaved changes' : 'Saved.', rulesDirty ? 'dirty' : 'success');
                     });
                 }).catch(function (error) { status(note, error.message, 'error'); })
@@ -561,10 +563,12 @@
                 ajax('getRules', { rules: JSON.stringify(savedConfig) }).then(function (data) {
                     if (requested !== revision) return;
                     rules = data.rules; rulesDirty = false;
+                    revert.hidden = true;
                     setJson(savedConfig); renderRules(); updateHierarchyCount();
                     save.disabled = true; status(note, '');
                 }).catch(function (error) { status(note, error.message, 'error'); });
             });
+            revert.hidden = true;
             save.className = 'btn btn-primary'; save.disabled = true;
             footer.appendChild(save); footer.appendChild(revert); footer.appendChild(note); footer.appendChild(counter);
             panel.appendChild(footer); card.appendChild(panel);
@@ -572,10 +576,20 @@
             ajax('getRules', {}).then(function (data) {
                 savedConfig = data.config; savedTables = data.propertyTables || Object.keys(savedConfig); rules = data.rules; property.propertyCount = savedTables.length; property._refreshCount(); renderRules(); updateHierarchyCount(); status(note, '');
             }).catch(function (error) { status(note, error.message, 'error'); });
+            function refreshRulesDirty() {
+                function canonical(config) {
+                    return JSON.stringify(Object.keys(config).sort().map(function (table) {
+                        return [table, config[table].slice().sort()];
+                    }));
+                }
+                try { rulesDirty = canonical(readConfig()) !== canonical(savedConfig); }
+                catch (e) { rulesDirty = true; }
+                revert.hidden = !rulesDirty;
+            }
             function markRules() {
                 updateHierarchyCount();
-                revision++; rulesDirty = true; var error = hierarchyError();
-                save.disabled = !!error; status(note, error || 'Unsaved changes', error ? 'error' : 'dirty');
+                revision++; refreshRulesDirty(); var error = hierarchyError();
+                save.disabled = !rulesDirty || !!error; status(note, error || (rulesDirty ? 'Unsaved changes' : ''), error ? 'error' : (rulesDirty ? 'dirty' : ''));
             }
             function closePicker() {
                 if (relatedPicker) { relatedPicker.destroy(); relatedPicker = null; }
@@ -689,7 +703,7 @@
                             expand.setAttribute('aria-label', (collapsed[node.id] ? 'Expand ' : 'Collapse ') + node.label);
                             expand.setAttribute('aria-expanded', String(!collapsed[node.id])); branch.appendChild(expand);
                         } else branch.appendChild(el('span', 'wep-rule-spacer'));
-                        var text = el('span'); text.appendChild(el('strong', '', node.label));
+                        var text = el('span', 'wep-rule-label'); text.appendChild(el('strong', '', node.label));
                         text.appendChild(el('code', '', node.table)); branch.appendChild(text); name.appendChild(branch); row.appendChild(name);
                         row.appendChild(el('td', 'wep-rule-reference', depth ? node.field : '—'));
                         var actionsCell = el('td', 'wep-rule-actions');

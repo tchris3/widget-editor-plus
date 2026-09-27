@@ -322,7 +322,7 @@ test('Markdown escapes names and renders policy actions under their policy', () 
     }] }];
     const output = context._weMarkdownText(loaded, 'separate');
     assert.ok(output.includes('- **Record Producers**'));
-    assert.ok(output.includes('  - [Producer](https://example/producer)'));
+    assert.ok(output.includes('  - *[Producer](https://example/producer) - context only*'));
     assert.ok(output.indexOf('Catalog UI Policies') < output.indexOf('Catalog UI Policy Actions'));
     assert.ok(output.includes('Show \\[field\\] \\(now\\)'));
     assert.ok(output.includes('action.do%3Fsys_id%3Dc'));
@@ -447,13 +447,18 @@ test('clipboard success and failures use notifications without a fallback', asyn
         };
         vm.createContext(context);
         vm.runInContext(clientSource, context);
-        context._weLoadMarkdownList = async () => [{table: 'sp_widget', id: 'a', type: 'Widgets', name: 'Widget', ancestors: []}];
+        context._weLoadMarkdownList = async () => {
+            assert.equal(notifications.length, 1, 'show progress before loading the export');
+            assert.equal(notifications[0].event, 'glide:ui_notification.info');
+            assert.equal(notifications[0].text, 'Preparing Markdown export…');
+            return [{table: 'sp_widget', id: 'a', type: 'Widgets', name: 'Widget', ancestors: []}];
+        };
         await context.copyUpdateSetMarkdownPlus({ getTableName: () => 'sys_update_xml', getQuery: () => '' });
-        assert.equal(notifications.length, 1);
+        assert.equal(notifications.length, 2);
         const type = outcome === 'success' ? 'info' : 'error';
-        assert.equal(notifications[0].event, 'glide:ui_notification.' + type);
-        assert.equal(notifications[0].type, type);
-        assert.equal(notifications[0].text, outcome === 'success' ? 'Markdown copied to clipboard' :
+        assert.equal(notifications[1].event, 'glide:ui_notification.' + type);
+        assert.equal(notifications[1].type, type);
+        assert.equal(notifications[1].text, outcome === 'success' ? 'Markdown copied to clipboard' :
             'Copy to clipboard failed. Ensure browser permissions allow clipboard access.');
     }
 });
@@ -479,6 +484,11 @@ test('record markers and global deduplication preserve one canonical parent and 
     const reversed = context._weMarkdownText([{rows: [rows[1], rows[0]]}], 'combined');
     assert.equal((reversed.match(/\[Parent\]/g) || []).length, 1);
     assert.ok(reversed.includes('~~[Parent](/parent)~~ 🚮'));
+    const annotated = context._weMarkdownRender(context._weMarkdownTree(rows.slice(0, 2).map(row => ({
+        ...row, secondary: ['extra', 'details'], setMarkers: [1, 2],
+    }))), 0).join('\n');
+    assert.ok(annotated.includes('~~[Parent](/parent)~~ (extra | details) 🚮 1️⃣ 2️⃣'));
+    assert.ok(annotated.includes('[Child](/child) (extra | details) 🆕 1️⃣ 2️⃣'));
 });
 
 test('new markers follow the first update set across repeated edits and later sets', () => {
@@ -691,6 +701,7 @@ test('JSON property renders one visible editor and grows only to half the viewpo
     const save = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Save property');
     const revert = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Revert');
     assert.ok(save && revert);
+    assert.equal(revert.hidden, true);
     assert.equal(descendants(hierarchy).some(node => node.textContent === 'Save hierarchy'), false);
     const toggle = descendants(hierarchy).find(node => node.tagName === 'A' && node.textContent === 'Switch to JSON');
     toggle.onclick({preventDefault() {}});
@@ -698,10 +709,15 @@ test('JSON property renders one visible editor and grows only to half the viewpo
     assert.deepEqual(JSON.parse(json.value), {a:['b']});
     json.value = '{"a":["c"]}'; json.oninput();
     assert.equal(save.disabled, false);
+    assert.equal(revert.hidden, false);
+    json.value = '{ "a": ["b"] }'; json.oninput();
+    assert.equal(revert.hidden, true, 'restoring the saved configuration manually clears changes');
+    json.value = '{"a":["c"]}'; json.oninput();
     revert.onclick();
     await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(JSON.parse(json.value), {a:['b']});
     assert.equal(save.disabled, true);
+    assert.equal(revert.hidden, true);
     json.value = '{"b":["c"]}'; json.oninput(); save.onclick();
     assert.equal(lastHierarchySave,undefined);
     assert.equal(modals.length,1);
@@ -712,6 +728,7 @@ test('JSON property renders one visible editor and grows only to half the viewpo
     save.onclick(); modalButton(modals.at(-1),'Remove').onclick();
     await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(lastHierarchySave, {b:['c']});
+    assert.equal(revert.hidden, true);
     json.value = '{bad'; json.oninput();
     assert.equal(save.disabled, true);
     revert.onclick();
@@ -867,15 +884,19 @@ test('display export resolves dot walks securely and preserves secondary order',
     assert.equal(api._configuredValue(null, 'sys_security_acl_role', '<name>Deleted record</name>', 'name'), 'Deleted record');
 });
 
-test('Markdown appends escaped secondary values to both parents and records', () => {
+test('Markdown includes secondary values inside context-only italics and on included records', () => {
     const context = { console };
     vm.createContext(context); vm.runInContext(clientSource, context);
     const rows = [{ table: 'child', id: 'c', type: 'Children', name: 'Child', url: '/child',
         secondary: ['one | two', '<three>'], ancestors: [{ table: 'parent', id: 'p', type: 'Parents',
             name: 'Parent', url: '/parent', secondary: ['value'] }] }];
     const result = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
-    assert.ok(result.includes('[Parent](/parent) [value]'));
-    assert.ok(result.includes('[Child](/child) [one \\| two | \\<three\\>]'));
+    assert.ok(result.includes('*[Parent](/parent) (value) - context only*'));
+    assert.ok(result.includes('[Child](/child) (one \\| two | \\<three\\>)'));
+    rows[0].ancestors[0].inUpdateSet = true;
+    const included = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
+    assert.ok(included.includes('- [Parent](/parent) (value)'));
+    assert.ok(!included.includes('context only'));
 });
 
 
@@ -1341,7 +1362,7 @@ test('Knowledge versions across pages consolidate by article number and retain a
         name:version,url:'/version/'+version,ancestors:[article(version)]});
     const output = context._weMarkdownText([{rows:[child('1.0'),child('3.0')]},{rows:[child('2.0'),child('1.0')]}]);
     assert.equal((output.match(/\[KB0010038\]/g)||[]).length,1);
-    assert.ok(output.includes('[KB0010038](/article/3.0) [Article description] *- context only*'));
+    assert.ok(output.includes('*[KB0010038](/article/3.0) (Article description) - context only*'));
     for (const version of ['1.0','2.0','3.0']) assert.equal(output.split('](/version/'+version+')').length-1,1);
     assert.equal((output.match(/\*\*Knowledge Version\*\*/g)||[]).length,1);
     const present = article('2.0'); present.inUpdateSet=true;
@@ -1405,7 +1426,7 @@ test('multiple sets have a stable linked legend and deduplicated records retain 
     const output=context._weMarkdownText(loaded);
     assert.ok(output.startsWith('1️⃣ [Alpha](/set/a)\n2️⃣ [Beta](/remote/b)\n\n'));
     assert.ok(output.includes('[Child](/child) 1️⃣ 2️⃣'));
-    assert.ok(output.includes('[Parent](/parent) *- context only*'));
+    assert.ok(output.includes('*[Parent](/parent) - context only*'));
     assert.equal(output.split('[Child]').length-1,1);
     assert.equal(context._weMarkdownText(loaded),output,'rendering does not mutate source rows');
     loaded[1].rows[0].ancestors=[{...parent,inUpdateSet:true}];

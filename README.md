@@ -287,6 +287,21 @@ The Properties page combines `monaco.plus.code_search.display_fields.*` and `mon
 
 Knowledge defaults display `display_number` with `short_description`, and group `kb_version` and `kb_knowledge_summary` beneath articles. Page defaults group `sp_container → sp_row → sp_column → sp_instance`, plus `sp_metatag` and `sp_page_title_variable` beneath `sp_page`. UI policy defaults include `sys_ui_policy_action` and `sys_ui_policy_rl_action`. The post-install fix script **Move default widget instances into page hierarchy** removes `sp_instance` from unchanged former Widget defaults; custom configurations are preserved. For update-set installations, run this fix script after installing the page defaults. If a customised Widget configuration still includes `sp_instance`, move that relationship to `sp_column` in the combined editor before using the new hierarchy.
 
+Additional grouping defaults place Scripted REST Resources (`sys_ws_operation`) beneath Scripted REST APIs (`sys_ws_definition`), HTTP methods (`sys_rest_message_fn`) beneath REST Messages (`sys_rest_message`), and Modules (`sys_app_module`) beneath Application Menus (`sys_app_application`).
+
+Markdown display defaults also include:
+
+| Table | Display field | Additional fields |
+|---|---|---|
+| `sp_widget` | `name` | `id` |
+| `sp_page` | `title` | `id` |
+| `sys_script` | `name` | `collection,when` |
+| `sys_script_client` | `name` | `table,type` |
+| `sys_ui_action` | `name` | `table` |
+| `sys_ws_operation` | `name` | `http_method,relative_path` |
+
+Context-only entries are fully italicised, including additional values in parentheses. Parents captured in the source update set are treated as included even when excluded by the list filter. Status and update-set emoji follow additional values. These defaults use first-install properties to preserve existing per-table customisations.
+
 Properties created or saved through the table and Markdown hierarchy editors are linked to the **Widget Editor+** category through `sys_properties_category_m2m`, without duplicate links. Theme grouping defaults include `sp_header_footer`, `m2m_sp_theme_css_include`, `m2m_sp_theme_js_include`, and `m2m_sp_theme_sp_theme_variant`.
 
 Markdown exports start with linked update set names. When multiple sets are represented, a numbered keycap legend identifies each set and matching markers identify the records it contains. Records remain consolidated across sets. For update-set upgrades, run the post-install fix script **Remove obsolete Markdown export options page** to delete the retired combine/separate dialog and its ACL.

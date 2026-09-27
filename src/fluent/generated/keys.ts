@@ -396,6 +396,54 @@ declare global {
                         table: 'sys_properties_category_m2m'
                         id: '36e256c5e37d4c8f9585555cadbe2e91'
                     }
+                    'widget-editor-markdown-display-sp_page': {
+                        table: 'sys_properties'
+                        id: 'b7d0a0c9bb7941ffb08fa024436164e6'
+                    }
+                    'widget-editor-markdown-display-sp_page-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '0ff7d271f4b04b9ab014df5d310b2b9f'
+                    }
+                    'widget-editor-markdown-display-sp_widget': {
+                        table: 'sys_properties'
+                        id: 'aa781b4bce7d44e7b77df7c6c8616245'
+                    }
+                    'widget-editor-markdown-display-sp_widget-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '2197fff429c3450a8e592ab1d5495cec'
+                    }
+                    'widget-editor-markdown-display-sys_script': {
+                        table: 'sys_properties'
+                        id: '790c4d399be9406b891bab33c6fa6dca'
+                    }
+                    'widget-editor-markdown-display-sys_script_client': {
+                        table: 'sys_properties'
+                        id: 'b168256a538a450ca7fcad288ac5ef40'
+                    }
+                    'widget-editor-markdown-display-sys_script_client-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '597360ddc561472fbdb2987227b3d151'
+                    }
+                    'widget-editor-markdown-display-sys_script-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '8329e7fb9e254486b3e3be5f7c170f0c'
+                    }
+                    'widget-editor-markdown-display-sys_ui_action': {
+                        table: 'sys_properties'
+                        id: '50be79b7f2514d7fadc3829a8ba9d71a'
+                    }
+                    'widget-editor-markdown-display-sys_ui_action-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '82135e67c7104812b87b2150a0367fb4'
+                    }
+                    'widget-editor-markdown-display-sys_ws_operation': {
+                        table: 'sys_properties'
+                        id: '20ed9e204cce459aa9a6d06e56f3c791'
+                    }
+                    'widget-editor-markdown-display-sys_ws_operation-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '23104e60fb984c8f989c6cf3eb2e4d09'
+                    }
                     'widget-editor-markdown-groups-catalog_ui_policy': {
                         table: 'sys_properties'
                         id: '524b328cd26640f8ab4ce331c0e55ca3'
@@ -480,6 +528,22 @@ declare global {
                         table: 'sys_properties_category_m2m'
                         id: 'a78e483305ee4d7f8e309e6032fe6daa'
                     }
+                    'widget-editor-markdown-groups-sys_app_application': {
+                        table: 'sys_properties'
+                        id: '7c5ef61f46c840c188e8008dbbc5335c'
+                    }
+                    'widget-editor-markdown-groups-sys_app_application-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '6bcbd965c16c48a6afa998a61f80f4b9'
+                    }
+                    'widget-editor-markdown-groups-sys_rest_message': {
+                        table: 'sys_properties'
+                        id: 'c0e1364d20e3451c845f8dbad93d02b4'
+                    }
+                    'widget-editor-markdown-groups-sys_rest_message-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'e52a880cfc124bd4b04636b21f85ce8d'
+                    }
                     'widget-editor-markdown-groups-sys_security_acl': {
                         table: 'sys_properties'
                         id: '010b223842a4439690b57073b6f4f128'
@@ -511,6 +575,14 @@ declare global {
                     'widget-editor-markdown-groups-sys_user_group-category': {
                         table: 'sys_properties_category_m2m'
                         id: 'b450807890824d1cbc5074672f8b430c'
+                    }
+                    'widget-editor-markdown-groups-sys_ws_definition': {
+                        table: 'sys_properties'
+                        id: '4a2c912272e04d24b9ee051e69a26837'
+                    }
+                    'widget-editor-markdown-groups-sys_ws_definition-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '37f052762c074362921d5e768ac0f8d1'
                     }
                     'widget-editor-markdown-list-header-menu': {
                         table: 'sys_ui_context_menu'

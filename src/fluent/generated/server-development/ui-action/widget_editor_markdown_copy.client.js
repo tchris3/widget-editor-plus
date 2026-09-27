@@ -12,7 +12,9 @@ function copyUpdateSetMarkdownPlus(currentList, sourceElement) {
             if (!list || list.getTableName() !== 'sys_update_xml') {
                 throw new Error('The Customer Updates list could not be found.');
             }
-            resolve(_weMarkdownListQuery(list));
+            var query = _weMarkdownListQuery(list);
+            _weMarkdownNotify('info', 'Preparing Markdown export…');
+            resolve(query);
         } catch (error) { reject(error); }
     }).then(_weLoadMarkdownList).then(function (rows) {
         var value = _weMarkdownText([{ rows: rows }]);
@@ -84,8 +86,10 @@ function _weMarkdownType(container, label, order) {
 }
 function _weMarkdownRecord(type, record) {
     var key = record.table + ':' + record.id;
-    if (!type.records[key]) type.records[key] = { table: record.table, id: record.id, name: record.name,
-        url: record.url, secondary: record.secondary || [], inUpdateSet: record.inUpdateSet, setMarkers: record.setMarkers || [], action: record.action || '', isNew: !!record.isNew, types: {} };
+    if (!type.records[key]) type.records[key] = {
+        table: record.table, id: record.id, name: record.name,
+        url: record.url, secondary: record.secondary || [], inUpdateSet: record.inUpdateSet, setMarkers: record.setMarkers || [], action: record.action || '', isNew: !!record.isNew, types: {}
+    };
     else if (record.updateId) {
         type.records[key].name = record.name;
         type.records[key].url = record.url;
@@ -101,8 +105,10 @@ function _weMarkdownTree(rows) {
         var id = key(record), existing = definitions[id];
         var present = explicit || record.inUpdateSet === true;
         if (!existing) {
-            definitions[id] = { record: Object.assign({}, record, { inUpdateSet: present }), parents: parents,
-                explicit: explicit, ids: [record.id] };
+            definitions[id] = {
+                record: Object.assign({}, record, { inUpdateSet: present }), parents: parents,
+                explicit: explicit, ids: [record.id]
+            };
             return;
         }
         present = present || existing.record.inUpdateSet;
@@ -153,12 +159,13 @@ function _weMarkdownRender(container, depth) {
         }).forEach(function (key) {
             var record = type.records[key];
             var name = _weMarkdownLink(record.name, record.url);
-            if (record.action === 'DELETE') name = '~~' + name + '~~ 🚮';
+            if (record.action === 'DELETE') name = '~~' + name + '~~';
+            if (record.secondary.length) name += ' (' + record.secondary.map(_weMarkdownEscape).join(' | ') + ')';
+            if (record.action === 'DELETE') name += ' 🚮';
             else if (record.isNew) name += ' 🆕';
             if (record.setMarkers.length) name += ' ' + record.setMarkers.map(_weMarkdownKeycap).join(' ');
-            lines.push(Array(depth * 2 + 3).join(' ') + '- ' + name +
-                (record.secondary.length ? ' [' + record.secondary.map(_weMarkdownEscape).join(' | ') + ']' : '') +
-                (record.inUpdateSet === false ? ' *- context only*' : ''));
+            if (record.inUpdateSet === false) name = '*' + name + ' - context only*';
+            lines.push(Array(depth * 2 + 3).join(' ') + '- ' + name);
             lines = lines.concat(_weMarkdownRender(record, depth + 2));
         });
     });
@@ -176,35 +183,41 @@ function _weMarkdownMergeMarkers(first, second) {
 function _weMarkdownText(loaded) {
     var sets = {}, seen = {}, rows = [];
     function setKey(set) { return set.table + ':' + set.id; }
-    loaded.forEach(function (item) { item.rows.forEach(function (row) {
-        var set = row.sourceSet || item.set;
-        if (set) sets[setKey(set)] = set;
-    }); });
+    loaded.forEach(function (item) {
+        item.rows.forEach(function (row) {
+            var set = row.sourceSet || item.set;
+            if (set) sets[setKey(set)] = set;
+        });
+    });
     var keys = Object.keys(sets).sort(function (a, b) {
         return sets[a].name.localeCompare(sets[b].name) || a.localeCompare(b);
     });
-    loaded.forEach(function (item) { item.rows.forEach(function (source) {
-        var set = source.sourceSet || item.set;
-        var markers = keys.length > 1 && set ? [keys.indexOf(setKey(set)) + 1] : [];
-        var row = Object.assign({}, source, { setMarkers: markers, ancestors: (source.ancestors || []).map(function (parent) {
-            return Object.assign({}, parent, { setMarkers: parent.inUpdateSet ? markers : [] });
-        }) });
-        var key = row.table + ':' + row.id;
-        if (!seen[key]) { seen[key] = row; rows.push(row); }
-        else {
-            var existing = seen[key];
-            existing.isNew = existing.isNew || row.isNew;
-            existing.setMarkers = _weMarkdownMergeMarkers(existing.setMarkers, markers);
-            existing.ancestors.forEach(function (parent) {
-                row.ancestors.forEach(function (other) {
-                    if (parent.table === other.table && parent.id === other.id) {
-                        parent.inUpdateSet = parent.inUpdateSet || other.inUpdateSet;
-                        parent.setMarkers = _weMarkdownMergeMarkers(parent.setMarkers, other.setMarkers);
-                    }
-                });
+    loaded.forEach(function (item) {
+        item.rows.forEach(function (source) {
+            var set = source.sourceSet || item.set;
+            var markers = keys.length > 1 && set ? [keys.indexOf(setKey(set)) + 1] : [];
+            var row = Object.assign({}, source, {
+                setMarkers: markers, ancestors: (source.ancestors || []).map(function (parent) {
+                return Object.assign({}, parent, { setMarkers: parent.inUpdateSet ? markers : [] });
+                })
             });
-        }
-    }); });
+            var key = row.table + ':' + row.id;
+            if (!seen[key]) { seen[key] = row; rows.push(row); }
+            else {
+                var existing = seen[key];
+                existing.isNew = existing.isNew || row.isNew;
+                existing.setMarkers = _weMarkdownMergeMarkers(existing.setMarkers, markers);
+                existing.ancestors.forEach(function (parent) {
+                    row.ancestors.forEach(function (other) {
+                        if (parent.table === other.table && parent.id === other.id) {
+                            parent.inUpdateSet = parent.inUpdateSet || other.inUpdateSet;
+                            parent.setMarkers = _weMarkdownMergeMarkers(parent.setMarkers, other.setMarkers);
+                        }
+                    });
+                });
+            }
+        });
+    });
     var legend = keys.map(function (key, index) {
         var set = sets[key];
         return (keys.length > 1 ? _weMarkdownKeycap(index + 1) + ' ' : '') + _weMarkdownLink(set.name, set.url);
