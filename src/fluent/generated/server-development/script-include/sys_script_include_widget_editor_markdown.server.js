@@ -254,8 +254,9 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
                 if (record) {
                     var element = record.getElement(step.field);
                     if (!element || !element.canRead()) return '';
-                    raw = String(record.getValue(step.field) || '');
-                    display = String(record.getDisplayValue(step.field) || '');
+                    var rawValue = record.getValue(step.field), displayValue = record.getDisplayValue(step.field);
+                    raw = rawValue === null || rawValue === undefined ? '' : String(rawValue);
+                    display = displayValue === null || displayValue === undefined ? '' : String(displayValue);
                 } else if (i === 0) {
                     var field = this._payloadField(payload, step.field);
                     raw = field.value; display = field.display;
@@ -343,7 +344,7 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         gr.setLimit(1);
         gr.query();
         return gr.next() ? { id: String(gr.getUniqueValue()), payload: String(gr.getValue('payload') || ''),
-            name: String(gr.getValue('target_name') || '') } : null;
+            name: String(gr.getValue('target_name') || ''), action: String(gr.getValue('action') || '') } : null;
     },
     _groupConfigs: function () {
         var gr = new GlideRecordSecure('sys_properties'), configs = {};
@@ -492,7 +493,8 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             var parentUpdate = this._updateForTarget(parent.table, parentId, setTable, setId);
             if (!parentRecord && !parentUpdate) return ordinary;
             ancestors.unshift({ table: parent.table, id: parentId,
-                inUpdateSet: !!parentUpdate,
+                inUpdateSet: !!parentUpdate, action: parentUpdate ? parentUpdate.action : '',
+                isNew: !!parentUpdate && this._isNewUpdate(parentUpdate.action, parent.table + '_' + parentId, setTable, setId),
                 consolidation: this._consolidation(parentRecord, parent.table, parentUpdate ? parentUpdate.payload : ''), type: parent.label, typeOrder: match.orders[i - 1],
                 name: this._name(parentRecord, parent.table, parentId, parentUpdate ? parentUpdate.payload : '',
                     parentUpdate ? parentUpdate.name : ''),

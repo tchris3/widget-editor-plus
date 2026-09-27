@@ -336,21 +336,23 @@
                 description.value = markdown ? (displayConfig.display_value || '') : property ? property.description : '';
                 description.setAttribute('aria-label', markdown ? 'Display field' : 'Description');
                 if (assistant) description.setAttribute('maxlength', '512');
-                var descriptionCounter = characterCount(markdown ? null : assistant ? 512 : 4000); description.setAttribute('aria-describedby', descriptionCounter.id);
-                if (assistant || markdown) { var descCell = el('td'); descCell.appendChild(description); descCell.appendChild(descriptionCounter); row.appendChild(descCell); }
+                var descriptionCounter = markdown ? null : characterCount(assistant ? 512 : 4000);
+                if (descriptionCounter) description.setAttribute('aria-describedby', descriptionCounter.id);
+                if (assistant || markdown) { var descCell = el('td'); descCell.appendChild(description); if (descriptionCounter) descCell.appendChild(descriptionCounter); row.appendChild(descCell); }
                 var input = el(assistant ? 'textarea' : 'input', 'form-control' + (assistant ? ' wep-json-fallback' : '')); input.rows = assistant ? 6 : 2;
                 input.value = markdown ? (displayConfig.additional_fields || '') : property ? property.value : (assistant ? '{"rules":[],"pickerFields":[]}' : '');
                 input.setAttribute('aria-label', assistant ? 'JSON' : markdown ? 'Additional fields' : 'Fields');
                 if (!assistant) input.placeholder = 'name,description';
-                var counter = characterCount(markdown ? null : undefined); input.setAttribute('aria-describedby', counter.id);
-                valueCell.appendChild(input); valueCell.appendChild(counter); row.appendChild(valueCell);
+                var counter = markdown ? null : characterCount();
+                if (counter) input.setAttribute('aria-describedby', counter.id);
+                valueCell.appendChild(input); if (counter) valueCell.appendChild(counter); row.appendChild(valueCell);
                 var note = el('small', 'wep-status'); note.setAttribute('role', 'status');
                 var baseline = property ? JSON.stringify([saved, description.value, input.value]) : '';
                 function snapshot() { return JSON.stringify([name.value.trim(), description.value, input.value]); }
                 function propertyValue() { return markdown ? JSON.stringify({ display_value: description.value.trim(), additional_fields: input.value }, null, 4) : input.value; }
                 function refresh() {
-                    updateCharacterCount(counter, input.value);
-                    updateCharacterCount(descriptionCounter, description.value);
+                    if (counter) updateCharacterCount(counter, input.value);
+                    if (descriptionCounter) updateCharacterCount(descriptionCounter, description.value);
                     var changed = snapshot() !== baseline;
                     if (changed) dirty[key] = true; else delete dirty[key];
                     save.disabled = busy || !changed || !name.value.trim() || (!markdown && propertyValue().length > 4000) || (markdown && !description.value.trim()) || (assistant && description.value.length > 512);
@@ -467,7 +469,7 @@
             root.setAttribute('aria-describedby', counter.id);
             jsonPanel.appendChild(jsonInput); panel.appendChild(jsonPanel);
             jsonInput.oninput = jsonInput.onchange = jsonChanged;
-            var savedConfig = {}, savedTables = [], savingRules = false;
+            var savedConfig = JSON.parse(property.value), savedTables = Object.keys(savedConfig), savingRules = false;
             function compactHierarchy() {
                 var config = {};
                 function visit(nodes) {
@@ -487,6 +489,20 @@
                     if (!/^[a-z][a-z0-9_]*$/i.test(table) || !Array.isArray(config[table]) || config[table].some(function (child) {
                         return typeof child !== 'string' || !/^[a-z][a-z0-9_]*$/i.test(child);
                     })) throw new Error('Use a JSON object of parent tables and child table arrays.');
+                });
+                var parents = {};
+                Object.keys(config).forEach(function (parent) {
+                    config[parent].forEach(function (child) {
+                        if (Object.prototype.hasOwnProperty.call(parents, child)) throw new Error('A child table can appear under only one parent: ' + child);
+                        parents[child] = parent;
+                    });
+                });
+                Object.keys(config).forEach(function (table) {
+                    var seen = {}, current = table;
+                    while (current) {
+                        if (seen[current]) throw new Error('The table hierarchy contains a cycle: ' + current);
+                        seen[current] = true; current = parents[current];
+                    }
                 });
                 return config;
             }
@@ -530,7 +546,7 @@
                 syncing = false;
             }
             function setMode(next) {
-                if (!rules || mode === next) return;
+                if (mode === next) return;
                 if (next === 'UI') {
                     var config;
                     try { config = parseHierarchy(); } catch (e) { status(note, e.message, 'error'); return; }
@@ -540,7 +556,7 @@
                         rules = data.rules; renderRules(); displayMode('UI'); status(note, rulesDirty ? 'Unsaved changes' : '');
                     }).catch(function (error) { status(note, error.message, 'error'); });
                 } else {
-                    closePicker(); setJson(compactHierarchy()); displayMode('JSON');
+                    closePicker(); setJson(rules ? compactHierarchy() : savedConfig); displayMode('JSON');
                 }
             }
             var footer = el('div', 'wep-actions');
@@ -574,23 +590,33 @@
                     revert.hidden = true;
                     setJson(savedConfig); renderRules(); updateHierarchyCount();
                     save.disabled = true; status(note, '');
-                }).catch(function (error) { status(note, error.message, 'error'); });
+                }).catch(function (error) {
+                    if (requested !== revision) return;
+                    setJson(savedConfig); displayMode('JSON'); refreshRulesDirty();
+                    save.disabled = true; status(note, error.message, 'error');
+                });
             });
             revert.hidden = true;
             save.className = 'btn btn-primary'; save.disabled = true;
             footer.appendChild(save); footer.appendChild(revert); footer.appendChild(note); footer.appendChild(counter);
             panel.appendChild(footer); card.appendChild(panel);
             status(note, 'Loading…');
+            var loadingRevision = revision;
             ajax('getRules', {}).then(function (data) {
+                if (revision !== loadingRevision) return;
                 savedConfig = data.config; savedTables = data.propertyTables || Object.keys(savedConfig); rules = data.rules; property.propertyCount = savedTables.length; property._refreshCount(); renderRules(); updateHierarchyCount(); status(note, '');
-            }).catch(function (error) { status(note, error.message, 'error'); });
+            }).catch(function (error) {
+                if (revision !== loadingRevision) return;
+                setJson(savedConfig); displayMode('JSON');
+                status(note, error.message + ' Edit the JSON to repair the hierarchy.', 'error');
+            });
             function refreshRulesDirty() {
                 function canonical(config) {
                     return JSON.stringify(Object.keys(config).sort().map(function (table) {
                         return [table, config[table].slice().sort()];
                     }));
                 }
-                try { rulesDirty = canonical(readConfig()) !== canonical(savedConfig); }
+                try { rulesDirty = canonical(mode === 'JSON' ? JSON.parse(jsonInput.value) : compactHierarchy()) !== canonical(savedConfig); }
                 catch (e) { rulesDirty = true; }
                 revert.hidden = !rulesDirty;
             }

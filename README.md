@@ -293,6 +293,7 @@ Markdown display defaults also include:
 
 | Table | Display field | Additional fields |
 |---|---|---|
+| `item_option_new` | `name` | `type` |
 | `sp_widget` | `name` | `id` |
 | `sp_page` | `title` | `id` |
 | `sys_script` | `name` | `collection,when` |
@@ -300,7 +301,7 @@ Markdown display defaults also include:
 | `sys_ui_action` | `name` | `table` |
 | `sys_ws_operation` | `name` | `http_method,relative_path` |
 
-Context-only entries start with a non-italic `∉`, followed by italicised record text and additional values in parentheses. When present, a note below the list explains: “∉ For context only - not included in update set.” Parents captured in the source update set are treated as included even when excluded by the list filter. Status and update-set emoji follow additional values. These defaults use first-install properties to preserve existing per-table customisations.
+Context-only entries start with a non-italic `∉`, followed by italicised record text and additional values in parentheses. When present, a note below the list explains: “∉ For context only - not included in update set.” Parents captured in the source update set are treated as included even when excluded by the list filter. Additional fields use display values when available, fall back to raw values, and are omitted when both are empty. Status and update-set emoji follow additional values. These defaults use first-install properties to preserve existing per-table customisations.
 
 Properties created or saved through the table and Markdown hierarchy editors are linked to the **Widget Editor+** category through `sys_properties_category_m2m`, without duplicate links. Theme grouping defaults include `sp_header_footer`, `m2m_sp_theme_css_include`, `m2m_sp_theme_js_include`, and `m2m_sp_theme_sp_theme_variant`.
 

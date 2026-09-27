@@ -172,7 +172,7 @@ test('properties API edits only existing Widget Editor+ properties', () => {
 
 test('combined hierarchy rejects cycles, duplicate parents and unknown tables before writing', () => {
     const { api, saved } = groupServer();
-    for (const config of [{ a: ['b'], b: ['a'] }, { a: ['c'], b: ['c'] }, { a: ['missing'] }]) {
+    for (const config of [{ a: ['b'], b: ['a'] }, { a: ['c'], b: ['c'] }, { a: ['b','b'] }, { a: ['a'] }, { a: ['missing'] }]) {
         api.getParameter = () => JSON.stringify(config);
         assert.equal(api.saveRules().success, false);
         assert.deepEqual(saved, {});
@@ -619,7 +619,7 @@ test('UI placements and admin-only properties page are declared', () => {
     assert.match(property, /write: \['admin'\]/);
 });
 
-test('JSON property renders one visible editor and grows only to half the viewport', async () => {
+[false, true].forEach(repair => test(repair ? 'invalid saved hierarchy opens as JSON and can be repaired' : 'JSON property renders one visible editor and grows only to half the viewport', async () => {
     const source = fs.readFileSync('src/fluent/generated/other/sys-ui-page/widget_editor_plus_properties.client.js', 'utf8');
     class Node {
         constructor(tag) { this.tagName = tag.toUpperCase(); this.children = []; this.style = {}; this.className = ''; this._text = ''; }
@@ -666,7 +666,7 @@ test('JSON property renders one visible editor and grows only to half the viewpo
         } } } };
     const document = { body:new Node('body'), readyState: 'complete', documentElement: new Node('html'),
         getElementById: id => roots[id], createElement: tag => new Node(tag) };
-    let savedHierarchy = {a: ['b']}, lastHierarchySave;
+    let savedHierarchy = repair ? {a:['b'],c:['b']} : {a: ['b']}, lastHierarchySave;
     function GlideAjax() {
         const params = {};
         this.addParam = (name,value) => { params[name] = value; };
@@ -681,7 +681,8 @@ test('JSON property renders one visible editor and grows only to half the viewpo
             if (params.sysparm_name === 'getRules') {
                 const config = params.rules ? JSON.parse(params.rules) : savedHierarchy;
                 const {api} = groupServer();
-                result = {success:true, config, rules:api._buildGroupRules(config)};
+                try { result = {success:true, config, rules:api._buildGroupRules(config)}; }
+                catch (error) { result = {success:false,error:error.message}; }
             }
             if (params.sysparm_name === 'saveRules') {
                 lastHierarchySave = JSON.parse(params.rules);
@@ -696,6 +697,35 @@ test('JSON property renders one visible editor and grows only to half the viewpo
     vm.runInContext(source, context);
     await new Promise(resolve => setImmediate(resolve));
     while (frames.length) frames.shift()();
+    if (repair) {
+        function descendants(node) { return node.children.flatMap(child => [child,...descendants(child)]); }
+        const hierarchy = roots['wep-sections'].querySelectorAll('.wep-card').find(card => card._prop.name === 'monaco.plus.update_sets.markdown_groups');
+        const jsonPanel = hierarchy.querySelectorAll('.wep-hierarchy-json')[0];
+        const save = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Save property');
+        const revert = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Revert');
+        const toggle = descendants(hierarchy).find(node => node.tagName === 'A' && node.textContent === 'Switch to UI');
+        const json = hierarchy.querySelectorAll('.wep-json-fallback')[0];
+        assert.equal(jsonPanel.hidden,false);
+        assert.deepEqual(JSON.parse(json.value),savedHierarchy);
+        assert.equal(save.disabled,true);
+        for (const config of [{a:['b','b']},{a:['b'],c:['b']},{a:['b'],b:['a']},{a:['a']}]) {
+            json.value=JSON.stringify(config); json.oninput();
+            assert.equal(save.disabled,true);
+        }
+        json.value='{"a":["b"],"b":["c"]}'; json.oninput();
+        assert.equal(save.disabled,false, 'a child can have children of its own');
+        revert.onclick(); await new Promise(resolve => setImmediate(resolve));
+        assert.deepEqual(JSON.parse(json.value),savedHierarchy);
+        assert.equal(revert.hidden,true);
+        json.value='{"a":["b"],"b":["c"]}'; json.oninput();
+        toggle.onclick({preventDefault(){}}); await new Promise(resolve => setImmediate(resolve));
+        assert.equal(jsonPanel.hidden,true);
+        save.onclick(); modalButton(modals.at(-1),'Remove').onclick();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.deepEqual(lastHierarchySave,{a:['b'],b:['c']});
+        assert.equal(save.disabled,true);
+        return;
+    }
     assert.deepEqual(roots['wep-sections'].children.map(section => section.getAttribute('data-feature')),
         ['Widget Editor+', 'Assistant+', 'Code Search+', 'Export Markdown+']);
     const card = roots['wep-sections'].querySelectorAll('.wep-card')[0];
@@ -773,7 +803,7 @@ test('JSON property renders one visible editor and grows only to half the viewpo
     save.onclick(); await new Promise(resolve => setImmediate(resolve));
     assert.equal(count.textContent,'2 properties');
 
-});
+}));
 
 
 test('export includes only explicitly configured children and ignores cleared properties', () => {
@@ -916,6 +946,27 @@ test('display export resolves dot walks securely and preserves secondary order',
     assert.equal(api._configuredValue(null, 'sys_security_acl_role', '<sys_user_role>' + 'b'.repeat(32) + '</sys_user_role>', 'sys_user_role.name'), 'Friendly [role]');
     assert.equal(api._configuredValue(null, 'sys_security_acl_role', '<sys_user_role>' + 'c'.repeat(32) + '</sys_user_role>', 'sys_user_role.name'), '');
     assert.equal(api._configuredValue(null, 'sys_security_acl_role', '<name>Deleted record</name>', 'name'), 'Deleted record');
+});
+
+test('Variable defaults include type and additional values prefer display text with raw fallback', () => {
+    const source = fs.readFileSync('src/fluent/generated/properties/system-property/sys_properties_widget_editor_markdown_display_item_option_new.now.ts','utf8');
+    const config = JSON.parse(source.match(/value: `([\s\S]*?)`,/)[1]);
+    assert.deepEqual(config,{display_value:'name',additional_fields:'type'});
+    const {api} = server();
+    api._displayConfig = () => config;
+    api._fieldPath = (_table,field) => [{field}];
+    for (const [raw,display,expected] of [
+        ['6','Single Line Text',['Single Line Text']], ['6','',['6']],
+        ['', 'Display only', ['Display only']], ['', '', []], [null,undefined,[]],
+        [0,'',['0']], [false,null,['false']],
+    ]) {
+        const record = {getElement:()=>({canRead:()=>true}),getValue:()=>raw,getDisplayValue:()=>display};
+        assert.deepEqual(Array.from(api._secondaryValues(record,'item_option_new','')),expected);
+    }
+    for (const [payload,expected] of [
+        ['<type display_value="Single Line Text">6</type>',['Single Line Text']],
+        ['<type>6</type>',['6']], ['<type></type>',[]], ['',[]],
+    ]) assert.deepEqual(Array.from(api._secondaryValues(null,'item_option_new',payload)),expected);
 });
 
 test('Markdown includes secondary values inside context-only italics and on included records', () => {
@@ -1176,7 +1227,9 @@ test('property tables render row saves and remove the saved property only after 
     extraInput.value=Array(700).fill('script').join(','); extraInput.oninput();
     const markdownSave = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property');
     assert.equal(markdownSave.disabled,false);
-    assert.ok(descendants(markdown).some(n=>n.textContent===extraInput.value.length+' characters'));
+    assert.equal(markdown.querySelectorAll('.wep-character-count').length,0);
+    assert.equal(displayInput.getAttribute('aria-describedby'),undefined);
+    assert.equal(extraInput.getAttribute('aria-describedby'),undefined);
     markdownSave.onclick(); await tick();
     assert.equal(JSON.parse(requests.at(-1).property_value).additional_fields,extraInput.value);
     requests.length=0;
@@ -1449,8 +1502,28 @@ test('live ancestors check membership in the source update set independently of 
     };
     const ancestors=()=>api._ancestors('sp_ng_template',childId,'',rules,'sys_remote_update_set','source-set').ancestors;
     assert.equal(ancestors()[0].inUpdateSet,false);
-    captured={id:'update',payload:'',name:'Parent'};
-    assert.equal(ancestors()[0].inUpdateSet,true);
+    let newChecks=0;
+    api._isNewUpdate=(action,name,setTable,setId)=>{
+        newChecks++;
+        assert.equal(name,'sp_widget_'+parentId);
+        assert.equal(setTable,'sys_remote_update_set'); assert.equal(setId,'source-set');
+        return action !== 'DELETE';
+    };
+    captured={id:'update',payload:'',name:'Parent',action:'INSERT_OR_UPDATE'};
+    const parent=ancestors()[0];
+    assert.equal(parent.inUpdateSet,true); assert.equal(parent.isNew,true);
+    assert.equal(newChecks,1);
+    const context={}; vm.createContext(context); vm.runInContext(clientSource,context);
+    function render() { return context._weMarkdownText([{rows:[{
+        table:'sp_ng_template',id:childId,type:'Template',name:'Child',isNew:true,ancestors:ancestors()
+    }]}]); }
+    let output=render();
+    assert.match(output,/\[Parent\].* 🆕/);
+    assert.doesNotMatch(output,/Child 🆕/);
+    captured.action='DELETE'; output=render();
+    assert.match(output,/~~\[Parent\].*~~ 🚮/);
+    assert.match(output,/Child 🆕/);
+
 });
 
 test('export includes a linked single set heading without any keycaps', () => {

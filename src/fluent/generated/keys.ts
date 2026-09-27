@@ -380,6 +380,14 @@ declare global {
                         id: 'a66fcbb84e5a4e878ec6e60ec8dd9a5e'
                         deleted: true
                     }
+                    'widget-editor-markdown-display-item_option_new': {
+                        table: 'sys_properties'
+                        id: '836205b1b5cd42f588711c43863a4578'
+                    }
+                    'widget-editor-markdown-display-item_option_new-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'f69e90bff09643b78f6f6124f12075b6'
+                    }
                     'widget-editor-markdown-display-kb_knowledge': {
                         table: 'sys_properties'
                         id: 'bea3225af1cb4befa65bd12ff47bdec0'

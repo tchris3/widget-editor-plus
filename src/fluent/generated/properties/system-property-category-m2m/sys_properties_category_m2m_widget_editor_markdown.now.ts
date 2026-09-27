@@ -2,6 +2,7 @@ import { markdownGroupsSysWsDefinitionProperty } from '../system-property/sys_pr
 import { markdownGroupsSysRestMessageProperty } from '../system-property/sys_properties_widget_editor_markdown_groups_sys_rest_message.now'
 import { markdownGroupsSysAppApplicationProperty } from '../system-property/sys_properties_widget_editor_markdown_groups_sys_app_application.now'
 import { markdownDisplaySpWidgetProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sp_widget.now'
+import { markdownDisplayItemOptionNewProperty } from '../system-property/sys_properties_widget_editor_markdown_display_item_option_new.now'
 import { markdownDisplaySpPageProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sp_page.now'
 import { markdownDisplaySysScriptProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sys_script.now'
 import { markdownDisplaySysScriptClientProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sys_script_client.now'
@@ -273,5 +274,15 @@ Record({
         property: markdownDisplaySysWsOperationProperty,
         category: widgetEditorPlusPropertiesCategory,
         order: 7300,
+    },
+})
+
+Record({
+    $id: Now.ID['widget-editor-markdown-display-item_option_new-category'],
+    table: 'sys_properties_category_m2m',
+    data: {
+        property: markdownDisplayItemOptionNewProperty,
+        category: widgetEditorPlusPropertiesCategory,
+        order: 7400,
     },
 })
