@@ -147,7 +147,7 @@ UiPage({
       padding: 0;
       list-style: none;
     }
-    .wep-nav > li { display: flex; min-width: 0; max-width: 100%; }
+    .wep-nav li { display: flex; min-width: 0; max-width: 100%; }
     .wep-feature-pill {
       display: flex;
       align-items: center;
@@ -259,7 +259,7 @@ UiPage({
 
     /* Shared table headers stick to the page viewport within each table. */
     .wep-card .wep-properties-table { border-collapse: separate; border-spacing: 0; }
-    .wep-card .wep-properties-table > thead > tr > th {
+    .wep-card .wep-properties-table thead tr th {
       position: sticky;
       top: var(--wep-header-height, 0px);
       z-index: 5;
@@ -297,7 +297,7 @@ UiPage({
 
     /* Buttons */
     .wep-character-count { display: block; text-align: right; margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .wep-actions > button[hidden] { display: none !important; }
+    .wep-actions button[hidden] { display: none !important; }
     .wep-actions {
       display: flex;
       align-items: center;
@@ -341,14 +341,14 @@ UiPage({
     .wep-rule-name { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; column-gap: 16px; }
     .wep-rule-label { grid-column: 2; grid-row: 1; min-width: 0; }
     .wep-rule-name code { display: block; padding: 0; background: transparent; color: inherit; font-size: 11px; }
-    .wep-rule-name > .wep-rule-toggle, .wep-rule-name > .wep-rule-spacer {
+    .wep-rule-name .wep-rule-toggle, .wep-rule-name .wep-rule-spacer {
       grid-column: 1; grid-row: 1; display: inline-block; width: 22px; min-width: 0; max-width: 22px; margin: 0; padding: 0;
     }
-    .wep-rule-name > .wep-rule-toggle { height: 28px; }
+    .wep-rule-name .wep-rule-toggle { height: 28px; }
     .wep-rule-reference { font-family: monospace; font-size: 12px; }
     .wep-rule-actions { white-space: nowrap; width: 1%; }
     .wep-rule-action-group { display: flex; gap: 4px; }
-    .wep-rule-table .wep-rule-action-group > .btn {
+    .wep-rule-table .wep-rule-action-group .btn {
       flex: 0 0 28px; width: 28px; min-width: 28px; height: 28px; padding: 0; margin: 0;
     }
     .wep-empty {

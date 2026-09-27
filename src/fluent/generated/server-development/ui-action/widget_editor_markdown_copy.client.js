@@ -147,7 +147,8 @@ function _weMarkdownTree(rows) {
     Object.keys(definitions).forEach(attach);
     return root;
 }
-function _weMarkdownRender(container, depth) {
+function _weMarkdownRender(container, depth, summary) {
+    summary = summary || {};
     var lines = [];
     Object.keys(container.types).sort(function (a, b) {
         return a.localeCompare(b);
@@ -164,9 +165,12 @@ function _weMarkdownRender(container, depth) {
             if (record.action === 'DELETE') name += ' 🚮';
             else if (record.isNew) name += ' 🆕';
             if (record.setMarkers.length) name += ' ' + record.setMarkers.map(_weMarkdownKeycap).join(' ');
-            if (record.inUpdateSet === false) name = '*' + name + ' - context only*';
+            if (record.inUpdateSet === false) {
+                name = '*' + name + ' ∉*';
+                summary.hasContextOnly = true;
+            }
             lines.push(Array(depth * 2 + 3).join(' ') + '- ' + name);
-            lines = lines.concat(_weMarkdownRender(record, depth + 2));
+            lines = lines.concat(_weMarkdownRender(record, depth + 2, summary));
         });
     });
     return lines;
@@ -222,7 +226,10 @@ function _weMarkdownText(loaded) {
         var set = sets[key];
         return (keys.length > 1 ? _weMarkdownKeycap(index + 1) + ' ' : '') + _weMarkdownLink(set.name, set.url);
     }).join('\n');
-    return (legend ? legend + '\n\n' : '') + _weMarkdownRender(_weMarkdownTree(rows), 0).join('\n');
+    var summary = {};
+    var list = _weMarkdownRender(_weMarkdownTree(rows), 0, summary).join('\n');
+    return (legend ? legend + '\n\n' : '') + list +
+        (summary.hasContextOnly ? '\n\n∉ For context only - not included in update set.' : '');
 }
 
 function _weMarkdownNotify(type, message) {
