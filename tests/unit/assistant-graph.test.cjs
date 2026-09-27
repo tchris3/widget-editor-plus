@@ -1,6 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const vm = require('node:vm');
 
 const source = fs.readFileSync(
     'src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts',
@@ -33,6 +34,34 @@ test('Assistant graph preserves discovered record-to-record links', () => {
     assert.ok(source.includes("label: row.category || 'Related'"));
     assert.ok(source.includes('layout.edges.forEach(drawEdgeLine);'));
     assert.ok(source.includes('layout.edges.forEach(drawEdgeLabel);'));
+});
+
+test('Disconnected graph records use alphabetical type rows of at most three cards', () => {
+    const start = source.indexOf('function placeUnrelatedRecords(');
+    const end = source.indexOf('function buildLayout()', start);
+    const context = {
+        COMPONENT_GAP: 110, ROW_GAP: 46,
+        columnX: column => 40 + column * 540,
+    };
+    vm.createContext(context);
+    vm.runInContext(source.slice(start, end), context);
+    const make = (table, tableLabel, fullLabel) => ({
+        table, tableLabel, fullLabel, key: table + ':' + fullLabel, height: 80,
+    });
+    const widgets = ['Delta', 'Alpha', 'Charlie', 'Bravo'].map(name => make('sp_widget', 'Widget', name));
+    const scripts = ['Zulu', 'Echo'].map(name => make('sys_script_include', 'Script Include', name));
+    const unrelated = context.placeUnrelatedRecords([...widgets, ...scripts].map(node => [node]), 40);
+
+    assert.equal(unrelated.columns, 3);
+    assert.equal(scripts[1].x, 40); // Echo before Zulu.
+    assert.equal(scripts[0].x, 580);
+    assert.equal(scripts[0].y, scripts[1].y);
+    assert.ok(widgets.every(node => node.y > scripts[0].y));
+    const widgetRows = widgets.slice().sort((a, b) => a.y - b.y || a.x - b.x);
+    assert.deepEqual(widgetRows.slice(0, 3).map(node => node.fullLabel), ['Alpha', 'Bravo', 'Charlie']);
+    assert.ok(widgetRows.slice(0, 3).every(node => node.y === widgetRows[0].y));
+    assert.equal(widgetRows[3].fullLabel, 'Delta');
+    assert.ok(widgetRows[3].y > widgetRows[2].y);
 });
 
 test('Assistant canvas supports zoom, pan, full labels, and per-record actions', () => {

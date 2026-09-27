@@ -61,6 +61,90 @@ test('Table suggestions respect the Choice export blocklist', () => {
     assert.equal(queries.length, 0);
 });
 
+test('Access Control searches suggest the table named before the field suffix', async () => {
+    let aclName = 'kb_knowledge.txt';
+    const queries = [];
+    const context = {
+        Class: { create: () => function () {} }, AbstractAjaxProcessor: {},
+        Object: { extendsObject: (_, methods) => methods }, gs: { getProperty: () => '' },
+        GlideRecordSecure: function (table) {
+            let selectedTable = false;
+            this.get = () => table === 'sys_security_acl';
+            this.getValue = field => table === 'sys_security_acl' ? (field === 'name' ? aclName : '') :
+                (field === 'label' ? 'Knowledge' : 'kb_knowledge');
+            this.addQuery = (field, operator, value) => {
+                queries.push([table, field, operator, value]);
+                selectedTable = table === 'sys_db_object' && field === 'name' && value === 'kb_knowledge';
+            };
+            this.query = () => {};
+            this.next = () => {
+                if (!selectedTable) return false;
+                selectedTable = false;
+                return true;
+            };
+            this.getUniqueValue = () => 'knowledge-table-id';
+            this.getDisplayValue = () => '2026-01-01';
+        },
+    };
+    vm.createContext(context);
+    vm.runInContext(fs.readFileSync(root + 'server-development/script-include/sys_script_include_widget_editor_assistant.server.js', 'utf8'), context);
+    const api = context.WidgetEditorAssistantAjax.prototype;
+    api.getParameter = key => ({ table: 'sys_security_acl', sys_id: 'acl-id' })[key];
+    api._answer = value => value;
+    api._getTableConfig = () => ({ rules: [] });
+    api._evaluateRules = () => [];
+    api._findMetadataReferences = () => [];
+    api._findScriptFields = () => [];
+    api._findFieldsOfType = () => [];
+
+    const match = api.getSuggestedRelated();
+    assert.equal(match.success, true);
+    assert.equal(match.related.length, 1);
+    assert.equal(match.related[0].table, 'sys_db_object');
+    assert.equal(match.related[0].sys_id, 'knowledge-table-id');
+    assert.deepEqual(queries, [['sys_db_object', 'name', 'IN', 'kb_knowledge']]);
+
+    const uiPath = root + 'other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts';
+    const uiSource = ts.createSourceFile(uiPath, fs.readFileSync(uiPath, 'utf8'), ts.ScriptTarget.Latest, true);
+    let clientScript;
+    function visit(node) {
+        if (ts.isPropertyAssignment(node) && node.name.getText(uiSource) === 'clientScript') clientScript = node.initializer.text;
+        ts.forEachChild(node, visit);
+    }
+    visit(uiSource);
+    const aclRow = { table: 'sys_security_acl', sys_id: 'acl-id', label: 'kb_knowledge.txt' };
+    const picker = {
+        ctrl: { primary: {}, related: [aclRow] },
+        _scannedScriptKeys: {}, _suggestScanDepth: 0, recordLinks: {}, graphLinksScanned: {}, dismissedSuggestionKeys: {},
+        NON_GENERIC_SCAN_TABLES: { sys_db_object: true },
+        rowKey: row => row.table + ':' + row.sys_id,
+        tableLabel: table => table,
+        ajax: async () => match,
+        $q: { all: values => Promise.all(values) },
+    };
+    vm.createContext(picker);
+    vm.runInContext(clientScript.slice(clientScript.indexOf('function loadSuggested('), clientScript.indexOf('function loadPrimaryContext()')), picker);
+    await picker.loadSuggested('sys_security_acl', 'acl-id', 0);
+    assert.equal(picker.ctrl.related.length, 2);
+    assert.equal(picker.ctrl.related[1].sys_id, 'knowledge-table-id');
+
+    aclName = 'kb_knowledge';
+    assert.equal(api.getSuggestedRelated().related.length, 1);
+    assert.deepEqual(queries[1], ['sys_db_object', 'name', 'IN', 'kb_knowledge']);
+
+    aclName = 'kb_knowledge.*';
+    assert.equal(api.getSuggestedRelated().related.length, 1);
+    assert.deepEqual(queries[2], ['sys_db_object', 'name', 'IN', 'kb_knowledge']);
+
+    aclName = 'missing_table.txt';
+    assert.equal(api.getSuggestedRelated().related.length, 0);
+    assert.deepEqual(queries[3], ['sys_db_object', 'name', 'IN', 'missing_table']);
+
+    aclName = '';
+    assert.equal(api.getSuggestedRelated().related.length, 0);
+    assert.equal(queries.length, 4);
+});
+
 test('Choice suggestions start unchecked, retain user selections, and create graph links', async () => {
     const path = root + 'other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts';
     const source = ts.createSourceFile(path, fs.readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
@@ -72,7 +156,7 @@ test('Choice suggestions start unchecked, retain user selections, and create gra
     visit(source);
     const context = {
         ctrl: { primary: { table: 'sys_db_object', sysId: 'child' }, related: [] },
-        _scannedScriptKeys: {}, _suggestScanDepth: 0, recordLinks: {}, dismissedSuggestionKeys: {},
+        _scannedScriptKeys: {}, _suggestScanDepth: 0, recordLinks: {}, graphLinksScanned: {}, dismissedSuggestionKeys: {},
         rowKey: row => row.table + ':' + row.sys_id,
         tableLabel: () => 'Choice Set',
         ajax: async () => ({ success: true, related: [{ table: 'sys_choice_set', sys_id: 'one', label: 'State: New', category: 'Choice Set' }] }),

@@ -156,6 +156,12 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             // reference field into an application-file table is followed — whatever the table
             // happens to be. Always runs, alongside any table_config rules above.
             var generic = this._findMetadataReferences(gr, table);
+            if (table === 'sys_security_acl') {
+                // ACL names are either a table or table.field (including table.*).
+                // Resolve the table portion as an exact sys_db_object name.
+                var aclTable = String(gr.getValue('name') || '').split('.')[0];
+                if (aclTable) generic = generic.concat(this._findReferencedTables([aclTable]));
+            }
             var scriptFields = this._findScriptFields(table);
             var tableNameFields = this._findFieldsOfType(table, 'table_name');
             if (scriptFields.length) {
