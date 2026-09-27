@@ -1046,7 +1046,7 @@ export const widgetEditorAssistantUiPage = UiPage({
             flex-shrink: 0;
             gap: 0.75rem;
         }
-        .we-picker-footer-right { display: flex; align-items: center; gap: 0.625rem; }
+        .we-picker-footer-right { display: flex; align-items: center; gap: 0.625rem; margin-left: auto; }
 
         /* Generic confirm dialog (e.g. deleting a favourite group that still has records) */
         .we-confirm-box {
@@ -1376,6 +1376,18 @@ export const widgetEditorAssistantUiPage = UiPage({
         .we-picker-item:hover {
             background: rgba(var(--now-color--primary-1, 0 118 204), 0.08);
         }
+        .we-picker-item--selected {
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.08);
+        }
+        .we-picker-item--selected:hover {
+            background: rgba(var(--now-color--primary-1, 0 118 204), 0.08);
+        }
+        .we-picker-item-status {
+            color: rgb(var(--now-color--primary-2, 0 118 204));
+            font-size: var(--now-font-size--xs, 0.6875rem);
+            font-weight: 600;
+            flex-shrink: 0;
+        }
         .we-picker-item:focus,
         .we-picker-item:focus-visible {
             outline: none;
@@ -1547,6 +1559,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                             <span class="we-scan-indicator" ng-if="ctrl.scanningSuggested">
                                 <we-loader></we-loader>
                                 <span>Scanning for suggestions…</span>
+                            </span>
+                            <span class="we-scan-indicator" ng-if="ctrl.discoveringLinks">
+                                <we-loader></we-loader>
+                                <span>Finding record relationships…</span>
                             </span>
                             <button type="button" class="btn btn-default" ng-if="ctrl.primary.sysId" ng-click="ctrl.refreshAll()" ng-disabled="ctrl.refreshingAll" title="Refresh all records and re-scan for suggested related components">
                                 <i class="icon-refresh" ng-class="{'we-spin': ctrl.refreshingAll}" style="margin-right: 0.375rem;"></i>
@@ -2068,7 +2084,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 <span class="we-picker-section-title">
                                     <span>{{ctrl.lookup.tableLabel}}</span>
                                     <span class="we-picker-count-badge" ng-if="ctrl.lookup.total" ng-bind="ctrl.lookup.total"></span>
-                                    <we-header-loader ng-if="ctrl.lookup.loading || ctrl.lookup.loadingMore"></we-header-loader>
+                                    <we-header-loader ng-if="ctrl.lookup.loading || ctrl.lookup.loadingMore || ctrl.lookup.selectingPrimary"></we-header-loader>
                                 </span>
                             </div>
 
@@ -2079,12 +2095,14 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 <div class="we-picker-empty" ng-if="ctrl.lookup.loading &amp;&amp; ctrl.lookup.recordResults.length === 0">
                                     <span>Loading records…</span>
                                 </div>
-                                <div class="we-picker-item" ng-repeat="r in ctrl.lookup.recordResults" ng-click="ctrl.chooseRecord(r)" ng-keydown="ctrl.onRecordItemKeydown($event, r)" tabindex="0" role="button">
+                                <div class="we-picker-item" ng-repeat="r in ctrl.lookup.recordResults" ng-class="{'we-picker-item--selected': ctrl.lookup.mode === 'add' &amp;&amp; ctrl.isRecordSelected(r)}" ng-click="ctrl.chooseRecord(r)" ng-keydown="ctrl.onRecordItemKeydown($event, r)" tabindex="0" role="button" aria-pressed="{{ctrl.lookup.mode === 'add' &amp;&amp; ctrl.isRecordSelected(r)}}" aria-disabled="{{ctrl.lookup.selectingPrimary}}">
                                     <span class="we-picker-item-icon" aria-hidden="true"><i ng-class="ctrl.tableIconClass(ctrl.lookup.chosenTable)" aria-hidden="true"></i></span>
                                     <div class="we-picker-item-content">
                                         <span class="we-picker-item-name" ng-if="ctrl.lookup.columns.length" ng-bind-html="(r.values[ctrl.lookup.columns[0].field] || r[ctrl.lookup.columns[0].field] || '—') | weHighlight:ctrl.lookup.recordActiveSearch"></span>
                                         <span class="we-picker-item-id we-code-font" ng-if="ctrl.recordSecondaryText(r)" ng-bind-html="ctrl.recordSecondaryText(r) | weHighlight:ctrl.lookup.recordActiveSearch"></span>
                                     </div>
+                                    <span class="we-picker-item-status" ng-if="ctrl.lookup.selectingPrimary &amp;&amp; ctrl.primary.table === ctrl.lookup.chosenTable &amp;&amp; ctrl.primary.sysId === r.sys_id">Adding…</span>
+                                    <span class="we-picker-item-status" ng-if="!ctrl.lookup.selectingPrimary &amp;&amp; ctrl.lookup.mode === 'add' &amp;&amp; ctrl.isRecordSelected(r)" title="Click to remove">Added</span>
                                     <div class="we-picker-item-actions">
                                         <a class="we-picker-action-btn" ng-href="/nav_to.do?uri={{ctrl.lookup.chosenTable}}.do%3Fsys_id%3D{{r.sys_id}}" target="_blank" ng-click="$event.stopPropagation()" title="Open in platform" aria-label="Open record in platform">
                                             <i class="icon-open-document-new-tab" aria-hidden="true"></i>
@@ -2094,6 +2112,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 <div class="we-picker-load-more" ng-if="ctrl.lookup.loadingMore"><we-loader></we-loader></div>
                             </div>
                         </div>
+                    </div>
+                </div>
+                <div class="we-picker-footer" ng-if="ctrl.lookup.mode === 'add'">
+                    <div class="we-picker-footer-right">
+                        <button type="button" class="btn btn-primary" ng-click="ctrl.closeLookup()">Done</button>
                     </div>
                 </div>
             </div>
@@ -2121,18 +2144,21 @@ export const widgetEditorAssistantUiPage = UiPage({
                             <span class="we-picker-search-spinner" ng-if="ctrl.usPicker.loading"><we-loader></we-loader></span>
                             <i class="icon-search we-picker-search-icon" aria-hidden="true" ng-if="!ctrl.usPicker.query &amp;&amp; !ctrl.usPicker.loading"></i>
                         </div>
+                        <div class="we-picker-empty" role="alert" ng-if="ctrl.usPicker.error" ng-bind="ctrl.usPicker.error"></div>
 
                         <div ng-if="ctrl.usPicker.current" style="margin-bottom: 0.75rem;">
                             <div class="we-picker-section-header">
                                 <span class="we-picker-section-title">Current</span>
                             </div>
                             <div class="we-picker-list">
-                                <div class="we-picker-item" ng-click="ctrl.chooseUpdateSet(ctrl.usPicker.current)" ng-keydown="ctrl.onUpdateSetItemKeydown($event, ctrl.usPicker.current)" tabindex="0" role="button">
+                                <div class="we-picker-item" ng-class="{'we-picker-item--selected': ctrl.isUpdateSetSelected(ctrl.usPicker.current)}" ng-click="ctrl.chooseUpdateSet(ctrl.usPicker.current)" ng-keydown="ctrl.onUpdateSetItemKeydown($event, ctrl.usPicker.current)" tabindex="0" role="button" aria-pressed="{{ctrl.isUpdateSetSelected(ctrl.usPicker.current)}}" aria-disabled="{{!!ctrl.usPicker.pending[ctrl.usPicker.current.sys_id]}}">
                                     <span class="we-picker-item-icon" aria-hidden="true"><i class="icon-document-code" aria-hidden="true"></i></span>
                                     <div class="we-picker-item-content">
                                         <span class="we-picker-item-name" ng-bind-html="ctrl.usPicker.current.name | weHighlight:ctrl.usPicker.activeSearch"></span>
                                         <span class="we-picker-item-id" ng-if="ctrl.usPicker.current.stateLabel">{{ctrl.usPicker.current.stateLabel}}</span>
                                     </div>
+                                    <span class="we-picker-item-status" ng-if="ctrl.usPicker.pending[ctrl.usPicker.current.sys_id]">Adding…</span>
+                                    <span class="we-picker-item-status" ng-if="ctrl.isUpdateSetSelected(ctrl.usPicker.current)" title="Click to remove">Added</span>
                                 </div>
                             </div>
                         </div>
@@ -2148,15 +2174,22 @@ export const widgetEditorAssistantUiPage = UiPage({
                             <div class="we-picker-empty" ng-if="!ctrl.usPicker.loading &amp;&amp; ctrl.usPicker.results.length === 0">
                                 <span>No update sets found</span>
                             </div>
-                            <div class="we-picker-item" ng-repeat="us in ctrl.usPicker.results" ng-click="ctrl.chooseUpdateSet(us)" ng-keydown="ctrl.onUpdateSetItemKeydown($event, us)" tabindex="0" role="button">
+                            <div class="we-picker-item" ng-repeat="us in ctrl.usPicker.results" ng-class="{'we-picker-item--selected': ctrl.isUpdateSetSelected(us)}" ng-click="ctrl.chooseUpdateSet(us)" ng-keydown="ctrl.onUpdateSetItemKeydown($event, us)" tabindex="0" role="button" aria-pressed="{{ctrl.isUpdateSetSelected(us)}}" aria-disabled="{{!!ctrl.usPicker.pending[us.sys_id]}}">
                                 <span class="we-picker-item-icon" aria-hidden="true"><i class="icon-document-code" aria-hidden="true"></i></span>
                                 <div class="we-picker-item-content">
                                     <span class="we-picker-item-name" ng-bind-html="us.name | weHighlight:ctrl.usPicker.activeSearch"></span>
                                     <span class="we-picker-item-id" ng-if="us.stateLabel">{{us.stateLabel}} · {{us.updatedOn}}</span>
                                 </div>
+                                <span class="we-picker-item-status" ng-if="ctrl.usPicker.pending[us.sys_id]">Adding…</span>
+                                <span class="we-picker-item-status" ng-if="ctrl.isUpdateSetSelected(us)" title="Click to remove">Added</span>
                             </div>
                             <div class="we-picker-load-more" ng-if="ctrl.usPicker.loadingMore"><we-loader></we-loader></div>
                         </div>
+                    </div>
+                </div>
+                <div class="we-picker-footer">
+                    <div class="we-picker-footer-right">
+                        <button type="button" class="btn btn-primary" ng-click="ctrl.closeUpdateSetPicker()">Done</button>
                     </div>
                 </div>
             </div>
@@ -2651,6 +2684,43 @@ export const widgetEditorAssistantUiPage = UiPage({
                             return bottom - top;
                         }
 
+                        // Disconnected records are easier to scan when each row contains only
+                        // one record type. Sort types and names, and wrap each type at three cards.
+                        function placeUnrelatedRecords(singles, startY) {
+                            if (!singles.length) return { bottom: startY, columns: 0 };
+                            var byType = {};
+                            singles.forEach(function (component) {
+                                var node = component[0];
+                                (byType[node.table] = byType[node.table] || []).push(node);
+                            });
+                            var types = Object.keys(byType).sort(function (a, b) {
+                                var labelA = byType[a][0].tableLabel || a;
+                                var labelB = byType[b][0].tableLabel || b;
+                                return labelA.localeCompare(labelB) || a.localeCompare(b);
+                            });
+                            var y = startY;
+                            var maxColumns = 0;
+                            types.forEach(function (type, typeIndex) {
+                                if (typeIndex > 0) y += COMPONENT_GAP;
+                                var records = byType[type].sort(function (a, b) {
+                                    return String(a.fullLabel || '').localeCompare(String(b.fullLabel || '')) || a.key.localeCompare(b.key);
+                                });
+                                for (var start = 0; start < records.length; start += 3) {
+                                    if (start > 0) y += ROW_GAP;
+                                    var row = records.slice(start, start + 3);
+                                    var rowHeight = 0;
+                                    row.forEach(function (node, column) {
+                                        node.x = columnX(column);
+                                        node.y = y;
+                                        rowHeight = Math.max(rowHeight, node.height);
+                                    });
+                                    maxColumns = Math.max(maxColumns, row.length);
+                                    y += rowHeight;
+                                }
+                            });
+                            return { bottom: y + COMPONENT_GAP, columns: maxColumns };
+                        }
+
                         function buildLayout() {
                             var graph = scope.graph || { nodes: [], edges: [] };
                             var nodes = [];
@@ -2684,8 +2754,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 to.parents.push(from);
                             });
 
-                            // Primary group first, then larger groups; unrelated single records are
-                            // packed into a grid underneath so they don't stretch the linked groups.
+                            // Primary group first, then larger groups. Disconnected records follow
+                            // in type-specific rows beneath the linked groups.
                             var linked = [];
                             var singles = [];
                             groupComponents(nodes).forEach(function (component) {
@@ -2697,38 +2767,19 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
                                 return b.length - a.length;
                             });
-                            singles.sort(function (a, b) {
-                                if (!!a[0].primary !== !!b[0].primary) return a[0].primary ? -1 : 1;
-                                return a[0].order - b[0].order;
-                            });
-
                             var columnCount = 0;
                             linked.forEach(function (component) {
                                 component.forEach(function (node) { columnCount = Math.max(columnCount, node.column + 1); });
                             });
-                            var gridColumns = Math.max(columnCount, Math.min(3, singles.length));
-
                             var y = 40;
                             linked.forEach(function (component) {
                                 var height = placeComponent(component);
                                 component.forEach(function (node) { node.y += y; });
                                 y += height + COMPONENT_GAP;
                             });
-                            var rowTop = y;
-                            var rowHeight = 0;
-                            singles.forEach(function (component, index) {
-                                var node = component[0];
-                                var cell = index % gridColumns;
-                                if (cell === 0 && index > 0) {
-                                    rowTop += rowHeight + ROW_GAP;
-                                    rowHeight = 0;
-                                }
-                                node.x = columnX(cell);
-                                node.y = rowTop;
-                                rowHeight = Math.max(rowHeight, node.height);
-                            });
-                            if (singles.length) y = rowTop + rowHeight + COMPONENT_GAP;
-                            columnCount = Math.max(columnCount, singles.length ? gridColumns : 0, 1);
+                            var unrelated = placeUnrelatedRecords(singles, y);
+                            y = unrelated.bottom;
+                            columnCount = Math.max(columnCount, unrelated.columns, 1);
 
                             layout = {
                                 nodes: nodes,
@@ -3884,6 +3935,10 @@ export const widgetEditorAssistantUiPage = UiPage({
             // Relationship provenance discovered by the suggestion scanner. Kept separately
             // from rows because one record can be linked from more than one selected record.
             var recordLinks = {};
+            var graphLinksScanned = {};
+            var graphLinkRequests = {};
+            var graphLinksGeneration = 0;
+            var graphLinkScansPending = 0;
             ctrl.typeCountsList = [];
             ctrl.activeTypeFilters = {};
             var primaryRowObj = null;
@@ -3953,6 +4008,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 loading: false,
                 loadingMore: false,
                 recordActiveSearch: '',
+                selectingPrimary: false,
             };
 
             ctrl.usPicker = {
@@ -3965,6 +4021,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                 loading: false,
                 loadingMore: false,
                 activeSearch: '',
+                pending: {},
+                error: '',
             };
 
             // Favourite tables: persisted server-side as a user preference, not localStorage.
@@ -5146,6 +5204,9 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.related = [];
                 ctrl.updateSets = [];
                 recordLinks = {};
+                graphLinksScanned = {};
+                graphLinkRequests = {};
+                graphLinksGeneration++;
                 ctrl.includePreviousUpdates = false;
                 dismissedSuggestionKeys = {};
                 _scannedScriptKeys = {};
@@ -5310,6 +5371,59 @@ export const widgetEditorAssistantUiPage = UiPage({
             }
 
             ctrl.scanningSuggested = false;
+            ctrl.discoveringLinks = false;
+
+            // Update-set and manually selected records do not go through the suggestion
+            // scanner. Look up their outgoing references for graph edges only; never add
+            // the returned records to the bundle. Keep links to currently absent targets
+            // so a later update set can reveal the edge without rescanning its source.
+            function discoverGraphLinks(rows, force) {
+                var sources = (rows || []).filter(function (row) {
+                    if (!row.table || !row.sys_id || row.updateSetAction === 'DELETE') return false;
+                    var key = rowKey(row);
+                    if (!force && graphLinksScanned[key]) return false;
+                    graphLinksScanned[key] = true;
+                    return true;
+                });
+                if (!sources.length) return Promise.resolve();
+                graphLinkScansPending++;
+                ctrl.discoveringLinks = true;
+                var generation = graphLinksGeneration;
+                return runPool(sources, function (row) {
+                    var sourceKey = rowKey(row);
+                    var requestId = (graphLinkRequests[sourceKey] || 0) + 1;
+                    graphLinkRequests[sourceKey] = requestId;
+                    return ajax('getSuggestedRelated', { table: row.table, sys_id: row.sys_id }).then(function (res) {
+                        if (generation !== graphLinksGeneration || requestId !== graphLinkRequests[sourceKey]) return;
+                        if (!res || !res.success) {
+                            delete graphLinksScanned[sourceKey];
+                            return;
+                        }
+                        Object.keys(recordLinks).forEach(function (key) {
+                            if (recordLinks[key].source === sourceKey) delete recordLinks[key];
+                        });
+                        (res.related || []).forEach(function (target) {
+                            var targetKey = target.table + ':' + target.sys_id;
+                            if (!target.table || !target.sys_id || targetKey === sourceKey) return;
+                            recordLinks[sourceKey + '>' + targetKey] = {
+                                source: sourceKey,
+                                target: targetKey,
+                                label: target.category || 'Related',
+                            };
+                        });
+                    }, function () {
+                        if (generation === graphLinksGeneration && requestId === graphLinkRequests[sourceKey]) {
+                            delete graphLinksScanned[sourceKey];
+                        }
+                    });
+                }, 6).finally(function () {
+                    graphLinkScansPending--;
+                    ctrl.discoveringLinks = graphLinkScansPending > 0;
+                    $timeout(function () {
+                        if (ctrl.viewMode === 'graph') rebuildGraph();
+                    });
+                });
+            }
 
             // Scans table/sysId for suggestions; recurses into any newly-added Script Include or
             // Business Rule so references inside those get suggested too. Always resolves so a
@@ -5318,7 +5432,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                 table = table || ctrl.primary.table;
                 sysId = sysId || ctrl.primary.sysId;
                 depth = depth || 0;
-                _scannedScriptKeys[table + ':' + sysId] = true;
+                var sourceKey = table + ':' + sysId;
+                _scannedScriptKeys[sourceKey] = true;
 
                 _suggestScanDepth++;
                 ctrl.scanningSuggested = true;
@@ -5331,10 +5446,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                     }
                     var existingKeys = new Set(ctrl.related.map(rowKey));
                     var toExpand = [];
+                    graphLinksScanned[sourceKey] = true;
                     for (var i = 0; i < res.related.length; i++) {
                         var row = res.related[i];
                         var key = rowKey(row);
-                        var sourceKey = table + ':' + sysId;
                         recordLinks[sourceKey + '>' + key] = {
                             source: sourceKey,
                             target: key,
@@ -5376,6 +5491,9 @@ export const widgetEditorAssistantUiPage = UiPage({
             function loadPrimaryContext() {
                 loadDismissedSuggestions();
                 recordLinks = {};
+                graphLinksScanned = {};
+                graphLinkRequests = {};
+                graphLinksGeneration++;
                 ctrl.related = [{
                     table: ctrl.primary.table,
                     sys_id: ctrl.primary.sysId,
@@ -5389,7 +5507,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                     checked: true,
                 }];
                 rebuildRows();
-                return loadSuggested().then(loadStoredSelections).then(rebuildRows);
+                return loadSuggested().then(loadStoredSelections).then(function () {
+                    rebuildRows();
+                    discoverGraphLinks(ctrl.related);
+                });
             }
 
             // Lookup Modal methods
@@ -5416,6 +5537,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.lookup.mode = mode;
                 ctrl.lookup.targetRow = null;
                 ctrl.lookup.step = 'table';
+                ctrl.lookup.selectingPrimary = false;
                 resetLookupResults();
             };
 
@@ -5427,6 +5549,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.lookup.chosenTable = row.table;
                 ctrl.lookup.tableLabel = row.tableLabel || tableLabel(row.table);
                 ctrl.lookup.step = step;
+                ctrl.lookup.selectingPrimary = false;
                 resetLookupResults();
                 if (step === 'record') {
                     loadRecords('', false);
@@ -5497,8 +5620,10 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             var _recordRequestId = 0;
-            // Excludes records already in the bundle, except the one being edited.
+            // Keep selected records visible in add mode so the picker can show which
+            // records have already been added while more are selected.
             function filterOutSelectedRecords(records) {
+                if (ctrl.lookup.mode === 'add') return records;
                 var excludeSysId = ctrl.lookup.targetRow ? ctrl.lookup.targetRow.sys_id : null;
                 var selected = {};
                 for (var i = 0; i < ctrl.related.length; i++) {
@@ -5508,6 +5633,33 @@ export const widgetEditorAssistantUiPage = UiPage({
                     }
                 }
                 return records.filter(function (rec) { return !selected[rec.sys_id]; });
+            }
+
+            ctrl.isRecordSelected = function (record) {
+                return (ctrl.primary.table === ctrl.lookup.chosenTable && ctrl.primary.sysId === record.sys_id) || ctrl.related.some(function (row) {
+                    return row.table === ctrl.lookup.chosenTable && row.sys_id === record.sys_id;
+                });
+            };
+
+            function removePrimaryFromPicker() {
+                if (ctrl.embeddedInModal) return;
+                ctrl.primary = { table: '', sysId: '', label: '', tableLabel: '', updatedOn: '' };
+                clearPrimaryUrl();
+                ctrl.related = ctrl.related.filter(function (row) { return row.manual || row.updateSetSysId; });
+                var retainedKeys = new Set(ctrl.related.map(rowKey));
+                Object.keys(recordLinks).forEach(function (key) {
+                    var link = recordLinks[key];
+                    if (!retainedKeys.has(link.source) || !retainedKeys.has(link.target)) delete recordLinks[key];
+                });
+                graphLinksScanned = {};
+                graphLinkRequests = {};
+                graphLinksGeneration++;
+                dismissedSuggestionKeys = {};
+                _scannedScriptKeys = {};
+                ctrl.saveSelections();
+                rebuildRows();
+                // Restart pending scans invalidated above while keeping known links visible.
+                discoverGraphLinks(ctrl.related);
             }
 
             function loadRecords(query, isMore) {
@@ -5666,7 +5818,9 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             ctrl.chooseRecord = function (r) {
+                if (ctrl.lookup.selectingPrimary) return;
                 if (ctrl.lookup.mode === 'primary') {
+                    var replacingPrimary = !!ctrl.primary.sysId;
                     ctrl.primary = {
                         table: ctrl.lookup.chosenTable,
                         sysId: r.sys_id,
@@ -5675,8 +5829,18 @@ export const widgetEditorAssistantUiPage = UiPage({
                         updatedOn: r.updatedOn,
                     };
                     updatePrimaryUrl(ctrl.primary.table, ctrl.primary.sysId);
-                    ctrl.closeLookup();
-                    loadPrimaryContext();
+                    if (replacingPrimary) {
+                        ctrl.closeLookup();
+                        loadPrimaryContext();
+                    } else {
+                        // The initial selection becomes the primary; later selections in
+                        // this same picker add related records from the chosen table.
+                        ctrl.lookup.mode = 'add';
+                        ctrl.lookup.selectingPrimary = true;
+                        loadPrimaryContext().finally(function () {
+                            ctrl.lookup.selectingPrimary = false;
+                        });
+                    }
                     return;
                 }
 
@@ -5713,89 +5877,34 @@ export const widgetEditorAssistantUiPage = UiPage({
                 }
 
                 // Add mode
-                var exists = ctrl.related.some(function (row) {
-                    return row.table === ctrl.lookup.chosenTable && row.sys_id === r.sys_id;
-                });
-                if (!exists) {
-                    var newRecord = {
-                        table: ctrl.lookup.chosenTable,
-                        sys_id: r.sys_id,
-                        label: r.label,
-                        tableLabel: ctrl.lookup.tableLabel,
-                        category: 'Manual',
-                        choiceTable: r.choiceTable,
-                        choiceField: r.choiceField,
-                        updatedOn: r.updatedOn,
-                        manual: true,
-                        suggested: false,
-                        checked: true,
-                        _justAdded: true,
-                    };
-                    ctrl.related.push(newRecord);
-                    ctrl.saveSelections();
-
-                    // Step 1: Render new row immediately pinned at the bottom of the table
-                    rebuildRows(newRecord);
-                    ctrl.closeLookup();
-
-                    // Step 2: After short delay, animate smoothly upwards to its sorted position
-                    $timeout(function () {
-                        var tableEl = document.querySelector('table.we-main-table');
-                        var rowEls = tableEl ? tableEl.querySelectorAll('tbody tr[data-row-key]') : [];
-                        var prevTops = {};
-                        for (var i = 0; i < rowEls.length; i++) {
-                            var key = rowEls[i].getAttribute('data-row-key');
-                            if (key) {
-                                prevTops[key] = rowEls[i].getBoundingClientRect().top;
-                            }
-                        }
-
-                        // Re-order rows into standard sorted sequence
-                        rebuildRows();
-
-                        // FLIP animation
-                        $timeout(function () {
-                            var updatedRowEls = tableEl ? tableEl.querySelectorAll('tbody tr[data-row-key]') : [];
-                            var movedEls = [];
-                            for (var j = 0; j < updatedRowEls.length; j++) {
-                                var el = updatedRowEls[j];
-                                var k = el.getAttribute('data-row-key');
-                                if (k && prevTops[k] !== undefined) {
-                                    var newTop = el.getBoundingClientRect().top;
-                                    var dy = prevTops[k] - newTop;
-                                    if (Math.abs(dy) > 1) {
-                                        el.style.transition = 'none';
-                                        el.style.transform = 'translateY(' + dy + 'px)';
-                                        movedEls.push(el);
-                                    }
-                                }
-                            }
-
-                            if (movedEls.length > 0) {
-                                window.requestAnimationFrame(function () {
-                                    window.requestAnimationFrame(function () {
-                                        for (var m = 0; m < movedEls.length; m++) {
-                                            movedEls[m].style.transition = 'transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1)';
-                                            movedEls[m].style.transform = '';
-                                        }
-                                        $timeout(function () {
-                                            for (var m = 0; m < movedEls.length; m++) {
-                                                movedEls[m].style.transition = '';
-                                            }
-                                            newRecord._justAdded = false;
-                                        }, 500);
-                                    });
-                                });
-                            } else {
-                                $timeout(function () {
-                                    newRecord._justAdded = false;
-                                }, 1200);
-                            }
-                        }, 0);
-                    }, 350);
+                if (ctrl.primary.table === ctrl.lookup.chosenTable && ctrl.primary.sysId === r.sys_id) {
+                    removePrimaryFromPicker();
                     return;
                 }
-                ctrl.closeLookup();
+                var existing = ctrl.related.filter(function (row) {
+                    return row.table === ctrl.lookup.chosenTable && row.sys_id === r.sys_id;
+                })[0];
+                if (existing) {
+                    ctrl.removeRow(existing);
+                    return;
+                }
+                var newRecord = {
+                    table: ctrl.lookup.chosenTable,
+                    sys_id: r.sys_id,
+                    label: r.label,
+                    tableLabel: ctrl.lookup.tableLabel,
+                    category: 'Manual',
+                    choiceTable: r.choiceTable,
+                    choiceField: r.choiceField,
+                    updatedOn: r.updatedOn,
+                    manual: true,
+                    suggested: false,
+                    checked: true,
+                };
+                ctrl.related.push(newRecord);
+                ctrl.saveSelections();
+                rebuildRows();
+                discoverGraphLinks([newRecord]);
             };
 
             ////////////////////////////////////////////////////////////
@@ -5812,6 +5921,7 @@ export const widgetEditorAssistantUiPage = UiPage({
                 ctrl.usPicker.total = 0;
                 ctrl.usPicker.hasMore = false;
                 ctrl.usPicker.activeSearch = '';
+                ctrl.usPicker.error = '';
                 loadUpdateSets('', false);
             };
 
@@ -5884,6 +5994,10 @@ export const widgetEditorAssistantUiPage = UiPage({
                 onListItemKeydown(event, function () { ctrl.chooseUpdateSet(us); });
             };
 
+            ctrl.isUpdateSetSelected = function (us) {
+                return !!us && ctrl.updateSets.some(function (selected) { return selected.sys_id === us.sys_id; });
+            };
+
             // Adds every record touched by an update set. Existing rows (already added, or the
             // primary) are left untouched rather than duplicated or re-tagged.
             // Pushes a related row for each member not already present (by table+sys_id) or
@@ -5917,11 +6031,21 @@ export const widgetEditorAssistantUiPage = UiPage({
             }
 
             ctrl.chooseUpdateSet = function (us) {
-                ctrl.closeUpdateSetPicker();
+                if (!us || ctrl.usPicker.pending[us.sys_id]) return;
+                if (ctrl.isUpdateSetSelected(us)) {
+                    ctrl.removeUpdateSet(us);
+                    return;
+                }
+                ctrl.usPicker.pending[us.sys_id] = true;
+                ctrl.usPicker.error = '';
                 ctrl.addingUpdateSet = true;
                 ajax('getUpdateSetMembers', { update_set: us.sys_id }).then(function (res) {
-                    ctrl.addingUpdateSet = false;
-                    if (!res || !res.success) return;
+                    delete ctrl.usPicker.pending[us.sys_id];
+                    ctrl.addingUpdateSet = Object.keys(ctrl.usPicker.pending).length > 0;
+                    if (!res || !res.success) {
+                        ctrl.usPicker.error = 'Could not add ' + us.name + '. Please try again.';
+                        return;
+                    }
 
                     if (!ctrl.updateSets.some(function (u) { return u.sys_id === us.sys_id; })) {
                         ctrl.updateSets.push({
@@ -5937,11 +6061,14 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                     ctrl.saveSelections();
                     rebuildRows();
+                    discoverGraphLinks(ctrl.related);
                     if (ctrl.includePreviousUpdates && addedRows.length) {
                         refreshPreviousVersions(addedRows);
                     }
                 }, function () {
-                    ctrl.addingUpdateSet = false;
+                    delete ctrl.usPicker.pending[us.sys_id];
+                    ctrl.addingUpdateSet = Object.keys(ctrl.usPicker.pending).length > 0;
+                    ctrl.usPicker.error = 'Could not add ' + us.name + '. Please try again.';
                 });
             };
 
@@ -5968,6 +6095,7 @@ export const widgetEditorAssistantUiPage = UiPage({
 
                     ctrl.saveSelections();
                     rebuildRows();
+                    discoverGraphLinks(addedRows, true);
                     if (ctrl.includePreviousUpdates && addedRows.length) {
                         refreshPreviousVersions(addedRows);
                     }

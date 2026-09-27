@@ -1,0 +1,35 @@
+import { Property } from '@servicenow/sdk/core'
+
+export const markdownGroupsScCatItemProducerProperty = Property({
+    $id: Now.ID['widget-editor-markdown-groups-sc_cat_item_producer'],
+    $meta: { installMethod: 'first install' },
+    name: 'monaco.plus.update_sets.markdown_groups.sc_cat_item_producer',
+    type: 'string',
+    value: `[
+    "sc_cat_item_location_mtom",
+    "sc_cat_item_company_mtom",
+    "sc_cat_item_dept_mtom",
+    "sc_cat_item_group_mtom",
+    "sc_cat_item_user_mtom",
+    "catalog_script_client",
+    "catalog_dl_definition",
+    "sc_cat_item_user_criteria_mtom",
+    "sc_cat_item_category",
+    "sc_cat_item_user_criteria_no_mtom",
+    "sc_cat_item_catalog",
+    "catalog_ui_policy",
+    "io_set_item",
+    "m2m_connected_content",
+    "sc_cat_item_location_no_mtom",
+    "sc_cat_item_company_no_mtom",
+    "sc_cat_item_dept_no_mtom",
+    "sc_cat_item_group_no_mtom",
+    "sc_cat_item_user_no_mtom",
+    "sc_2_kb",
+    "sc_2_sc",
+    "item_option_new"
+]`,
+    description: 'Child tables grouped under Record Producer in update set Markdown export.',
+    ignoreCache: true,
+    roles: { read: ['sp_admin'], write: ['admin'] },
+})
