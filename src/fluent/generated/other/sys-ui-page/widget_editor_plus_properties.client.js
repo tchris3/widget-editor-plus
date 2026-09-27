@@ -16,6 +16,16 @@
         var nav = document.getElementById('wep-nav');
         var message = document.getElementById('wep-message');
         var search = document.getElementById('wep-search');
+        var header = document.getElementById('wep-header');
+        var headerObserver = null;
+        function updateHeaderHeight() {
+            if (header) document.documentElement.style.setProperty('--wep-header-height', header.getBoundingClientRect().height + 'px');
+        }
+        updateHeaderHeight();
+        if (header && window.ResizeObserver) {
+            headerObserver = new window.ResizeObserver(updateHeaderHeight);
+            headerObserver.observe(header);
+        }
         var dirty = {};
         var rulesDirty = false;
         var plainTextareas = [];
@@ -307,7 +317,7 @@
         }
         function tableProperties(body, family) {
             var assistant = family.kind === 'table_config', markdown = family.kind === 'markdown_display';
-            var table = el('table', 'table table-striped wep-config-table' + (assistant ? ' wep-assistant-config-table' : ''));
+            var table = el('table', 'table table-striped wep-properties-table wep-config-table' + (assistant ? ' wep-assistant-config-table' : ''));
             var head = el('thead'), headings = el('tr'), rows = el('tbody');
             (assistant ? ['Table', 'Description', 'JSON', 'Actions'] : markdown ? ['Table', 'Display field', 'Additional fields', 'Actions'] : ['Table', 'Fields', 'Actions']).forEach(function (label) {
                 var th = el('th', '', label); th.setAttribute('scope', 'col'); headings.appendChild(th);
@@ -683,7 +693,7 @@
                 closePicker();
                 if (topPicker) { topPicker.destroy(); topPicker = null; }
                 root.textContent = '';
-                var table = el('table', 'wep-rule-table');
+                var table = el('table', 'table wep-properties-table wep-rule-table');
                 var head = el('thead'), header = el('tr');
                 ['Table', 'Reference field', 'Actions'].forEach(function (label) {
                     var cell = el('th', '', label); cell.setAttribute('scope', 'col'); header.appendChild(cell);
@@ -880,6 +890,7 @@
         }
         if (search) search.oninput = filter;
         window.addEventListener('resize', function () {
+            updateHeaderHeight();
             plainTextareas.forEach(resizePlainTextarea);
             jsonEditors.forEach(function (item) { item.editor.layout(); item.resize(); });
         });
@@ -888,6 +899,7 @@
             event.preventDefault(); event.returnValue = '';
         });
         window.addEventListener('unload', function () {
+            if (headerObserver) headerObserver.disconnect();
             jsonEditors.forEach(function (item) { try { item.editor.dispose(); } catch (e) {} });
         });
         ajax('getProperties', {}).then(function (data) {

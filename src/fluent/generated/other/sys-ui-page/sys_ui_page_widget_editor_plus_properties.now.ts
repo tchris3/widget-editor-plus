@@ -38,6 +38,8 @@ UiPage({
 
     /* Suite Header Bar */
     .dc-header {
+        position: sticky;
+        top: 0;
         background: rgb(var(--now-color_chrome--brand-5,var(--now-color--primary-0,221,237,233)));
         border-bottom: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235)));
         flex-shrink: 0;
@@ -175,6 +177,7 @@ UiPage({
     /* Sections and Section Headings */
     .wep-section {
       margin: 0 0 2.5rem;
+      scroll-margin-top: calc(var(--wep-header-height, 0px) + 16px);
     }
     .wep-feature-heading {
       margin: 0 0 1rem;
@@ -255,11 +258,10 @@ UiPage({
     }
 
     /* Shared table headers stick to the page viewport within each table. */
-    .wep-config-table, .wep-rule-table { border-collapse: separate; border-spacing: 0; }
-    .wep-card .wep-config-table > thead > tr > th,
-    .wep-card .wep-rule-table > thead > tr > th {
+    .wep-card .wep-properties-table { border-collapse: separate; border-spacing: 0; }
+    .wep-card .wep-properties-table > thead > tr > th {
       position: sticky;
-      top: 0;
+      top: var(--wep-header-height, 0px);
       z-index: 5;
       padding: 10px;
       text-align: left;
@@ -400,7 +402,7 @@ UiPage({
     }
   </style>
   <div class="wep-shell">
-    <header class="dc-header wep-header">
+    <header id="wep-header" class="dc-header wep-header">
       <div class="dc-header-row wep-header-row">
         <h1 class="dc-title">Widget Editor+ Properties</h1>
         <div class="wep-header-right">
