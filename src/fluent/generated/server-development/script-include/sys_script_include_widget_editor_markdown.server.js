@@ -650,19 +650,22 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         gr.addQuery('name', 'STARTSWITH', 'monaco.plus.');
         gr.orderBy('name');
         gr.query();
-        var properties = [];
+        var properties = [], groupsUpdated = {}, displayUpdated = {};
         while (gr.next()) {
             var name = String(gr.getValue('name') || '');
+            var updatedOn = String(gr.getValue('sys_updated_on') || '');
+            if (name.indexOf(this.GROUPS_PREFIX) === 0) groupsUpdated[name.slice(this.GROUPS_PREFIX.length)] = updatedOn;
+            if (name.indexOf(this.DISPLAY_PROPERTY + '.') === 0) displayUpdated[name.slice(this.DISPLAY_PROPERTY.length + 1)] = updatedOn;
             if (name === this.RULES_PROPERTY || name.indexOf(this.GROUPS_PREFIX) === 0 ||
                 name === this.DISPLAY_PROPERTY || name.indexOf(this.DISPLAY_PROPERTY + '.') === 0) continue;
-            properties.push({ name: name,
+            properties.push({ name: name, updatedOn: updatedOn,
                 value: String(gr.getValue('value') || ''),
                 description: String(gr.getValue('description') || ''),
                 type: String(gr.getValue('type') || 'string') });
         }
-        properties.push({ name: this.DISPLAY_PROPERTY, value: JSON.stringify(this._displayConfigs(), null, 4),
+        properties.push({ name: this.DISPLAY_PROPERTY, updatedByTable: displayUpdated, value: JSON.stringify(this._displayConfigs(), null, 4),
             description: 'Display and secondary fields by table for update set Markdown export.', type: 'string' });
-        properties.push({ name: this.RULES_PROPERTY, propertyCount: this._groupPropertyTables().length, value: JSON.stringify(this._groupConfigs(), null, 4),
+        properties.push({ name: this.RULES_PROPERTY, updatedByTable: groupsUpdated, propertyCount: this._groupPropertyTables().length, value: JSON.stringify(this._groupConfigs(), null, 4),
             description: 'Child tables grouped by parent table in update set Markdown export.', type: 'string' });
         return this._answer({ success: true, properties: properties });
     },

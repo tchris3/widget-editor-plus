@@ -136,7 +136,7 @@ test('properties API discovers the app namespace and supplies grouping defaults 
             this.orderBy = this.query = () => {};
             this.next = () => table === 'sys_properties' && !emitted++;
             this.getValue = field => ({ name: 'monaco.plus.record_limit', value: '500',
-                description: 'Record limit', type: 'integer' })[field];
+                description: 'Record limit', type: 'integer', sys_updated_on: '2026-09-27 01:23:45' })[field];
         },
     });
     api._relatedTables = () => [];
@@ -144,6 +144,7 @@ test('properties API discovers the app namespace and supplies grouping defaults 
     const result = api.getProperties();
     assert.equal(prefix, 'STARTSWITH:monaco.plus.update_sets.markdown_groups.');
     assert.equal(result.properties.find(property => property.name === 'monaco.plus.record_limit').value, '500');
+    assert.equal(result.properties.find(property => property.name === 'monaco.plus.record_limit').updatedOn, '2026-09-27 01:23:45');
     assert.ok(result.properties.some(property => property.name === 'monaco.plus.update_sets.markdown_groups'));
 });
 
@@ -673,10 +674,10 @@ test('UI placements and admin-only properties page are declared', () => {
         this.getXMLAnswer = callback => {
             let result = {success: true};
             if (params.sysparm_name === 'getProperties') result.properties = [{
-                name: 'monaco.plus.css.variables', value: '{"color":"red"}', description: '', type: 'string',
+                name: 'monaco.plus.css.variables', value: '{"color":"red"}', description: '', type: 'string', updatedOn: '2026-09-27 01:23:45',
             }, {
                 name: 'monaco.plus.update_sets.markdown_groups', value: JSON.stringify(savedHierarchy),
-                description: 'Update set Markdown grouping rules', type: 'string',
+                description: 'Update set Markdown grouping rules', type: 'string', updatedByTable: {a:'2026-09-27 02:34:56'},
             }];
             if (params.sysparm_name === 'getRules') {
                 const config = params.rules ? JSON.parse(params.rules) : savedHierarchy;
@@ -733,6 +734,9 @@ test('UI placements and admin-only properties page are declared', () => {
     const fallback = card.querySelectorAll('.wep-json-fallback')[0];
     const host = card.querySelectorAll('.wep-monaco')[0];
     assert.equal(title.textContent, 'monaco.plus.css.variables');
+    const updated = card.querySelectorAll('.wep-updated-pill')[0];
+    assert.equal(updated.textContent, 'Updated ' + new Date('2026-09-27T01:23:45Z').toLocaleDateString() + ' ' + new Date('2026-09-27T01:23:45Z').toLocaleTimeString());
+    assert.equal(updated.getAttribute('datetime'), '2026-09-27T01:23:45.000Z');
     assert.equal(fallback.hidden, true);
     assert.equal(fallback.style.display, 'none');
     const counter = card.querySelectorAll('.wep-character-count')[0];
@@ -764,12 +768,19 @@ test('UI placements and admin-only properties page are declared', () => {
     const save = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Save property');
     const revert = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Revert');
     assert.ok(save && revert);
+    assert.equal(hierarchy.querySelectorAll('.wep-character-count').length, 0);
+    assert.equal(hierarchy.querySelectorAll('.wep-updated-pill').length, 0);
+    const rowTime = hierarchy.querySelectorAll('.wep-updated-cell')[0].children[0];
+    assert.deepEqual(rowTime.children.map(node => node.tagName), ['SPAN', 'BR', 'SPAN']);
+    assert.equal(rowTime.children[0].textContent, new Date('2026-09-27T02:34:56Z').toLocaleDateString());
+    assert.equal(rowTime.children[2].textContent, new Date('2026-09-27T02:34:56Z').toLocaleTimeString());
     assert.equal(revert.hidden, true);
     assert.equal(descendants(hierarchy).some(node => node.textContent === 'Save hierarchy'), false);
     const toggle = descendants(hierarchy).find(node => node.tagName === 'A' && node.textContent === 'Switch to JSON');
     toggle.onclick({preventDefault() {}});
     const json = hierarchy.querySelectorAll('.wep-json-fallback')[0];
     assert.deepEqual(JSON.parse(json.value), {a:['b']});
+    assert.equal(hierarchy.querySelectorAll('.wep-character-count').length, 0);
     json.value = '{"a":["c"]}'; json.oninput();
     assert.equal(save.disabled, false);
     assert.equal(revert.hidden, false);
@@ -779,6 +790,7 @@ test('UI placements and admin-only properties page are declared', () => {
     revert.onclick();
     await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(JSON.parse(json.value), {a:['b']});
+    assert.equal(hierarchy.querySelectorAll('.wep-character-count').length, 0);
     assert.equal(save.disabled, true);
     assert.equal(revert.hidden, true);
     json.value = '{"b":["c"]}'; json.oninput(); save.onclick();
@@ -1227,9 +1239,10 @@ test('property tables render row saves and remove the saved property only after 
     const cards = roots['wep-sections'].querySelectorAll('.wep-card');
     assert.equal(cards.length,3);
     const code = cards.find(c=>c._prop.kind==='display_fields'), assistant = cards.find(c=>c._prop.kind==='table_config');
-    assert.deepEqual(descendants(code).filter(n=>n.tagName==='TH').map(n=>n.textContent),['Table','Fields','Actions']);
-    assert.deepEqual(descendants(assistant).filter(n=>n.tagName==='TH').map(n=>n.textContent),['Table','Description','JSON','Actions']);
+    assert.deepEqual(descendants(code).filter(n=>n.tagName==='TH').map(n=>n.textContent),['Table','Fields','Actions','Updated']);
+    assert.deepEqual(descendants(assistant).filter(n=>n.tagName==='TH').map(n=>n.textContent),['Table','Description','JSON','Actions','Updated']);
     assert.ok(cards.every(c=>c._prop.name.endsWith('.*')));
+    assert.ok(cards.every(c=>c.querySelectorAll('.wep-updated-pill').length === 0));
     const jsonFallback = descendants(assistant).find(n=>n.getAttribute('aria-label')==='JSON');
     assert.ok(jsonFallback.className.includes('wep-json-fallback'));
     assert.equal(jsonFallback.hidden,true); assert.equal(jsonFallback.style.display,'none');
@@ -1237,15 +1250,15 @@ test('property tables render row saves and remove the saved property only after 
     assert.equal(pickers.length,4);
     assert.ok(pickers.every(p=>p.node.type==='hidden' && p.options.query && !p.enabled));
     const markdown = cards.find(c=>c._prop.kind==='markdown_display');
-    assert.deepEqual(descendants(markdown).filter(n=>n.tagName==='TH').map(n=>n.textContent),['Table','Display fields','Additional fields','Actions']);
+    assert.deepEqual(descendants(markdown).filter(n=>n.tagName==='TH').map(n=>n.textContent),['Table','Display fields','Additional fields','Actions','Updated']);
     const displayInput = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Display fields');
     const extraInput = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Additional fields');
     assert.equal(displayInput.tagName,'INPUT'); assert.equal(extraInput.tagName,'INPUT');
     displayInput.value='name,script'; displayInput.oninput();
     extraInput.value='script,name'; extraInput.oninput();
     descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property').onclick(); await tick();
-    assert.equal(requests.at(-1).kind,'markdown_display');
-    assert.deepEqual(JSON.parse(requests.at(-1).property_value),{display_value:'name,script',additional_fields:'script,name'});
+    assert.equal(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).kind,'markdown_display');
+    assert.deepEqual(JSON.parse(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).property_value),{display_value:'name,script',additional_fields:'script,name'});
     extraInput.value=Array(700).fill('script').join(','); extraInput.oninput();
     const markdownSave = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property');
     assert.equal(markdownSave.disabled,false);
@@ -1253,7 +1266,7 @@ test('property tables render row saves and remove the saved property only after 
     assert.equal(displayInput.getAttribute('aria-describedby'),undefined);
     assert.equal(extraInput.getAttribute('aria-describedby'),undefined);
     markdownSave.onclick(); await tick();
-    assert.equal(JSON.parse(requests.at(-1).property_value).additional_fields,extraInput.value);
+    assert.equal(JSON.parse(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).property_value).additional_fields,extraInput.value);
     requests.length=0;
     const codeCount = code.parentNode.querySelectorAll('.wep-section-count')[0];
     const codeNavCount = roots['wep-nav'].children.find(n=>n.getAttribute('data-feature')==='Code Search+').querySelectorAll('.wep-nav-count')[0];
@@ -1265,7 +1278,7 @@ test('property tables render row saves and remove the saved property only after 
     const remove = descendants(row).find(n=>n.getAttribute('aria-label')==='Remove table');
     input.value='name,script'; input.oninput(); save.onclick(); await tick();
     assert.equal(requests.filter(r=>r.sysparm_name==='saveTableProperty').length,1);
-    assert.equal(requests.at(-1).kind,'display_fields');
+    assert.equal(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).kind,'display_fields');
     assert.equal(save.disabled,true);
     const beforeDelete = requests.length;
     remove.onclick(); await tick(); assert.equal(requests.length,beforeDelete);
