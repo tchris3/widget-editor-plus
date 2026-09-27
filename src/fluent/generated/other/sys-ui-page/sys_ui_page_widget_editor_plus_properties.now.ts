@@ -254,6 +254,14 @@ UiPage({
     }
 
     /* Form Inputs */
+    .wep-config-table { width:100%; table-layout:fixed; }
+    .wep-config-table td { vertical-align:top !important; overflow-wrap:anywhere; }
+    .wep-config-table th:first-child { width:22%; }
+    .wep-assistant-config-table th:nth-child(2) { width:20%; }
+    .wep-config-table th:last-child { width:130px; }
+    .wep-config-table .wep-status { display:block; margin-top:6px; }
+    .wep-config-table .btn + .btn { margin-left:4px; }
+    .wep-config-table textarea { resize:vertical; }
     select.wep-value { max-width: 14rem; }
     textarea.wep-value { min-height:76px; max-height:50vh; overflow-y:auto; resize:vertical; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important; font-size:0.8125rem; line-height:1.45; }
     textarea.wep-json-fallback[hidden] { display:none !important; }
@@ -266,6 +274,7 @@ UiPage({
     }
 
     /* Buttons */
+    .wep-character-count { display: block; text-align: right; margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .wep-actions {
       display: flex;
       align-items: center;
@@ -310,10 +319,16 @@ UiPage({
     .wep-rule-table th { background: rgb(var(--now-color_background--secondary, 246, 248, 249)); }
     .wep-rule-name { display: flex; align-items: center; gap: 6px; }
     .wep-rule-name code { display: block; padding: 0; background: transparent; color: inherit; font-size: 11px; }
-    .wep-rule-spacer { display: inline-block; width: 22px; flex-shrink: 0; }
+    .wep-rule-name > .wep-rule-toggle, .wep-rule-name > .wep-rule-spacer {
+      display: inline-block; flex: 0 0 22px; width: 22px; min-width: 22px; margin: 0; padding: 0;
+    }
+    .wep-rule-name > .wep-rule-toggle { height: 28px; }
     .wep-rule-reference { font-family: monospace; font-size: 12px; }
     .wep-rule-actions { white-space: nowrap; width: 1%; }
     .wep-rule-action-group { display: flex; gap: 4px; }
+    .wep-rule-table .wep-rule-action-group > .btn {
+      flex: 0 0 28px; width: 28px; min-width: 28px; height: 28px; padding: 0; margin: 0;
+    }
     .wep-empty {
       padding: 1.5rem;
       text-align: center;

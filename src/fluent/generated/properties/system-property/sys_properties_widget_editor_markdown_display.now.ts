@@ -7,10 +7,8 @@ export const updateSetMarkdownDisplayProperty = Property({
     type: 'string',
     value: `{
     "sys_security_acl": {
-        "display": "name",
-        "secondary": [
-            "operation"
-        ]
+        "display_value": "name",
+        "additional_fields": "operation"
     }
 }`,
     description: 'Display and secondary fields by table for update set Markdown export.',

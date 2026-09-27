@@ -1,6 +1,7 @@
 var WidgetEditorMarkdownAjax = Class.create();
 WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     RULES_PROPERTY: 'monaco.plus.update_sets.markdown_groups',
+    GROUPS_PREFIX: 'monaco.plus.update_sets.markdown_groups.',
     DISPLAY_PROPERTY: 'monaco.plus.update_sets.markdown_display',
     PAGE_SIZE: 100,
     _sortRules: function (rules) {
@@ -10,26 +11,6 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         }
         sort(rules.groups);
         return rules;
-    },
-    _defaultRules: function () {
-        var self = this;
-        var groups = ['sp_widget', 'sc_cat_item_producer', 'sys_security_acl', 'sys_user_group'].map(function (table) {
-            var children = table === 'sys_security_acl' ? [{ table: 'sys_security_acl_role', field: 'sys_security_acl' }] :
-                table === 'sys_user_group' ? [{ table: 'sys_group_has_role', field: 'group' }] : self._relatedTables(table);
-            return { id: table, table: table, label: self._tableLabel(table), children: children.map(function (child) {
-                return { id: child.table, table: child.table, label: child.label || self._tableLabel(child.table),
-                    field: child.field, children: [] };
-            }) };
-        });
-        // A record type has one parent in the Markdown hierarchy.
-        var seen = {};
-        groups.forEach(function (node) { seen[node.table] = true; });
-        groups.forEach(function (node) { node.children = node.children.filter(function (child) {
-            if (seen[child.table]) return false;
-            seen[child.table] = true;
-            return true;
-        }); });
-        return this._sortRules({ version: 1, groups: groups });
     },
     _relatedTables: function (table) {
         this._relatedCache = this._relatedCache || {};
@@ -72,13 +53,14 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         if (!gs.hasRole('admin')) return this._answer({ success: false, error: 'Admin role required.' });
         var table = String(this.getParameter('table') || '');
         if (!this._table(table)) return this._answer({ success: false, error: 'Invalid table.' });
-        return this._answer({ success: true, tables: this._relatedTables(table) });
+        var related = this._relatedTables(table).slice(), seen = {};
+        related.forEach(function (entry) { seen[entry.table] = true; });
+        var forward = this._parentReferences(table), self = this;
+        Object.keys(forward).forEach(function (child) {
+            if (!seen[child]) related.push({ table: child, field: forward[child].join(', '), label: self._tableLabel(child) });
+        });
+        return this._answer({ success: true, tables: related });
     },
-    getDefaultRules: function () {
-        if (!gs.hasRole('admin')) return this._answer({ success: false, error: 'Admin role required.' });
-        return this._answer({ success: true, rules: this._defaultRules() });
-    },
-
     _answer: function (value) { return this.setAnswer(JSON.stringify(value)); },
     _sysId: function (value) { return /^[0-9a-f]{32}$/i.test(String(value || '')); },
     _table: function (value) { return /^[a-z][a-z0-9_]*$/i.test(String(value || '')); },
@@ -160,14 +142,74 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         }
         return names;
     },
+    _displayConfigs: function () {
+        var parsed = JSON.parse(String(gs.getProperty(this.DISPLAY_PROPERTY, '{}') || '{}'));
+        var configs = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        var properties = new GlideRecordSecure('sys_properties'), prefix = this.DISPLAY_PROPERTY + '.';
+        properties.addQuery('name', 'STARTSWITH', prefix); properties.query();
+        while (properties.next()) {
+            var name = String(properties.getValue('name') || '');
+            if (name.indexOf(prefix) !== 0) continue;
+            var value = String(properties.getValue('value') || '');
+            if (value) configs[name.slice(prefix.length)] = JSON.parse(value);
+        }
+        var self = this;
+        Object.keys(configs).forEach(function (table) { configs[table] = self._normaliseDisplayConfig(configs[table]); });
+        return configs;
+    },
+    _normaliseDisplayConfig: function (config) {
+        if (config && typeof config.display === 'string') {
+            return { display_value: config.display, additional_fields: (config.secondary || []).join(',') };
+        }
+        return config;
+    },
+    _removeLegacyDisplayTable: function (table) {
+        var legacy = JSON.parse(String(gs.getProperty(this.DISPLAY_PROPERTY, '{}') || '{}'));
+        if (Object.prototype.hasOwnProperty.call(legacy, table)) {
+            delete legacy[table];
+            gs.setProperty(this.DISPLAY_PROPERTY, Object.keys(legacy).length ? JSON.stringify(legacy, null, 4) : '');
+        }
+    },
     _displayConfig: function (table) {
         if (!this._displayConfigCache) {
-            try {
-                var parsed = JSON.parse(gs.getProperty(this.DISPLAY_PROPERTY, '{}'));
-                this._displayConfigCache = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-            } catch (e) { this._displayConfigCache = {}; }
+            try { this._displayConfigCache = this._displayConfigs(); }
+            catch (e) { this._displayConfigCache = {}; }
         }
         return Object.prototype.hasOwnProperty.call(this._displayConfigCache, table) ? this._displayConfigCache[table] : null;
+    },
+    _saveDisplayConfigs: function (value) {
+        try {
+            var config = JSON.parse(value), error = this._validateDisplayConfig(config), self = this;
+            if (error) throw new Error(error);
+            Object.keys(config).forEach(function (table) { config[table] = self._normaliseDisplayConfig(config[table]); });
+            Object.keys(config).forEach(function (table) {
+                if (JSON.stringify(config[table], null, 4).length > 4000) throw new Error('Property for ' + table + ' exceeds 4000 characters.');
+            });
+            var prefix = this.DISPLAY_PROPERTY + '.', existing = new GlideRecordSecure('sys_properties'), removed = [];
+            existing.addQuery('name', 'STARTSWITH', prefix); existing.query();
+            while (existing.next()) {
+                var name = String(existing.getValue('name'));
+                if (!Object.prototype.hasOwnProperty.call(config, name.slice(prefix.length))) removed.push(name);
+            }
+            Object.keys(config).forEach(function (table) {
+                var name = prefix + table, property = new GlideRecordSecure('sys_properties');
+                if (!property.get('name', name)) {
+                    property.initialize(); property.setValue('name', name); property.setValue('type', 'string');
+                    property.setValue('read_roles', 'sp_admin'); property.setValue('write_roles', 'admin');
+                    property.setValue('ignore_cache', true);
+                    property.setValue('value', JSON.stringify(config[table], null, 4));
+                    if (!property.insert()) throw new Error('Could not create property: ' + name);
+                }
+                self._ensurePropertyCategory(property);
+                gs.setProperty(name, JSON.stringify(config[table], null, 4));
+            });
+            removed.forEach(function (name) { self._deleteConfigProperty(name); });
+            // Migrate the legacy combined value only after all per-table writes succeed.
+            var legacy = new GlideRecordSecure('sys_properties');
+            if (legacy.get('name', this.DISPLAY_PROPERTY)) gs.setProperty(this.DISPLAY_PROPERTY, '');
+            this._displayConfigCache = config;
+            return this._answer({ success: true, value: JSON.stringify(config, null, 4) });
+        } catch (e) { return this._answer({ success: false, error: e.message || String(e) }); }
     },
     _fieldPath: function (table, path) {
         if (typeof path !== 'string' || !/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/i.test(path)) return null;
@@ -190,13 +232,15 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         var tables = Object.keys(value);
         for (var i = 0; i < tables.length; i++) {
             var table = tables[i], config = value[table];
-            if (!this._table(table) || !config || typeof config !== 'object' || Array.isArray(config) ||
-                typeof config.display !== 'string' ||
-                Object.keys(config).some(function (key) { return key !== 'display' && key !== 'secondary'; }) ||
-                (config.secondary !== undefined && !Array.isArray(config.secondary))) {
-                return 'Invalid display configuration for ' + table + '.';
-            }
-            var fields = [config.display].concat(config.secondary || []);
+            if (!this._table(table) || !config || typeof config !== 'object' || Array.isArray(config)) return 'Invalid display configuration for ' + table + '.';
+            var legacy = typeof config.display === 'string';
+            if (legacy ? (Object.keys(config).some(function (key) { return key !== 'display' && key !== 'secondary'; }) ||
+                (config.secondary !== undefined && !Array.isArray(config.secondary))) :
+                (typeof config.display_value !== 'string' || typeof config.additional_fields !== 'string' ||
+                Object.keys(config).some(function (key) { return key !== 'display_value' && key !== 'additional_fields'; }))) return 'Invalid display configuration for ' + table + '.';
+            var normalised = this._normaliseDisplayConfig(config);
+            var extra = normalised.additional_fields.trim() ? normalised.additional_fields.split(',').map(function (field) { return field.trim(); }) : [];
+            var fields = [normalised.display_value].concat(extra);
             for (var j = 0; j < fields.length; j++) {
                 if (!this._fieldPath(table, fields[j])) return 'Invalid field path: ' + table + '.' + String(fields[j]) + '.';
             }
@@ -229,17 +273,18 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
     },
     _secondaryValues: function (record, table, payload) {
         var config = this._displayConfig(table), result = [];
-        if (!config || !Array.isArray(config.secondary)) return result;
-        for (var i = 0; i < config.secondary.length; i++) {
-            var value = this._configuredValue(record, table, payload, config.secondary[i]);
+        if (!config || !config.additional_fields) return result;
+        var fields = config.additional_fields.split(',').map(function (field) { return field.trim(); });
+        for (var i = 0; i < fields.length; i++) {
+            var value = this._configuredValue(record, table, payload, fields[i]);
             if (value) result.push(value);
         }
         return result;
     },
     _name: function (record, table, id, payload, fallback, depth) {
         var config = !depth && this._displayConfig(table);
-        if (config && config.display) {
-            var configured = this._configuredValue(record, table, payload, config.display);
+        if (config && config.display_value) {
+            var configured = this._configuredValue(record, table, payload, config.display_value);
             if (configured) return configured;
         }
         var display = this._displayField(table);
@@ -295,14 +340,92 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         return gr.next() ? { id: String(gr.getUniqueValue()), payload: String(gr.getValue('payload') || ''),
             name: String(gr.getValue('target_name') || '') } : null;
     },
+    _groupConfigs: function () {
+        var gr = new GlideRecordSecure('sys_properties'), configs = {};
+        gr.addQuery('name', 'STARTSWITH', this.GROUPS_PREFIX);
+        gr.query();
+        while (gr.next()) {
+            var name = String(gr.getValue('name') || '');
+            var table = name.slice(this.GROUPS_PREFIX.length);
+            var value = String(gr.getValue('value') || '').trim();
+            if (this._table(table) && value) {
+                var children = JSON.parse(value);
+                if (!Array.isArray(children) || children.length) configs[table] = children;
+            }
+        }
+        return configs;
+    },
+    _parentReferences: function (parent) {
+        var dictionary = new GlideRecordSecure('sys_dictionary'), targets = {};
+        dictionary.addQuery('name', 'IN', this._hierarchyNames(parent).join(','));
+        dictionary.addQuery('internal_type', 'reference'); dictionary.query();
+        while (dictionary.next()) {
+            var target = String(dictionary.getValue('reference') || ''), field = String(dictionary.getValue('element') || '');
+            if (!this._table(target) || !this._table(field)) continue;
+            if (!targets[target]) targets[target] = [];
+            if (targets[target].indexOf(field) === -1) targets[target].push(field);
+        }
+        Object.keys(targets).forEach(function (target) { targets[target].sort(); });
+        return targets;
+    },
+    _referenceField: function (parent, child) {
+        var related = this._relatedTables(parent).filter(function (entry) { return entry.table === child; });
+        if (related.length === 1) return related[0].field;
+        var gr = new GlideRecordSecure('sys_dictionary');
+        gr.addQuery('name', 'IN', this._hierarchyNames(child).join(','));
+        gr.addQuery('internal_type', 'reference');
+        gr.addQuery('reference', 'IN', this._hierarchyNames(parent).join(','));
+        gr.query();
+        var fields = {};
+        while (gr.next()) fields[String(gr.getValue('element'))] = true;
+        var names = Object.keys(fields);
+        if (!names.length) {
+            var forward = this._parentReferences(parent), references = [], hierarchy = this._hierarchyNames(child);
+            hierarchy.forEach(function (table) { (forward[table] || []).forEach(function (field) {
+                if (references.indexOf(field) === -1) references.push(field);
+            }); });
+            if (references.length) return { parentFields: references.sort() };
+        }
+        if (names.length !== 1) throw new Error('Expected one reference from ' + child + ' to ' + parent + '.');
+        return names[0];
+    },
+    _buildGroupRules: function (configs) {
+        var self = this, parents = {}, active = {}, built = {};
+        Object.keys(configs).forEach(function (parent) {
+            if (!self._table(parent) || !Array.isArray(configs[parent])) throw new Error('Use a JSON array of child table names.');
+            var table = new GlideRecordSecure('sys_db_object');
+            if (!table.get('name', parent)) throw new Error('Unknown table: ' + parent);
+            configs[parent].forEach(function (child) {
+                if (typeof child !== 'string' || !self._table(child)) throw new Error('Use a JSON array of child table names.');
+                if (parents[child]) throw new Error('A child table can appear under only one parent: ' + child);
+                parents[child] = parent;
+            });
+        });
+        function node(table, depth) {
+            if (active[table] || depth > 6) throw new Error('The table hierarchy contains a cycle or is too deep.');
+            if (built[table]) return built[table];
+            var record = new GlideRecordSecure('sys_db_object');
+            if (!record.get('name', table)) throw new Error('Unknown table: ' + table);
+            active[table] = true;
+            var result = { id: table, table: table, label: self._tableLabel(table), children: [] };
+            if (parents[table]) {
+                var reference = self._referenceField(parents[table], table);
+                if (typeof reference === 'string') result.field = reference;
+                else { result.parentFields = reference.parentFields; result.field = parents[table] + '.' + reference.parentFields.join(', ' + parents[table] + '.'); }
+            }
+            result.children = (configs[table] || []).map(function (child) { return node(child, depth + 1); });
+            delete active[table]; built[table] = result;
+            return result;
+        }
+        // Visit every node as well as roots so a rootless cycle is rejected.
+        Object.keys(configs).filter(function (table) { return !parents[table]; }).forEach(function (table) { node(table, 0); });
+        Object.keys(configs).forEach(function (table) { node(table, 0); });
+        return this._sortRules({ version: 1, groups: Object.keys(configs).filter(function (table) {
+            return !parents[table];
+        }).map(function (table) { return built[table]; }) });
+    },
     _rules: function () {
-        // Export only uses the saved hierarchy. Related-list discovery belongs to the editor.
-        try {
-            var raw = gs.getProperty(this.RULES_PROPERTY, '');
-            var parsed = raw ? JSON.parse(raw) : null;
-            if (parsed && parsed.version === 1 && Array.isArray(parsed.groups)) return this._sortRules(parsed);
-        } catch (e) {}
-        return { version: 1, groups: [] };
+        return this._buildGroupRules(this._groupConfigs());
     },
     _findRule: function (nodes, table, chain, orders) {
         for (var i = 0; i < nodes.length; i++) {
@@ -313,6 +436,34 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             if (child) return child;
         }
         return null;
+    },
+    _referencingParentId: function (parent, fields, childId, setTable, setId) {
+        var matches = {}, gr = new GlideRecordSecure(parent);
+        var condition = gr.addQuery(fields[0], childId);
+        for (var i = 1; i < fields.length; i++) condition.addOrCondition(fields[i], childId);
+        gr.query();
+        while (gr.next()) matches[String(gr.getUniqueValue())] = true;
+        // Deleted parents can still be resolved from their latest captured payload.
+        if (this._sysId(setId) && (setTable === 'sys_update_set' || setTable === 'sys_remote_update_set')) {
+            var updates = new GlideRecordSecure('sys_update_xml'), seen = {}, self = this;
+            updates.addQuery(setTable === 'sys_update_set' ? 'update_set' : 'remote_update_set', setId);
+            updates.addQuery('name', 'STARTSWITH', parent + '_');
+            updates.orderByDesc('sys_updated_on'); updates.query();
+            var captured = {};
+            while (updates.next()) {
+                var name = String(updates.getValue('name') || ''), id = name.slice(parent.length + 1);
+                if (!this._sysId(id) || seen[id]) continue;
+                seen[id] = true;
+                var payload = String(updates.getValue('payload') || '');
+                if (fields.some(function (field) { return self._payloadField(payload, field).value === childId; })) captured[id] = true;
+            }
+            var ids = Object.keys(captured);
+            if (ids.length === 1) return ids[0];
+            ids.forEach(function (id) { matches[id] = true; });
+        }
+        var parents = Object.keys(matches);
+        // Shared components must not be assigned to an arbitrary parent.
+        return parents.length === 1 ? parents[0] : '';
     },
     _ancestors: function (table, id, payload, rules, setTable, setId) {
         var match = this._findRule(rules.groups, table, []);
@@ -325,8 +476,12 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         for (var i = chain.length - 1; i > 0; i--) {
             var field = chain[i].field;
             var parent = chain[i - 1];
-            var parentId = childRecord ? String(childRecord.getValue(field) || '') : '';
-            if (!this._sysId(parentId)) parentId = this._payloadField(childPayload, field).value;
+            var parentId;
+            if (chain[i].parentFields) parentId = this._referencingParentId(parent.table, chain[i].parentFields, childId, setTable, setId);
+            else {
+                parentId = childRecord ? String(childRecord.getValue(field) || '') : '';
+                if (!this._sysId(parentId)) parentId = this._payloadField(childPayload, field).value;
+            }
             if (!this._sysId(parentId)) return ordinary;
             var parentRecord = this._record(parent.table, parentId);
             var parentUpdate = parentRecord ? null : this._updateForTarget(parent.table, parentId, setTable, setId);
@@ -379,12 +534,35 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         var field = setTable === 'sys_update_set' ? 'update_set' : 'remote_update_set';
         var gr = new GlideRecordSecure('sys_update_xml');
         gr.addQuery(field, setId);
-        gr.orderByDesc('sys_created_on');
+        return this._markdownPage(gr, offset);
+    },
+    getListPage: function () {
+        var query = this.getParameter('list_query');
+        var offset = Number(this.getParameter('offset') || 0);
+        if (query === null || typeof query === 'undefined' || !isFinite(offset) ||
+            offset < 0 || offset % this.PAGE_SIZE !== 0) {
+            return this._answer({ success: false, error: 'Invalid customer updates list page.' });
+        }
+        var gr = new GlideRecordSecure('sys_update_xml');
+        if (String(query)) gr.addEncodedQuery(String(query));
+        return this._markdownPage(gr, offset);
+    },
+    _isNewUpdate: function (action, payload, capturedAt) {
+        var createdAt = this._payloadField(payload, 'sys_created_on').value;
+        return action === 'INSERT' || (action === 'INSERT_OR_UPDATE' &&
+            (this._payloadField(payload, 'sys_mod_count').value === '0' ||
+                (!!createdAt && createdAt === capturedAt)));
+    },
+    _markdownPage: function (gr, offset) {
+        gr.orderByDesc('sys_updated_on');
         gr.orderByDesc('sys_id');
         gr.chooseWindow(offset, offset + this.PAGE_SIZE + 1);
         gr.query();
         var rows = [], rules = this._rules();
         while (gr.next() && rows.length <= this.PAGE_SIZE) {
+            var local = String(gr.getValue('update_set') || '');
+            var setTable = local ? 'sys_update_set' : 'sys_remote_update_set';
+            var setId = local || String(gr.getValue('remote_update_set') || '');
             var target = this._target(gr);
             var updateId = String(gr.getUniqueValue());
             if (!target) {
@@ -393,6 +571,7 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
                     url: this._url('sys_update_xml', updateId), ancestors: [], action: '' });
                 continue;
             }
+            var action = String(gr.getValue('action') || '');
             var live = this._record(target.table, target.id);
             var grouping = this._ancestors(target.table, target.id, target.payload, rules, setTable, setId);
             rows.push({ table: target.table, id: target.id, type: grouping.type,
@@ -400,15 +579,26 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
                 name: this._name(live, target.table, target.id, target.payload, String(gr.getValue('target_name') || '')),
                 secondary: this._secondaryValues(live, target.table, target.payload),
                 url: live ? this._url(target.table, target.id) : this._url('sys_update_xml', updateId),
-                ancestors: grouping.ancestors, action: String(gr.getValue('action') || ''), updateId: updateId });
+                ancestors: grouping.ancestors, action: action, isNew: this._isNewUpdate(action, target.payload, String(gr.getValue('sys_created_on') || '')), updateId: updateId });
         }
         var hasMore = rows.length > this.PAGE_SIZE;
         if (hasMore) rows.pop();
         return this._answer({ success: true, rows: rows, hasMore: hasMore, nextOffset: offset + rows.length });
     },
+    _groupPropertyTables: function () {
+        var properties = new GlideRecordSecure('sys_properties'), tables = [];
+        properties.addQuery('name', 'STARTSWITH', this.GROUPS_PREFIX); properties.query();
+        while (properties.next()) tables.push(String(properties.getValue('name')).slice(this.GROUPS_PREFIX.length));
+        return tables;
+    },
     getRules: function () {
         if (!gs.hasRole('admin')) return this._answer({ success: false, error: 'Admin role required.' });
-        return this._answer({ success: true, rules: this._rules() });
+        try {
+            var raw = this.getParameter('rules');
+            var configs = raw ? JSON.parse(String(raw)) : this._groupConfigs();
+            this._validateGroupConfigs(configs);
+            return this._answer({ success: true, rules: this._buildGroupRules(configs), config: configs, propertyTables: this._groupPropertyTables() });
+        } catch (e) { return this._answer({ success: false, error: e.message || String(e) }); }
     },
     getProperties: function () {
         if (!gs.hasRole('admin')) return this._answer({ success: false, error: 'Admin role required.' });
@@ -416,26 +606,37 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         gr.addQuery('name', 'STARTSWITH', 'monaco.plus.');
         gr.orderBy('name');
         gr.query();
-        var properties = [], hasRules = false;
+        var properties = [];
         while (gr.next()) {
             var name = String(gr.getValue('name') || '');
-            if (name === this.RULES_PROPERTY) hasRules = true;
+            if (name === this.RULES_PROPERTY || name.indexOf(this.GROUPS_PREFIX) === 0 ||
+                name === this.DISPLAY_PROPERTY || name.indexOf(this.DISPLAY_PROPERTY + '.') === 0) continue;
             properties.push({ name: name,
                 value: String(gr.getValue('value') || ''),
                 description: String(gr.getValue('description') || ''),
                 type: String(gr.getValue('type') || 'string') });
         }
-        if (!hasRules) properties.push({ name: this.RULES_PROPERTY, value: JSON.stringify(this._rules()),
-            description: 'Alphabetical table hierarchy for update set Markdown export.', type: 'string' });
+        properties.push({ name: this.DISPLAY_PROPERTY, value: JSON.stringify(this._displayConfigs(), null, 4),
+            description: 'Display and secondary fields by table for update set Markdown export.', type: 'string' });
+        properties.push({ name: this.RULES_PROPERTY, propertyCount: this._groupPropertyTables().length, value: JSON.stringify(this._groupConfigs(), null, 4),
+            description: 'Child tables grouped by parent table in update set Markdown export.', type: 'string' });
         return this._answer({ success: true, properties: properties });
     },
     saveProperty: function () {
         if (!gs.hasRole('admin')) return this._answer({ success: false, error: 'Admin role required.' });
         var name = String(this.getParameter('property_name') || '');
         var value = String(this.getParameter('property_value') || '');
+        if (name === this.DISPLAY_PROPERTY) return this._saveDisplayConfigs(value);
+        if (name.indexOf(this.DISPLAY_PROPERTY + '.') === 0) return this._answer({ success: false, error: 'Use the combined Markdown display editor.' });
         if (value.length > 4000) return this._answer({ success: false, error: 'Property value exceeds 4000 characters.' });
         if (!/^monaco\.plus\.[a-z0-9_.]+$/.test(name)) {
             return this._answer({ success: false, error: 'Invalid Widget Editor+ property.' });
+        }
+        if (/^monaco\.plus\.(?:code_search\.display_fields\.|assistant\.table_config\.)/.test(name)) {
+            return this._answer({ success: false, error: 'Use the table configuration editor.' });
+        }
+        if (name.indexOf(this.GROUPS_PREFIX) === 0) {
+            return this._answer({ success: false, error: 'Use the combined Table hierarchy editor.' });
         }
         if (name === this.RULES_PROPERTY) {
             return this._answer({ success: false, error: 'Edit Table hierarchy with the hierarchy editor.' });
@@ -443,12 +644,6 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         var property = new GlideRecordSecure('sys_properties');
         if (!property.get('name', name)) {
             return this._answer({ success: false, error: 'Property not found.' });
-        }
-        if (name === this.DISPLAY_PROPERTY) {
-            var config;
-            try { config = JSON.parse(value); } catch (e) { return this._answer({ success: false, error: 'Invalid JSON.' }); }
-            var error = this._validateDisplayConfig(config);
-            if (error) return this._answer({ success: false, error: error });
         }
         var json = /^monaco\.plus\.(?:assistant\.table_config\.|css\.variables$|scss\.variables$)/.test(name);
         try {
@@ -477,52 +672,183 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         gs.setProperty(name, value);
         return this._answer({ success: true, value: String(gs.getProperty(name, '') || '') });
     },
-    _validateNode: function (node, parent, depth, ids, tables) {
-        if (!node || depth > 6 || !/^[a-z0-9_]{1,64}$/i.test(String(node.id || '')) || ids[node.id] ||
-            !String(node.label || '').trim() || String(node.label).length > 100 || !this._table(node.table)) return false;
-        ids[node.id] = true;
-        var table = new GlideRecordSecure('sys_db_object');
-        if (!table.get('name', node.table) || tables[node.table]) return false;
-        tables[node.table] = true;
-        if (parent) {
-            if (!this._table(node.field)) return false;
-            var child = new GlideRecordSecure(node.table);
-            if (!child.isValid() || !child.isValidField(node.field)) return false;
-            var dict = new GlideRecordSecure('sys_dictionary');
-            dict.addQuery('name', 'IN', this._hierarchyNames(node.table).join(','));
-            dict.addQuery('element', node.field);
-            dict.addQuery('internal_type', 'reference');
-            dict.setLimit(1);
-            dict.query();
-            if (!dict.next()) return false;
-            var ref = String(dict.getValue('reference') || '');
-            if (this._hierarchyNames(parent.table).indexOf(ref) === -1) return false;
+    _ensurePropertyCategory: function (property) {
+        var category = new GlideRecordSecure('sys_properties_category');
+        if (!category.get('name', 'Widget Editor+')) throw new Error('Widget Editor+ property category is unavailable.');
+        var link = new GlideRecordSecure('sys_properties_category_m2m');
+        link.addQuery('property', property.getUniqueValue());
+        link.addQuery('category', category.getUniqueValue());
+        link.setLimit(1); link.query();
+        if (link.next()) return;
+        link.initialize();
+        link.setValue('property', property.getUniqueValue());
+        link.setValue('category', category.getUniqueValue());
+        link.setValue('order', 100);
+        if (!link.insert()) throw new Error('Could not add property to the Widget Editor+ category.');
+    },
+    _tablePropertyPrefix: function (kind) {
+        if (kind === 'markdown_display') return this.DISPLAY_PROPERTY + '.';
+        if (kind === 'display_fields') return 'monaco.plus.code_search.display_fields.';
+        if (kind === 'table_config') return 'monaco.plus.assistant.table_config.';
+        throw new Error('Invalid property family.');
+    },
+    _requireConfigTable: function (table) {
+        if (!this._table(table) || !new GlideRecordSecure('sys_db_object').get('name', table)) {
+            throw new Error('Invalid table: ' + table);
         }
-        if (!Array.isArray(node.children) || node.children.length > 30) return false;
-        for (var i = 0; i < node.children.length; i++) {
-            if (!this._validateNode(node.children[i], node, depth + 1, ids, tables)) return false;
+    },
+    _requireConfigField: function (table, field) {
+        if (typeof field !== 'string' || !/^[a-z][a-z0-9_]*$/i.test(field) ||
+            !new GlideRecordSecure(table).isValidField(field)) throw new Error('Invalid field: ' + table + '.' + field);
+    },
+    _validateAssistantConfig: function (table, config) {
+        var self = this;
+        function object(value, allowed) {
+            if (!value || typeof value !== 'object' || Array.isArray(value) ||
+                Object.keys(value).some(function (key) { return allowed.indexOf(key) === -1; })) {
+                throw new Error('Invalid Assistant configuration schema.');
+            }
         }
-        return true;
+        object(config, ['rules', 'pickerFields']);
+        if (config.pickerFields !== undefined) {
+            if (!Array.isArray(config.pickerFields)) throw new Error('pickerFields must be an array.');
+            config.pickerFields.forEach(function (field) { self._requireConfigField(table, field); });
+        }
+        function rules(source, items, depth) {
+            if (!Array.isArray(items) || depth > 20) throw new Error('rules and then must be arrays with at most 20 nesting levels.');
+            items.forEach(function (rule) {
+                var allowed = ['type', 'relatedTable', 'category', 'then'];
+                if (rule && rule.type === 'reference_field') allowed = allowed.concat(['sourceField', 'relatedMatchField']);
+                else if (rule && rule.type === 'child_reference') allowed.push('relatedField');
+                else if (rule && rule.type === 'token') allowed = allowed.concat(['sourceField', 'pattern', 'relatedMatchField']);
+                else throw new Error('Invalid rule type.');
+                object(rule, allowed);
+                self._requireConfigTable(rule.relatedTable);
+                if (rule.category !== undefined && typeof rule.category !== 'string') throw new Error('category must be a string.');
+                if (rule.type === 'child_reference') self._requireConfigField(rule.relatedTable, rule.relatedField);
+                else {
+                    var fields = rule.type === 'token' && Array.isArray(rule.sourceField) ? rule.sourceField : [rule.sourceField];
+                    if (!fields.length) throw new Error('sourceField must contain a field.');
+                    fields.forEach(function (field) { self._requireConfigField(source, field); });
+                    self._requireConfigField(rule.relatedTable, rule.relatedMatchField === undefined ? (rule.type === 'token' ? 'name' : 'sys_id') : rule.relatedMatchField);
+                    if (rule.type === 'token') {
+                        if (typeof rule.pattern !== 'string' || !rule.pattern) throw new Error('pattern must be a non-empty regular expression.');
+                        try { new RegExp(rule.pattern); } catch (e) { throw new Error('Invalid token regular expression.'); }
+                    }
+                }
+                if (rule.then !== undefined) rules(rule.relatedTable, rule.then, depth + 1);
+            });
+        }
+        if (config.rules !== undefined) rules(table, config.rules, 1);
+    },
+    saveTableProperty: function () {
+        if (!gs.hasRole('admin')) return this._answer({ success: false, error: 'Admin role required.' });
+        try {
+            var kind = String(this.getParameter('kind') || ''), prefix = this._tablePropertyPrefix(kind);
+            var table = String(this.getParameter('table') || '').trim();
+            this._requireConfigTable(table);
+            var value = String(this.getParameter('property_value') || '');
+            var description = String(this.getParameter('description') || '');
+            if (value.length > 4000) throw new Error('Property value exceeds 4000 characters.');
+            if (kind === 'table_config' && description.length > 512) throw new Error('Description exceeds 512 characters.');
+            if (kind === 'display_fields') {
+                var self = this, fields = value.split(',').map(function (field) { return field.trim(); });
+                fields.forEach(function (field) { self._requireConfigField(table, field); });
+                value = fields.filter(function (field, i) { return fields.indexOf(field) === i; }).join(',');
+            } else if (kind === 'markdown_display') {
+                var display = JSON.parse(value), configs = {};
+                if (!display || typeof display.display_value !== 'string' || typeof display.additional_fields !== 'string' ||
+                    Object.keys(display).some(function (key) { return key !== 'display_value' && key !== 'additional_fields'; })) throw new Error('Use display_value and additional_fields strings.');
+                configs[table] = display;
+                var error = this._validateDisplayConfig(configs);
+                if (error) throw new Error(error);
+                value = JSON.stringify(display, null, 4);
+                if (value.length > 4000) throw new Error('Property value exceeds 4000 characters.');
+            } else this._validateAssistantConfig(table, JSON.parse(value));
+            var name = prefix + table, property = new GlideRecordSecure('sys_properties');
+            var exists = property.get('name', name);
+            if (!exists) {
+                property.initialize(); property.setValue('name', name); property.setValue('type', 'string');
+                property.setValue('read_roles', 'sp_admin'); property.setValue('write_roles', 'admin');
+                property.setValue('ignore_cache', true);
+            }
+            if (kind === 'table_config') property.setValue('description', description);
+            property.setValue('value', value);
+            if (!(exists ? property.update() : property.insert())) throw new Error('Could not save property.');
+            this._ensurePropertyCategory(property);
+            gs.setProperty(name, value);
+            if (kind === 'markdown_display') this._removeLegacyDisplayTable(table);
+            return this._answer({ success: true, value: value });
+        } catch (e) { return this._answer({ success: false, error: e.message || String(e) }); }
+    },
+    deleteTableProperty: function () {
+        if (!gs.hasRole('admin')) return this._answer({ success: false, error: 'Admin role required.' });
+        try {
+            var prefix = this._tablePropertyPrefix(String(this.getParameter('kind') || ''));
+            var table = String(this.getParameter('table') || '');
+            if (!this._table(table)) throw new Error('Invalid table name.');
+            this._deleteConfigProperty(prefix + table);
+            if (prefix === this.DISPLAY_PROPERTY + '.') this._removeLegacyDisplayTable(table);
+            return this._answer({ success: true });
+        } catch (e) { return this._answer({ success: false, error: e.message || String(e) }); }
+    },
+    _deleteConfigProperty: function (name) {
+        var property = new GlideRecordSecure('sys_properties');
+        if (property.get('name', name) && !property.deleteRecord()) throw new Error('Could not delete property: ' + name);
+    },
+    _validateGroupConfigs: function (configs) {
+        if (!configs || typeof configs !== 'object' || Array.isArray(configs)) {
+            throw new Error('Use a JSON object mapping parent tables to arrays of child table names.');
+        }
+        Object.keys(configs).forEach(function (table) {
+            if (!/^[a-z][a-z0-9_]*$/i.test(table) || !Array.isArray(configs[table]) ||
+                configs[table].some(function (child) { return typeof child !== 'string' || !/^[a-z][a-z0-9_]*$/i.test(child); })) {
+                throw new Error('Use a JSON object mapping parent tables to arrays of child table names.');
+            }
+            if (JSON.stringify(configs[table], null, 4).length > 4000) {
+                throw new Error('Property for ' + table + ' exceeds 4000 characters.');
+            }
+        });
+    },
+    _writeGroupProperty: function (name, value) {
+        if (!value) { this._deleteConfigProperty(name); return; }
+        var property = new GlideRecordSecure('sys_properties');
+        if (!property.get('name', name)) {
+            // Removed/empty groups must never create a property for a leaf table.
+            if (!value) return;
+            property.initialize();
+            property.setValue('name', name);
+            property.setValue('type', 'string');
+            property.setValue('read_roles', 'sp_admin');
+            property.setValue('write_roles', 'admin');
+            property.setValue('ignore_cache', true);
+            property.setValue('description', 'Child tables grouped under ' + name.slice(this.GROUPS_PREFIX.length) + ' in update set Markdown export.');
+            property.setValue('value', value);
+            if (!property.insert()) throw new Error('Could not create property: ' + name);
+        }
+        this._ensurePropertyCategory(property);
+        gs.setProperty(name, value);
     },
     saveRules: function () {
         if (!gs.hasRole('admin')) return this._answer({ success: false, error: 'Admin role required.' });
-        var raw = String(this.getParameter('rules') || '');
-        if (raw.length > 4000) return this._answer({ success: false, error: 'Table hierarchy exceeds 4000 characters.' });
-        var parsed;
-        try { parsed = JSON.parse(raw); } catch (e) { return this._answer({ success: false, error: 'Invalid Table hierarchy.' }); }
-        if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.groups) || parsed.groups.length > 30) {
-            return this._answer({ success: false, error: 'Invalid Table hierarchy.' });
-        }
-        var ids = {}, tables = {};
-        for (var i = 0; i < parsed.groups.length; i++) {
-            if (!this._validateNode(parsed.groups[i], null, 0, ids, tables)) {
-                return this._answer({ success: false, error: 'Check table names, reference fields, and duplicate or cyclic hierarchy entries.' });
-            }
-        }
-        var value = JSON.stringify(this._sortRules(parsed));
-        if (value.length > 4000) return this._answer({ success: false, error: 'Table hierarchy exceeds 4000 characters.' });
-        gs.setProperty(this.RULES_PROPERTY, value);
-        return this._answer({ success: true });
+        try {
+            var configs = JSON.parse(String(this.getParameter('rules') || ''));
+            this._validateGroupConfigs(configs);
+            this._buildGroupRules(configs);
+            // Validate the entire edit before writing any individual property.
+            var existing = new GlideRecordSecure('sys_properties'), names = {}, self = this;
+            existing.addQuery('name', 'STARTSWITH', this.GROUPS_PREFIX);
+            existing.query();
+            while (existing.next()) names[String(existing.getValue('name'))] = true;
+            Object.keys(configs).forEach(function (table) {
+                if (configs[table].length) names[self.GROUPS_PREFIX + table] = true;
+            });
+            Object.keys(names).forEach(function (name) {
+                var children = configs[name.slice(self.GROUPS_PREFIX.length)];
+                self._writeGroupProperty(name, children && children.length ? JSON.stringify(children, null, 4) : '');
+            });
+            return this._answer({ success: true });
+        } catch (e) { return this._answer({ success: false, error: e.message || String(e) }); }
     },
     searchTables: function () {
         if (!gs.hasRole('admin')) return this._answer({ success: false, error: 'Admin role required.' });

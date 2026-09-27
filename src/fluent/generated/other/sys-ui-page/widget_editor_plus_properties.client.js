@@ -20,6 +20,7 @@
         var rulesDirty = false;
         var plainTextareas = [];
         var jsonEditors = [];
+        var counterSequence = 0;
 
         function ajax(method, params) {
             return new Promise(function (resolve, reject) {
@@ -41,6 +42,18 @@
             if (value) node.textContent = value;
             return node;
         }
+        function characterCount(limit) {
+            limit = limit || 4000;
+            var counter = el('small', 'wep-character-count', '0 / ' + limit);
+            counter._limit = limit;
+            counter.id = 'wep-character-count-' + (++counterSequence);
+            return counter;
+        }
+        function updateCharacterCount(counter, value) {
+            var length = String(value || '').length;
+            counter.textContent = length + ' / ' + counter._limit;
+            counter.className = 'wep-character-count' + (length > counter._limit ? ' text-danger' : '');
+        }
         function button(label, action) {
             var node = el('button', 'btn btn-default', label);
             node.type = 'button';
@@ -53,6 +66,36 @@
             var isPill = node.id === 'wep-message';
             node.className = 'wep-status' + (isPill ? ' wep-header-status-pill' : '') + (kind ? ' ' + kind : '');
             if (isPill) node.style.display = value ? 'inline-flex' : 'none';
+        }
+        function confirmPropertyRemoval(names, trigger) {
+            if (!names.length) return Promise.resolve(true);
+            return new Promise(function (resolve, reject) {
+                var jq = window.$j || window.jQuery;
+                if (!jq || !jq.fn || !jq.fn.modal) { reject(new Error('The confirmation dialog is unavailable. Reload the page.')); return; }
+                var modal = el('div', 'modal fade'), dialog = el('div', 'modal-dialog'), content = el('div', 'modal-content');
+                var titleId = 'wep-remove-title-' + (++counterSequence), bodyId = titleId + '-body';
+                modal.setAttribute('role', 'dialog'); modal.setAttribute('tabindex', '-1');
+                modal.setAttribute('aria-labelledby', titleId); modal.setAttribute('aria-describedby', bodyId);
+                dialog.setAttribute('role', 'document');
+                var header = el('div', 'modal-header'), title = el('h4', 'modal-title', names.length === 1 ? 'Remove system property?' : 'Remove system properties?');
+                title.id = titleId; header.appendChild(title);
+                var body = el('div', 'modal-body'); body.id = bodyId;
+                body.appendChild(el('p', '', 'This will delete the following system ' + (names.length === 1 ? 'property:' : 'properties:')));
+                var list = el('ul'); names.forEach(function (name) { list.appendChild(el('li', '', name)); }); body.appendChild(list);
+                var footer = el('div', 'modal-footer'), accepted = false, $modal = jq(modal);
+                var cancel = button('Cancel', function () { $modal.modal('hide'); });
+                var confirm = button('Remove', function () { accepted = true; $modal.modal('hide'); });
+                confirm.className = 'btn btn-danger'; footer.appendChild(cancel); footer.appendChild(confirm);
+                content.appendChild(header); content.appendChild(body); content.appendChild(footer);
+                dialog.appendChild(content); modal.appendChild(dialog); document.body.appendChild(modal);
+                $modal.one('shown.bs.modal', function () { cancel.focus(); });
+                $modal.one('hidden.bs.modal', function () {
+                    modal.remove();
+                    if (trigger && trigger.focus) trigger.focus();
+                    resolve(accepted);
+                });
+                $modal.modal({ backdrop: true, keyboard: true, show: true });
+            });
         }
         function feature(name) {
             if (name.indexOf('monaco.plus.update_sets.') === 0) return 'Update Set Markdown';
@@ -75,8 +118,9 @@
         function resizePlainTextarea(input) {
             if (!input || input.hidden || !input.parentNode) return;
             input.style.height = 'auto';
-            var cap = Math.max(76, Math.floor(window.innerHeight * 0.5));
-            var needed = Math.max(76, input.scrollHeight);
+            var fitContents = input.className.indexOf('wep-description-input') !== -1;
+            var cap = fitContents ? Infinity : Math.max(76, Math.floor(window.innerHeight * 0.5));
+            var needed = Math.max(fitContents ? 48 : 76, input.scrollHeight);
             input.style.height = Math.min(needed, cap) + 'px';
             input.style.overflowY = needed > cap ? 'auto' : 'hidden';
         }
@@ -111,6 +155,16 @@
                     automaticLayout: true, minimap: { enabled: false },
                     scrollBeyondLastLine: false, wordWrap: 'on',
                 });
+                function describeEditor() {
+                    var field = host.querySelector('textarea, [role="textbox"]');
+                    var description = input.getAttribute('aria-describedby');
+                    if (!field || !description) return;
+                    var ids = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+                    if (ids.indexOf(description) === -1) ids.push(description);
+                    field.setAttribute('aria-describedby', ids.join(' '));
+                }
+                describeEditor();
+                editor.onDidFocusEditorText(describeEditor);
                 editor.onDidChangeModelContent(function () {
                     input.value = editor.getValue();
                     onChange();
@@ -126,17 +180,21 @@
                 }
                 editor.onDidContentSizeChange(resize);
                 input.hidden = true;
+                input.style.display = 'none';
                 jsonEditors.push({ editor: editor, resize: resize });
                 resize();
                 return editor;
-            } catch (e) { host.remove(); return null; }
+            } catch (e) {
+                if (editor) editor.dispose();
+                input.hidden = false; input.style.display = ''; host.remove(); return null;
+            }
         }
         function propertyCard(property) {
             var card = el('article', 'panel panel-default wep-card');
             card._prop = property;
             card.setAttribute('data-search', (property.name + ' ' + (property.description || '')).toLowerCase());
             var heading = el('div', 'panel-heading');
-            heading.appendChild(el('h3', 'panel-title wep-property-name', property.name));
+            heading.appendChild(el('h3', 'panel-title wep-property-name', /^monaco\.plus\.update_sets\.markdown_(groups|display)$/.test(property.name) ? property.name + '.*' : property.name));
             var isRules = property.name === 'monaco.plus.update_sets.markdown_groups';
             var json = isJsonProperty(property);
             var typeText = isRules ? 'Table hierarchy' : (json ? 'JSON' : (property.type || 'string'));
@@ -147,10 +205,15 @@
             card.appendChild(body);
             if (property.description || isRules) body.appendChild(el('p', 'wep-description', isRules ?
                 'Alphabetical table hierarchy for update set Markdown export.' : property.description));
-            if (isRules) {
-                markdownCard(body);
+            if (property.rows) {
+                tableProperties(body, property);
                 return card;
             }
+            if (isRules) {
+                markdownCard(body, property);
+                return card;
+            }
+            var counter = characterCount();
             var input, editor = null;
             var json = isJsonProperty(property);
             if (property.type.toLowerCase() === 'boolean') {
@@ -163,11 +226,29 @@
                 input.rows = json || property.value.length > 160 ? 8 : 3;
                 input.setAttribute('aria-label', property.name);
             }
+            input.setAttribute('aria-describedby', counter.id);
             input.value = property.value;
             body.appendChild(input);
             if (input.tagName.toLowerCase() === 'textarea' && !json) plainTextareas.push(input);
+            var combinedDisplay = property.name === 'monaco.plus.update_sets.markdown_display';
+            function displayLength() {
+                var config = JSON.parse(readValue());
+                if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('Use a JSON object keyed by table.');
+                return Object.keys(config).reduce(function (length, table) { return Math.max(length, JSON.stringify(config[table], null, 4).length); }, 0);
+            }
+            function countValue() {
+                if (!combinedDisplay) { updateCharacterCount(counter, readValue()); return; }
+                var length;
+                try { length = displayLength(); } catch (e) { length = readValue().length; }
+                counter.textContent = length + ' / 4000 per table';
+                counter.className = 'wep-character-count' + (length > 4000 ? ' text-danger' : '');
+            }
             function valueError() {
-                if (readValue().length > 4000) return 'Property value exceeds 4000 characters.';
+                if (combinedDisplay) {
+                    try { if (displayLength() > 4000) return 'A table property exceeds 4000 characters.'; }
+                    catch (e) { return e.message; }
+                }
+                if (!combinedDisplay && readValue().length > 4000) return 'Property value exceeds 4000 characters.';
                 if (json) {
                     try { JSON.parse(readValue()); } catch (e) { return 'Invalid JSON.'; }
                 }
@@ -196,6 +277,7 @@
             save.className = 'btn btn-primary';
             save.disabled = true;
             function updateDirty() {
+                countValue();
                 if (readValue() === property.value) { delete dirty[property.name]; save.disabled = true; status(note, ''); }
                 else { dirty[property.name] = true; var error = valueError(); save.disabled = !!error;
                     status(note, error || 'Unsaved changes', error ? 'error' : 'dirty'); }
@@ -208,7 +290,8 @@
                 writeValue(property.value); updateDirty();
             });
             var note = el('span', 'wep-status');
-            actions.appendChild(save); actions.appendChild(reset); actions.appendChild(note);
+            actions.appendChild(save); actions.appendChild(reset); actions.appendChild(note); actions.appendChild(counter);
+            countValue();
             body.appendChild(actions);
             if (json) {
                 var host = el('div', 'wep-monaco');
@@ -220,7 +303,139 @@
             }
             return card;
         }
-        function markdownCard(card) {
+        function tableProperties(body, family) {
+            var assistant = family.kind === 'table_config', markdown = family.kind === 'markdown_display';
+            var table = el('table', 'table table-striped wep-config-table' + (assistant ? ' wep-assistant-config-table' : ''));
+            var head = el('thead'), headings = el('tr'), rows = el('tbody');
+            (assistant ? ['Table', 'Description', 'JSON', 'Actions'] : markdown ? ['Table', 'Display field', 'Additional fields', 'Actions'] : ['Table', 'Fields', 'Actions']).forEach(function (label) {
+                var th = el('th', '', label); th.setAttribute('scope', 'col'); headings.appendChild(th);
+            });
+            head.appendChild(headings); table.appendChild(head); table.appendChild(rows); body.appendChild(table);
+            var rowSequence = 0;
+            function addRow(property) {
+                var saved = property ? property.name.slice(family.prefix.length) : '';
+                var key = family.prefix + 'row-' + (++rowSequence), busy = false, editor = null, picker = null, active = true, request = 0;
+                var row = el('tr'), nameCell = el('td'), valueCell = el('td'), actions = el('td');
+                var name = el('input'); name.type = 'hidden'; name.value = saved;
+                name.setAttribute('aria-label', 'Table'); name.placeholder = 'Table name';
+                nameCell.appendChild(name); row.appendChild(nameCell);
+                var description = el(markdown ? 'input' : 'textarea', 'form-control' + (assistant ? ' wep-description-input' : '')); description.rows = 2;
+                var displayConfig = markdown && property ? JSON.parse(property.value) : {};
+                description.value = markdown ? (displayConfig.display_value || '') : property ? property.description : '';
+                description.setAttribute('aria-label', markdown ? 'Display field' : 'Description');
+                if (assistant) description.setAttribute('maxlength', '512');
+                var descriptionCounter = characterCount(assistant ? 512 : 4000); description.setAttribute('aria-describedby', descriptionCounter.id);
+                if (assistant || markdown) { var descCell = el('td'); descCell.appendChild(description); descCell.appendChild(descriptionCounter); row.appendChild(descCell); }
+                var input = el(assistant ? 'textarea' : 'input', 'form-control' + (assistant ? ' wep-json-fallback' : '')); input.rows = assistant ? 6 : 2;
+                input.value = markdown ? (displayConfig.additional_fields || '') : property ? property.value : (assistant ? '{"rules":[],"pickerFields":[]}' : '');
+                input.setAttribute('aria-label', assistant ? 'JSON' : markdown ? 'Additional fields' : 'Fields');
+                if (!assistant) input.placeholder = 'name,description';
+                var counter = characterCount(); input.setAttribute('aria-describedby', counter.id);
+                valueCell.appendChild(input); valueCell.appendChild(counter); row.appendChild(valueCell);
+                var note = el('small', 'wep-status'); note.setAttribute('role', 'status');
+                var baseline = property ? JSON.stringify([saved, description.value, input.value]) : '';
+                function snapshot() { return JSON.stringify([name.value.trim(), description.value, input.value]); }
+                function propertyValue() { return markdown ? JSON.stringify({ display_value: description.value.trim(), additional_fields: input.value }, null, 4) : input.value; }
+                function refresh() {
+                    updateCharacterCount(counter, input.value);
+                    updateCharacterCount(descriptionCounter, description.value);
+                    var changed = snapshot() !== baseline;
+                    if (changed) dirty[key] = true; else delete dirty[key];
+                    save.disabled = busy || !changed || !name.value.trim() || propertyValue().length > 4000 || (markdown && !description.value.trim()) || (assistant && description.value.length > 512);
+                    remove.disabled = busy;
+                }
+                function pending(value) {
+                    busy = value; input.disabled = description.disabled = value;
+                    if (picker) picker.select2('enable', !value && !saved);
+                    if (editor) editor.updateOptions({ readOnly: value });
+                    refresh();
+                }
+                function iconButton(icon, label, action) {
+                    var b = button('', action); b.title = label; b.setAttribute('aria-label', label);
+                    var glyph = el('span', 'glyphicon glyphicon-' + icon); glyph.setAttribute('aria-hidden', 'true'); b.appendChild(glyph);
+                    return b;
+                }
+                var save = iconButton('floppy-disk', 'Save property', function () {
+                    var target = name.value.trim();
+                    var duplicate = Array.prototype.some.call(rows.children, function (other) {
+                        return other !== row && other._tableName() === target;
+                    });
+                    if (duplicate) { status(note, 'This table already has a row.', 'error'); return; }
+                    if (assistant) { try { JSON.parse(input.value); } catch (e) { status(note, 'Invalid JSON.', 'error'); return; } }
+                    pending(true); status(note, 'Saving…');
+                    ajax('saveTableProperty', { kind: family.kind, table: target, property_value: propertyValue(), description: assistant ? description.value : '' }).then(function (result) {
+                        if (!saved) { family.propertyCount++; family._refreshCount(); }
+                        saved = target; name.value = target;
+                        if (markdown) { var config = JSON.parse(result.value); description.value = config.display_value; input.value = config.additional_fields; }
+                        else input.value = result.value;
+                        if (editor) editor.setValue(result.value);
+                        baseline = snapshot(); status(note, 'Saved.', 'success');
+                    }).catch(function (error) { status(note, error.message, 'error'); }).then(function () { pending(false); });
+                });
+                save.className = 'btn btn-primary';
+                function discard() {
+                    if (saved) { family.propertyCount--; family._refreshCount(); }
+                    active = false; request++; delete dirty[key];
+                    plainTextareas = plainTextareas.filter(function (field) { return field !== description; });
+                    if (picker) { picker.off('.wepTable'); picker.select2('destroy'); }
+                    if (editor) {
+                        jsonEditors = jsonEditors.filter(function (item) { return item.editor !== editor; });
+                        editor.dispose();
+                    }
+                    row.remove();
+                }
+                var remove = iconButton('remove', 'Remove table', function () {
+                    if (!saved) { discard(); return; }
+                    if (busy) return;
+                    pending(true);
+                    confirmPropertyRemoval([family.prefix + saved], remove).then(function (confirmed) {
+                        if (!confirmed) { pending(false); remove.focus(); return; }
+                        status(note, 'Removing…');
+                        return ajax('deleteTableProperty', { kind: family.kind, table: saved }).then(discard);
+                    }).catch(function (error) { status(note, error.message, 'error'); pending(false); });
+                });
+                actions.appendChild(save); actions.appendChild(remove); actions.appendChild(note); row.appendChild(actions);
+                row._tableName = function () { return name.value.trim(); }; rows.appendChild(row);
+                name.oninput = description.oninput = input.oninput = function () {
+                    if (assistant) resizePlainTextarea(description);
+                    refresh(); status(note, 'Unsaved changes', 'dirty');
+                };
+                if (assistant) {
+                    plainTextareas.push(description);
+                    window.requestAnimationFrame(function () { if (active) resizePlainTextarea(description); });
+                }
+                var jq = window.$j || window.jQuery;
+                if (jq && jq.fn && jq.fn.select2) {
+                    picker = jq(name);
+                    picker.select2({ placeholder: 'Select a table', minimumInputLength: 0, width: '100%',
+                        query: function (query) {
+                            var current = ++request;
+                            ajax('searchTables', { query: query.term || '' }).then(function (data) {
+                                if (!active || current !== request) return;
+                                query.callback({ results: data.tables.filter(function (item) {
+                                    return !Array.prototype.some.call(rows.children, function (other) { return other !== row && other._tableName() === item.name; });
+                                }).map(function (item) { return {id:item.name, text:item.label + ' (' + item.name + ')'}; }), more:false });
+                            }).catch(function (error) {
+                                if (!active || current !== request) return;
+                                status(note, error.message, 'error'); query.callback({results:[],more:false});
+                            });
+                        }
+                    });
+                    if (saved) picker.select2('data', {id:saved, text:saved});
+                    picker.select2('enable', !saved);
+                    picker.on('change.wepTable', function () { refresh(); status(note, 'Unsaved changes', 'dirty'); });
+                } else status(note, 'The Select2 table picker is unavailable. Reload the page.', 'error');
+                refresh();
+                if (assistant) {
+                    var host = el('div', 'wep-monaco'); valueCell.insertBefore(host, counter);
+                    window.requestAnimationFrame(function () { if (!active) return; editor = mountJsonEditor(input, host, refresh); if (!editor) host.remove(); });
+                }
+            }
+            family.rows.forEach(addRow);
+            body.appendChild(button('Add table', function () { addRow(null); }));
+        }
+        function markdownCard(card, property) {
+            var counter = characterCount();
             var note = el('span', 'wep-status');
             var panel = el('div', 'wep-tree');
             var root = el('div', 'wep-rule-scroll');
@@ -236,29 +451,48 @@
             var jsonPanel = el('div', 'wep-hierarchy-json'); jsonPanel.hidden = true;
             var jsonInput = el('textarea', 'form-control wep-value wep-json-fallback');
             jsonInput.setAttribute('aria-label', 'Table hierarchy JSON'); jsonInput.rows = 10;
+            jsonInput.setAttribute('aria-describedby', counter.id);
+            root.setAttribute('aria-describedby', counter.id);
             jsonPanel.appendChild(jsonInput); panel.appendChild(jsonPanel);
             jsonInput.oninput = jsonInput.onchange = jsonChanged;
-            function parseHierarchy() {
-                var value;
-                try { value = JSON.parse(jsonInput.value); } catch (e) { throw new Error('Invalid JSON.'); }
-                var ids = {}, tables = {};
-                function valid(nodes, depth) {
-                    return Array.isArray(nodes) && nodes.length <= 30 && nodes.every(function (node) {
-                        if (!node || depth > 6 || typeof node.id !== 'string' || !/^[a-z0-9_]{1,64}$/i.test(node.id) ||
-                            ids[node.id] || typeof node.table !== 'string' || !/^[a-z][a-z0-9_]*$/i.test(node.table) || tables[node.table] ||
-                            typeof node.label !== 'string' || !node.label.trim() || node.label.length > 100 ||
-                            (depth && (typeof node.field !== 'string' || !/^[a-z][a-z0-9_]*$/i.test(node.field)))) return false;
-                        ids[node.id] = true; tables[node.table] = true;
-                        return valid(node.children, depth + 1);
+            var savedConfig = {}, savedTables = [], savingRules = false;
+            function compactHierarchy() {
+                var config = {};
+                function visit(nodes) {
+                    nodes.forEach(function (node) {
+                        if (node.children.length) config[node.table] = node.children.map(function (child) { return child.table; });
+                        visit(node.children);
                     });
                 }
-                if (!value || value.version !== 1 || !valid(value.groups, 0)) throw new Error('Invalid Table hierarchy structure.');
-                return value;
+                if (rules) visit(rules.groups);
+                return config;
+            }
+            function parseHierarchy() {
+                var config;
+                try { config = JSON.parse(jsonInput.value); } catch (e) { throw new Error('Invalid JSON.'); }
+                if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('Use a JSON object of parent tables and child table arrays.');
+                Object.keys(config).forEach(function (table) {
+                    if (!/^[a-z][a-z0-9_]*$/i.test(table) || !Array.isArray(config[table]) || config[table].some(function (child) {
+                        return typeof child !== 'string' || !/^[a-z][a-z0-9_]*$/i.test(child);
+                    })) throw new Error('Use a JSON object of parent tables and child table arrays.');
+                });
+                return config;
+            }
+            function readConfig() { return mode === 'JSON' ? parseHierarchy() : compactHierarchy(); }
+            function updateHierarchyCount() {
+                var length = 0;
+                try {
+                    var config = readConfig();
+                    Object.keys(config).forEach(function (table) { length = Math.max(length, JSON.stringify(config[table], null, 4).length); });
+                } catch (e) { length = jsonInput.value.length; }
+                counter.textContent = length + ' / 4000 per table';
+                counter.className = 'wep-character-count' + (length > 4000 ? ' text-danger' : '');
             }
             function hierarchyError() {
                 try {
-                    var value = mode === 'JSON' ? parseHierarchy() : rules;
-                    if (JSON.stringify(value).length > 4000) return 'Table hierarchy exceeds 4000 characters.';
+                    var config = readConfig();
+                    var over = Object.keys(config).filter(function (table) { return JSON.stringify(config[table], null, 4).length > 4000; });
+                    if (over.length) return 'Property for ' + over[0] + ' exceeds 4000 characters.';
                 } catch (e) { return e.message; }
                 return '';
             }
@@ -267,19 +501,10 @@
                 markRules();
                 try { parseHierarchy(); } catch (e) { save.disabled = true; status(note, e.message, 'error'); }
             }
-            function setMode(next) {
-                if (!rules || mode === next) return;
-                if (next === 'UI') {
-                    try { rules = parseHierarchy(); } catch (e) { status(note, e.message, 'error'); return; }
-                    renderRules();
-                } else {
-                    closePicker(); syncing = true;
-                    jsonInput.value = JSON.stringify(rules, null, 2);
-                    if (jsonEditor) jsonEditor.setValue(jsonInput.value);
-                    syncing = false;
-                }
+            function displayMode(next) {
                 mode = next; root.hidden = mode !== 'UI'; jsonPanel.hidden = mode !== 'JSON';
                 modeLink.textContent = mode === 'UI' ? 'Switch to JSON' : 'Switch to UI';
+                updateHierarchyCount();
                 if (mode === 'JSON' && !jsonEditor) {
                     var host = el('div', 'wep-monaco'); jsonPanel.appendChild(host);
                     jsonEditor = mountJsonEditor(jsonInput, host, jsonChanged);
@@ -288,29 +513,67 @@
                 if (jsonEditor && mode === 'JSON') jsonEditor.layout();
                 save.disabled = !rulesDirty || !!hierarchyError();
             }
+            function setJson(config) {
+                syncing = true;
+                jsonInput.value = JSON.stringify(config, null, 4);
+                if (jsonEditor) jsonEditor.setValue(jsonInput.value);
+                syncing = false;
+            }
+            function setMode(next) {
+                if (!rules || mode === next) return;
+                if (next === 'UI') {
+                    var config;
+                    try { config = parseHierarchy(); } catch (e) { status(note, e.message, 'error'); return; }
+                    var requested = revision;
+                    ajax('getRules', { rules: JSON.stringify(config) }).then(function (data) {
+                        if (requested !== revision) return;
+                        rules = data.rules; renderRules(); displayMode('UI'); status(note, rulesDirty ? 'Unsaved changes' : '');
+                    }).catch(function (error) { status(note, error.message, 'error'); });
+                } else {
+                    closePicker(); setJson(compactHierarchy()); displayMode('JSON');
+                }
+            }
             var footer = el('div', 'wep-actions');
-            var save = button('Save hierarchy', function () {
+            var save = button('Save property', function () {
+                if (savingRules) return;
                 var error = hierarchyError();
                 if (error) { save.disabled = true; status(note, error, 'error'); return; }
-                if (mode === 'JSON') {
-                    try { rules = parseHierarchy(); } catch (e) { status(note, e.message, 'error'); return; }
-                }
-                save.disabled = true;
-                var submitted = revision;
-                status(note, 'Saving…');
-                ajax('saveRules', { rules: JSON.stringify(rules) }).then(function () {
-                    rulesDirty = revision !== submitted;
-                    status(note, rulesDirty ? 'Unsaved changes' : 'Hierarchy saved.', rulesDirty ? 'dirty' : 'success');
+                var config = readConfig(), submitted = revision;
+                var removed = savedTables.filter(function (table) { return !config[table] || !config[table].length; })
+                    .map(function (table) { return 'monaco.plus.update_sets.markdown_groups.' + table; });
+                savingRules = true; save.disabled = true;
+                confirmPropertyRemoval(removed, save).then(function (confirmed) {
+                    if (!confirmed) return;
+                    if (revision !== submitted) throw new Error('Configuration changed. Save again to review the updated changes.');
+                    status(note, 'Saving…');
+                    return ajax('saveRules', { rules: JSON.stringify(config) }).then(function () {
+                        savedTables = Object.keys(config).filter(function (table) { return config[table].length; });
+                        property.propertyCount = savedTables.length; property._refreshCount();
+                        savedConfig = JSON.parse(JSON.stringify(config));
+                        rulesDirty = revision !== submitted;
+                        status(note, rulesDirty ? 'Unsaved changes' : 'Saved.', rulesDirty ? 'dirty' : 'success');
+                    });
                 }).catch(function (error) { status(note, error.message, 'error'); })
-                    .then(function () { save.disabled = !rulesDirty || !!hierarchyError(); });
+                    .then(function () { savingRules = false; save.disabled = !rulesDirty || !!hierarchyError(); });
+            });
+            var revert = button('Revert', function () {
+                var requested = ++revision;
+                ajax('getRules', { rules: JSON.stringify(savedConfig) }).then(function (data) {
+                    if (requested !== revision) return;
+                    rules = data.rules; rulesDirty = false;
+                    setJson(savedConfig); renderRules(); updateHierarchyCount();
+                    save.disabled = true; status(note, '');
+                }).catch(function (error) { status(note, error.message, 'error'); });
             });
             save.className = 'btn btn-primary'; save.disabled = true;
-            footer.appendChild(save); footer.appendChild(note); panel.appendChild(footer); card.appendChild(panel);
+            footer.appendChild(save); footer.appendChild(revert); footer.appendChild(note); footer.appendChild(counter);
+            panel.appendChild(footer); card.appendChild(panel);
             status(note, 'Loading…');
             ajax('getRules', {}).then(function (data) {
-                rules = data.rules; renderRules(); status(note, '');
+                savedConfig = data.config; savedTables = data.propertyTables || Object.keys(savedConfig); rules = data.rules; property.propertyCount = savedTables.length; property._refreshCount(); renderRules(); updateHierarchyCount(); status(note, '');
             }).catch(function (error) { status(note, error.message, 'error'); });
             function markRules() {
+                updateHierarchyCount();
                 revision++; rulesDirty = true; var error = hierarchyError();
                 save.disabled = !!error; status(note, error || 'Unsaved changes', error ? 'error' : 'dirty');
             }
@@ -379,7 +642,7 @@
                                         }).map(function (item) {
                                             var table = item.table || item.name;
                                             return { id: table + (item.field ? '.' + item.field : ''),
-                                                text: item.label + ' (' + table + ')' + (item.field ? ' → ' + item.field : ''),
+                                                text: item.label + ' (' + table + ')',
                                                 table: table, label: item.label, field: item.field || '' };
                                         });
                                         status(hint, ''); query.callback({ results: results, more: false });
@@ -422,7 +685,7 @@
                         var branch = el('div', 'wep-rule-name');
                         if (node.children.length) {
                             var expand = button('', function () { collapsed[node.id] = !collapsed[node.id]; renderRules(); });
-                            expand.className = 'btn btn-icon ' + (collapsed[node.id] ? 'icon-chevron-right' : 'icon-chevron-down');
+                            expand.className = 'btn btn-icon wep-rule-toggle ' + (collapsed[node.id] ? 'icon-chevron-right' : 'icon-chevron-down');
                             expand.setAttribute('aria-label', (collapsed[node.id] ? 'Expand ' : 'Collapse ') + node.label);
                             expand.setAttribute('aria-expanded', String(!collapsed[node.id])); branch.appendChild(expand);
                         } else branch.appendChild(el('span', 'wep-rule-spacer'));
@@ -452,6 +715,20 @@
             }
         }
         function render(properties) {
+            ['display_fields', 'table_config', 'markdown_display'].forEach(function (kind) {
+                var prefix = kind === 'display_fields' ? 'monaco.plus.code_search.display_fields.' : kind === 'table_config' ? 'monaco.plus.assistant.table_config.' : 'monaco.plus.update_sets.markdown_display.';
+                var rows = properties.filter(function (property) { return property.name.indexOf(prefix) === 0; });
+                if (kind === 'markdown_display') {
+                    var combined = properties.filter(function (property) { return property.name === 'monaco.plus.update_sets.markdown_display'; })[0];
+                    if (combined) {
+                        var config = JSON.parse(combined.value);
+                        rows = Object.keys(config).sort().map(function (table) { return {name:prefix + table, value:JSON.stringify(config[table]), description:'', type:'string'}; });
+                    }
+                }
+                properties = properties.filter(function (property) { return property.name.indexOf(prefix) !== 0 && !(kind === 'markdown_display' && property.name === 'monaco.plus.update_sets.markdown_display'); });
+                properties.push({ name: prefix + '*', prefix: prefix, kind: kind, rows: rows, propertyCount: rows.length, value: '', type: 'string',
+                    description: kind === 'display_fields' ? 'Display fields by table. Enter comma-separated field names.' : kind === 'markdown_display' ? 'Display and additional fields for Markdown export. Additional fields are comma-separated.' : 'Assistant configuration by table.' });
+            });
             if (sections) sections.textContent = '';
             if (nav) nav.textContent = '';
             var features = ['Widget Editor+', 'Assistant+', 'Code Search+'];
@@ -463,13 +740,23 @@
                 features.push('Update Set Markdown');
             }
             features.forEach(function (name, index) {
-                var matches = properties.filter(function (property) { return feature(property.name) === name; });
+                var matches = properties.filter(function (property) { return feature(property.name) === name; })
+                    .sort(function (a, b) { return a.name.localeCompare(b.name); });
                 if (!matches.length) return;
                 var section = el('section', 'wep-section');
                 section.id = 'wep-feature-' + index;
                 section.setAttribute('data-feature', name);
                 var heading = el('h2', 'wep-feature-heading', name);
-                var countBadge = el('span', 'wep-section-count', matches.length + (matches.length === 1 ? ' property' : ' properties'));
+                var countBadge = el('span', 'wep-section-count'), pillCount;
+                function refreshCount() {
+                    var count = matches.reduce(function (total, property) {
+                        return total + (typeof property.propertyCount === 'number' ? property.propertyCount : 1);
+                    }, 0);
+                    countBadge.textContent = count + (count === 1 ? ' property' : ' properties');
+                    if (pillCount) pillCount.textContent = String(count);
+                }
+                matches.forEach(function (property) { property._refreshCount = refreshCount; });
+                refreshCount();
                 heading.appendChild(countBadge);
                 section.appendChild(heading);
                 matches.forEach(function (property) { section.appendChild(propertyCard(property)); });
@@ -481,7 +768,8 @@
                 link.title = 'Go to ' + name;
                 var labelSpan = el('span', 'we-sidebar-item-label', name);
                 link.appendChild(labelSpan);
-                var pillCount = el('span', 'wep-nav-count we-type-count-pill', String(matches.length));
+                pillCount = el('span', 'wep-nav-count we-type-count-pill');
+                refreshCount();
                 link.appendChild(pillCount);
                 link.onclick = function (e) {
                     e.preventDefault();
@@ -550,7 +838,7 @@
                                 var titleEl = titles.length ? titles[0] : null;
                                 var descs = card.querySelectorAll ? card.querySelectorAll('.wep-description') : [];
                                 var descEl = descs.length ? descs[0] : null;
-                                setHighlight(titleEl, card._prop.name, query);
+                                setHighlight(titleEl, /^monaco\.plus\.update_sets\.markdown_(groups|display)$/.test(card._prop.name) ? card._prop.name + '.*' : card._prop.name, query);
                                 if (descEl) setHighlight(descEl, card._prop.description || '', query);
                             }
                         }
@@ -562,6 +850,7 @@
             var emptySearch = document.getElementById('wep-empty-search');
             if (emptySearch) emptySearch.style.display = (query && totalVisible === 0) ? '' : 'none';
             window.requestAnimationFrame(function () {
+                plainTextareas.forEach(resizePlainTextarea);
                 jsonEditors.forEach(function (item) { item.editor.layout(); item.resize(); });
             });
         }

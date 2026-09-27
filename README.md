@@ -127,7 +127,7 @@ An AI context bundle exporter (`widget_editor_assistant.do`) available as a stan
 - **Compact Context**: One `format_notes` element explains conventions. Record URLs and current ES12 settings appear once on each record wrapper. Both full versions and field change statuses are retained.
 - **Export Metadata**: Assistant exports use a `<context_bundle format_version="3">` root for AI context (Compare+ remains at format version 2) and include a UTC `generated_at` timestamp and each available record version’s `sys_mod_count`. Counters absent from the source are marked unavailable; unsaved edits do not increment the saved counter.
 - **Absolute Record URLs**: XML includes platform navigation URLs once per record. Deleted records link to their `sys_metadata_delete` entry; unavailable or unreadable deletion entries are marked with `record_url_status="unavailable"`.
-- **Update Set Markdown export**: Copy linked records from selected local or retrieved update sets, combined or separated by set.
+- **Update Set Markdown export**: Copy linked records for all customer updates matching the current list filter, across every page, without selecting rows.
 - **Table hierarchy**: Configure alphabetical parent grouping in Properties using UI or JSON. Only saved relationships are used.
 - **Markdown display fields**: Configure display and secondary fields per table, including validated reference dot-walks. Secondary values follow the record link, separated by ` | `.
 - **Live Token Estimation**: Real-time token count estimation based on payload size, with a proportional loading wheel while row and previous-version sizes are still being measured.
@@ -207,8 +207,8 @@ Admins can edit settings in **Widget Editor+ → Properties**. Values are limite
 | `monaco.plus.widget.related_list_exclusions` | *(empty)* | Comma-separated list of `sys_ui_related_list_entry.related_list` values to exclude from related lists. |
 | `monaco.plus.css.variables` | `{ "example-variable": "#a4c5ea" }` | JSON string of CSS custom property name-value pairs for autocomplete suggestions. |
 | `monaco.plus.scss.variables` | `{ "$breakpoint-xs": "480px", ... }` | JSON string of SCSS variable name-value pairs for autocomplete suggestions. |
-| `monaco.plus.update_sets.markdown_groups` | *(empty hierarchy)* | Defines parent grouping for update set Markdown export. |
-| `monaco.plus.update_sets.markdown_display` | `{"sys_security_acl":{"display":"name","secondary":["operation"]}}` | Display and secondary field paths by table for update set Markdown export. |
+| `monaco.plus.update_sets.markdown_groups.<table>` | Explicit child table arrays for Access Control, Group, Record Producer, Widget, Variable and Catalog UI Policy | Edited together as one hierarchy. Only parents with child configuration need a property; saving empty or removed configurations deletes their system properties. |
+| `monaco.plus.update_sets.markdown_display.<table>` | `{"display_value":"name","additional_fields":"operation"}` for `sys_security_acl` | Display and secondary field paths by table for update set Markdown export. |
 | `monaco.plus.assistant.export_blocklist_tables` | *(credential & audit tables)* | Comma-separated table names excluded from Assistant search, browsing, and XML export. |
 | `monaco.plus.assistant.export_blocklist_prefixes` | `pwd,sys_activity,sys_amb,...` | Comma-separated table prefixes excluded from Assistant search, browsing, and XML export. |
 | `monaco.plus.assistant.table_config.<table_name>` | *(JSON rule configs)* | Declarative relationship rules for Assistant dependency detection per table (e.g. `sp_page`, `sp_widget`, `sc_cat_item_producer`, `sysevent_email_action`). |
@@ -268,3 +268,23 @@ User preferences (including editor themes, Assistant visibility, and Debug Menu 
 ## AI Disclosure
 
 This project was developed using Claude and Gemini.
+
+Markdown grouping JSON maps parent table names to child-table arrays, for example:
+
+```json
+{
+    "sp_widget": ["sp_ng_template", "m2m_sp_widget_dependency"],
+    "sc_cat_item_producer": ["catalog_ui_policy"],
+    "catalog_ui_policy": ["catalog_ui_policy_action"]
+}
+```
+
+The Properties page combines these into one UI/JSON editor with Save property and Revert. Saving writes each array to its own `monaco.plus.update_sets.markdown_groups.<table>` property (maximum 4,000 characters each). Labels and reference fields are resolved from table metadata. No additional related tables are included implicitly. The counter shows the largest individual property value. The pre-install fix script **Split Markdown table properties** migrates the legacy hierarchy, preserving existing per-table settings. For update-set installations, run that fix script before installing the new defaults.
+
+The Properties page combines `monaco.plus.code_search.display_fields.*` and `monaco.plus.assistant.table_config.*` into separate tables. Each row has its own save and remove buttons; removing a saved row deletes its system property. Saves validate tables and fields against the instance dictionary. Assistant JSON also validates the configuration schema and nested relationship rules.
+
+`monaco.plus.update_sets.markdown_display.*` uses a table with Table, Display field, Additional fields and Actions columns. Each row saves JSON containing `display_value` and a comma-separated `additional_fields` string. Saves validate the selected table and all field paths; Remove deletes the property. Legacy display configurations remain readable and migrate per row when saved. Table selectors use Select2 across all property tables.
+
+Knowledge defaults display `display_number` with `short_description`, and group `kb_version` and `kb_knowledge_summary` beneath articles. Page defaults group `sp_container → sp_row → sp_column → sp_instance`, plus `sp_metatag` and `sp_page_title_variable` beneath `sp_page`. UI policy defaults include `sys_ui_policy_action` and `sys_ui_policy_rl_action`. The post-install fix script **Move default widget instances into page hierarchy** removes `sp_instance` from unchanged former Widget defaults; custom configurations are preserved. For update-set installations, run this fix script after installing the page defaults. If a customised Widget configuration still includes `sp_instance`, move that relationship to `sp_column` in the combined editor before using the new hierarchy.
+
+Properties created or saved through the table and Markdown hierarchy editors are linked to the **Widget Editor+** category through `sys_properties_category_m2m`, without duplicate links. Theme grouping defaults include `sp_header_footer`, `m2m_sp_theme_css_include`, `m2m_sp_theme_js_include`, and `m2m_sp_theme_sp_theme_variant`.

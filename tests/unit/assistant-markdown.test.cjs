@@ -6,6 +6,22 @@ const vm = require('node:vm');
 const serverSource = fs.readFileSync('src/fluent/generated/server-development/script-include/sys_script_include_widget_editor_markdown.server.js', 'utf8');
 const clientSource = fs.readFileSync('src/fluent/generated/server-development/ui-action/widget_editor_markdown_copy.client.js', 'utf8');
 
+function mockBootstrapModal(node, modals) {
+    const handlers = {};
+    return {
+        one(event, handler) { handlers[event] = handler; return this; },
+        modal(command) {
+            if (command === 'hide') handlers['hidden.bs.modal']();
+            else { modals.push(node); if (handlers['shown.bs.modal']) handlers['shown.bs.modal'](); }
+            return this;
+        },
+    };
+}
+function modalButton(modal, text) {
+    function all(node) { return node.children.flatMap(child => [child,...all(child)]); }
+    return all(modal).find(node => node.tagName === 'BUTTON' && node.textContent === text);
+}
+
 function server(extra = {}) {
     const context = {
         Class: { create: () => function () {} },
@@ -16,12 +32,27 @@ function server(extra = {}) {
         GlideTableHierarchy: function () { this.getBase = () => ''; },
         ...extra,
     };
+    const categoryLinks = [];
+    const Record = context.GlideRecordSecure;
+    context.GlideRecordSecure = function (table) {
+        if (table === 'sys_properties_category') return {get: (_field,name) => name === 'Widget Editor+',getUniqueValue: () => 'widget-editor-category'};
+        if (table === 'sys_properties_category_m2m') {
+            const fields = {};
+            return {addQuery: (field,value) => {fields[field] = value;},setLimit() {},query() {},
+                next: () => categoryLinks.some(link => link.property === fields.property && link.category === fields.category),
+                initialize() {},setValue: (field,value) => {fields[field] = value;},
+                insert: () => {categoryLinks.push({...fields});return 'category-link';}};
+        }
+        const record = new Record(table);
+        if (!record.getUniqueValue) record.getUniqueValue = () => 'test-property-id';
+        return record;
+    };
     vm.createContext(context);
     vm.runInContext(serverSource, context);
     const api = context.WidgetEditorMarkdownAjax.prototype;
     api.setAnswer = value => JSON.parse(value);
     api.getParameter = () => '';
-    return { api, context };
+    return { api, context, categoryLinks };
 }
 
 test('forced customer update resolves target from validated name suffix', () => {
@@ -111,7 +142,7 @@ test('properties API discovers the app namespace and supplies grouping defaults 
     api._relatedTables = () => [];
     api._tableLabel = table => table;
     const result = api.getProperties();
-    assert.equal(prefix, 'STARTSWITH:monaco.plus.');
+    assert.equal(prefix, 'STARTSWITH:monaco.plus.update_sets.markdown_groups.');
     assert.equal(result.properties.find(property => property.name === 'monaco.plus.record_limit').value, '500');
     assert.ok(result.properties.some(property => property.name === 'monaco.plus.update_sets.markdown_groups'));
 });
@@ -139,39 +170,13 @@ test('properties API edits only existing Widget Editor+ properties', () => {
     assert.deepEqual(saved, { 'monaco.plus.record_limit': '250' });
 });
 
-test('admin save rejects a cyclic rule and an invalid reference field', () => {
-    let writes = 0;
-    const { api } = server({
-        gs: { getProperty: () => '', hasRole: role => role === 'admin', setProperty: () => { writes++; } },
-        GlideRecordSecure: function (table) {
-            this.get = () => table === 'sys_db_object';
-            this.isValid = () => true;
-            this.isValidField = () => false;
-        },
-    });
-    const base = { id: 'root', label: 'Root', table: 'u_root', children: [] };
-    base.children.push({ id: 'cycle', label: 'Cycle', table: 'u_root', field: 'parent', children: [] });
-    api.getParameter = () => JSON.stringify({ version: 1, groups: [base] });
-    assert.equal(api.saveRules().success, false);
-    base.children[0].table = 'u_child';
-    assert.equal(api.saveRules().success, false);
-    assert.equal(writes, 0);
-});
-
-test('explicit default action supplies four alphabetical roots and instance related lists', () => {
-    const { api } = server({ gs: { getProperty: () => '', hasRole: () => false } });
-    api._tableLabel = table => table;
-    api._relatedTables = table => table === 'sp_widget' ? [
-        { table: 'sp_ng_template', label: 'Angular templates', field: 'sp_widget' },
-        { table: 'm2m_sp_widget_dependency', label: 'Dependencies', field: 'sp_widget' },
-    ] : [{ table: 'catalog_ui_policy', label: 'Policies', field: 'catalog_item' }];
-    const rules = api._defaultRules();
-    assert.deepEqual(Array.from(rules.groups, node => node.table), ['sc_cat_item_producer', 'sp_widget', 'sys_security_acl', 'sys_user_group']);
-    assert.equal(rules.groups[1].children[0].table, 'sp_ng_template');
-    assert.equal(rules.groups[1].children[1].table, 'm2m_sp_widget_dependency');
-    assert.equal(rules.groups[2].children[0].table, 'sys_security_acl_role');
-    assert.equal(rules.groups[2].children[0].field, 'sys_security_acl');
-    assert.equal(rules.groups[3].children[0].field, 'group');
+test('combined hierarchy rejects cycles, duplicate parents and unknown tables before writing', () => {
+    const { api, saved } = groupServer();
+    for (const config of [{ a: ['b'], b: ['a'] }, { a: ['c'], b: ['c'] }, { a: ['missing'] }]) {
+        api.getParameter = () => JSON.stringify(config);
+        assert.equal(api.saveRules().success, false);
+        assert.deepEqual(saved, {});
+    }
 });
 
 test('related table discovery excludes scripts, dot walks and unrelated references', () => {
@@ -210,7 +215,6 @@ test('related table discovery excludes scripts, dot walks and unrelated referenc
     assert.deepEqual(JSON.parse(JSON.stringify(api._relatedTables('sc_cat_item'))),
         [{ table: 'catalog_ui_policy', field: 'catalog_item', label: 'Catalog policies' }]);
     assert.equal(api.getRelatedTables().error, 'Admin role required.');
-    assert.equal(api.getDefaultRules().error, 'Admin role required.');
 });
 
 test('member pages include forced records and validated live or customer-update URLs', () => {
@@ -310,7 +314,6 @@ test('Markdown escapes names and renders policy actions under their policy', () 
         ],
     }] }];
     const output = context._weMarkdownText(loaded, 'separate');
-    assert.ok(output.startsWith('## [Set \\[A\\]](https://example/set)'));
     assert.ok(output.includes('- **Record Producers**'));
     assert.ok(output.includes('  - [Producer](https://example/producer)'));
     assert.ok(output.indexOf('Catalog UI Policies') < output.indexOf('Catalog UI Policy Actions'));
@@ -318,7 +321,7 @@ test('Markdown escapes names and renders policy actions under their policy', () 
     assert.ok(output.includes('action.do%3Fsys_id%3Dc'));
 });
 
-test('combined mode removes repeat records while separate mode retains each set section', () => {
+test('all loaded sets share a single deduplicated Markdown tree', () => {
     const context = { Promise, navigator: {}, document: {}, alert: () => {}, console };
     vm.createContext(context);
     vm.runInContext(clientSource, context);
@@ -329,9 +332,7 @@ test('combined mode removes repeat records while separate mode retains each set 
     ];
     assert.equal(context._weMarkdownText(loaded, 'combined').match(/\[One\]/g).length, 1);
     const separate = context._weMarkdownText(loaded, 'separate');
-    assert.equal(separate.match(/\[One\]/g).length, 2);
-    assert.ok(separate.includes('## [First]'));
-    assert.ok(separate.includes('## [Second]'));
+    assert.equal(separate.match(/\[One\]/g).length, 1);
 });
 
 test('record types are alphabetical regardless of saved rule order', () => {
@@ -348,42 +349,138 @@ test('record types are alphabetical regardless of saved rule order', () => {
         ['- **A ordinary**', '- **First rule**', '- **Second rule**']);
 });
 
-test('list choices and Related Links use checked rows; context menus use clicked row', async () => {
-    const checked = ['a'.repeat(32), 'b'.repeat(32)];
-    const clicked = 'c'.repeat(32);
-    const context = { Promise, navigator: {}, document: {}, alert: () => {}, console,
-        g_list: { getChecked: () => checked.join(',') } };
+test('list export ignores selected rows and parent form IDs and includes fixed filters', async () => {
+    const calls = [], copied = [], errors = [];
+    const query = 'update_set=' + 'a'.repeat(32) + '^type=Widget';
+    const list = {
+        getTableName: () => 'sys_update_xml',
+        getChecked: () => { throw Error('Selection must not be read'); },
+        getQuery: options => { assert.equal(options.fixed, true); return query; },
+    };
+    const context = { Promise, navigator: {}, document: {}, alert: message => errors.push(message),
+        g_list: list, rowSysId: 'b'.repeat(32), g_sysId: 'c'.repeat(32),
+        GlideUINotification: function (note) { if (note.type === 'error') errors.push(note.text); }, NOW: { CustomEvent: { fireTop: () => {} } } };
     vm.createContext(context);
     vm.runInContext(clientSource, context);
-    let selected;
-    context._weResolveMarkdownSets = ids => { selected = Array.from(ids); return Promise.resolve([{ id: 'one' }]); };
-    context._weCopyMarkdownSets = () => {};
-    context.copyUpdateSetMarkdownPlus();
-    await new Promise(resolve => setImmediate(resolve));
-    assert.deepEqual(selected, checked);
-    context.rowSysId = clicked;
-    context.copyUpdateSetMarkdownPlus();
-    await new Promise(resolve => setImmediate(resolve));
-    assert.deepEqual(selected, [clicked]);
+    context._weMarkdownAjax = async (method, params) => {
+        calls.push({ method, ...params });
+        return { rows: [{ table: 'sp_widget', id: String(params.offset), type: 'Widgets',
+            name: 'Widget ' + params.offset, url: '', ancestors: [] }],
+            hasMore: params.offset === 0, nextOffset: 100 };
+    };
+    context._weWriteMarkdownClipboard = async value => copied.push(value);
+    await context.copyUpdateSetMarkdownPlus();
+    assert.deepEqual(calls, [
+        { method: 'getListPage', list_query: query, offset: 0 },
+        { method: 'getListPage', list_query: query, offset: 100 },
+    ]);
+    assert.match(copied[0], /Widget 0/);
+    assert.match(copied[0], /Widget 100/);
+    // The Related Links placement has no g_list.
+    delete context.g_list;
+    context.GlideLists2 = { updates: list };
+    await context.copyUpdateSetMarkdownPlus();
+    assert.equal(copied.length, 2);
+    assert.deepEqual(errors, []);
+    delete context.GlideLists2;
+    await context.copyUpdateSetMarkdownPlus();
+    assert.equal(calls.length, 4, 'missing list must not export the entire table');
+    assert.match(errors[0], /list could not be found/);
 });
 
-test('clipboard failure leaves selectable Markdown visible', async () => {
-    const elements = [];
-    const body = { appendChild: node => { elements.push(node); node.parentNode = body; }, removeChild: node => {
-        elements.splice(elements.indexOf(node), 1);
-    } };
-    const document = { body, execCommand: () => false, createElement: tag => ({ tag, style: {},
-        setAttribute() {}, select() { this.selected = true; }, appendChild(child) {
-            (this.children ||= []).push(child);
-        } }) };
-    const context = { Promise, navigator: {}, document, alert: () => {}, console };
+test('filtered list export pages through all matching updates without expanding their sets', () => {
+    const setId = 'a'.repeat(32), query = 'update_set=' + setId + '^type=Widget';
+    const records = Array.from({ length: 102 }, (_, i) => ({
+        id: i.toString(16).padStart(32, '0'), type: i === 101 ? 'Other' : 'Widget',
+    }));
+    const { api } = server({ GlideRecordSecure: function (table) {
+        assert.equal(table, 'sys_update_xml');
+        let filter, start, end, rows, index = 0;
+        this.addEncodedQuery = value => { filter = value; };
+        this.orderByDesc = () => {};
+        this.chooseWindow = (from, to) => { start = from; end = to; };
+        this.query = () => {
+            assert.equal(filter, query);
+            rows = records.filter(row => row.type === 'Widget').slice(start, end);
+        };
+        this.next = () => index < rows.length ? (this.row = rows[index++], true) : false;
+        this.getUniqueValue = () => this.row.id;
+        this.getValue = field => ({ update_set: setId, target_name: 'Widget', name: 'Widget' })[field] || '';
+    } });
+    api._rules = () => ({ groups: [] });
+    api._target = () => null;
+    const rows = [];
+    for (const offset of [0, 100]) {
+        api.getParameter = key => ({ list_query: query, offset: String(offset) })[key];
+        const page = api.getListPage();
+        assert.equal(page.success, true);
+        assert.equal(page.hasMore, offset === 0);
+        rows.push(...page.rows);
+    }
+    assert.equal(rows.length, 101);
+    assert.equal(new Set(rows.map(row => row.id)).size, 101);
+    assert.ok(!rows.some(row => row.id === records[101].id));
+    api.getParameter = key => key === 'offset' ? '0' : null;
+    assert.equal(api.getListPage().success, false);
+});
+
+test('clipboard success and failures use notifications without a fallback', async () => {
+    for (const outcome of ['success', 'denied', 'missing', 'throws']) {
+        const notifications = [];
+        const context = { Promise,
+            navigator: outcome === 'missing' ? {} : { clipboard: { writeText: () => {
+                if (outcome === 'throws') throw Error('Clipboard error');
+                return outcome === 'denied' ? Promise.reject(Error('Not allowed')) : Promise.resolve();
+            } } },
+            document: new Proxy({}, { get() { throw Error('No clipboard DOM fallback allowed'); } }),
+            GlideUINotification: function (note) { Object.assign(this, note); },
+            NOW: { CustomEvent: { fireTop: (event, note) => notifications.push({ event, ...note }) } },
+        };
+        vm.createContext(context);
+        vm.runInContext(clientSource, context);
+        context._weLoadMarkdownList = async () => [{table: 'sp_widget', id: 'a', type: 'Widgets', name: 'Widget', ancestors: []}];
+        await context.copyUpdateSetMarkdownPlus({ getTableName: () => 'sys_update_xml', getQuery: () => '' });
+        assert.equal(notifications.length, 1);
+        const type = outcome === 'success' ? 'info' : 'error';
+        assert.equal(notifications[0].event, 'glide:ui_notification.' + type);
+        assert.equal(notifications[0].type, type);
+        assert.equal(notifications[0].text, outcome === 'success' ? 'Markdown copied to clipboard' :
+            'Copy to clipboard failed. Ensure browser permissions allow clipboard access.');
+    }
+});
+
+test('record markers and global deduplication preserve one canonical parent and latest status', () => {
+    const context = { Promise };
     vm.createContext(context);
     vm.runInContext(clientSource, context);
-    await assert.rejects(context._weWriteMarkdownClipboard('- **Records**'), /Automatic copying was blocked/);
-    assert.equal(elements.length, 1);
-    const textarea = elements[0].children[0].children[1];
-    assert.equal(textarea.value, '- **Records**');
-    assert.equal(textarea.selected, true);
+    const parent = {table: 'sp_widget', id: 'p', type: 'Widgets', name: 'Parent', url: '/parent'};
+    const rows = [
+        { ...parent, ancestors: [], action: 'DELETE', updateId: 'newest' },
+        { table: 'sp_ng_template', id: 'c', type: 'Templates', name: 'Child', url: '/child', isNew: true, ancestors: [parent] },
+        { ...parent, ancestors: [], action: 'INSERT_OR_UPDATE', updateId: 'older' },
+        { table: 'sp_ng_template', id: 'c', type: 'Templates', name: 'Old child', ancestors: [] },
+    ];
+    const output = context._weMarkdownText([{rows: rows.slice(0, 2)}, {rows: rows.slice(2)}], 'combined');
+    assert.equal((output.match(/\[Parent\]/g) || []).length, 1);
+    assert.equal((output.match(/\[Child\]/g) || []).length, 1);
+    assert.ok(output.includes('~~[Parent](/parent)~~ 🚮'));
+    assert.ok(output.includes('[Child](/child) 🆕'));
+    assert.ok(!output.includes('Old child'));
+    // Explicit parent updates also win when they follow the child in the list.
+    const reversed = context._weMarkdownText([{rows: [rows[1], rows[0]]}], 'combined');
+    assert.equal((reversed.match(/\[Parent\]/g) || []).length, 1);
+    assert.ok(reversed.includes('~~[Parent](/parent)~~ 🚮'));
+});
+
+test('new markers require insert evidence and never classify deletions or ordinary updates as new', () => {
+    const { api } = server();
+    assert.equal(api._isNewUpdate('INSERT', ''), true);
+    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE', '<sys_mod_count>0</sys_mod_count>'), true);
+    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE', '<sys_mod_count>3</sys_mod_count>'), false);
+    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE', ''), false);
+    assert.equal(api._isNewUpdate('DELETE', '<sys_mod_count>0</sys_mod_count>'), false);
+    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE', '<sys_mod_count>3</sys_mod_count><sys_created_on>2026-09-27 01:00:00</sys_created_on>', '2026-09-27 01:00:00'), true);
+    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE', '<sys_created_on>2026-09-26 01:00:00</sys_created_on>', '2026-09-27 01:00:00'), false);
 });
 
 test('UI placements and admin-only properties page are declared', () => {
@@ -395,6 +492,12 @@ test('UI placements and admin-only properties page are declared', () => {
     const property = fs.readFileSync('src/fluent/generated/properties/system-property/sys_properties_widget_editor_assistant_markdown_groups.now.ts', 'utf8');
     assert.match(copy, /showListChoice: true, showContextMenu: true, showLink: true/);
     assert.match(copy, /roles: \['sp_admin'\]/);
+    assert.equal(fs.existsSync('src/fluent/generated/server-development/ui-action/sys_ui_action_widget_editor_markdown_configure.now.ts'), false);
+    const menu = fs.readFileSync('src/fluent/generated/user-interface/context-menu/sys_ui_context_menu_widget_editor_markdown.now.ts', 'utf8');
+    assert.match(menu, /menu: 'list_header'/);
+    assert.match(menu, /table: 'sys_update_xml'/);
+    assert.match(menu, /copyUpdateSetMarkdownPlus\(g_list\)/);
+
     assert.match(editor, /roles: \['admin'\]/);
     assert.match(page, /widget_editor_plus_properties\.do/);
     const jelly = page.match(/html: `([\s\S]*?)`,\s*clientScript:/)?.[1];
@@ -417,7 +520,7 @@ test('UI placements and admin-only properties page are declared', () => {
     assert.match(client, /saveRules/);
     assert.match(client, /panel panel-default wep-card/);
     assert.match(client, /form-control wep-value/);
-    assert.match(client, /panel-title wep-property-name', property\.name/);
+    assert.match(client, /panel-title wep-property-name/);
     assert.doesNotMatch(client, /function title\(/);
     assert.match(client, /language: 'json'/);
     assert.match(client, /monaco\.editor\.create\(host/);
@@ -436,7 +539,11 @@ test('JSON property renders one visible editor and grows only to half the viewpo
         insertBefore(child, before) { child.parentNode = this; this.children.splice(this.children.indexOf(before), 0, child); }
         setAttribute(name, value) { (this.attributes ||= {})[name] = value; }
         getAttribute(name) { return (this.attributes || {})[name]; }
+        focus() {}
         remove() { this.parentNode.children.splice(this.parentNode.children.indexOf(this), 1); }
+        querySelector(selector) {
+            return selector === 'textarea, [role="textbox"]' ? this.children.find(child => child.tagName === 'TEXTAREA') : null;
+        }
         querySelectorAll(selector) {
             const wanted = selector.slice(1), found = [];
             function visit(node) {
@@ -452,25 +559,46 @@ test('JSON property renders one visible editor and grows only to half the viewpo
     const roots = Object.fromEntries(['wep-sections', 'wep-nav', 'wep-message', 'wep-search', 'wep-table-options']
         .map(id => [id, new Node('div')]));
     roots['wep-search'].value = '';
-    const frames = [], listeners = {};
-    let contentHeight = 40, contentChanged;
-    const editor = { getValue: () => '{}', setValue() {}, getContentHeight: () => contentHeight,
-        onDidChangeModelContent() {}, onDidContentSizeChange: callback => { contentChanged = callback; },
-        layout() {}, dispose() {} };
-    const window = { innerHeight: 300, location: { origin: 'https://example.service-now.com' },
+    const frames = [], listeners = {}, modals = [];
+    const jq = node => mockBootstrapModal(node,modals); jq.fn = {modal(){}};
+    let contentHeight = 40, contentChanged, modelChanged, editorValue = '{"color":"red"}';
+    const editor = { getValue: () => editorValue, setValue(value) { editorValue = value; }, getContentHeight: () => contentHeight,
+        onDidChangeModelContent(callback) { modelChanged = callback; }, onDidContentSizeChange: callback => { contentChanged = callback; },
+        layout() {}, dispose() {}, onDidFocusEditorText() {} };
+    const window = { $j:jq, innerHeight: 300, location: { origin: 'https://example.service-now.com' },
         requestAnimationFrame: callback => frames.push(callback), addEventListener: (name, callback) => { listeners[name] = callback; },
         getComputedStyle: () => ({ getPropertyValue: () => '255 255 255' }),
-        monaco: { editor: { create: () => editor } } };
-    const document = { readyState: 'complete', documentElement: new Node('html'),
+        monaco: { editor: { create: host => {
+            const field = new Node('textarea');
+            field.setAttribute('aria-describedby', 'monaco-help');
+            host.appendChild(field);
+            return editor;
+        } } } };
+    const document = { body:new Node('body'), readyState: 'complete', documentElement: new Node('html'),
         getElementById: id => roots[id], createElement: tag => new Node(tag) };
+    let savedHierarchy = {a: ['b']}, lastHierarchySave;
     function GlideAjax() {
-        this.addParam = () => {};
-        this.getXMLAnswer = callback => callback(JSON.stringify({ success: true, properties: [{
-            name: 'monaco.plus.css.variables', value: '{"color":"red"}', description: '', type: 'string',
-        }, {
-            name: 'monaco.plus.update_sets.markdown_groups', value: '{"version":1,"groups":[]}',
-            description: 'Update set Markdown grouping rules', type: 'string',
-        }] }));
+        const params = {};
+        this.addParam = (name,value) => { params[name] = value; };
+        this.getXMLAnswer = callback => {
+            let result = {success: true};
+            if (params.sysparm_name === 'getProperties') result.properties = [{
+                name: 'monaco.plus.css.variables', value: '{"color":"red"}', description: '', type: 'string',
+            }, {
+                name: 'monaco.plus.update_sets.markdown_groups', value: JSON.stringify(savedHierarchy),
+                description: 'Update set Markdown grouping rules', type: 'string',
+            }];
+            if (params.sysparm_name === 'getRules') {
+                const config = params.rules ? JSON.parse(params.rules) : savedHierarchy;
+                const {api} = groupServer();
+                result = {success:true, config, rules:api._buildGroupRules(config)};
+            }
+            if (params.sysparm_name === 'saveRules') {
+                lastHierarchySave = JSON.parse(params.rules);
+                savedHierarchy = lastHierarchySave;
+            }
+            callback(JSON.stringify(result));
+        };
     }
     const context = { window, document, GlideAjax, Promise, Blob: function () {}, Worker: function () {}, URL,
         setTimeout, clearTimeout, console };
@@ -479,13 +607,29 @@ test('JSON property renders one visible editor and grows only to half the viewpo
     await new Promise(resolve => setImmediate(resolve));
     while (frames.length) frames.shift()();
     assert.deepEqual(roots['wep-sections'].children.map(section => section.getAttribute('data-feature')),
-        ['Widget Editor+', 'Update Set Markdown']);
+        ['Widget Editor+', 'Assistant+', 'Code Search+', 'Update Set Markdown']);
     const card = roots['wep-sections'].querySelectorAll('.wep-card')[0];
     const title = card.querySelectorAll('.wep-property-name')[0];
     const fallback = card.querySelectorAll('.wep-json-fallback')[0];
     const host = card.querySelectorAll('.wep-monaco')[0];
     assert.equal(title.textContent, 'monaco.plus.css.variables');
     assert.equal(fallback.hidden, true);
+    assert.equal(fallback.style.display, 'none');
+    const counter = card.querySelectorAll('.wep-character-count')[0];
+    assert.equal(counter.tagName, 'SMALL');
+    assert.equal(counter.getAttribute('aria-label'), undefined);
+    assert.equal(fallback.getAttribute('aria-describedby'), counter.id);
+    assert.equal(host.children[0].getAttribute('aria-describedby'), 'monaco-help ' + counter.id);
+    assert.equal(counter.textContent, '15 / 4000');
+    editorValue = 'x'.repeat(4001);
+    modelChanged();
+    assert.equal(counter.textContent, '4001 / 4000');
+    assert.match(counter.className, /text-danger/);
+    editorValue = '{}';
+    modelChanged();
+    assert.equal(counter.textContent, '2 / 4000');
+    assert.doesNotMatch(counter.className, /text-danger/);
+
     assert.equal(host.style.height, '76px');
     contentHeight = 260;
     contentChanged();
@@ -493,18 +637,56 @@ test('JSON property renders one visible editor and grows only to half the viewpo
     window.innerHeight = 800;
     listeners.resize();
     assert.equal(host.style.height, '262px');
+    // The hierarchy remains one editor, with the same Save/Revert actions as other properties.
+    window.monaco = null;
+    const hierarchy = roots['wep-sections'].querySelectorAll('.wep-card').find(card => card._prop.name === 'monaco.plus.update_sets.markdown_groups');
+    function descendants(node) { return node.children.flatMap(child => [child, ...descendants(child)]); }
+    const save = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Save property');
+    const revert = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Revert');
+    assert.ok(save && revert);
+    assert.equal(descendants(hierarchy).some(node => node.textContent === 'Save hierarchy'), false);
+    const toggle = descendants(hierarchy).find(node => node.tagName === 'A' && node.textContent === 'Switch to JSON');
+    toggle.onclick({preventDefault() {}});
+    const json = hierarchy.querySelectorAll('.wep-json-fallback')[0];
+    assert.deepEqual(JSON.parse(json.value), {a:['b']});
+    json.value = '{"a":["c"]}'; json.oninput();
+    assert.equal(save.disabled, false);
+    revert.onclick();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(JSON.parse(json.value), {a:['b']});
+    assert.equal(save.disabled, true);
+    json.value = '{"b":["c"]}'; json.oninput(); save.onclick();
+    assert.equal(lastHierarchySave,undefined);
+    assert.equal(modals.length,1);
+    modalButton(modals.at(-1),'Cancel').onclick();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(lastHierarchySave,undefined);
+    assert.equal(save.disabled,false);
+    save.onclick(); modalButton(modals.at(-1),'Remove').onclick();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(lastHierarchySave, {b:['c']});
+    json.value = '{bad'; json.oninput();
+    assert.equal(save.disabled, true);
+    revert.onclick();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(JSON.parse(json.value), {b:['c']});
+    json.value='{"b":["c"],"c":["d"]}'; json.oninput();
+    const count = hierarchy.parentNode.querySelectorAll('.wep-section-count')[0];
+    assert.equal(count.textContent,'1 property');
+    save.onclick(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(count.textContent,'2 properties');
+
 });
 
 
-test('export never discovers relationships for empty, malformed or saved hierarchies', () => {
-    for (const value of ['', '{', '{}', '{"version":1,"groups":[]}',
-        '{"version":1,"groups":[{"id":"widget","table":"sp_widget","label":"Widgets","children":[]}]}']) {
-        const { api } = server({ gs: { getProperty: () => value } });
-        api._defaultRules = api._relatedTables = () => { throw Error('Unexpected automatic discovery'); };
-        const rules = api._rules();
-        assert.equal(rules.groups.length, value.includes('sp_widget') ? 1 : 0);
-        if (rules.groups.length) assert.equal(rules.groups[0].children.length, 0);
-    }
+test('export includes only explicitly configured children and ignores cleared properties', () => {
+    const { api } = groupServer({ a: '["b"]', b: '', c: '' });
+    const calls = [];
+    api._referenceField = (parent, child) => { calls.push([parent, child]); return 'parent'; };
+    const rules = api._rules();
+    assert.deepEqual(Array.from(rules.groups, node => node.table), ['a']);
+    assert.deepEqual(Array.from(rules.groups[0].children, node => node.table), ['b']);
+    assert.deepEqual(calls, [['a', 'b']]);
 });
 
 test('unlisted tables do not inherit grouping from a configured base table', () => {
@@ -558,22 +740,19 @@ test('property values enforce 4000 characters even when dictionary allows more',
     assert.equal(saved.length, 4000);
 });
 
-test('hierarchy limit checks the final serialised property value', () => {
-    let saved = '';
-    const { api } = server({ gs: { hasRole: () => true, setProperty: (_name, value) => { saved = value; } } });
-    const prefix = '{"version":1,"groups":[],"extra":"';
-    let raw = prefix + 'x'.repeat(4000 - prefix.length - 2) + '"}';
-    api.getParameter = () => raw;
-    assert.equal(raw.length, 4000);
+test('hierarchy limits apply per stored array, not the combined JSON', () => {
+    const { api, saved } = groupServer();
+    api._buildGroupRules = () => ({groups: []});
+    const children = Array.from({length: 60}, (_, i) => 'table_' + String(i).padStart(50, 'a'));
+    const config = {a: children, b: children.map(name => name + 'b')};
+    assert.ok(JSON.stringify(config).length > 4000);
+    api.getParameter = () => JSON.stringify(config);
     assert.equal(api.saveRules().success, true);
-    assert.equal(saved.length, 4000);
-    raw = raw.slice(0, -2) + 'x"}';
+    assert.ok(Object.values(saved).every(value => value.length <= 4000));
+    const snapshot = JSON.stringify(saved);
+    api.getParameter = () => JSON.stringify({a: children.concat(children)});
     assert.equal(api.saveRules().success, false);
-    raw = '{"version":1,"groups":[],"extra":[' + Array(800).fill('1e3').join(',') + ']}';
-    assert.ok(raw.length < 4000);
-    assert.ok(JSON.stringify(JSON.parse(raw)).length > 4000);
-    assert.equal(api.saveRules().success, false);
-    assert.equal(saved.length, 4000);
+    assert.equal(JSON.stringify(saved), snapshot);
 });
 
 function displayServer() {
@@ -628,7 +807,7 @@ test('display fields validate reference dot walks and reject unknown or non-refe
     api.getParameter = key => key === 'property_name' ? 'monaco.plus.update_sets.markdown_display' :
         JSON.stringify({ sys_security_acl_role: { display: 'sys_user_role.name', secondary: ['name'] } });
     assert.equal(api.saveProperty().success, true);
-    assert.equal(writes(), 1);
+    assert.equal(writes(), 2);
 });
 
 test('display export resolves dot walks securely and preserves secondary order', () => {
@@ -650,4 +829,457 @@ test('Markdown appends escaped secondary values to both parents and records', ()
     const result = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
     assert.ok(result.includes('[Parent](/parent) value'));
     assert.ok(result.includes('[Child](/child) one \\| two | \\<three\\>'));
+});
+
+
+test('shipped grouping defaults use only child table arrays and stay well below the limit', () => {
+    const parents = ['sys_security_acl', 'sys_user_group', 'sc_cat_item_producer', 'sp_widget', 'item_option_new', 'catalog_ui_policy', 'kb_knowledge', 'sp_page', 'sp_container', 'sp_row', 'sp_column', 'sys_ui_policy', 'sp_theme', 'sys_ui_action'];
+    const counts = [1, 1, 22, 4, 1, 1, 2, 3, 1, 1, 1, 2, 4, 2];
+    parents.forEach((table, index) => {
+        const source = fs.readFileSync('src/fluent/generated/properties/system-property/sys_properties_widget_editor_markdown_groups_' + table + '.now.ts', 'utf8');
+        const value = source.match(/value: `([\s\S]*?)`,/)[1];
+        assert.ok(value.length < 700);
+        const children = JSON.parse(value);
+        assert.equal(children.length, counts[index]);
+        assert.ok(children.every(child => typeof child === 'string'));
+    });
+});
+
+function groupServer(initial = {}) {
+    const prefix = 'monaco.plus.update_sets.markdown_groups.';
+    const saved = {};
+    const values = Object.fromEntries(Object.entries(initial).map(([table,value]) => [prefix + table,value]));
+    const { api } = server({
+        gs: { hasRole: () => true, getProperty: name => values[name] || '', setProperty: (name,value) => { saved[name] = value; values[name] = value; } },
+        GlideRecordSecure: function (table) {
+            let queryPrefix = '', rows = [], index = -1, data = {}, currentName;
+            this.addQuery = (_name, op, value) => { queryPrefix = value || ''; };
+            this.query = () => { rows = Object.keys(values).filter(name => name.startsWith(queryPrefix)); index = -1; };
+            this.orderBy = () => {};
+            this.next = () => table === 'sys_properties' && ++index < rows.length;
+            this.getValue = field => field === 'name' ? rows[index] : field === 'value' ? values[rows[index]] : '';
+            this.get = (_field, name) => { currentName = name; return table === 'sys_db_object' ? name !== 'missing' : Object.hasOwn(values, name); };
+            this.deleteRecord = () => { delete values[currentName]; return true; };
+            this.initialize = () => {};
+            this.setValue = (field,value) => { data[field] = value; };
+            this.insert = () => { values[data.name] = data.value; return 'new-id'; };
+        },
+    });
+    api._tableLabel = table => table.toUpperCase();
+    api._referenceField = () => 'parent';
+    return {api, saved, values};
+}
+
+test('saving combined config splits parents, deletes removed properties and creates no leaf property', () => {
+    const {api,saved,values} = groupServer({a: '["b"]', removed: '["c"]'});
+    api.getParameter = () => JSON.stringify({a: ['b'], b: ['c']});
+    assert.equal(api.saveRules().success, true);
+    const prefix = api.GROUPS_PREFIX;
+    assert.deepEqual(JSON.parse(saved[prefix + 'a']), ['b']);
+    assert.deepEqual(JSON.parse(saved[prefix + 'b']), ['c']);
+    assert.equal(Object.hasOwn(values, prefix + 'removed'), false);
+    assert.equal(Object.hasOwn(values, prefix + 'c'), false);
+    const rules = api._rules();
+    assert.equal(rules.groups.length, 1);
+    assert.equal(rules.groups[0].children[0].children[0].table, 'c');
+    const properties = api.getProperties().properties;
+    assert.equal(properties.filter(property => property.name === api.RULES_PROPERTY).length, 1);
+    assert.equal(properties.filter(property => property.name.startsWith(prefix)).length, 0);
+    assert.deepEqual(JSON.parse(properties.find(property => property.name === api.RULES_PROPERTY).value), {a:['b'],b:['c']});
+});
+
+test('previewing combined JSON resolves fields without saving', () => {
+    const {api,saved} = groupServer({a: '["b"]'});
+    api.getParameter = () => JSON.stringify({b:['c']});
+    const result = api.getRules();
+    assert.equal(result.success, true);
+    assert.equal(result.rules.groups[0].children[0].field, 'parent');
+    assert.deepEqual(saved, {});
+});
+
+
+test('legacy migration preserves configured nesting, omits leaves, retains existing values and is repeatable', () => {
+    const source = fs.readFileSync('src/fluent/generated/server-development/fix-script/widget_editor_markdown_groups_migrate.server.js','utf8');
+    const legacy = 'monaco.plus.update_sets.markdown_groups';
+    const values = {[legacy]: JSON.stringify({version:1,groups:[
+        {table:'a',children:[{table:'b',children:[{table:'c',children:[]}]}]},
+        {table:'sp_widget',children:[{table:'sp_ng_template',children:[]}]},
+    ]}), [legacy+'.sp_widget']: '["existing_widget_child"]'};
+    const context = {gs:{getProperty:name=>values[name] || '',setProperty:(name,value)=>{values[name]=value;}},
+        GlideRecord: function () {
+            let data = {};
+            this.get=(_field,name)=>Object.hasOwn(values,name);
+            this.initialize=()=>{};
+            this.setValue=(field,value)=>{data[field]=value;};
+            this.insert=()=>{values[data.name]=data.value;return 'id';};
+        }};
+    vm.createContext(context);
+    vm.runInContext(source,context);
+    assert.deepEqual(JSON.parse(values[legacy+'.a']),['b']);
+    assert.deepEqual(JSON.parse(values[legacy+'.b']),['c']);
+    assert.equal(Object.hasOwn(values,legacy+'.c'),false);
+    assert.equal(values[legacy+'.sys_security_acl'],'');
+    assert.equal(values[legacy+'.sp_widget'],'["existing_widget_child"]');
+    assert.equal(values[legacy],'');
+    const snapshot=JSON.stringify(values);
+    vm.runInContext(source,context);
+    assert.equal(JSON.stringify(values),snapshot);
+});
+
+test('table property rows validate before writes, save individually and delete properties', () => {
+    const values = {}, writes = [];
+    const fields = {widget: ['name','script','sys_id'], child: ['name','parent','sys_id']};
+    const {api} = server({
+        gs: {hasRole: () => true, setProperty: (name,value) => { values[name] = value; }},
+        GlideRecordSecure: function (table) {
+            let name, data = {};
+            this.get = (_field, value) => { name = value; return table === 'sys_db_object' ? !!fields[value] : Object.hasOwn(values,value); };
+            this.isValidField = field => (fields[table] || []).includes(field);
+            this.initialize = () => {};
+            this.setValue = (key,value) => { data[key] = value; };
+            this.insert = this.update = () => { writes.push(data); values[data.name || name] = data.value; return 'id'; };
+            this.deleteRecord = () => { delete values[name]; return true; };
+        },
+    });
+    let params = {kind:'display_fields', table:'widget', property_value:' name,script,name '};
+    api.getParameter = name => params[name];
+    assert.equal(api.saveTableProperty().success,true);
+    assert.equal(values['monaco.plus.code_search.display_fields.widget'],'name,script');
+    for (const change of [{table:'missing'}, {property_value:'name,bad'}, {property_value:'name,'}]) {
+        const original = params; params = {...params,...change};
+        assert.equal(api.saveTableProperty().success,false); params = original;
+    }
+    assert.equal(writes.length,1);
+    params = {kind:'table_config',table:'widget',description:'Example',property_value:JSON.stringify({rules:[{type:'child_reference',relatedTable:'child',relatedField:'parent',then:[{type:'reference_field',sourceField:'parent',relatedTable:'widget'}]}],pickerFields:['name']})};
+    assert.equal(api.saveTableProperty().success,true);
+    assert.equal(writes[1].description,'Example');
+    for (const config of [[], {unknown:[]}, {rules:{}}, {pickerFields:['bad']}, {rules:[{type:'wrong'}]}, {rules:[{type:'token',sourceField:'script',relatedTable:'child',pattern:'['}]}, {rules:[{type:'child_reference',relatedTable:'child',relatedField:'parent',then:[{type:'reference_field',sourceField:'bad',relatedTable:'widget'}]}]}]) {
+        params.property_value = JSON.stringify(config);
+        assert.equal(api.saveTableProperty().success,false, JSON.stringify(config));
+    }
+    assert.equal(writes.length,2);
+    assert.equal(api.deleteTableProperty().success,true);
+    assert.equal(Object.hasOwn(values,'monaco.plus.assistant.table_config.widget'),false);
+    assert.equal(Object.hasOwn(values,'monaco.plus.code_search.display_fields.widget'),true);
+    params.kind = 'arbitrary';
+    assert.equal(api.deleteTableProperty().success,false);
+});
+
+test('table row APIs require admin', () => {
+    const {api} = server();
+    assert.equal(api.saveTableProperty().success,false);
+    assert.equal(api.deleteTableProperty().success,false);
+});
+
+test('combined Markdown display saves separate tables, removes omitted tables and migrates legacy only after validation', () => {
+    const {api, values, saved} = groupServer();
+    api._fieldPath = (_table, field) => field === 'bad' ? null : [{}];
+    const prefix = api.DISPLAY_PROPERTY + '.';
+    values[api.DISPLAY_PROPERTY] = '{}';
+    values[prefix + 'removed'] = '{"display":"name"}';
+    const config = {one:{display:'name',secondary:Array(350).fill('description')},two:{display:'name',secondary:['name']}};
+    api.getParameter = key => key === 'property_name' ? api.DISPLAY_PROPERTY : JSON.stringify(config);
+    assert.equal(api.saveProperty().success,false);
+    assert.deepEqual(saved,{});
+    config.one.secondary = Array(120).fill('description');
+    config.two.secondary = Array(120).fill('description');
+    assert.ok(JSON.stringify(config,null,4).length > 4000);
+    assert.equal(api.saveProperty().success,true);
+    const expected = Object.fromEntries(Object.entries(config).map(([table,value]) => [table,{display_value:value.display,additional_fields:value.secondary.join(',')}]));
+    assert.deepEqual(JSON.parse(values[prefix + 'one']),expected.one);
+    assert.deepEqual(JSON.parse(values[prefix + 'two']),expected.two);
+    assert.equal(Object.hasOwn(values,prefix + 'removed'),false);
+    assert.equal(values[api.DISPLAY_PROPERTY],'');
+    assert.deepEqual(JSON.parse(JSON.stringify(api._displayConfigs())),expected);
+    const properties = api.getProperties().properties;
+    assert.equal(properties.filter(p => p.name === api.DISPLAY_PROPERTY).length,1);
+    assert.equal(properties.some(p => p.name.startsWith(prefix)),false);
+});
+
+test('property tables render row saves and remove the saved property only after server success', async () => {
+    class Node {
+        constructor(tag) { this.tagName = tag.toUpperCase(); this.children = []; this.style = {}; this.className = ''; this._text = ''; }
+        set textContent(value) { this._text = value; this.children = []; }
+        get textContent() { return this._text; }
+        appendChild(child) { child.parentNode = this; this.children.push(child); return child; }
+        insertBefore(child,before) { child.parentNode = this; this.children.splice(this.children.indexOf(before),0,child); }
+        setAttribute(name,value) { (this.attributes ||= {})[name] = value; }
+        getAttribute(name) { return (this.attributes || {})[name]; }
+        focus() {}
+        remove() { this.parentNode.children.splice(this.parentNode.children.indexOf(this),1); }
+        querySelector() { return null; }
+        querySelectorAll(selector) { return descendants(this).filter(n => n.className.split(' ').includes(selector.slice(1))); }
+    }
+    function descendants(node) { return node.children.flatMap(child => [child,...descendants(child)]); }
+    const roots = Object.fromEntries(['wep-sections','wep-nav','wep-message','wep-search'].map(id => [id,new Node('div')]));
+    roots['wep-search'].value = '';
+    const requests = [], frames = [], pickers = [], modals = [];
+    function jq(node) {
+        if (node.className === 'modal fade') return mockBootstrapModal(node,modals);
+        const picker = {node, select2(command, value) {
+            if (typeof command === 'object') this.options = command;
+            if (command === 'data') node.value = value.id;
+            if (command === 'enable') this.enabled = value;
+            return this;
+        },on(_event,callback) { this.change = callback; },off() {}};
+        pickers.push(picker); return picker;
+    }
+    jq.fn = {select2(){},modal(){}};
+    let rejectDelete = true;
+    function GlideAjax() {
+        const params = {}; this.addParam = (key,value) => { params[key] = value; };
+        this.getXMLAnswer = callback => {
+            requests.push(params);
+            if (params.sysparm_name === 'getProperties') callback(JSON.stringify({success:true, properties:[
+                {name:'monaco.plus.code_search.display_fields.widget',value:'name',description:'',type:'string'},
+                {name:'monaco.plus.code_search.display_fields.other',value:'name',description:'',type:'string'},
+                {name:'monaco.plus.assistant.table_config.widget',value:'{"rules":[]}',description:'Example',type:'string'},
+                {name:'monaco.plus.update_sets.markdown_display',value:'{"widget":{"display_value":"name","additional_fields":"script"}}',description:'',type:'string'}
+            ]}));
+            else callback(JSON.stringify(params.sysparm_name === 'deleteTableProperty' && rejectDelete ? {success:false,error:'Denied'} : {success:true,value:params.property_value}));
+        };
+    }
+    const context = {window:{$j:jq,innerHeight:800,requestAnimationFrame:f=>frames.push(f),addEventListener(){}},
+        document:{body:new Node('body'),readyState:'complete',getElementById:id=>roots[id],createElement:tag=>new Node(tag)},GlideAjax,Promise,setTimeout:()=>{},console};
+    vm.createContext(context); vm.runInContext(fs.readFileSync('src/fluent/generated/other/sys-ui-page/widget_editor_plus_properties.client.js','utf8'),context);
+    const tick = () => new Promise(resolve=>setImmediate(resolve)); await tick();
+    context.window.monaco = {editor:{create(_host,options) {
+        let value = options.value;
+        return {getValue:()=>value,setValue:v=>{value=v;},onDidFocusEditorText(){},onDidChangeModelContent(){},
+            onDidContentSizeChange(){},getContentHeight:()=>100,layout(){},dispose(){},updateOptions(){}};
+    }}};
+    while (frames.length) frames.shift()();
+    const cards = roots['wep-sections'].querySelectorAll('.wep-card');
+    assert.equal(cards.length,3);
+    const code = cards.find(c=>c._prop.kind==='display_fields'), assistant = cards.find(c=>c._prop.kind==='table_config');
+    assert.deepEqual(descendants(code).filter(n=>n.tagName==='TH').map(n=>n.textContent),['Table','Fields','Actions']);
+    assert.deepEqual(descendants(assistant).filter(n=>n.tagName==='TH').map(n=>n.textContent),['Table','Description','JSON','Actions']);
+    assert.ok(cards.every(c=>c._prop.name.endsWith('.*')));
+    const jsonFallback = descendants(assistant).find(n=>n.getAttribute('aria-label')==='JSON');
+    assert.ok(jsonFallback.className.includes('wep-json-fallback'));
+    assert.equal(jsonFallback.hidden,true); assert.equal(jsonFallback.style.display,'none');
+    assert.equal(assistant.querySelectorAll('.wep-monaco').length,1);
+    assert.equal(pickers.length,4);
+    assert.ok(pickers.every(p=>p.node.type==='hidden' && p.options.query && !p.enabled));
+    const markdown = cards.find(c=>c._prop.kind==='markdown_display');
+    assert.deepEqual(descendants(markdown).filter(n=>n.tagName==='TH').map(n=>n.textContent),['Table','Display field','Additional fields','Actions']);
+    const displayInput = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Display field');
+    const extraInput = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Additional fields');
+    assert.equal(displayInput.tagName,'INPUT'); assert.equal(extraInput.tagName,'INPUT');
+    extraInput.value='script,name'; extraInput.oninput();
+    descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property').onclick(); await tick();
+    assert.equal(requests.at(-1).kind,'markdown_display');
+    assert.deepEqual(JSON.parse(requests.at(-1).property_value),{display_value:'name',additional_fields:'script,name'});
+    requests.length=0;
+    const codeCount = code.parentNode.querySelectorAll('.wep-section-count')[0];
+    const codeNavCount = roots['wep-nav'].children.find(n=>n.getAttribute('data-feature')==='Code Search+').querySelectorAll('.wep-nav-count')[0];
+    assert.equal(codeCount.textContent,'2 properties'); assert.equal(codeNavCount.textContent,'2');
+    const row = descendants(code).find(n=>n.tagName==='TBODY').children[0];
+    const input = descendants(row).find(n=>n.getAttribute('aria-label')==='Fields');
+    assert.equal(input.tagName,'INPUT');
+    const save = descendants(row).find(n=>n.getAttribute('aria-label')==='Save property');
+    const remove = descendants(row).find(n=>n.getAttribute('aria-label')==='Remove table');
+    input.value='name,script'; input.oninput(); save.onclick(); await tick();
+    assert.equal(requests.filter(r=>r.sysparm_name==='saveTableProperty').length,1);
+    assert.equal(requests.at(-1).kind,'display_fields');
+    assert.equal(save.disabled,true);
+    const beforeDelete = requests.length;
+    remove.onclick(); await tick(); assert.equal(requests.length,beforeDelete);
+    assert.equal(modals.length,1);
+    assert.equal(modals[0].getAttribute('role'),'dialog');
+    assert.ok(descendants(modals[0]).some(n=>n.textContent==='monaco.plus.code_search.display_fields.widget'));
+    modalButton(modals[0],'Cancel').onclick(); await tick();
+    assert.equal(requests.length,beforeDelete); assert.ok(row.parentNode.children.includes(row));
+    remove.onclick(); modalButton(modals.at(-1),'Remove').onclick(); await tick();
+    assert.ok(row.parentNode.children.includes(row), 'failed deletion keeps row');
+    rejectDelete=false; remove.onclick(); modalButton(modals.at(-1),'Remove').onclick(); await tick(); assert.equal(row.parentNode.children.includes(row),false);
+    const add = descendants(code).find(n=>n.tagName==='BUTTON' && n.textContent==='Add table');
+    add.onclick();
+    assert.equal(codeCount.textContent,'1 property'); assert.equal(codeNavCount.textContent,'1');
+    const newRow = descendants(code).find(n=>n.tagName==='TBODY').children.at(-1);
+    const before = requests.length, modalCount = modals.length;
+    descendants(newRow).find(n=>n.getAttribute('aria-label')==='Remove table').onclick();
+    assert.equal(requests.length,before);
+    assert.equal(modals.length,modalCount);
+    assert.equal(codeNavCount.textContent,'1');
+    add.onclick();
+    const created = descendants(code).find(n=>n.tagName==='TBODY').children.at(-1);
+    const tablePicker = pickers.at(-1); tablePicker.node.value='new_table'; tablePicker.change();
+    const fields = descendants(created).find(n=>n.getAttribute('aria-label')==='Fields');fields.value='name';fields.oninput();
+    descendants(created).find(n=>n.getAttribute('aria-label')==='Save property').onclick();await tick();
+    assert.equal(codeCount.textContent,'2 properties'); assert.equal(codeNavCount.textContent,'2');
+});
+
+test('list query preserves fixed filters and related-list constraints using the instance API', () => {
+    const context = {}; vm.createContext(context); vm.runInContext(clientSource,context);
+    // GlideList2.getQuery accepts one options object; related-list scope is separate.
+    function list(filter, fixed, related) {
+        return {
+            getQuery(options) { return [options.fixed ? fixed : '',filter].filter(Boolean).join('^'); },
+            getRelated: () => related ? 'sys_update_xml.update_set' : '',
+            getRelatedQuery: () => related,
+        };
+    }
+    const set = 'update_set=' + 'a'.repeat(32);
+    assert.equal(context._weMarkdownListQuery(list(set,'','')),set);
+    assert.equal(context._weMarkdownListQuery(list('type=Widget',set,'')),set+'^type=Widget');
+    assert.equal(context._weMarkdownListQuery(list('','',set)),set);
+    assert.equal(context._weMarkdownListQuery(list('type=Widget','action=DELETE',set)),set+'^action=DELETE^type=Widget');
+    assert.equal(context._weMarkdownListQuery(list('type=Widget^NQtype=Business Rule','',set)),set+'^type=Widget^NQ'+set+'^type=Business Rule');
+    assert.equal(context._weMarkdownListQuery(list('target_nameLIKEa^^NQb','',set)),set+'^target_nameLIKEa^^NQb');
+    assert.equal(context._weMarkdownListQuery(list('update_setINa,b','','')),'update_setINa,b');
+    assert.equal(context._weMarkdownListQuery(list('','','')),'');
+    assert.throws(()=>context._weMarkdownListQuery({getQuery:()=>'',getRelated:()=> 'sys_update_xml.update_set',getRelatedQuery:()=>null}),/related-list query is unavailable/);
+    assert.throws(()=>context._weMarkdownListQuery({getQuery:()=>undefined}),/query is unavailable/);
+});
+
+test('list action captures its query before ServiceNow resets g_list and respects the clicked list', async () => {
+    const requests = [], errors = [];
+    const makeList = query => ({getTableName:()=> 'sys_update_xml',getQuery:()=>query});
+    const list = makeList('update_set=current'), stale = makeList(''), element = {nodeType:1};
+    const context = {Promise,g_list:list,GlideLists2:{current:list,other:stale},
+        GlideList2:{get:source => source === element ? list : null},
+        GlideUINotification:function(note){if(note.type==='error')errors.push(note.text);}, NOW:{CustomEvent:{fireTop(){}}}};
+    vm.createContext(context); vm.runInContext(clientSource,context);
+    context._weMarkdownAjax = async (_method,params) => { requests.push(params.list_query); return {rows:[{table:'sp_widget',id:'1',name:'Test',type:'Widget',ancestors:[],secondary:[]}],hasMore:false}; };
+    context._weWriteMarkdownClipboard = async ()=>{};
+    const pending = context.copyUpdateSetMarkdownPlus();
+    context.g_list = null;
+    await pending;
+    assert.deepEqual(requests,['update_set=current']);
+    context.g_list = stale;
+    await context.copyUpdateSetMarkdownPlus(stale,element);
+    assert.deepEqual(requests,['update_set=current','update_set=current']);
+    context.g_list = null;
+    await context.copyUpdateSetMarkdownPlus();
+    assert.equal(requests.length,2);
+    assert.match(errors[0],/list could not be found/);
+});
+
+test('Markdown display rows validate fields, save string-based JSON and delete legacy and per-table entries', () => {
+    const legacyName = 'monaco.plus.update_sets.markdown_display';
+    const values = {[legacyName]:JSON.stringify({widget:{display:'name',secondary:['script']},other:{display:'name',secondary:[]}})}, writes = [];
+    const {api} = server({
+        gs:{hasRole:()=>true,getProperty:name=>values[name] || '',setProperty:(name,value)=>{values[name]=value;}},
+        GlideRecordSecure:function(table) {
+            let name, data={};
+            this.get=(_field,value)=>{name=value;return table==='sys_db_object' ? ['widget','other'].includes(value) : Object.hasOwn(values,value);};
+            this.initialize=()=>{};this.setValue=(key,value)=>{data[key]=value;};
+            this.insert=this.update=()=>{writes.push(data);values[data.name || name]=data.value;return 'id';};
+            this.deleteRecord=()=>{delete values[name];return true;};
+        }
+    });
+    api._fieldPath=(table,field)=>['widget','other'].includes(table) && ['name','script','owner.name'].includes(field) ? [{}] : null;
+    let params={kind:'markdown_display',table:'widget',property_value:JSON.stringify({display_value:'owner.name',additional_fields:'script, name'})};
+    api.getParameter=key=>params[key];
+    assert.equal(api.saveTableProperty().success,true);
+    const name=legacyName+'.widget';
+    assert.deepEqual(JSON.parse(values[name]),{display_value:'owner.name',additional_fields:'script, name'});
+    assert.deepEqual(Object.keys(JSON.parse(values[legacyName])),['other']);
+    for (const config of [{display_value:'missing',additional_fields:''},{display_value:'name',additional_fields:'bad'},
+        {display_value:'name',additional_fields:['script']},{display_value:'name',additional_fields:'name,'},{display_value:'name',additional_fields:'',unknown:true}]) {
+        params.property_value=JSON.stringify(config);assert.equal(api.saveTableProperty().success,false);
+    }
+    params.table='missing'; params.property_value='{"display_value":"name","additional_fields":""}';
+    assert.equal(api.saveTableProperty().success,false); assert.equal(writes.length,1);
+    params.table='widget'; assert.equal(api.deleteTableProperty().success,true);assert.equal(Object.hasOwn(values,name),false);
+    params.table='other'; assert.equal(api.deleteTableProperty().success,true);assert.equal(values[legacyName],'');
+});
+
+test('Knowledge, page and UI policy defaults form one consistent hierarchy', () => {
+    const directory = 'src/fluent/generated/properties/system-property/';
+    const configs = {};
+    for (const file of fs.readdirSync(directory).filter(name => /^sys_properties_widget_editor_markdown_groups_.*\.now\.ts$/.test(name))) {
+        const source = fs.readFileSync(directory + file,'utf8');
+        configs[source.match(/name: 'monaco.plus.update_sets.markdown_groups.([^']+)'/)[1]] = JSON.parse(source.match(/value: `([\s\S]*?)`,/)[1]);
+    }
+    assert.deepEqual(configs.kb_knowledge,['kb_version','kb_knowledge_summary']);
+    assert.deepEqual(configs.sp_page,['sp_container','sp_metatag','sp_page_title_variable']);
+    assert.deepEqual(configs.sys_ui_policy,['sys_ui_policy_action','sys_ui_policy_rl_action']);
+    assert.deepEqual(configs.sys_ui_action,['sys_ui_action_view','sys_ui_action_role']);
+    const {api} = groupServer();
+    const rules = api._buildGroupRules(configs);
+    let parent = rules.groups.find(node => node.table === 'sp_page');
+    for (const table of ['sp_container','sp_row','sp_column','sp_instance']) {
+        parent = parent.children.find(node => node.table === table);
+        assert.ok(parent,table);
+    }
+    const source = fs.readFileSync(directory + 'sys_properties_widget_editor_markdown_display_kb_knowledge.now.ts','utf8');
+    assert.deepEqual(JSON.parse(source.match(/value: `([\s\S]*?)`,/)[1]),{display_value:'display_number',additional_fields:'short_description'});
+});
+
+test('page default migration moves only the unchanged old Widget defaults', () => {
+    const source = fs.readFileSync('src/fluent/generated/server-development/fix-script/widget_editor_markdown_page_defaults_migrate.server.js','utf8');
+    const old = ['sp_ng_template','m2m_sp_ng_pro_sp_widget','sp_instance','m2m_sp_public_widget_allow_table','m2m_sp_widget_dependency'];
+    for (const custom of [false,true]) {
+        const values = {sp_widget:JSON.stringify(custom ? old.concat('custom_child') : old),sp_column:'["sp_instance"]'}, writes=[];
+        const gs={getProperty:name=>values[name.split('.').at(-1)],setProperty:(name,value)=>{writes.push(name);values[name.split('.').at(-1)]=value;}};
+        vm.runInNewContext(source,{gs});
+        assert.equal(writes.length,custom ? 0 : 1);
+        assert.equal(JSON.parse(values.sp_widget).includes('sp_instance'),custom);
+        vm.runInNewContext(source,{gs});
+        assert.equal(writes.length,custom ? 0 : 1);
+    }
+});
+
+test('property category links reference Widget Editor+ and are not duplicated on repeated saves', () => {
+    const {api,categoryLinks} = server();
+    api._ensurePropertyCategory({getUniqueValue:()=> 'property-one'});
+    api._ensurePropertyCategory({getUniqueValue:()=> 'property-two'});
+    api._ensurePropertyCategory({getUniqueValue:()=> 'property-one'});
+    assert.deepEqual(categoryLinks.map(link=>[link.property,link.category]),[
+        ['property-one','widget-editor-category'],['property-two','widget-editor-category']
+    ]);
+});
+
+test('theme defaults include all requested children', () => {
+    const source = fs.readFileSync('src/fluent/generated/properties/system-property/sys_properties_widget_editor_markdown_groups_sp_theme.now.ts','utf8');
+    assert.deepEqual(JSON.parse(source.match(/value: `([\s\S]*?)`,/)[1]),[
+        'sp_header_footer','m2m_sp_theme_css_include','m2m_sp_theme_js_include','m2m_sp_theme_sp_theme_variant'
+    ]);
+});
+
+test('theme header/footer grouping resolves parent-side references from dictionary metadata', () => {
+    const {api} = server({gs:{hasRole:()=>true,getProperty:()=> 'https://example.service-now.com/'},GlideRecordSecure:function(table) {
+        const filters={}; let rows=[],index=-1;
+        this.get=()=>true;
+        this.addQuery=(field,op,value)=>{filters[field]=value || op;};
+        this.query=()=>{rows=table==='sys_dictionary' && filters.name==='sp_theme' ? [{element:'header',reference:'sp_header_footer'},{element:'footer',reference:'sp_header_footer'}] : [];};
+        this.next=()=>++index<rows.length; this.getValue=field=>rows[index][field];
+    }});
+    const related=[];
+    api._relatedTables=()=>related; api._hierarchyNames=table=>[table]; api._tableLabel=table=>table;
+    api.getParameter=()=> 'sp_theme';
+    assert.equal(api.getRelatedTables().tables[0].table,'sp_header_footer');
+    assert.equal(related.length,0,'picker must not contaminate child-reference metadata');
+    const rules=api._buildGroupRules({sp_theme:['sp_header_footer']});
+    const child=rules.groups[0].children[0];
+    assert.deepEqual(Array.from(child.parentFields),['footer','header']);
+    assert.equal(child.field,'sp_theme.footer, sp_theme.header');
+    const themeId='a'.repeat(32), headerId='b'.repeat(32);
+    api._referencingParentId=(table,fields,id)=>{assert.equal(table,'sp_theme');assert.equal(id,headerId);return themeId;};
+    api._record=()=>({getValue:()=>''});api._name=(_gr,table)=>table;api._secondaryValues=()=>[];
+    const result=api._ancestors('sp_header_footer',headerId,'',rules);
+    assert.equal(result.ancestors[0].table,'sp_theme');assert.equal(result.ancestors[0].id,themeId);
+});
+
+test('parent-side grouping handles live, shared and deleted themes without using stale captured relationships', () => {
+    const first='a'.repeat(32), second='b'.repeat(32), header='c'.repeat(32), setId='d'.repeat(32);
+    let live=[first], captured=[];
+    const {api}=server({GlideRecordSecure:function(table) {
+        let rows=[],index=-1;
+        this.addQuery=()=>({addOrCondition(){}}); this.orderByDesc=()=>{};
+        this.query=()=>{rows=table==='sp_theme' ? live.map(id=>({id})) : captured;};
+        this.next=()=>++index<rows.length;this.getUniqueValue=()=>rows[index].id;this.getValue=field=>rows[index][field];
+    }});
+    const resolve=()=>api._referencingParentId('sp_theme',['header','footer'],header,'sys_update_set',setId);
+    assert.equal(resolve(),first);
+    live=[first,second];assert.equal(resolve(),'');
+    captured=[{name:'sp_theme_'+second,payload:'<header>'+header+'</header>'}];
+    assert.equal(resolve(),second,'prefer the uniquely captured parent');
+    live=[];assert.equal(resolve(),second,'deleted parent can resolve from its update payload');
+    captured.unshift({name:'sp_theme_'+second,payload:'<header>'+first+'</header>'});
+    assert.equal(resolve(),'','older captured references must not be used');
+    captured=[{name:'sp_theme_'+first,payload:'<footer>'+header+'</footer>'}];
+    assert.equal(resolve(),first,'footer references work too');
 });
