@@ -7,7 +7,7 @@ function copyUpdateSetMarkdownPlus() {
     _weResolveMarkdownSets(ids).then(function (sets) {
         if (sets.length === 1) { _weCopyMarkdownSets(sets, 'combined'); return; }
         var dialog = new GlideModal('widget_editor_assistant_markdown_options', false, 430);
-        dialog.setTitle('Copy Update Set Markdown');
+        dialog.setTitle('Export Markdown');
         dialog.setPreference('onChoice', function (mode) { _weCopyMarkdownSets(sets, mode); });
         dialog.setPreference('sysparm_set_count', String(sets.length));
         dialog.render();
@@ -171,7 +171,7 @@ function _weShowMarkdownForManualCopy(value) {
     backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20000;display:flex;align-items:center;justify-content:center';
     var panel = document.createElement('div');
     panel.style.cssText = 'background:white;color:#222;width:min(800px,90vw);padding:20px;border-radius:8px';
-    var title = document.createElement('h2'); title.textContent = 'Copy Update Set Markdown';
+    var title = document.createElement('h2'); title.textContent = 'Export Markdown';
     var text = document.createElement('textarea'); text.value = value; text.readOnly = true;
     text.style.cssText = 'width:100%;height:50vh;margin:12px 0;font-family:monospace';
     var close = document.createElement('button'); close.textContent = 'Close';

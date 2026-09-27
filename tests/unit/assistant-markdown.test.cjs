@@ -403,7 +403,7 @@ test('UI placements and admin-only properties page are declared', () => {
         'Jelly markup must escape ampersands');
     assert.match(page, /container-fluid wep-app/);
     assert.match(page, /id="wep-nav" class="wep-nav"/);
-    assert.match(client, /el\('button', 'btn btn-default wep-feature-pill'\)/);
+    assert.match(client, /el\('a', 'btn btn-default wep-feature-pill'\)/);
     assert.match(page, /--now-color_background--primary/);
     assert.match(page, /--now-color_text--primary/);
     assert.match(page, /monaco\.bundle\.min\.jsx/);
@@ -412,7 +412,7 @@ test('UI placements and admin-only properties page are declared', () => {
     assert.match(module, /ui_page\.do\?sys_id=47cb4ac08e0d4437b5c0a482d8411e30/);
     assert.match(client, /Widget Editor\+'/);
     assert.match(client, /Assistant\+'/);
-    assert.match(client, /Update Sets/);
+    assert.match(client, /Update Set Markdown/);
     assert.match(client, /Code Search\+'/);
     assert.match(client, /saveRules/);
     assert.match(client, /panel panel-default wep-card/);
@@ -479,7 +479,7 @@ test('JSON property renders one visible editor and grows only to half the viewpo
     await new Promise(resolve => setImmediate(resolve));
     while (frames.length) frames.shift()();
     assert.deepEqual(roots['wep-sections'].children.map(section => section.getAttribute('data-feature')),
-        ['Widget Editor+', 'Update Sets']);
+        ['Widget Editor+', 'Update Set Markdown']);
     const card = roots['wep-sections'].querySelectorAll('.wep-card')[0];
     const title = card.querySelectorAll('.wep-property-name')[0];
     const fallback = card.querySelectorAll('.wep-json-fallback')[0];

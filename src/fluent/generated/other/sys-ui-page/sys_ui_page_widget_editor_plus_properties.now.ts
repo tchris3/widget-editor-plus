@@ -4,11 +4,12 @@ UiPage({
     $id: Now.ID['widget-editor-plus-properties-page'],
     category: 'general',
     endpoint: 'widget_editor_plus_properties.do',
-    description: 'Admin settings for Widget Editor+, Update Sets, Assistant+, and Code Search+.',
+    description: 'Admin settings for Widget Editor+, Update Set Markdown, Assistant+, and Code Search+.',
     html: `<?xml version="1.0" encoding="utf-8" ?>
 <j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide">
   <g:requires name="scripts/snc-code-editor/monaco.bundle.min.jsx" params="sysparm_substitute=false" />
   <g:requires name="monaco_plus_bootstrap.jsdbx" params="sysparm_substitute=false" />
+  <g:requires name="we_history_sync.jsdbx" params="sysparm_substitute=false" />
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -296,7 +297,7 @@ UiPage({
     }
 
     /* Compact alphabetical table hierarchy */
-    .wep-tree { margin-top: 12px; }
+    .wep-hierarchy-toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
     .wep-tree[hidden] { display: none; }
     .wep-rule-scroll { overflow-x: auto; }
     .wep-rule-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -387,7 +388,7 @@ UiPage({
       <div id="wep-empty-search" class="wep-empty-state" style="display:none">
         <span class="icon-search wep-empty-icon" aria-hidden="true"></span>
         <h3>No matching properties found</h3>
-        <p>Try adjusting your search query or select another category above.</p>
+        <p>Try adjusting your search query.</p>
       </div>
       <div id="wep-sections"></div>
     </main>

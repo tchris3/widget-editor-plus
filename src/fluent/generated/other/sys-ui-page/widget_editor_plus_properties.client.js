@@ -1,13 +1,23 @@
 (function () {
     function initialise() {
         'use strict';
+        var pageTitle = 'Widget Editor+ Properties';
+        document.title = pageTitle;
+        // The navigation shell sets its title after the iframe loads.
+        setTimeout(function () {
+            try {
+                if (window.parent !== window) window.parent.document.title = pageTitle;
+            } catch (e) {}
+        }, 1000);
+        if (window.WE_HISTORY_SYNC) {
+            window.WE_HISTORY_SYNC.set({ title: pageTitle });
+        }
         var sections = document.getElementById('wep-sections');
         var nav = document.getElementById('wep-nav');
         var message = document.getElementById('wep-message');
         var search = document.getElementById('wep-search');
         var dirty = {};
         var rulesDirty = false;
-        var activeFeatures = {};
         var plainTextareas = [];
         var jsonEditors = [];
 
@@ -45,7 +55,7 @@
             if (isPill) node.style.display = value ? 'inline-flex' : 'none';
         }
         function feature(name) {
-            if (name.indexOf('monaco.plus.update_sets.') === 0) return 'Update Sets';
+            if (name.indexOf('monaco.plus.update_sets.') === 0) return 'Update Set Markdown';
             if (name.indexOf('monaco.plus.assistant.') === 0) return 'Assistant+';
             if (name.indexOf('monaco.plus.code_search.') === 0) return 'Code Search+';
             var other = name.match(/^monaco\.plus\.([a-z0-9_]+)\./);
@@ -131,7 +141,7 @@
             var json = isJsonProperty(property);
             var typeText = isRules ? 'Table hierarchy' : (json ? 'JSON' : (property.type || 'string'));
             var tagClass = 'wep-type-tag ' + (isRules ? 'wep-type-tag--hierarchy' : (json ? 'wep-type-tag--json' : (property.type && property.type.toLowerCase() === 'boolean' ? 'wep-type-tag--boolean' : 'wep-type-tag--string')));
-            heading.appendChild(el('span', tagClass, typeText.toUpperCase()));
+            if (!isRules) heading.appendChild(el('span', tagClass, typeText.toUpperCase()));
             card.appendChild(heading);
             var body = el('div', 'panel-body');
             card.appendChild(body);
@@ -213,27 +223,15 @@
         function markdownCard(card) {
             var note = el('span', 'wep-status');
             var panel = el('div', 'wep-tree');
-            panel.hidden = true;
             var root = el('div', 'wep-rule-scroll');
             var rules = null, collapsed = {}, revision = 0, mode = 'UI', jsonEditor = null, syncing = false;
             var relatedPicker = null, topPicker = null;
-            var toggle = button('Table hierarchy', function () {
-                panel.hidden = !panel.hidden;
-                toggle.setAttribute('aria-expanded', String(!panel.hidden));
-                if (panel.hidden || rules) return;
-                status(note, 'Loading…');
-                ajax('getRules', {}).then(function (data) {
-                    rules = data.rules; renderRules(); status(note, '');
-                }).catch(function (error) { status(note, error.message, 'error'); });
-            });
-            toggle.setAttribute('aria-expanded', 'false');
-            var actions = el('div', 'wep-actions');
-            actions.appendChild(toggle); actions.appendChild(note); card.appendChild(actions);
-            var modes = el('div', 'wep-actions');
-            var uiMode = button('UI', function () { setMode('UI'); });
-            var jsonMode = button('JSON', function () { setMode('JSON'); });
-            uiMode.setAttribute('aria-pressed', 'true'); jsonMode.setAttribute('aria-pressed', 'false');
-            modes.appendChild(uiMode); modes.appendChild(jsonMode); panel.appendChild(modes);
+            var modes = el('div', 'wep-hierarchy-toolbar');
+            var modeLink = el('a', '', 'Switch to JSON'); modeLink.href = '#';
+            modeLink.onclick = function (event) {
+                event.preventDefault(); setMode(mode === 'UI' ? 'JSON' : 'UI');
+            };
+            modes.appendChild(modeLink); panel.appendChild(modes);
             panel.appendChild(root);
             var jsonPanel = el('div', 'wep-hierarchy-json'); jsonPanel.hidden = true;
             var jsonInput = el('textarea', 'form-control wep-value wep-json-fallback');
@@ -281,8 +279,7 @@
                     syncing = false;
                 }
                 mode = next; root.hidden = mode !== 'UI'; jsonPanel.hidden = mode !== 'JSON';
-                uiMode.setAttribute('aria-pressed', String(mode === 'UI'));
-                jsonMode.setAttribute('aria-pressed', String(mode === 'JSON'));
+                modeLink.textContent = mode === 'UI' ? 'Switch to JSON' : 'Switch to UI';
                 if (mode === 'JSON' && !jsonEditor) {
                     var host = el('div', 'wep-monaco'); jsonPanel.appendChild(host);
                     jsonEditor = mountJsonEditor(jsonInput, host, jsonChanged);
@@ -308,7 +305,11 @@
                     .then(function () { save.disabled = !rulesDirty || !!hierarchyError(); });
             });
             save.className = 'btn btn-primary'; save.disabled = true;
-            footer.appendChild(save); panel.appendChild(footer); card.appendChild(panel);
+            footer.appendChild(save); footer.appendChild(note); panel.appendChild(footer); card.appendChild(panel);
+            status(note, 'Loading…');
+            ajax('getRules', {}).then(function (data) {
+                rules = data.rules; renderRules(); status(note, '');
+            }).catch(function (error) { status(note, error.message, 'error'); });
             function markRules() {
                 revision++; rulesDirty = true; var error = hierarchyError();
                 save.disabled = !!error; status(note, error || 'Unsaved changes', error ? 'error' : 'dirty');
@@ -325,7 +326,8 @@
             }
             function createPicker(parent, body, before, depth, trigger) {
                 var row = el('tr', parent ? 'wep-related-picker-row' : 'wep-top-picker-row');
-                var inputs = el('td'); inputs.style.paddingLeft = (38 + depth * 20) + 'px';
+                var inputs = el('td');
+                if (parent) inputs.style.paddingLeft = (38 + depth * 20) + 'px';
                 var reference = el('td', 'wep-rule-reference');
                 var actionsCell = el('td', 'wep-rule-actions');
                 var controls = el('div', 'wep-rule-action-group'); actionsCell.appendChild(controls);
@@ -352,13 +354,8 @@
                     markRules(); renderRules();
                 });
                 add.disabled = true;
-                iconButton('icon-error-circle', 'Cancel', function () {
-                    if (parent) { closePicker(); if (trigger) trigger.focus(); }
-                    else {
-                        selected = null; add.disabled = true; reference.textContent = '';
-                        status(hint, '');
-                        if ($input) $input.select2('val', '');
-                    }
+                if (parent) iconButton('icon-error-circle', 'Cancel', function () {
+                    closePicker(); if (trigger) trigger.focus();
                 });
                 var jq = window.$j || window.jQuery;
                 if (!jq || !jq.fn || !jq.fn.select2) {
@@ -411,7 +408,7 @@
                 root.textContent = '';
                 var table = el('table', 'wep-rule-table');
                 var head = el('thead'), header = el('tr');
-                ['Table hierarchy', 'Reference to parent', 'Actions'].forEach(function (label) {
+                ['Table', 'Reference field', 'Actions'].forEach(function (label) {
                     var cell = el('th', '', label); cell.setAttribute('scope', 'col'); header.appendChild(cell);
                 });
                 head.appendChild(header); table.appendChild(head);
@@ -460,33 +457,10 @@
             var features = ['Widget Editor+', 'Assistant+', 'Code Search+'];
             properties.forEach(function (property) {
                 var name = feature(property.name);
-                if (name !== 'Update Sets' && features.indexOf(name) === -1) features.push(name);
+                if (name !== 'Update Set Markdown' && features.indexOf(name) === -1) features.push(name);
             });
-            if (properties.some(function (p) { return feature(p.name) === 'Update Sets'; })) {
-                features.push('Update Sets');
-            }
-            function updateNavState() {
-                if (!nav) return;
-                Array.prototype.forEach.call(nav.querySelectorAll('li'), function (li) {
-                    var featureName = li.getAttribute('data-feature');
-                    var isSelected = !!activeFeatures[featureName];
-                    var link = li.querySelector ? li.querySelector('button') : (li.children ? li.children[0] : null);
-                    if (link && link.setAttribute) {
-                        link.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
-                        link.title = isSelected ? 'Click to show all properties' : 'Click to filter to ' + featureName;
-                    }
-                    if (link && link.classList) {
-                        if (isSelected) link.classList.add('active');
-                        else link.classList.remove('active');
-                    }
-                    if (li.classList) {
-                        if (isSelected) li.classList.add('active');
-                        else li.classList.remove('active');
-                    } else {
-                        var base = (li.className || '').replace(/\bactive\b/g, '').trim();
-                        li.className = (base + (isSelected ? ' active' : '')).trim();
-                    }
-                });
+            if (properties.some(function (p) { return feature(p.name) === 'Update Set Markdown'; })) {
+                features.push('Update Set Markdown');
             }
             features.forEach(function (name, index) {
                 var matches = properties.filter(function (property) { return feature(property.name) === name; });
@@ -502,27 +476,24 @@
                 if (sections) sections.appendChild(section);
                 var item = el('li');
                 item.setAttribute('data-feature', name);
-                var link = el('button', 'btn btn-default wep-feature-pill');
-                link.type = 'button';
-                link.setAttribute('aria-pressed', 'false');
+                var link = el('a', 'btn btn-default wep-feature-pill');
+                link.href = '#' + section.id;
+                link.title = 'Go to ' + name;
                 var labelSpan = el('span', 'we-sidebar-item-label', name);
                 link.appendChild(labelSpan);
                 var pillCount = el('span', 'wep-nav-count we-type-count-pill', String(matches.length));
                 link.appendChild(pillCount);
                 link.onclick = function (e) {
-                    if (e && e.preventDefault) e.preventDefault();
-                    if (activeFeatures[name]) {
-                        delete activeFeatures[name];
-                    } else {
-                        activeFeatures[name] = true;
-                    }
-                    updateNavState();
-                    filter();
+                    e.preventDefault();
+                    if (section.hidden && search) { search.value = ''; filter(); }
+                    heading.setAttribute('tabindex', '-1');
+                    heading.focus({ preventScroll: true });
+                    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    section.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
                 };
                 item.appendChild(link);
                 if (nav) nav.appendChild(item);
             });
-            updateNavState();
             filter();
             window.requestAnimationFrame(function () {
                 plainTextareas.forEach(resizePlainTextarea);
@@ -565,16 +536,12 @@
             var clearBtn = document.getElementById('wep-search-clear');
             if (clearBtn) clearBtn.style.display = query ? '' : 'none';
             var totalVisible = 0;
-            var activeKeys = Object.keys(activeFeatures).filter(function (k) { return activeFeatures[k]; });
-            var hasActiveFilters = activeKeys.length > 0;
             if (sections) {
                 Array.prototype.forEach.call(sections.querySelectorAll('.wep-section'), function (section) {
-                    var featureName = section.getAttribute('data-feature') || '';
-                    var isFeatureActive = !hasActiveFilters || !!activeFeatures[featureName];
                     var visible = 0;
                     Array.prototype.forEach.call(section.querySelectorAll('.wep-card'), function (card) {
                         var cardSearch = card.getAttribute('data-search') || '';
-                        var matches = isFeatureActive && (!query || cardSearch.indexOf(query) !== -1);
+                        var matches = !query || cardSearch.indexOf(query) !== -1;
                         card.hidden = !matches;
                         if (matches) {
                             visible++;
