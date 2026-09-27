@@ -319,7 +319,7 @@
             var assistant = family.kind === 'table_config', markdown = family.kind === 'markdown_display';
             var table = el('table', 'table table-striped wep-properties-table wep-config-table' + (assistant ? ' wep-assistant-config-table' : ''));
             var head = el('thead'), headings = el('tr'), rows = el('tbody');
-            (assistant ? ['Table', 'Description', 'JSON', 'Actions'] : markdown ? ['Table', 'Display field', 'Additional fields', 'Actions'] : ['Table', 'Fields', 'Actions']).forEach(function (label) {
+            (assistant ? ['Table', 'Description', 'JSON', 'Actions'] : markdown ? ['Table', 'Display fields', 'Additional fields', 'Actions'] : ['Table', 'Fields', 'Actions']).forEach(function (label) {
                 var th = el('th', '', label); th.setAttribute('scope', 'col'); headings.appendChild(th);
             });
             head.appendChild(headings); table.appendChild(head); table.appendChild(rows); body.appendChild(table);
@@ -334,7 +334,8 @@
                 var description = el(markdown ? 'input' : 'textarea', 'form-control' + (assistant ? ' wep-description-input' : '')); description.rows = 2;
                 var displayConfig = markdown && property ? JSON.parse(property.value) : {};
                 description.value = markdown ? (displayConfig.display_value || '') : property ? property.description : '';
-                description.setAttribute('aria-label', markdown ? 'Display field' : 'Description');
+                description.setAttribute('aria-label', markdown ? 'Display fields' : 'Description');
+                if (markdown) { description.placeholder = 'name,short_description'; description.title = 'Comma-separated fallback fields, tried from left to right.'; }
                 if (assistant) description.setAttribute('maxlength', '512');
                 var descriptionCounter = markdown ? null : characterCount(assistant ? 512 : 4000);
                 if (descriptionCounter) description.setAttribute('aria-describedby', descriptionCounter.id);
@@ -775,7 +776,7 @@
                 }
                 properties = properties.filter(function (property) { return property.name.indexOf(prefix) !== 0 && !(kind === 'markdown_display' && property.name === 'monaco.plus.update_sets.markdown_display'); });
                 properties.push({ name: prefix + '*', prefix: prefix, kind: kind, rows: rows, propertyCount: rows.length, value: '', type: 'string',
-                    description: kind === 'display_fields' ? 'Display fields by table. Enter comma-separated field names.' : kind === 'markdown_display' ? 'Display and additional fields for Markdown export. Additional fields are comma-separated.' : 'Assistant configuration by table.' });
+                    description: kind === 'display_fields' ? 'Display fields by table. Enter comma-separated field names.' : kind === 'markdown_display' ? 'Display fields are comma-separated fallbacks, tried from left to right. Additional fields are comma-separated.' : 'Assistant configuration by table.' });
             });
             if (sections) sections.textContent = '';
             if (nav) nav.textContent = '';

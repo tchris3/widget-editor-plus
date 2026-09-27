@@ -948,6 +948,27 @@ test('display export resolves dot walks securely and preserves secondary order',
     assert.equal(api._configuredValue(null, 'sys_security_acl_role', '<name>Deleted record</name>', 'name'), 'Deleted record');
 });
 
+test('Markdown names try ordered display fields before raw values and the normal name fallback', () => {
+    const {api} = server();
+    api._displayConfig = () => ({display_value:'first, second',additional_fields:''});
+    api._fieldPath = (_table,field) => [{field}];
+    api._displayField = () => ({name:''});
+    let raw = {}, display = {}, readable = true;
+    const record = {getElement:field=>({canRead:()=>field !== 'first' || readable}),
+        getValue:field=>raw[field],getDisplayValue:field=>field ? display[field] : 'Normal record name'};
+    function name() { return api._name(record,'widget','id','',''); }
+    display = {first:'First',second:'Second'}; assert.equal(name(),'First');
+    display.first = ''; assert.equal(name(),'Second');
+    raw.first = 'raw first'; assert.equal(name(),'Second');
+    display.second = ''; assert.equal(name(),'raw first');
+    raw = {}; assert.equal(name(),'Normal record name');
+    display = {first:'Hidden',second:'Readable'}; readable = false;
+    assert.equal(name(),'Readable');
+    assert.equal(api._name(null,'widget','id','<first>raw first</first><second display_value="Second">raw second</second>',''),'Second');
+    assert.equal(api._name(null,'widget','id','<second>raw second</second>',''),'raw second');
+    assert.equal(api._name(null,'widget','id','','Target name'),'Target name');
+});
+
 test('Variable defaults include type and additional values prefer display text with raw fallback', () => {
     const source = fs.readFileSync('src/fluent/generated/properties/system-property/sys_properties_widget_editor_markdown_display_item_option_new.now.ts','utf8');
     const config = JSON.parse(source.match(/value: `([\s\S]*?)`,/)[1]);
@@ -1216,14 +1237,15 @@ test('property tables render row saves and remove the saved property only after 
     assert.equal(pickers.length,4);
     assert.ok(pickers.every(p=>p.node.type==='hidden' && p.options.query && !p.enabled));
     const markdown = cards.find(c=>c._prop.kind==='markdown_display');
-    assert.deepEqual(descendants(markdown).filter(n=>n.tagName==='TH').map(n=>n.textContent),['Table','Display field','Additional fields','Actions']);
-    const displayInput = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Display field');
+    assert.deepEqual(descendants(markdown).filter(n=>n.tagName==='TH').map(n=>n.textContent),['Table','Display fields','Additional fields','Actions']);
+    const displayInput = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Display fields');
     const extraInput = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Additional fields');
     assert.equal(displayInput.tagName,'INPUT'); assert.equal(extraInput.tagName,'INPUT');
+    displayInput.value='name,script'; displayInput.oninput();
     extraInput.value='script,name'; extraInput.oninput();
     descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property').onclick(); await tick();
     assert.equal(requests.at(-1).kind,'markdown_display');
-    assert.deepEqual(JSON.parse(requests.at(-1).property_value),{display_value:'name',additional_fields:'script,name'});
+    assert.deepEqual(JSON.parse(requests.at(-1).property_value),{display_value:'name,script',additional_fields:'script,name'});
     extraInput.value=Array(700).fill('script').join(','); extraInput.oninput();
     const markdownSave = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property');
     assert.equal(markdownSave.disabled,false);
@@ -1332,13 +1354,13 @@ test('Markdown display rows validate fields, save string-based JSON and delete l
         }
     });
     api._fieldPath=(table,field)=>['widget','other'].includes(table) && ['name','script','owner.name'].includes(field) ? [{}] : null;
-    let params={kind:'markdown_display',table:'widget',property_value:JSON.stringify({display_value:'owner.name',additional_fields:'script, name'})};
+    let params={kind:'markdown_display',table:'widget',property_value:JSON.stringify({display_value:'owner.name, name',additional_fields:'script, name'})};
     api.getParameter=key=>params[key];
     assert.equal(api.saveTableProperty().success,true);
     const name=legacyName+'.widget';
-    assert.deepEqual(JSON.parse(values[name]),{display_value:'owner.name',additional_fields:'script, name'});
+    assert.deepEqual(JSON.parse(values[name]),{display_value:'owner.name, name',additional_fields:'script, name'});
     assert.deepEqual(Object.keys(JSON.parse(values[legacyName])),['other']);
-    for (const config of [{display_value:'missing',additional_fields:''},{display_value:'name',additional_fields:'bad'},
+    for (const config of [{display_value:'missing',additional_fields:''},{display_value:'name,missing',additional_fields:''},{display_value:'name,',additional_fields:''},{display_value:',name',additional_fields:''},{display_value:'name',additional_fields:'bad'},
         {display_value:'name',additional_fields:['script']},{display_value:'name',additional_fields:'name,'},{display_value:'name',additional_fields:'',unknown:true}]) {
         params.property_value=JSON.stringify(config);assert.equal(api.saveTableProperty().success,false);
     }

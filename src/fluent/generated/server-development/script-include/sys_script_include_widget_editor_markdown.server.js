@@ -237,14 +237,14 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
                 Object.keys(config).some(function (key) { return key !== 'display_value' && key !== 'additional_fields'; }))) return 'Invalid display configuration for ' + table + '.';
             var normalised = this._normaliseDisplayConfig(config);
             var extra = normalised.additional_fields.trim() ? normalised.additional_fields.split(',').map(function (field) { return field.trim(); }) : [];
-            var fields = [normalised.display_value].concat(extra);
+            var fields = normalised.display_value.split(',').map(function (field) { return field.trim(); }).concat(extra);
             for (var j = 0; j < fields.length; j++) {
                 if (!this._fieldPath(table, fields[j])) return 'Invalid field path: ' + table + '.' + String(fields[j]) + '.';
             }
         }
         return '';
     },
-    _configuredValue: function (record, table, payload, path) {
+    _configuredValue: function (record, table, payload, path, displayOnly) {
         // Resolve each reference securely; never evaluate a field path as code.
         try {
             var steps = this._fieldPath(table, path);
@@ -261,7 +261,7 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
                     var field = this._payloadField(payload, step.field);
                     raw = field.value; display = field.display;
                 } else return '';
-                if (i === steps.length - 1) return display || raw;
+                if (i === steps.length - 1) return displayOnly ? display : display || raw;
                 if (!this._sysId(raw)) return '';
                 record = this._record(step.reference, raw);
                 if (!record) return '';
@@ -290,8 +290,14 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
     _name: function (record, table, id, payload, fallback, depth) {
         var config = !depth && this._displayConfig(table);
         if (config && config.display_value) {
-            var configured = this._configuredValue(record, table, payload, config.display_value);
-            if (configured) return configured;
+            var fields = config.display_value.split(',').map(function (field) { return field.trim(); });
+            // Try every display value before falling back to raw values.
+            for (var pass = 0; pass < 2; pass++) {
+                for (var index = 0; index < fields.length; index++) {
+                    var configured = this._configuredValue(record, table, payload, fields[index], pass === 0);
+                    if (configured) return configured;
+                }
+            }
         }
         var display = this._displayField(table);
         if (record) {
