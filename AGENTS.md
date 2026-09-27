@@ -49,6 +49,14 @@ Documentation-only edits need diff and link checks, not a build.
 
 ## Releases
 
+### Release-note writing style
+
+- Use short product headings and brief bullets in plain Australian English.
+- Start bullets with direct verbs such as Add, Improve, Copy, Mark or Update.
+- Summarise user-visible capabilities. Combine related changes into one bullet instead of listing every implementation detail or edge case.
+- Omit internal terminology, validation mechanics, test results and minor UI details unless they are essential to understanding the change. Keep technical validation in the PR.
+- Describe changes relative to the previous release. Omit fixes to issues introduced and resolved during development of the current release.
+
 Annotated tags are the source of truth for published release notes. Keep the annotation and release body identical, using concise product sections matching recent releases and Australian English. Use `git tag -a --cleanup=verbatim -F <notes-file>` to preserve Markdown headings.
 
 Pushing a `v*` tag triggers `.github/workflows/release.yaml`, which builds and publishes the application ZIP and retrieved update-set XML. Verify workflow success, both assets and matching notes before reporting completion.
