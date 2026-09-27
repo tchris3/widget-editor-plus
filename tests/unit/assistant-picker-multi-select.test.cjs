@@ -65,6 +65,7 @@ test('initial primary record keeps the picker open for more records, and can be 
         updatePrimaryUrl() {},
         clearPrimaryUrl() {},
         loadPrimaryContext: () => primaryLoaded,
+        rowKey: row => row.table + ':' + row.sys_id,
         recordLinks: {},
         graphLinksScanned: {}, graphLinkRequests: {}, graphLinksGeneration: 0,
         dismissedSuggestionKeys: {},
@@ -91,6 +92,59 @@ test('initial primary record keeps the picker open for more records, and can be 
     assert.equal(ctrl.primary.sysId, '');
     assert.deepEqual(ctrl.related.map(row => row.sys_id), ['widget-2']);
     assert.equal(ctrl.lookup.open, true);
+});
+
+test('primary picker removal protects the embedded host and preserves surviving relationships', () => {
+    for (const embedded of [true, false]) {
+        const primary = { table: 'sp_widget', sys_id: 'host', primary: true };
+        const manual = { table: 'sp_widget', sys_id: 'manual', manual: true };
+        const member = { table: 'sp_widget', sys_id: 'member', updateSetSysId: 'set-1' };
+        const suggested = { table: 'sp_widget', sys_id: 'suggested', suggested: true };
+        let saves = 0, cleared = 0, rebuilds = 0;
+        const scans = [];
+        const ctrl = {
+            embeddedInModal: embedded,
+            lookup: { mode: 'add', chosenTable: 'sp_widget' },
+            primary: { table: 'sp_widget', sysId: 'host' },
+            related: [primary, manual, member, suggested],
+            saveSelections() { saves++; },
+        };
+        const context = {
+            ctrl,
+            rowKey: row => row.table + ':' + row.sys_id,
+            clearPrimaryUrl() { cleared++; },
+            rebuildRows() { rebuilds++; },
+            discoverGraphLinks(rows) { scans.push(rows); },
+            recordLinks: {
+                retained: { source: 'sp_widget:manual', target: 'sp_widget:member' },
+                fromHost: { source: 'sp_widget:host', target: 'sp_widget:manual' },
+                toSuggestion: { source: 'sp_widget:member', target: 'sp_widget:suggested' },
+            },
+            graphLinksScanned: {}, graphLinkRequests: {}, graphLinksGeneration: 0,
+            dismissedSuggestionKeys: {}, _scannedScriptKeys: {},
+        };
+        vm.createContext(context);
+        vm.runInContext(script.slice(script.indexOf('function removePrimaryFromPicker('), script.indexOf('function loadRecords(')), context);
+        vm.runInContext(script.slice(script.indexOf('ctrl.chooseRecord ='), script.indexOf('// Update Set Picker', script.indexOf('ctrl.chooseRecord ='))), context);
+        ctrl.chooseRecord({ sys_id: 'host' });
+
+        if (embedded) {
+            assert.equal(ctrl.primary.sysId, 'host');
+            assert.deepEqual(ctrl.related, [primary, manual, member, suggested]);
+            assert.deepEqual(Object.keys(context.recordLinks), ['retained', 'fromHost', 'toSuggestion']);
+            assert.equal(saves + cleared + rebuilds + scans.length, 0);
+            assert.equal(context.graphLinksGeneration, 0);
+        } else {
+            assert.equal(ctrl.primary.sysId, '');
+            assert.deepEqual(ctrl.related, [manual, member]);
+            assert.deepEqual(Object.keys(context.recordLinks), ['retained']);
+            assert.equal(saves, 1);
+            assert.equal(cleared, 1);
+            assert.equal(rebuilds, 1);
+            assert.deepEqual(scans, [[manual, member]]);
+            assert.equal(context.graphLinksGeneration, 1);
+        }
+    }
 });
 
 test('update set picker accepts multiple sets and toggles an added set off', async () => {

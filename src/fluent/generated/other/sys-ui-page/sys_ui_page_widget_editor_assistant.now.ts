@@ -5642,10 +5642,15 @@ export const widgetEditorAssistantUiPage = UiPage({
             };
 
             function removePrimaryFromPicker() {
+                if (ctrl.embeddedInModal) return;
                 ctrl.primary = { table: '', sysId: '', label: '', tableLabel: '', updatedOn: '' };
                 clearPrimaryUrl();
                 ctrl.related = ctrl.related.filter(function (row) { return row.manual || row.updateSetSysId; });
-                recordLinks = {};
+                var retainedKeys = new Set(ctrl.related.map(rowKey));
+                Object.keys(recordLinks).forEach(function (key) {
+                    var link = recordLinks[key];
+                    if (!retainedKeys.has(link.source) || !retainedKeys.has(link.target)) delete recordLinks[key];
+                });
                 graphLinksScanned = {};
                 graphLinkRequests = {};
                 graphLinksGeneration++;
@@ -5653,6 +5658,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                 _scannedScriptKeys = {};
                 ctrl.saveSelections();
                 rebuildRows();
+                // Restart pending scans invalidated above while keeping known links visible.
+                discoverGraphLinks(ctrl.related);
             }
 
             function loadRecords(query, isMore) {
