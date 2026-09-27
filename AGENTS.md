@@ -4,7 +4,7 @@
 
 - Do not commit or push unless the user explicitly asks. Leave edits uncommitted until they are ready.
 - Use Australian English. Keep README feature summaries brief; configuration details belong in `CONFIGURATION.md`.
-- `origin` is Gitea; `github` is a separate mirror. Do not publish to GitHub without explicit authorisation.
+- Keep this guide project-specific and platform-neutral. Do not document personal hosting arrangements, remote mappings, or repository visibility settings.
 
 ## Project context
 
