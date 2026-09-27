@@ -145,9 +145,21 @@ function _weMarkdownTree(rows) {
         return attached[id];
     }
     Object.keys(definitions).forEach(attach);
+    function markNewBranches(container) {
+        var allNew = !!container.isNew && container.action !== 'DELETE' && container.inUpdateSet !== false;
+        Object.keys(container.types).forEach(function (label) {
+            var records = container.types[label].records;
+            Object.keys(records).forEach(function (id) {
+                if (!markNewBranches(records[id])) allNew = false;
+            });
+        });
+        container.allNew = allNew;
+        return allNew;
+    }
+    markNewBranches(root);
     return root;
 }
-function _weMarkdownRender(container, depth, summary) {
+function _weMarkdownRender(container, depth, summary, suppressNew) {
     summary = summary || {};
     var lines = [];
     Object.keys(container.types).sort(function (a, b) {
@@ -163,14 +175,14 @@ function _weMarkdownRender(container, depth, summary) {
             if (record.action === 'DELETE') name = '~~' + name + '~~';
             if (record.secondary.length) name += ' (' + record.secondary.map(_weMarkdownEscape).join(' | ') + ')';
             if (record.action === 'DELETE') name += ' 🚮';
-            else if (record.isNew) name += ' 🆕';
+            else if (record.isNew && !suppressNew) name += ' 🆕';
             if (record.setMarkers.length) name += ' ' + record.setMarkers.map(_weMarkdownKeycap).join(' ');
             if (record.inUpdateSet === false) {
                 name = '∉ *' + name + '*';
                 summary.hasContextOnly = true;
             }
             lines.push(Array(depth * 2 + 3).join(' ') + '- ' + name);
-            lines = lines.concat(_weMarkdownRender(record, depth + 2, summary));
+            lines = lines.concat(_weMarkdownRender(record, depth + 2, summary, suppressNew || record.allNew));
         });
     });
     return lines;

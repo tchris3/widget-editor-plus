@@ -491,6 +491,36 @@ test('record markers and global deduplication preserve one canonical parent and 
     assert.ok(annotated.includes('[Child](/child) (extra | details) 🆕 1️⃣ 2️⃣'));
 });
 
+test('entirely new branches show one new marker while mixed branches retain individual markers', () => {
+    const context = {}; vm.createContext(context); vm.runInContext(clientSource, context);
+    const parent = {table:'parent',id:'p',type:'Parents',name:'Parent',isNew:true};
+    const child = {table:'child',id:'c',type:'Children',name:'Child',isNew:true};
+    const grandchild = {table:'leaf',id:'g',type:'Leaves',name:'Grandchild',isNew:true};
+    const sibling = {table:'other',id:'s',type:'Others',name:'Sibling',isNew:true};
+    function render(leaf = grandchild, root = parent) {
+        return context._weMarkdownRender(context._weMarkdownTree([
+            {...root,ancestors:[]}, {...child,ancestors:[root],secondary:['extra'],setMarkers:[1]},
+            {...leaf,ancestors:[root,child]}, {...sibling,ancestors:[root]},
+        ]),0).join('\n');
+    }
+    const allNew = render();
+    assert.ok(allNew.includes('Parent 🆕'));
+    assert.ok(allNew.includes('Child (extra) 1️⃣'));
+    assert.equal((allNew.match(/🆕/g) || []).length,1);
+    for (const leaf of [{...grandchild,isNew:false}, {...grandchild,action:'DELETE'}]) {
+        const mixed = render(leaf);
+        assert.ok(mixed.includes('Parent 🆕'));
+        assert.ok(mixed.includes('Child (extra) 🆕 1️⃣'));
+        assert.ok(mixed.includes('Sibling 🆕'));
+        if (leaf.action === 'DELETE') assert.ok(mixed.includes('~~Grandchild~~ 🚮'));
+    }
+    const existingParent = render(grandchild,{...parent,isNew:false});
+    assert.ok(!existingParent.includes('Parent 🆕'));
+    assert.ok(existingParent.includes('Child (extra) 🆕 1️⃣'));
+    assert.ok(!existingParent.includes('Grandchild 🆕'));
+    assert.ok(existingParent.includes('Sibling 🆕'));
+});
+
 test('new markers follow the first update set across repeated edits and later sets', () => {
     const captures = [
         {name:'widget_a',sys_id:'1',sys_created_on:'2026-01-01',update_set:'original'},
@@ -807,17 +837,18 @@ test('property values enforce 4000 characters even when dictionary allows more',
     assert.equal(saved.length, 4000);
 });
 
-test('hierarchy limits apply per stored array, not the combined JSON', () => {
+test('hierarchy saves individual arrays exceeding 4000 characters', () => {
     const { api, saved } = groupServer();
     api._buildGroupRules = () => ({groups: []});
-    const children = Array.from({length: 60}, (_, i) => 'table_' + String(i).padStart(50, 'a'));
+    const children = Array.from({length: 120}, (_, i) => 'table_' + String(i).padStart(50, 'a'));
     const config = {a: children, b: children.map(name => name + 'b')};
     assert.ok(JSON.stringify(config).length > 4000);
     api.getParameter = () => JSON.stringify(config);
     assert.equal(api.saveRules().success, true);
-    assert.ok(Object.values(saved).every(value => value.length <= 4000));
+    assert.ok(Object.values(saved).every(value => value.length > 4000));
+    assert.deepEqual(JSON.parse(saved[api.GROUPS_PREFIX + 'a']), children);
     const snapshot = JSON.stringify(saved);
-    api.getParameter = () => JSON.stringify({a: children.concat(children)});
+    api.getParameter = () => JSON.stringify({a: ['invalid table']});
     assert.equal(api.saveRules().success, false);
     assert.equal(JSON.stringify(saved), snapshot);
 });
@@ -1048,15 +1079,16 @@ test('combined Markdown display saves separate tables, removes omitted tables an
     const prefix = api.DISPLAY_PROPERTY + '.';
     values[api.DISPLAY_PROPERTY] = '{}';
     values[prefix + 'removed'] = '{"display":"name"}';
-    const config = {one:{display:'name',secondary:Array(350).fill('description')},two:{display:'name',secondary:['name']}};
+    const config = {one:{display:'bad',secondary:Array(350).fill('description')},two:{display:'name',secondary:['name']}};
     api.getParameter = key => key === 'property_name' ? api.DISPLAY_PROPERTY : JSON.stringify(config);
     assert.equal(api.saveProperty().success,false);
     assert.deepEqual(saved,{});
-    config.one.secondary = Array(120).fill('description');
+    config.one.display = 'name';
     config.two.secondary = Array(120).fill('description');
     assert.ok(JSON.stringify(config,null,4).length > 4000);
     assert.equal(api.saveProperty().success,true);
     const expected = Object.fromEntries(Object.entries(config).map(([table,value]) => [table,{display_value:value.display,additional_fields:value.secondary.join(',')}]));
+    assert.ok(values[prefix + 'one'].length > 4000);
     assert.deepEqual(JSON.parse(values[prefix + 'one']),expected.one);
     assert.deepEqual(JSON.parse(values[prefix + 'two']),expected.two);
     assert.equal(Object.hasOwn(values,prefix + 'removed'),false);
@@ -1141,6 +1173,12 @@ test('property tables render row saves and remove the saved property only after 
     descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property').onclick(); await tick();
     assert.equal(requests.at(-1).kind,'markdown_display');
     assert.deepEqual(JSON.parse(requests.at(-1).property_value),{display_value:'name',additional_fields:'script,name'});
+    extraInput.value=Array(700).fill('script').join(','); extraInput.oninput();
+    const markdownSave = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property');
+    assert.equal(markdownSave.disabled,false);
+    assert.ok(descendants(markdown).some(n=>n.textContent===extraInput.value.length+' characters'));
+    markdownSave.onclick(); await tick();
+    assert.equal(JSON.parse(requests.at(-1).property_value).additional_fields,extraInput.value);
     requests.length=0;
     const codeCount = code.parentNode.querySelectorAll('.wep-section-count')[0];
     const codeNavCount = roots['wep-nav'].children.find(n=>n.getAttribute('data-feature')==='Code Search+').querySelectorAll('.wep-nav-count')[0];
@@ -1253,7 +1291,13 @@ test('Markdown display rows validate fields, save string-based JSON and delete l
     }
     params.table='missing'; params.property_value='{"display_value":"name","additional_fields":""}';
     assert.equal(api.saveTableProperty().success,false); assert.equal(writes.length,1);
-    params.table='widget'; assert.equal(api.deleteTableProperty().success,true);assert.equal(Object.hasOwn(values,name),false);
+    params.table='widget';
+    const largeConfig={display_value:'name',additional_fields:Array(700).fill('script').join(',')};
+    params.property_value=JSON.stringify(largeConfig);
+    assert.ok(params.property_value.length>4000);
+    assert.equal(api.saveTableProperty().success,true);
+    assert.deepEqual(JSON.parse(values[name]),largeConfig);
+    assert.equal(api.deleteTableProperty().success,true);assert.equal(Object.hasOwn(values,name),false);
     params.table='other'; assert.equal(api.deleteTableProperty().success,true);assert.equal(values[legacyName],'');
 });
 

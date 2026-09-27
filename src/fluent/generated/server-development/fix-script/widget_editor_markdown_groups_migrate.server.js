@@ -22,7 +22,7 @@
     Object.keys(configs).forEach(function (table) {
         if (!/^[a-z][a-z0-9_]*$/i.test(table) || configs[table].some(function (child) {
             return !/^[a-z][a-z0-9_]*$/i.test(child);
-        }) || JSON.stringify(configs[table], null, 4).length > 4000) {
+        })) {
             throw new Error('Cannot migrate Markdown configuration for ' + table);
         }
     });

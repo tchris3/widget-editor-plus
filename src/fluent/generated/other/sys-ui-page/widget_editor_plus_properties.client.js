@@ -53,16 +53,16 @@
             return node;
         }
         function characterCount(limit) {
-            limit = limit || 4000;
-            var counter = el('small', 'wep-character-count', '0 / ' + limit);
+            if (limit === undefined) limit = 4000;
+            var counter = el('small', 'wep-character-count', limit === null ? '0 characters' : '0 / ' + limit);
             counter._limit = limit;
             counter.id = 'wep-character-count-' + (++counterSequence);
             return counter;
         }
         function updateCharacterCount(counter, value) {
             var length = String(value || '').length;
-            counter.textContent = length + ' / ' + counter._limit;
-            counter.className = 'wep-character-count' + (length > counter._limit ? ' text-danger' : '');
+            counter.textContent = counter._limit === null ? length + ' characters' : length + ' / ' + counter._limit;
+            counter.className = 'wep-character-count' + (counter._limit !== null && length > counter._limit ? ' text-danger' : '');
         }
         function button(label, action) {
             var node = el('button', 'btn btn-default', label);
@@ -250,12 +250,12 @@
                 if (!combinedDisplay) { updateCharacterCount(counter, readValue()); return; }
                 var length;
                 try { length = displayLength(); } catch (e) { length = readValue().length; }
-                counter.textContent = length + ' / 4000 per table';
-                counter.className = 'wep-character-count' + (length > 4000 ? ' text-danger' : '');
+                counter.textContent = length + ' characters (largest table)';
+                counter.className = 'wep-character-count';
             }
             function valueError() {
                 if (combinedDisplay) {
-                    try { if (displayLength() > 4000) return 'A table property exceeds 4000 characters.'; }
+                    try { displayLength(); }
                     catch (e) { return e.message; }
                 }
                 if (!combinedDisplay && readValue().length > 4000) return 'Property value exceeds 4000 characters.';
@@ -336,13 +336,13 @@
                 description.value = markdown ? (displayConfig.display_value || '') : property ? property.description : '';
                 description.setAttribute('aria-label', markdown ? 'Display field' : 'Description');
                 if (assistant) description.setAttribute('maxlength', '512');
-                var descriptionCounter = characterCount(assistant ? 512 : 4000); description.setAttribute('aria-describedby', descriptionCounter.id);
+                var descriptionCounter = characterCount(markdown ? null : assistant ? 512 : 4000); description.setAttribute('aria-describedby', descriptionCounter.id);
                 if (assistant || markdown) { var descCell = el('td'); descCell.appendChild(description); descCell.appendChild(descriptionCounter); row.appendChild(descCell); }
                 var input = el(assistant ? 'textarea' : 'input', 'form-control' + (assistant ? ' wep-json-fallback' : '')); input.rows = assistant ? 6 : 2;
                 input.value = markdown ? (displayConfig.additional_fields || '') : property ? property.value : (assistant ? '{"rules":[],"pickerFields":[]}' : '');
                 input.setAttribute('aria-label', assistant ? 'JSON' : markdown ? 'Additional fields' : 'Fields');
                 if (!assistant) input.placeholder = 'name,description';
-                var counter = characterCount(); input.setAttribute('aria-describedby', counter.id);
+                var counter = characterCount(markdown ? null : undefined); input.setAttribute('aria-describedby', counter.id);
                 valueCell.appendChild(input); valueCell.appendChild(counter); row.appendChild(valueCell);
                 var note = el('small', 'wep-status'); note.setAttribute('role', 'status');
                 var baseline = property ? JSON.stringify([saved, description.value, input.value]) : '';
@@ -353,7 +353,7 @@
                     updateCharacterCount(descriptionCounter, description.value);
                     var changed = snapshot() !== baseline;
                     if (changed) dirty[key] = true; else delete dirty[key];
-                    save.disabled = busy || !changed || !name.value.trim() || propertyValue().length > 4000 || (markdown && !description.value.trim()) || (assistant && description.value.length > 512);
+                    save.disabled = busy || !changed || !name.value.trim() || (!markdown && propertyValue().length > 4000) || (markdown && !description.value.trim()) || (assistant && description.value.length > 512);
                     remove.disabled = busy;
                 }
                 function pending(value) {
@@ -497,14 +497,12 @@
                     var config = readConfig();
                     Object.keys(config).forEach(function (table) { length = Math.max(length, JSON.stringify(config[table], null, 4).length); });
                 } catch (e) { length = jsonInput.value.length; }
-                counter.textContent = length + ' / 4000 per table';
-                counter.className = 'wep-character-count' + (length > 4000 ? ' text-danger' : '');
+                counter.textContent = length + ' characters (largest table)';
+                counter.className = 'wep-character-count';
             }
             function hierarchyError() {
                 try {
-                    var config = readConfig();
-                    var over = Object.keys(config).filter(function (table) { return JSON.stringify(config[table], null, 4).length > 4000; });
-                    if (over.length) return 'Property for ' + over[0] + ' exceeds 4000 characters.';
+                    readConfig();
                 } catch (e) { return e.message; }
                 return '';
             }

@@ -197,7 +197,7 @@ Widget Editor+ features a comprehensive Playwright test suite validating editor 
 ### System Properties
 All system properties are managed under the `monaco.plus.*` namespace:
 
-Admins can edit settings in **Widget Editor+ → Properties**. Values are limited to 4,000 characters.
+Admins can edit settings in **Widget Editor+ → Properties**. Values are limited to 4,000 characters, except for Markdown display and grouping settings, which have no application character limit.
 
 | Property Name | Default | Description |
 |---|---|---|
@@ -279,7 +279,7 @@ Markdown grouping JSON maps parent table names to child-table arrays, for exampl
 }
 ```
 
-The Properties page combines these into one UI/JSON editor with Save property and Revert. Saving writes each array to its own `monaco.plus.update_sets.markdown_groups.<table>` property (maximum 4,000 characters each). Labels and reference fields are resolved from table metadata. No additional related tables are included implicitly. The counter shows the largest individual property value. The pre-install fix script **Split Markdown table properties** migrates the legacy hierarchy, preserving existing per-table settings. For update-set installations, run that fix script before installing the new defaults.
+The Properties page combines these into one UI/JSON editor with Save property and Revert. Saving writes each array to its own `monaco.plus.update_sets.markdown_groups.<table>` property. Labels and reference fields are resolved from table metadata. No additional related tables are included implicitly. The counter shows the largest individual property value. The pre-install fix script **Split Markdown table properties** migrates the legacy hierarchy, preserving existing per-table settings. For update-set installations, run that fix script before installing the new defaults.
 
 The Properties page combines `monaco.plus.code_search.display_fields.*` and `monaco.plus.assistant.table_config.*` into separate tables. Each row has its own save and remove buttons; removing a saved row deletes its system property. Saves validate tables and fields against the instance dictionary. Assistant JSON also validates the configuration schema and nested relationship rules.
 

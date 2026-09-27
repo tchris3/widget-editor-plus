@@ -182,9 +182,6 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             var config = JSON.parse(value), error = this._validateDisplayConfig(config), self = this;
             if (error) throw new Error(error);
             Object.keys(config).forEach(function (table) { config[table] = self._normaliseDisplayConfig(config[table]); });
-            Object.keys(config).forEach(function (table) {
-                if (JSON.stringify(config[table], null, 4).length > 4000) throw new Error('Property for ' + table + ' exceeds 4000 characters.');
-            });
             var prefix = this.DISPLAY_PROPERTY + '.', existing = new GlideRecordSecure('sys_properties'), removed = [];
             existing.addQuery('name', 'STARTSWITH', prefix); existing.query();
             while (existing.next()) {
@@ -788,7 +785,7 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             this._requireConfigTable(table);
             var value = String(this.getParameter('property_value') || '');
             var description = String(this.getParameter('description') || '');
-            if (value.length > 4000) throw new Error('Property value exceeds 4000 characters.');
+            if (kind !== 'markdown_display' && value.length > 4000) throw new Error('Property value exceeds 4000 characters.');
             if (kind === 'table_config' && description.length > 512) throw new Error('Description exceeds 512 characters.');
             if (kind === 'display_fields') {
                 var self = this, fields = value.split(',').map(function (field) { return field.trim(); });
@@ -802,7 +799,6 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
                 var error = this._validateDisplayConfig(configs);
                 if (error) throw new Error(error);
                 value = JSON.stringify(display, null, 4);
-                if (value.length > 4000) throw new Error('Property value exceeds 4000 characters.');
             } else this._validateAssistantConfig(table, JSON.parse(value));
             var name = prefix + table, property = new GlideRecordSecure('sys_properties');
             var exists = property.get('name', name);
@@ -843,9 +839,6 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             if (!/^[a-z][a-z0-9_]*$/i.test(table) || !Array.isArray(configs[table]) ||
                 configs[table].some(function (child) { return typeof child !== 'string' || !/^[a-z][a-z0-9_]*$/i.test(child); })) {
                 throw new Error('Use a JSON object mapping parent tables to arrays of child table names.');
-            }
-            if (JSON.stringify(configs[table], null, 4).length > 4000) {
-                throw new Error('Property for ' + table + ' exceeds 4000 characters.');
             }
         });
     },
