@@ -180,6 +180,35 @@ declare global {
                         id: 'd0dadcb5e60a41f89819500a2c173522'
                         deleted: true
                     }
+                    'widget-editor-assistant-configure-markdown-groups': {
+                        table: 'sys_ui_action'
+                        id: '13e2a856eb8d4ba89adec7e02ef81841'
+                    }
+                    'widget-editor-assistant-copy-update-set-markdown': {
+                        table: 'sys_ui_action'
+                        id: '30f8b3d9c6344c95afc78d2e882fc7ed'
+                    }
+                    'widget-editor-assistant-markdown-ajax': {
+                        table: 'sys_script_include'
+                        id: '8c1af74f04814c0b8cfe761dfe6e4bde'
+                    }
+                    'widget-editor-assistant-markdown-ajax-acl': {
+                        table: 'sys_security_acl'
+                        id: 'd7ec4a0114694eed90270c051a54661a'
+                    }
+                    'widget-editor-assistant-markdown-groups-page-acl': {
+                        table: 'sys_security_acl'
+                        id: 'da9ab3d640c7471e8d24d2e511e52222'
+                        deleted: true
+                    }
+                    'widget-editor-assistant-markdown-groups-property': {
+                        table: 'sys_properties'
+                        id: '9620b46cd02448229cfa7b9918c76f0a'
+                    }
+                    'widget-editor-assistant-markdown-options-page-acl': {
+                        table: 'sys_security_acl'
+                        id: '47f134b02be946949f3bd14433c39135'
+                    }
                     'widget-editor-assistant-module': {
                         table: 'sys_app_module'
                         id: '103de88e324b475e8be325c0b08c71af'
@@ -348,6 +377,10 @@ declare global {
                         table: 'sys_properties'
                         id: 'a66fcbb84e5a4e878ec6e60ec8dd9a5e'
                         deleted: true
+                    }
+                    'widget-editor-markdown-display-property': {
+                        table: 'sys_properties'
+                        id: '0d990126542342e9bbcb7fd2d39017fc'
                     }
                     'widget-editor-plus-category-m2m-code-search-display-fields-catalog-script-client': {
                         table: 'sys_properties_category_m2m'
@@ -530,6 +563,10 @@ declare global {
                         table: 'sys_properties_category'
                         id: '120d01222f6e41e8bf4eaf0c4b73490a'
                     }
+                    'widget-editor-plus-properties-page-acl': {
+                        table: 'sys_security_acl'
+                        id: '306a9ee14c02414da4a059ba29bc2fb1'
+                    }
                     'widget-editor-properties-module': {
                         table: 'sys_app_module'
                         id: '6af1a1baa17b46618b4388b11dc359f9'
@@ -621,6 +658,32 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_security_acl_role'
+                        id: '2cb11fcde7f14bf99412f4493d2c7088'
+                        key: {
+                            sys_security_acl: 'd7ec4a0114694eed90270c051a54661a'
+                            sys_user_role: {
+                                id: '342b75e0723a420590ef938d7291f5a9'
+                                key: {
+                                    name: 'admin'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        table: 'sys_ui_action_role'
+                        id: '2e348799442f4bb9b97888033fe255bd'
+                        key: {
+                            sys_ui_action: '13e2a856eb8d4ba89adec7e02ef81841'
+                            sys_user_role: {
+                                id: '342b75e0723a420590ef938d7291f5a9'
+                                key: {
+                                    name: 'admin'
+                                }
+                            }
+                        }
+                    },
+                    {
                         table: 'sys_claim'
                         id: '39fc720b83e7321070b8b5dfeeaad3a6'
                         key: {
@@ -636,6 +699,27 @@ declare global {
                             claim_owner_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             previous_claim_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             metadata_update_name: 'sys_security_acl_role_10b5cf0d83ebb21070b8b5dfeeaad3ea'
+                        }
+                    },
+                    {
+                        table: 'sys_ui_page'
+                        id: '47cb4ac08e0d4437b5c0a482d8411e30'
+                        key: {
+                            name: 'widget_editor_plus_properties'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: '509ee7f33d914aa48c04713c3f55c35e'
+                        deleted: true
+                        key: {
+                            sys_security_acl: 'da9ab3d640c7471e8d24d2e511e52222'
+                            sys_user_role: {
+                                id: '342b75e0723a420590ef938d7291f5a9'
+                                key: {
+                                    name: 'admin'
+                                }
+                            }
                         }
                     },
                     {
@@ -722,6 +806,19 @@ declare global {
                     },
                     {
                         table: 'sys_ui_action_role'
+                        id: '965ef563456a46309081b2ab1f1bdf98'
+                        key: {
+                            sys_ui_action: '30f8b3d9c6344c95afc78d2e882fc7ed'
+                            sys_user_role: {
+                                id: 'cd640d10d7101200a9addd173e24d4cd'
+                                key: {
+                                    name: 'sp_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        table: 'sys_ui_action_role'
                         id: '9d3b645f26114f328b8a267e8be08021'
                         key: {
                             sys_ui_action: '987709096eb2ae2febce3b58151f28f7'
@@ -747,6 +844,13 @@ declare global {
                         }
                     },
                     {
+                        table: 'sys_ui_page'
+                        id: 'ab5f85327c2c4140989f03c3c99a47f4'
+                        key: {
+                            name: 'widget_editor_assistant_markdown_options'
+                        }
+                    },
+                    {
                         table: 'sys_ui_action_role'
                         id: 'b06c3eede1d94e56a335d02aaead4df6'
                         key: {
@@ -766,6 +870,19 @@ declare global {
                             claim_owner_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             previous_claim_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             metadata_update_name: 'sys_security_acl_role_792d35658363b61070b8b5dfeeaad32e'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: 'bee1a629ee554a289d901cd5db271336'
+                        key: {
+                            sys_security_acl: '306a9ee14c02414da4a059ba29bc2fb1'
+                            sys_user_role: {
+                                id: '342b75e0723a420590ef938d7291f5a9'
+                                key: {
+                                    name: 'admin'
+                                }
+                            }
                         }
                     },
                     {
@@ -828,6 +945,40 @@ declare global {
                             claim_owner_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             previous_claim_scope: 'd65bb60783e7321070b8b5dfeeaad3b2'
                             metadata_update_name: 'sys_security_acl_90b5cf0d83ebb21070b8b5dfeeaad3bb'
+                        }
+                    },
+                    {
+                        table: 'sys_ui_page'
+                        id: 'deb890e658bc4ab486d335fc875ee0f4'
+                        deleted: true
+                        key: {
+                            name: 'widget_editor_assistant_markdown_groups'
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: 'e98b1b7a4cc44f1780e83e199909013c'
+                        key: {
+                            sys_security_acl: '47f134b02be946949f3bd14433c39135'
+                            sys_user_role: {
+                                id: 'cd640d10d7101200a9addd173e24d4cd'
+                                key: {
+                                    name: 'sp_admin'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        table: 'sys_security_acl_role'
+                        id: 'f63ff13c80874abc99188325eafa8aa4'
+                        key: {
+                            sys_security_acl: 'd7ec4a0114694eed90270c051a54661a'
+                            sys_user_role: {
+                                id: 'cd640d10d7101200a9addd173e24d4cd'
+                                key: {
+                                    name: 'sp_admin'
+                                }
+                            }
                         }
                     },
                 ]

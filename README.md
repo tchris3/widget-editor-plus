@@ -127,6 +127,9 @@ An AI context bundle exporter (`widget_editor_assistant.do`) available as a stan
 - **Compact Context**: One `format_notes` element explains conventions. Record URLs and current ES12 settings appear once on each record wrapper. Both full versions and field change statuses are retained.
 - **Export Metadata**: Assistant exports use a `<context_bundle format_version="3">` root for AI context (Compare+ remains at format version 2) and include a UTC `generated_at` timestamp and each available record version’s `sys_mod_count`. Counters absent from the source are marked unavailable; unsaved edits do not increment the saved counter.
 - **Absolute Record URLs**: XML includes platform navigation URLs once per record. Deleted records link to their `sys_metadata_delete` entry; unavailable or unreadable deletion entries are marked with `record_url_status="unavailable"`.
+- **Update Set Markdown export**: Copy linked records from selected local or retrieved update sets, combined or separated by set.
+- **Table hierarchy**: Configure alphabetical parent grouping in Properties using UI or JSON. Only saved relationships are used.
+- **Markdown display fields**: Configure display and secondary fields per table, including validated reference dot-walks. Secondary values follow the record link, separated by ` | `.
 - **Live Token Estimation**: Real-time token count estimation based on payload size, with a proportional loading wheel while row and previous-version sizes are still being measured.
 - **Security Guardrails**: Table search blocklists, credential table withholding, and automated password redaction.
 
@@ -194,6 +197,8 @@ Widget Editor+ features a comprehensive Playwright test suite validating editor 
 ### System Properties
 All system properties are managed under the `monaco.plus.*` namespace:
 
+Admins can edit settings in **Widget Editor+ → Properties**. Values are limited to 4,000 characters.
+
 | Property Name | Default | Description |
 |---|---|---|
 | `monaco.plus.record_limit` | `500` | Page size for record pickers (widgets, versions, providers, dependencies) with infinite scroll. |
@@ -202,6 +207,8 @@ All system properties are managed under the `monaco.plus.*` namespace:
 | `monaco.plus.widget.related_list_exclusions` | *(empty)* | Comma-separated list of `sys_ui_related_list_entry.related_list` values to exclude from related lists. |
 | `monaco.plus.css.variables` | `{ "example-variable": "#a4c5ea" }` | JSON string of CSS custom property name-value pairs for autocomplete suggestions. |
 | `monaco.plus.scss.variables` | `{ "$breakpoint-xs": "480px", ... }` | JSON string of SCSS variable name-value pairs for autocomplete suggestions. |
+| `monaco.plus.update_sets.markdown_groups` | *(empty hierarchy)* | Defines parent grouping for update set Markdown export. |
+| `monaco.plus.update_sets.markdown_display` | `{"sys_security_acl":{"display":"name","secondary":["operation"]}}` | Display and secondary field paths by table for update set Markdown export. |
 | `monaco.plus.assistant.export_blocklist_tables` | *(credential & audit tables)* | Comma-separated table names excluded from Assistant search, browsing, and XML export. |
 | `monaco.plus.assistant.export_blocklist_prefixes` | `pwd,sys_activity,sys_amb,...` | Comma-separated table prefixes excluded from Assistant search, browsing, and XML export. |
 | `monaco.plus.assistant.table_config.<table_name>` | *(JSON rule configs)* | Declarative relationship rules for Assistant dependency detection per table (e.g. `sp_page`, `sp_widget`, `sc_cat_item_producer`, `sysevent_email_action`). |
