@@ -98,7 +98,7 @@
             });
         }
         function feature(name) {
-            if (name.indexOf('monaco.plus.update_sets.') === 0) return 'Update Set Markdown';
+            if (name.indexOf('monaco.plus.update_sets.') === 0) return 'Export Markdown+';
             if (name.indexOf('monaco.plus.assistant.') === 0) return 'Assistant+';
             if (name.indexOf('monaco.plus.code_search.') === 0) return 'Code Search+';
             var other = name.match(/^monaco\.plus\.([a-z0-9_]+)\./);
@@ -734,10 +734,10 @@
             var features = ['Widget Editor+', 'Assistant+', 'Code Search+'];
             properties.forEach(function (property) {
                 var name = feature(property.name);
-                if (name !== 'Update Set Markdown' && features.indexOf(name) === -1) features.push(name);
+                if (name !== 'Export Markdown+' && features.indexOf(name) === -1) features.push(name);
             });
-            if (properties.some(function (p) { return feature(p.name) === 'Update Set Markdown'; })) {
-                features.push('Update Set Markdown');
+            if (properties.some(function (p) { return feature(p.name) === 'Export Markdown+'; })) {
+                features.push('Export Markdown+');
             }
             features.forEach(function (name, index) {
                 var matches = properties.filter(function (property) { return feature(property.name) === name; })

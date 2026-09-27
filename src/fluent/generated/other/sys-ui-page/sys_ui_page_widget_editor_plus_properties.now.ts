@@ -4,7 +4,7 @@ UiPage({
     $id: Now.ID['widget-editor-plus-properties-page'],
     category: 'general',
     endpoint: 'widget_editor_plus_properties.do',
-    description: 'Admin settings for Widget Editor+, Update Set Markdown, Assistant+, and Code Search+.',
+    description: 'Admin settings for Widget Editor+, Export Markdown+, Assistant+, and Code Search+.',
     html: `<?xml version="1.0" encoding="utf-8" ?>
 <j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide">
   <g:requires name="scripts/snc-code-editor/monaco.bundle.min.jsx" params="sysparm_substitute=false" />

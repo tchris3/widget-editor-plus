@@ -85,7 +85,7 @@ function _weMarkdownType(container, label, order) {
 function _weMarkdownRecord(type, record) {
     var key = record.table + ':' + record.id;
     if (!type.records[key]) type.records[key] = { table: record.table, id: record.id, name: record.name,
-        url: record.url, secondary: record.secondary || [], action: record.action || '', isNew: !!record.isNew, types: {} };
+        url: record.url, secondary: record.secondary || [], inUpdateSet: record.inUpdateSet, setMarkers: record.setMarkers || [], action: record.action || '', isNew: !!record.isNew, types: {} };
     else if (record.updateId) {
         type.records[key].name = record.name;
         type.records[key].url = record.url;
@@ -96,13 +96,36 @@ function _weMarkdownRecord(type, record) {
 }
 function _weMarkdownTree(rows) {
     var root = _weMarkdownContainer(), definitions = {}, attached = {}, visiting = {};
-    function key(record) { return record.table + ':' + record.id; }
-    // Explicit updates supply the authoritative name, status and parent chain.
-    rows.forEach(function (row) { definitions[key(row)] = { record: row, parents: row.ancestors || [] }; });
+    function key(record) { return record.table + ':' + (record.consolidation ? 'article:' + record.consolidation.key : record.id); }
+    function register(record, parents, explicit) {
+        var id = key(record), existing = definitions[id];
+        var present = explicit || record.inUpdateSet === true;
+        if (!existing) {
+            definitions[id] = { record: Object.assign({}, record, { inUpdateSet: present }), parents: parents,
+                explicit: explicit, ids: [record.id] };
+            return;
+        }
+        present = present || existing.record.inUpdateSet;
+        var markers = _weMarkdownMergeMarkers(existing.record.setMarkers, record.setMarkers);
+        var isNew = existing.record.isNew || record.isNew;
+        if (existing.ids.indexOf(record.id) === -1) existing.ids.push(record.id);
+        var newer = record.consolidation && existing.record.consolidation &&
+            record.consolidation.version.localeCompare(existing.record.consolidation.version, undefined, { numeric: true }) > 0;
+        if ((explicit && !existing.explicit) || (explicit === existing.explicit && newer)) {
+            existing.record = Object.assign({}, record);
+            existing.parents = parents;
+            existing.explicit = explicit;
+        }
+        existing.record.inUpdateSet = present;
+        existing.record.setMarkers = markers;
+        existing.record.isNew = isNew;
+        if (existing.ids.length > 1 && existing.record.consolidation) existing.record.name = existing.record.consolidation.name;
+    }
+    // Explicit updates supply the authoritative status and parent chain.
+    rows.forEach(function (row) { register(row, row.ancestors || [], true); });
     rows.forEach(function (row) {
         (row.ancestors || []).forEach(function (ancestor, index, ancestors) {
-            var id = key(ancestor);
-            if (!definitions[id]) definitions[id] = { record: ancestor, parents: ancestors.slice(0, index) };
+            register(ancestor, ancestors.slice(0, index), false);
         });
     });
     function attach(id) {
@@ -131,22 +154,62 @@ function _weMarkdownRender(container, depth) {
             var record = type.records[key];
             var name = _weMarkdownLink(record.name, record.url);
             if (record.action === 'DELETE') name = '~~' + name + '~~ 🚮';
-            else if (record.isNew || record.action === 'INSERT') name += ' 🆕';
+            else if (record.isNew) name += ' 🆕';
+            if (record.setMarkers.length) name += ' ' + record.setMarkers.map(_weMarkdownKeycap).join(' ');
             lines.push(Array(depth * 2 + 3).join(' ') + '- ' + name +
-                (record.secondary.length ? ' ' + record.secondary.map(_weMarkdownEscape).join(' | ') : ''));
+                (record.secondary.length ? ' [' + record.secondary.map(_weMarkdownEscape).join(' | ') + ']' : '') +
+                (record.inUpdateSet === false ? ' *- context only*' : ''));
             lines = lines.concat(_weMarkdownRender(record, depth + 2));
         });
     });
     return lines;
 }
+function _weMarkdownKeycap(number) {
+    if (number === 10) return '🔟';
+    return String(number).split('').map(function (digit) { return digit + '\uFE0F\u20E3'; }).join('');
+}
+function _weMarkdownMergeMarkers(first, second) {
+    return (first || []).concat(second || []).filter(function (value, index, values) {
+        return values.indexOf(value) === index;
+    }).sort(function (a, b) { return a - b; });
+}
 function _weMarkdownText(loaded) {
-    var seen = {}, rows = [];
+    var sets = {}, seen = {}, rows = [];
+    function setKey(set) { return set.table + ':' + set.id; }
     loaded.forEach(function (item) { item.rows.forEach(function (row) {
+        var set = row.sourceSet || item.set;
+        if (set) sets[setKey(set)] = set;
+    }); });
+    var keys = Object.keys(sets).sort(function (a, b) {
+        return sets[a].name.localeCompare(sets[b].name) || a.localeCompare(b);
+    });
+    loaded.forEach(function (item) { item.rows.forEach(function (source) {
+        var set = source.sourceSet || item.set;
+        var markers = keys.length > 1 && set ? [keys.indexOf(setKey(set)) + 1] : [];
+        var row = Object.assign({}, source, { setMarkers: markers, ancestors: (source.ancestors || []).map(function (parent) {
+            return Object.assign({}, parent, { setMarkers: parent.inUpdateSet ? markers : [] });
+        }) });
         var key = row.table + ':' + row.id;
         if (!seen[key]) { seen[key] = row; rows.push(row); }
-        else if (row.isNew) seen[key].isNew = true;
+        else {
+            var existing = seen[key];
+            existing.isNew = existing.isNew || row.isNew;
+            existing.setMarkers = _weMarkdownMergeMarkers(existing.setMarkers, markers);
+            existing.ancestors.forEach(function (parent) {
+                row.ancestors.forEach(function (other) {
+                    if (parent.table === other.table && parent.id === other.id) {
+                        parent.inUpdateSet = parent.inUpdateSet || other.inUpdateSet;
+                        parent.setMarkers = _weMarkdownMergeMarkers(parent.setMarkers, other.setMarkers);
+                    }
+                });
+            });
+        }
     }); });
-    return _weMarkdownRender(_weMarkdownTree(rows), 0).join('\n');
+    var legend = keys.map(function (key, index) {
+        var set = sets[key];
+        return (keys.length > 1 ? _weMarkdownKeycap(index + 1) + ' ' : '') + _weMarkdownLink(set.name, set.url);
+    }).join('\n');
+    return (legend ? legend + '\n\n' : '') + _weMarkdownRender(_weMarkdownTree(rows), 0).join('\n');
 }
 
 function _weMarkdownNotify(type, message) {

@@ -4,7 +4,7 @@ Record({
     $id: Now.ID['widget-editor-markdown-list-header-menu'],
     table: 'sys_ui_context_menu',
     data: {
-        name: 'Export Markdown',
+        name: 'Export Markdown+',
         table: 'sys_update_xml',
         menu: 'list_header',
         type: 'action',

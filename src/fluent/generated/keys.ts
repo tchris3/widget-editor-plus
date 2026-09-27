@@ -209,6 +209,7 @@ declare global {
                     'widget-editor-assistant-markdown-options-page-acl': {
                         table: 'sys_security_acl'
                         id: '47f134b02be946949f3bd14433c39135'
+                        deleted: true
                     }
                     'widget-editor-assistant-module': {
                         table: 'sys_app_module'
@@ -514,6 +515,10 @@ declare global {
                     'widget-editor-markdown-list-header-menu': {
                         table: 'sys_ui_context_menu'
                         id: '63efd354d0a54baf8f1020d4f9bd1d27'
+                    }
+                    'widget-editor-markdown-options-removal': {
+                        table: 'sys_script_fix'
+                        id: '85e291547bb440c7a0792f854acc61a3'
                     }
                     'widget-editor-markdown-page-defaults-migration': {
                         table: 'sys_script_fix'
@@ -984,6 +989,7 @@ declare global {
                     {
                         table: 'sys_ui_page'
                         id: 'ab5f85327c2c4140989f03c3c99a47f4'
+                        deleted: true
                         key: {
                             name: 'widget_editor_assistant_markdown_options'
                         }
@@ -1096,6 +1102,7 @@ declare global {
                     {
                         table: 'sys_security_acl_role'
                         id: 'e98b1b7a4cc44f1780e83e199909013c'
+                        deleted: true
                         key: {
                             sys_security_acl: '47f134b02be946949f3bd14433c39135'
                             sys_user_role: {

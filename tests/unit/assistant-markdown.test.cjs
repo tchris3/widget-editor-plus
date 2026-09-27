@@ -230,16 +230,23 @@ test('member pages include forced records and validated live or customer-update 
             this.next = () => table === 'sys_update_xml' && !this._returned++;
             this.getUniqueValue = () => updateId;
             this.getValue = field => ({ name: 'u_forced_record_' + targetId, payload: '<record_update />',
-                action: 'INSERT_OR_UPDATE', target_name: 'Forced title' })[field] || '';
+                action: 'INSERT_OR_UPDATE', update_set: setId, target_name: 'Forced title' })[field] || '';
         } });
         api.getParameter = key => ({ set_table: 'sys_update_set', set_id: setId, offset: '0' })[key];
         api._rules = () => ({ groups: [] });
         api._ancestors = () => ({ type: 'Forced Records', ancestors: [] });
         api._name = () => 'Forced title';
+        api._isNewUpdate = (action, name, setTable, sourceSetId) => {
+            assert.equal(action, 'INSERT_OR_UPDATE');
+            assert.equal(name, 'u_forced_record_' + targetId);
+            assert.equal(setTable, 'sys_update_set'); assert.equal(sourceSetId, setId);
+            return true;
+        };
         const result = api.getMemberPage();
         assert.equal(result.success, true);
         assert.equal(result.rows.length, 1);
         assert.equal(result.rows[0].name, 'Forced title');
+        assert.equal(result.rows[0].isNew, true);
         return result.rows[0].url;
     }
     assert.equal(run(true), 'https://example.service-now.com/nav_to.do?uri=u_forced_record.do%3Fsys_id%3D' + targetId);
@@ -394,6 +401,7 @@ test('filtered list export pages through all matching updates without expanding 
         id: i.toString(16).padStart(32, '0'), type: i === 101 ? 'Other' : 'Widget',
     }));
     const { api } = server({ GlideRecordSecure: function (table) {
+        if (table === 'sys_update_set') return {get: id => id === setId, getValue: () => 'Filtered set'};
         assert.equal(table, 'sys_update_xml');
         let filter, start, end, rows, index = 0;
         this.addEncodedQuery = value => { filter = value; };
@@ -418,6 +426,7 @@ test('filtered list export pages through all matching updates without expanding 
         rows.push(...page.rows);
     }
     assert.equal(rows.length, 101);
+    assert.ok(rows.every(row => row.sourceSet.name === 'Filtered set' && row.sourceSet.id === setId));
     assert.equal(new Set(rows.map(row => row.id)).size, 101);
     assert.ok(!rows.some(row => row.id === records[101].id));
     api.getParameter = key => key === 'offset' ? '0' : null;
@@ -472,15 +481,51 @@ test('record markers and global deduplication preserve one canonical parent and 
     assert.ok(reversed.includes('~~[Parent](/parent)~~ 🚮'));
 });
 
-test('new markers require insert evidence and never classify deletions or ordinary updates as new', () => {
-    const { api } = server();
-    assert.equal(api._isNewUpdate('INSERT', ''), true);
-    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE', '<sys_mod_count>0</sys_mod_count>'), true);
-    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE', '<sys_mod_count>3</sys_mod_count>'), false);
-    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE', ''), false);
-    assert.equal(api._isNewUpdate('DELETE', '<sys_mod_count>0</sys_mod_count>'), false);
-    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE', '<sys_mod_count>3</sys_mod_count><sys_created_on>2026-09-27 01:00:00</sys_created_on>', '2026-09-27 01:00:00'), true);
-    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE', '<sys_created_on>2026-09-26 01:00:00</sys_created_on>', '2026-09-27 01:00:00'), false);
+test('new markers follow the first update set across repeated edits and later sets', () => {
+    const captures = [
+        {name:'widget_a',sys_id:'1',sys_created_on:'2026-01-01',update_set:'original'},
+        {name:'widget_a',sys_id:'2',sys_created_on:'2026-01-02',update_set:'original'},
+        {name:'widget_a',sys_id:'3',sys_created_on:'2026-01-03',update_set:'later'},
+        {name:'widget_b',sys_id:'4',sys_created_on:'2026-01-01',remote_update_set:'imported'},
+        {name:'widget_b',sys_id:'5',sys_created_on:'2026-01-02',update_set:'local'},
+        {name:'widget_c',sys_id:'6',sys_created_on:'2026-01-01'},
+    ];
+    let queries=0;
+    const {api}=server({GlideRecordSecure:function(table) {
+        assert.equal(table,'sys_update_xml');
+        let rows=captures.slice().reverse(),index=-1,limit=Infinity;
+        const order=[];
+        this.addQuery=(field,value)=>{rows=rows.filter(row=>row[field]===value);};
+        this.orderBy=field=>order.push(field);
+        this.setLimit=value=>{limit=value;};
+        this.query=()=>{queries++; rows.sort((a,b)=>{
+            for(const field of order) {const comparison=a[field].localeCompare(b[field]);if(comparison)return comparison;}
+            return 0;
+        });rows=rows.slice(0,limit);};
+        this.next=()=>++index<rows.length;
+        this.getValue=field=>rows[index][field]||'';
+    }});
+    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE','widget_a','sys_update_set','original'),true);
+    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE','widget_a','sys_update_set','original'),true);
+    assert.equal(api._isNewUpdate('INSERT','widget_a','sys_update_set','later'),false);
+    assert.equal(queries,1,'history is cached per target for each request');
+    assert.equal(api._isNewUpdate('DELETE','widget_a','sys_update_set','original'),false);
+    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE','widget_b','sys_remote_update_set','imported'),true);
+    assert.equal(api._isNewUpdate('INSERT_OR_UPDATE','widget_b','sys_update_set','local'),false);
+    assert.equal(api._isNewUpdate('INSERT','missing','sys_update_set','original'),false);
+    assert.equal(api._isNewUpdate('INSERT','widget_c','sys_update_set','original'),false);
+    assert.equal(api._isNewUpdate('INSERT','widget_a','sys_update_set',''),false);
+});
+
+test('insert actions cannot bypass the server history decision for new markers', () => {
+    const context={}; vm.createContext(context); vm.runInContext(clientSource,context);
+    const output=context._weMarkdownText([{rows:[
+        {table:'widget',id:'a',type:'Widgets',name:'Existing',action:'INSERT',isNew:false},
+        {table:'widget',id:'b',type:'Widgets',name:'New with edits',action:'INSERT_OR_UPDATE',isNew:true},
+    ]}]);
+    assert.ok(output.includes('Existing'));
+    assert.ok(!output.includes('Existing 🆕'));
+    assert.ok(output.includes('New with edits 🆕'));
 });
 
 test('UI placements and admin-only properties page are declared', () => {
@@ -499,6 +544,8 @@ test('UI placements and admin-only properties page are declared', () => {
     assert.match(menu, /copyUpdateSetMarkdownPlus\(g_list\)/);
 
     assert.match(editor, /roles: \['admin'\]/);
+    assert.match(editor, /gs.hasRole\("admin"\)/);
+    assert.equal(fs.existsSync('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_assistant_markdown_options.now.ts'), false);
     assert.match(page, /widget_editor_plus_properties\.do/);
     const jelly = page.match(/html: `([\s\S]*?)`,\s*clientScript:/)?.[1];
     assert.ok(jelly, 'properties page Jelly markup is declared');
@@ -515,7 +562,7 @@ test('UI placements and admin-only properties page are declared', () => {
     assert.match(module, /ui_page\.do\?sys_id=47cb4ac08e0d4437b5c0a482d8411e30/);
     assert.match(client, /Widget Editor\+'/);
     assert.match(client, /Assistant\+'/);
-    assert.match(client, /Update Set Markdown/);
+    assert.match(client, /Export Markdown\+/);
     assert.match(client, /Code Search\+'/);
     assert.match(client, /saveRules/);
     assert.match(client, /panel panel-default wep-card/);
@@ -607,7 +654,7 @@ test('JSON property renders one visible editor and grows only to half the viewpo
     await new Promise(resolve => setImmediate(resolve));
     while (frames.length) frames.shift()();
     assert.deepEqual(roots['wep-sections'].children.map(section => section.getAttribute('data-feature')),
-        ['Widget Editor+', 'Assistant+', 'Code Search+', 'Update Set Markdown']);
+        ['Widget Editor+', 'Assistant+', 'Code Search+', 'Export Markdown+']);
     const card = roots['wep-sections'].querySelectorAll('.wep-card')[0];
     const title = card.querySelectorAll('.wep-property-name')[0];
     const fallback = card.querySelectorAll('.wep-json-fallback')[0];
@@ -827,8 +874,8 @@ test('Markdown appends escaped secondary values to both parents and records', ()
         secondary: ['one | two', '<three>'], ancestors: [{ table: 'parent', id: 'p', type: 'Parents',
             name: 'Parent', url: '/parent', secondary: ['value'] }] }];
     const result = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
-    assert.ok(result.includes('[Parent](/parent) value'));
-    assert.ok(result.includes('[Child](/child) one \\| two | \\<three\\>'));
+    assert.ok(result.includes('[Parent](/parent) [value]'));
+    assert.ok(result.includes('[Child](/child) [one \\| two | \\<three\\>]'));
 });
 
 
@@ -1282,4 +1329,110 @@ test('parent-side grouping handles live, shared and deleted themes without using
     assert.equal(resolve(),'','older captured references must not be used');
     captured=[{name:'sp_theme_'+first,payload:'<footer>'+header+'</footer>'}];
     assert.equal(resolve(),first,'footer references work too');
+});
+
+test('Knowledge versions across pages consolidate by article number and retain all version children', () => {
+    const context = {};
+    vm.createContext(context); vm.runInContext(clientSource, context);
+    const article = version => ({table:'kb_knowledge',id:'article-'+version,type:'Knowledge',
+        name:'KB0010038 v'+version,url:'/article/'+version,secondary:['Article description'],inUpdateSet:false,
+        consolidation:{key:'KB0010038',name:'KB0010038',version:'KB0010038 v'+version}});
+    const child = version => ({table:'kb_version',id:'version-'+version,type:'Knowledge Version',
+        name:version,url:'/version/'+version,ancestors:[article(version)]});
+    const output = context._weMarkdownText([{rows:[child('1.0'),child('3.0')]},{rows:[child('2.0'),child('1.0')]}]);
+    assert.equal((output.match(/\[KB0010038\]/g)||[]).length,1);
+    assert.ok(output.includes('[KB0010038](/article/3.0) [Article description] *- context only*'));
+    for (const version of ['1.0','2.0','3.0']) assert.equal(output.split('](/version/'+version+')').length-1,1);
+    assert.equal((output.match(/\*\*Knowledge Version\*\*/g)||[]).length,1);
+    const present = article('2.0'); present.inUpdateSet=true;
+    const included = context._weMarkdownText([{rows:[child('1.0'),{...child('2.0'),ancestors:[present]},child('3.0')]}]);
+    assert.ok(!included.includes('context only'));
+    const explicit = context._weMarkdownText([{rows:[child('1.0'),child('3.0'),{...article('2.0'),updateId:'update',ancestors:[]}]}]);
+    assert.ok(!explicit.includes('context only'));
+});
+
+test('Knowledge consolidation never merges unrelated articles or records without a readable article number', () => {
+    const context = {};
+    vm.createContext(context); vm.runInContext(clientSource, context);
+    const rows = ['a','b','c','d'].map((id,index)=>({table:'kb_knowledge',id,type:'Knowledge',name:'Same title',url:'/article/'+id,
+        consolidation:index<2?{key:'KB'+id,name:'KB'+id,version:'1.0'}:null,ancestors:[]}));
+    const output = context._weMarkdownText([{rows}]);
+    assert.equal((output.match(/\[Same title\]/g)||[]).length,4);
+    const {api} = server();
+    const calls=[];
+    api._configuredValue=(record,table,payload,field)=>{calls.push({record,table,payload,field});return field==='number'?'KB0010038':'KB0010038 v3.0';};
+    assert.deepEqual({...api._consolidation(null,'kb_knowledge','captured payload')},{key:'KB0010038',name:'KB0010038',version:'KB0010038 v3.0'});
+    assert.ok(calls.every(call=>call.payload==='captured payload'));
+    api._configuredValue=()=>'';
+    assert.equal(api._consolidation({},'kb_knowledge',''),null);
+    assert.equal(api._consolidation({},'sp_widget',''),null);
+});
+
+test('live ancestors check membership in the source update set independently of list filtering', () => {
+    const {api}=server();
+    const parentId='a'.repeat(32), childId='b'.repeat(32);
+    const rules={groups:[{table:'sp_widget',label:'Widget',children:[{table:'sp_ng_template',label:'Template',field:'sp_widget',children:[]}]}]};
+    api._record=()=>({getValue:()=>parentId});
+    api._name=()=> 'Parent'; api._secondaryValues=()=>[];
+    let captured=null;
+    api._updateForTarget=(table,id,setTable,setId)=>{
+        assert.equal(table,'sp_widget');assert.equal(id,parentId);
+        assert.equal(setTable,'sys_remote_update_set');assert.equal(setId,'source-set');return captured;
+    };
+    const ancestors=()=>api._ancestors('sp_ng_template',childId,'',rules,'sys_remote_update_set','source-set').ancestors;
+    assert.equal(ancestors()[0].inUpdateSet,false);
+    captured={id:'update',payload:'',name:'Parent'};
+    assert.equal(ancestors()[0].inUpdateSet,true);
+});
+
+test('export includes a linked single set heading without any keycaps', () => {
+    const context={};vm.createContext(context);vm.runInContext(clientSource,context);
+    const set={table:'sys_update_set',id:'a',name:'Release [one]',url:'/set/a'};
+    const row={table:'widget',id:'x',name:'Widget',type:'Widgets',url:'/widget/x',sourceSet:set};
+    const output=context._weMarkdownText([{rows:[row,row]}]);
+    assert.ok(output.startsWith('[Release \\[one\\]](/set/a)\n\n- **Widgets**'));
+    assert.ok(!output.includes('\u20E3'));
+    assert.equal(output.split('[Widget]').length-1,1);
+});
+
+test('multiple sets have a stable linked legend and deduplicated records retain every set marker', () => {
+    const context={};vm.createContext(context);vm.runInContext(clientSource,context);
+    const first={table:'sys_update_set',id:'a',name:'Alpha',url:'/set/a'};
+    const second={table:'sys_remote_update_set',id:'b',name:'Beta',url:'/remote/b'};
+    const parent={table:'parent',id:'p',name:'Parent',type:'Parents',url:'/parent',inUpdateSet:false};
+    const child={table:'child',id:'c',name:'Child',type:'Children',url:'/child',ancestors:[parent]};
+    const loaded=[{rows:[{...child,sourceSet:second}]},{rows:[{...child,sourceSet:first}]}];
+    const output=context._weMarkdownText(loaded);
+    assert.ok(output.startsWith('1️⃣ [Alpha](/set/a)\n2️⃣ [Beta](/remote/b)\n\n'));
+    assert.ok(output.includes('[Child](/child) 1️⃣ 2️⃣'));
+    assert.ok(output.includes('[Parent](/parent) *- context only*'));
+    assert.equal(output.split('[Child]').length-1,1);
+    assert.equal(context._weMarkdownText(loaded),output,'rendering does not mutate source rows');
+    loaded[1].rows[0].ancestors=[{...parent,inUpdateSet:true}];
+    const included=context._weMarkdownText(loaded);
+    assert.ok(included.includes('[Parent](/parent) 1️⃣'));
+    assert.ok(!included.includes('context only'));
+    assert.equal(context._weMarkdownKeycap(10),'🔟');
+    assert.equal(context._weMarkdownKeycap(11),'1️⃣1️⃣');
+    assert.equal(context._weMarkdownText([{rows:[],set:first}]),'');
+});
+
+test('options cleanup removes only the retired page, its ACL and linked roles and is repeatable', () => {
+    const source=fs.readFileSync('src/fluent/generated/server-development/fix-script/widget_editor_markdown_options_remove.server.js','utf8');
+    const records={sys_ui_page:[{sys_id:'ab5f85327c2c4140989f03c3c99a47f4',name:'widget_editor_assistant_markdown_options'},{sys_id:'other',name:'keep'}],
+        sys_security_acl:[{sys_id:'47f134b02be946949f3bd14433c39135',name:'widget_editor_assistant_markdown_options',type:'ui_page'},{sys_id:'properties',name:'widget_editor_plus_properties'}],
+        sys_security_acl_role:[{sys_id:'old-role',sys_security_acl:'47f134b02be946949f3bd14433c39135'},{sys_id:'admin-role',sys_security_acl:'properties'}]};
+    const context={GlideRecord:function(table){
+        let current,rows,index=-1,field,value;
+        this.get=id=>!!(current=records[table].find(row=>row.sys_id===id));
+        this.getValue=key=>current[key];this.getUniqueValue=()=>current.sys_id;
+        this.addQuery=(key,match)=>{field=key;value=match;};
+        this.query=()=>{rows=records[table].filter(row=>row[field]===value);};
+        this.next=()=>!!(current=rows[++index]);
+        this.deleteRecord=()=>{records[table]=records[table].filter(row=>row!==current);};
+    }};
+    vm.createContext(context);vm.runInContext(source,context);vm.runInContext(source,context);
+    assert.deepEqual(records.sys_ui_page.map(row=>row.sys_id),['other']);
+    assert.deepEqual(records.sys_security_acl.map(row=>row.sys_id),['properties']);
+    assert.deepEqual(records.sys_security_acl_role.map(row=>row.sys_id),['admin-role']);
 });

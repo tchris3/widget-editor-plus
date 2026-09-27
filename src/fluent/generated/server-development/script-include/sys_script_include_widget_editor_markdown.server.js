@@ -271,6 +271,14 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         } catch (e) {}
         return '';
     },
+    _consolidation: function (record, table, payload) {
+        if (table !== 'kb_knowledge') return null;
+        // Article numbers survive version-specific sys_ids. Never merge by title.
+        var number = this._configuredValue(record, table, payload, 'number');
+        if (!number) return null;
+        return { key: number, name: number,
+            version: this._configuredValue(record, table, payload, 'display_number') };
+    },
     _secondaryValues: function (record, table, payload) {
         var config = this._displayConfig(table), result = [];
         if (!config || !config.additional_fields) return result;
@@ -484,9 +492,11 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             }
             if (!this._sysId(parentId)) return ordinary;
             var parentRecord = this._record(parent.table, parentId);
-            var parentUpdate = parentRecord ? null : this._updateForTarget(parent.table, parentId, setTable, setId);
+            var parentUpdate = this._updateForTarget(parent.table, parentId, setTable, setId);
             if (!parentRecord && !parentUpdate) return ordinary;
-            ancestors.unshift({ table: parent.table, id: parentId, type: parent.label, typeOrder: match.orders[i - 1],
+            ancestors.unshift({ table: parent.table, id: parentId,
+                inUpdateSet: !!parentUpdate,
+                consolidation: this._consolidation(parentRecord, parent.table, parentUpdate ? parentUpdate.payload : ''), type: parent.label, typeOrder: match.orders[i - 1],
                 name: this._name(parentRecord, parent.table, parentId, parentUpdate ? parentUpdate.payload : '',
                     parentUpdate ? parentUpdate.name : ''),
                 secondary: this._secondaryValues(parentRecord, parent.table, parentUpdate ? parentUpdate.payload : ''),
@@ -547,11 +557,38 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         if (String(query)) gr.addEncodedQuery(String(query));
         return this._markdownPage(gr, offset);
     },
-    _isNewUpdate: function (action, payload, capturedAt) {
-        var createdAt = this._payloadField(payload, 'sys_created_on').value;
-        return action === 'INSERT' || (action === 'INSERT_OR_UPDATE' &&
-            (this._payloadField(payload, 'sys_mod_count').value === '0' ||
-                (!!createdAt && createdAt === capturedAt)));
+    _isNewUpdate: function (action, name, setTable, setId) {
+        if (action === 'DELETE' || !name || !setId ||
+            (setTable !== 'sys_update_set' && setTable !== 'sys_remote_update_set')) return false;
+        this._firstUpdateSets = this._firstUpdateSets || {};
+        if (!Object.prototype.hasOwnProperty.call(this._firstUpdateSets, name)) {
+            // Repeated edits in the originating set remain new, regardless of mod count.
+            var history = new GlideRecordSecure('sys_update_xml');
+            history.addQuery('name', name);
+            history.orderBy('sys_created_on');
+            history.orderBy('sys_id');
+            history.setLimit(1);
+            history.query();
+            var firstSet = '';
+            if (history.next()) {
+                var local = String(history.getValue('update_set') || '');
+                var remote = String(history.getValue('remote_update_set') || '');
+                firstSet = local ? 'sys_update_set:' + local : (remote ? 'sys_remote_update_set:' + remote : '');
+            }
+            this._firstUpdateSets[name] = firstSet;
+        }
+        return this._firstUpdateSets[name] === setTable + ':' + setId;
+    },
+    _markdownSourceSet: function (table, id) {
+        if (!this._sysId(id)) return null;
+        this._markdownSourceSets = this._markdownSourceSets || {};
+        var key = table + ':' + id;
+        if (!this._markdownSourceSets[key]) {
+            var record = new GlideRecordSecure(table);
+            var name = record.get(id) ? String(record.getValue('name') || id) : id;
+            this._markdownSourceSets[key] = { table: table, id: id, name: name, url: this._url(table, id) };
+        }
+        return this._markdownSourceSets[key];
     },
     _markdownPage: function (gr, offset) {
         gr.orderByDesc('sys_updated_on');
@@ -563,10 +600,11 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             var local = String(gr.getValue('update_set') || '');
             var setTable = local ? 'sys_update_set' : 'sys_remote_update_set';
             var setId = local || String(gr.getValue('remote_update_set') || '');
+            var sourceSet = this._markdownSourceSet(setTable, setId);
             var target = this._target(gr);
             var updateId = String(gr.getUniqueValue());
             if (!target) {
-                rows.push({ table: 'sys_update_xml', id: updateId, type: 'Unresolved Customer Updates',
+                rows.push({ table: 'sys_update_xml', id: updateId, sourceSet: sourceSet, type: 'Unresolved Customer Updates',
                     name: String(gr.getValue('target_name') || gr.getValue('name') || updateId),
                     url: this._url('sys_update_xml', updateId), ancestors: [], action: '' });
                 continue;
@@ -574,12 +612,13 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             var action = String(gr.getValue('action') || '');
             var live = this._record(target.table, target.id);
             var grouping = this._ancestors(target.table, target.id, target.payload, rules, setTable, setId);
-            rows.push({ table: target.table, id: target.id, type: grouping.type,
-                typeOrder: grouping.typeOrder,
+            rows.push({ table: target.table, id: target.id, sourceSet: sourceSet, type: grouping.type,
+                typeOrder: grouping.typeOrder, inUpdateSet: true,
+                consolidation: this._consolidation(live, target.table, target.payload),
                 name: this._name(live, target.table, target.id, target.payload, String(gr.getValue('target_name') || '')),
                 secondary: this._secondaryValues(live, target.table, target.payload),
                 url: live ? this._url(target.table, target.id) : this._url('sys_update_xml', updateId),
-                ancestors: grouping.ancestors, action: action, isNew: this._isNewUpdate(action, target.payload, String(gr.getValue('sys_created_on') || '')), updateId: updateId });
+                ancestors: grouping.ancestors, action: action, isNew: this._isNewUpdate(action, String(gr.getValue('name') || ''), setTable, setId), updateId: updateId });
         }
         var hasMore = rows.length > this.PAGE_SIZE;
         if (hasMore) rows.pop();
