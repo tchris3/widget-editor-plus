@@ -247,6 +247,12 @@ UiPage({
       color: rgb(var(--now-color_text--secondary, 96, 100, 108));
       border: 1px solid rgb(var(--now-color_border--secondary, 205, 212, 217));
     }
+    .wep-updated-pill {
+      margin-left: auto;
+      font-weight: 400;
+    }
+    .wep-updated-cell { font-size: 0.75rem; white-space: nowrap; }
+    .wep-updated-pill[hidden] { display: none !important; }
     .wep-card .panel-body {
       padding: 1rem !important;
     }
@@ -280,7 +286,8 @@ UiPage({
     .wep-config-table td { vertical-align:top !important; overflow-wrap:anywhere; }
     .wep-config-table th:first-child { width:22%; }
     .wep-assistant-config-table th:nth-child(2) { width:20%; }
-    .wep-config-table th:last-child { width:130px; }
+    .wep-config-table th:nth-last-child(2) { width:130px; }
+    .wep-config-table th:last-child { width:120px; }
     .wep-config-table .wep-status { display:block; margin-top:6px; }
     .wep-config-table .btn + .btn { margin-left:4px; }
     .wep-config-table textarea { resize:vertical; }
@@ -332,7 +339,12 @@ UiPage({
     .wep-hierarchy-toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
     .wep-tree[hidden] { display: none; }
     .wep-rule-scroll { overflow: visible; }
-    .wep-rule-table { width: 100%; font-size: 13px; }
+    .wep-rule-table { width: 100%; table-layout: fixed; font-size: 13px; }
+    .wep-rule-table th:nth-child(2) { width: 24%; }
+    .wep-rule-table th:nth-child(3) { width: 84px; }
+    .wep-rule-table th:last-child { width: 120px; }
+    .wep-rule-table td { overflow-wrap: anywhere; }
+    .wep-updated-cell time span { white-space: nowrap; }
     .wep-rule-table td {
       padding: 7px 10px;
       border-bottom: 1px solid rgb(var(--now-color_border--secondary, 205, 212, 217));
@@ -346,7 +358,7 @@ UiPage({
     }
     .wep-rule-name .wep-rule-toggle { height: 28px; }
     .wep-rule-reference { font-family: monospace; font-size: 12px; }
-    .wep-rule-actions { white-space: nowrap; width: 1%; }
+    .wep-rule-actions { white-space: nowrap; }
     .wep-rule-action-group { display: flex; gap: 4px; }
     .wep-rule-table .wep-rule-action-group .btn {
       flex: 0 0 28px; width: 28px; min-width: 28px; height: 28px; padding: 0; margin: 0;

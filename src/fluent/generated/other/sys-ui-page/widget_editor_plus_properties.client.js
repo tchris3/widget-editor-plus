@@ -7,7 +7,7 @@
         setTimeout(function () {
             try {
                 if (window.parent !== window) window.parent.document.title = pageTitle;
-            } catch (e) {}
+            } catch (e) { }
         }, 1000);
         if (window.WE_HISTORY_SYNC) {
             window.WE_HISTORY_SYNC.set({ title: pageTitle });
@@ -43,6 +43,7 @@
                     catch (e) { reject(new Error('Invalid server response.')); return; }
                     if (!data.success) { reject(new Error(data.error || 'Request failed.')); return; }
                     resolve(data);
+                    if (/^(saveProperty|saveTableProperty|deleteTableProperty|saveRules)$/.test(method)) refreshUpdatedTimes();
                 });
             });
         }
@@ -51,6 +52,40 @@
             if (className) node.className = className;
             if (value) node.textContent = value;
             return node;
+        }
+        function showUpdated(property, value) {
+            property.updatedOn = value;
+            var pill = property._updatedPill;
+            if (!pill) return;
+            // ServiceNow's internal date/time value is UTC, without a timezone suffix.
+            var date = new Date(value ? value.replace(' ', 'T') + 'Z' : NaN);
+            pill.hidden = isNaN(date.getTime());
+            pill.textContent = '';
+            if (pill.hidden) return;
+            var localDate = date.toLocaleDateString(), localTime = date.toLocaleTimeString();
+            if (property._rowTimestamp) {
+                pill.appendChild(el('span', '', localDate));
+                pill.appendChild(el('br'));
+                pill.appendChild(el('span', '', localTime));
+            } else pill.textContent = 'Updated ' + localDate + ' ' + localTime;
+            pill.setAttribute('datetime', date.toISOString());
+        }
+        function refreshUpdatedTimes() {
+            ajax('getProperties', {}).then(function (data) {
+                if (!sections) return;
+                Array.prototype.forEach.call(sections.querySelectorAll('.wep-card'), function (card) {
+                    var property = card._prop;
+                    var match = data.properties.filter(function (item) { return item.name === property.name || (property.prefix && item.name === property.prefix.slice(0, -1)); })[0];
+                    if (property.rows || property.name === 'monaco.plus.update_sets.markdown_groups') {
+                        property.updatedByTable = match && match.updatedByTable || {};
+                        (property._updatedRows || []).forEach(function (row) {
+                            var name = row.name();
+                            var saved = data.properties.filter(function (item) { return item.name === name; })[0];
+                            showUpdated(row, saved ? saved.updatedOn : property.updatedByTable[name.slice(name.lastIndexOf('.') + 1)]);
+                        });
+                    } else showUpdated(property, match && match.updatedOn);
+                });
+            }).catch(function () { /* A metadata refresh must not turn a successful save into an error. */ });
         }
         function characterCount(limit) {
             if (limit === undefined) limit = 4000;
@@ -142,7 +177,7 @@
                 if (parts.length >= 3 && parts.slice(0, 3).every(function (value) { return !isNaN(value); })) {
                     return (parts[0] + parts[1] + parts[2]) / 3 >= 128 ? 'vs' : 'vs-dark';
                 }
-            } catch (e) {}
+            } catch (e) { }
             return window.NOW && window.NOW.theme && /dark/i.test(window.NOW.theme.name || '') ? 'vs-dark' : 'vs';
         }
         function ensureMonacoWorker() {
@@ -210,6 +245,11 @@
             var typeText = isRules ? 'Table hierarchy' : (json ? 'JSON' : (property.type || 'string'));
             var tagClass = 'wep-type-tag ' + (isRules ? 'wep-type-tag--hierarchy' : (json ? 'wep-type-tag--json' : (property.type && property.type.toLowerCase() === 'boolean' ? 'wep-type-tag--boolean' : 'wep-type-tag--string')));
             if (!isRules) heading.appendChild(el('span', tagClass, typeText.toUpperCase()));
+            if (!property.rows && !isRules) {
+                property._updatedPill = el('time', 'wep-type-tag wep-updated-pill');
+                heading.appendChild(property._updatedPill);
+                showUpdated(property, property.updatedOn);
+            }
             card.appendChild(heading);
             var body = el('div', 'panel-body');
             card.appendChild(body);
@@ -290,8 +330,10 @@
                 countValue();
                 reset.hidden = readValue() === property.value;
                 if (readValue() === property.value) { delete dirty[property.name]; save.disabled = true; status(note, ''); }
-                else { dirty[property.name] = true; var error = valueError(); save.disabled = !!error;
-                    status(note, error || 'Unsaved changes', error ? 'error' : 'dirty'); }
+                else {
+                    dirty[property.name] = true; var error = valueError(); save.disabled = !!error;
+                    status(note, error || 'Unsaved changes', error ? 'error' : 'dirty');
+                }
             }
             input.oninput = input.onchange = function () {
                 if (!json && input.tagName.toLowerCase() === 'textarea') resizePlainTextarea(input);
@@ -315,11 +357,20 @@
             }
             return card;
         }
+        function updatedCell(family, row, name, value) {
+            var cell = el('td', 'wep-updated-cell'), time = el('time');
+            var timestamp = { _updatedPill: time, _rowTimestamp: true, name: name };
+            if (!family._updatedRows) family._updatedRows = [];
+            family._updatedRows.push(timestamp);
+            showUpdated(timestamp, value);
+            cell.appendChild(time); row.appendChild(cell);
+            return timestamp;
+        }
         function tableProperties(body, family) {
             var assistant = family.kind === 'table_config', markdown = family.kind === 'markdown_display';
             var table = el('table', 'table table-striped wep-properties-table wep-config-table' + (assistant ? ' wep-assistant-config-table' : ''));
             var head = el('thead'), headings = el('tr'), rows = el('tbody');
-            (assistant ? ['Table', 'Description', 'JSON', 'Actions'] : markdown ? ['Table', 'Display fields', 'Additional fields', 'Actions'] : ['Table', 'Fields', 'Actions']).forEach(function (label) {
+            (assistant ? ['Table', 'Description', 'JSON', 'Actions', 'Updated'] : markdown ? ['Table', 'Display fields', 'Additional fields', 'Actions', 'Updated'] : ['Table', 'Fields', 'Actions', 'Updated']).forEach(function (label) {
                 var th = el('th', '', label); th.setAttribute('scope', 'col'); headings.appendChild(th);
             });
             head.appendChild(headings); table.appendChild(head); table.appendChild(rows); body.appendChild(table);
@@ -390,6 +441,7 @@
                 save.className = 'btn btn-primary';
                 function discard() {
                     if (saved) { family.propertyCount--; family._refreshCount(); }
+                    family._updatedRows = family._updatedRows.filter(function (item) { return item !== timestamp; });
                     active = false; request++; delete dirty[key];
                     plainTextareas = plainTextareas.filter(function (field) { return field !== description; });
                     if (picker) { picker.off('.wepTable'); picker.select2('destroy'); }
@@ -410,6 +462,7 @@
                     }).catch(function (error) { status(note, error.message, 'error'); pending(false); });
                 });
                 actions.appendChild(save); actions.appendChild(remove); actions.appendChild(note); row.appendChild(actions);
+                var timestamp = updatedCell(family, row, function () { return family.prefix + saved; }, property && property.updatedOn);
                 row._tableName = function () { return name.value.trim(); }; rows.appendChild(row);
                 name.oninput = description.oninput = input.oninput = function () {
                     if (assistant) resizePlainTextarea(description);
@@ -422,21 +475,24 @@
                 var jq = window.$j || window.jQuery;
                 if (jq && jq.fn && jq.fn.select2) {
                     picker = jq(name);
-                    picker.select2({ placeholder: 'Select a table', minimumInputLength: 0, width: '100%',
+                    picker.select2({
+                        placeholder: 'Select a table', minimumInputLength: 0, width: '100%',
                         query: function (query) {
                             var current = ++request;
                             ajax('searchTables', { query: query.term || '' }).then(function (data) {
                                 if (!active || current !== request) return;
-                                query.callback({ results: data.tables.filter(function (item) {
-                                    return !Array.prototype.some.call(rows.children, function (other) { return other !== row && other._tableName() === item.name; });
-                                }).map(function (item) { return {id:item.name, text:item.label + ' (' + item.name + ')'}; }), more:false });
+                                query.callback({
+                                    results: data.tables.filter(function (item) {
+                                        return !Array.prototype.some.call(rows.children, function (other) { return other !== row && other._tableName() === item.name; });
+                                    }).map(function (item) { return { id: item.name, text: item.label + ' (' + item.name + ')' }; }), more: false
+                                });
                             }).catch(function (error) {
                                 if (!active || current !== request) return;
-                                status(note, error.message, 'error'); query.callback({results:[],more:false});
+                                status(note, error.message, 'error'); query.callback({ results: [], more: false });
                             });
                         }
                     });
-                    if (saved) picker.select2('data', {id:saved, text:saved});
+                    if (saved) picker.select2('data', { id: saved, text: saved });
                     picker.select2('enable', !saved);
                     picker.on('change.wepTable', function () { refresh(); status(note, 'Unsaved changes', 'dirty'); });
                 } else status(note, 'The Select2 table picker is unavailable. Reload the page.', 'error');
@@ -450,7 +506,6 @@
             body.appendChild(button('Add table', function () { addRow(null); }));
         }
         function markdownCard(card, property) {
-            var counter = characterCount();
             var note = el('span', 'wep-status');
             var panel = el('div', 'wep-tree');
             var root = el('div', 'wep-rule-scroll');
@@ -466,8 +521,6 @@
             var jsonPanel = el('div', 'wep-hierarchy-json'); jsonPanel.hidden = true;
             var jsonInput = el('textarea', 'form-control wep-value wep-json-fallback');
             jsonInput.setAttribute('aria-label', 'Table hierarchy JSON'); jsonInput.rows = 10;
-            jsonInput.setAttribute('aria-describedby', counter.id);
-            root.setAttribute('aria-describedby', counter.id);
             jsonPanel.appendChild(jsonInput); panel.appendChild(jsonPanel);
             jsonInput.oninput = jsonInput.onchange = jsonChanged;
             var savedConfig = JSON.parse(property.value), savedTables = Object.keys(savedConfig), savingRules = false;
@@ -508,15 +561,6 @@
                 return config;
             }
             function readConfig() { return mode === 'JSON' ? parseHierarchy() : compactHierarchy(); }
-            function updateHierarchyCount() {
-                var length = 0;
-                try {
-                    var config = readConfig();
-                    Object.keys(config).forEach(function (table) { length = Math.max(length, JSON.stringify(config[table], null, 4).length); });
-                } catch (e) { length = jsonInput.value.length; }
-                counter.textContent = length + ' characters (largest table)';
-                counter.className = 'wep-character-count';
-            }
             function hierarchyError() {
                 try {
                     readConfig();
@@ -531,7 +575,6 @@
             function displayMode(next) {
                 mode = next; root.hidden = mode !== 'UI'; jsonPanel.hidden = mode !== 'JSON';
                 modeLink.textContent = mode === 'UI' ? 'Switch to JSON' : 'Switch to UI';
-                updateHierarchyCount();
                 if (mode === 'JSON' && !jsonEditor) {
                     var host = el('div', 'wep-monaco'); jsonPanel.appendChild(host);
                     jsonEditor = mountJsonEditor(jsonInput, host, jsonChanged);
@@ -589,7 +632,7 @@
                     if (requested !== revision) return;
                     rules = data.rules; rulesDirty = false;
                     revert.hidden = true;
-                    setJson(savedConfig); renderRules(); updateHierarchyCount();
+                    setJson(savedConfig); renderRules();
                     save.disabled = true; status(note, '');
                 }).catch(function (error) {
                     if (requested !== revision) return;
@@ -599,13 +642,13 @@
             });
             revert.hidden = true;
             save.className = 'btn btn-primary'; save.disabled = true;
-            footer.appendChild(save); footer.appendChild(revert); footer.appendChild(note); footer.appendChild(counter);
+            footer.appendChild(save); footer.appendChild(revert); footer.appendChild(note);
             panel.appendChild(footer); card.appendChild(panel);
             status(note, 'Loading…');
             var loadingRevision = revision;
             ajax('getRules', {}).then(function (data) {
                 if (revision !== loadingRevision) return;
-                savedConfig = data.config; savedTables = data.propertyTables || Object.keys(savedConfig); rules = data.rules; property.propertyCount = savedTables.length; property._refreshCount(); renderRules(); updateHierarchyCount(); status(note, '');
+                savedConfig = data.config; savedTables = data.propertyTables || Object.keys(savedConfig); rules = data.rules; property.propertyCount = savedTables.length; property._refreshCount(); renderRules(); status(note, '');
             }).catch(function (error) {
                 if (revision !== loadingRevision) return;
                 setJson(savedConfig); displayMode('JSON');
@@ -622,7 +665,6 @@
                 revert.hidden = !rulesDirty;
             }
             function markRules() {
-                updateHierarchyCount();
                 revision++; refreshRulesDirty(); var error = hierarchyError();
                 save.disabled = !rulesDirty || !!error; status(note, error || (rulesDirty ? 'Unsaved changes' : ''), error ? 'error' : (rulesDirty ? 'dirty' : ''));
             }
@@ -643,7 +685,7 @@
                 var reference = el('td', 'wep-rule-reference');
                 var actionsCell = el('td', 'wep-rule-actions');
                 var controls = el('div', 'wep-rule-action-group'); actionsCell.appendChild(controls);
-                row.appendChild(inputs); row.appendChild(reference); row.appendChild(actionsCell);
+                row.appendChild(inputs); row.appendChild(reference); row.appendChild(actionsCell); row.appendChild(el('td'));
                 body.insertBefore(row, before || null);
                 var input = el('input'); input.type = 'hidden';
                 input.setAttribute('aria-label', parent ? 'Related table' : 'Top-level table');
@@ -675,7 +717,7 @@
                 } else {
                     $input = jq(input);
                     $input.select2({
-                        placeholder: parent ? 'Select a related table' : 'Add a top-level table',
+                        placeholder: parent ? 'Add related table' : 'Add table',
                         minimumInputLength: 0, allowClear: true, width: '100%',
                         query: function (query) {
                             clearTimeout(timer);
@@ -690,9 +732,11 @@
                                                 (!parent || (item.label + ' ' + item.table + ' ' + item.field).toLowerCase().indexOf(term) !== -1);
                                         }).map(function (item) {
                                             var table = item.table || item.name;
-                                            return { id: table + (item.field ? '.' + item.field : ''),
+                                            return {
+                                                id: table + (item.field ? '.' + item.field : ''),
                                                 text: item.label + ' (' + table + ')',
-                                                table: table, label: item.label, field: item.field || '' };
+                                                table: table, label: item.label, field: item.field || ''
+                                            };
                                         });
                                         status(hint, ''); query.callback({ results: results, more: false });
                                     }).catch(function (error) {
@@ -708,19 +752,22 @@
                         reference.textContent = selected ? selected.field : '';
                     });
                 }
-                return { destroy: function () {
-                    active = false; request++; clearTimeout(timer);
-                    if ($input) { $input.off('.wepRules'); $input.select2('destroy'); }
-                    row.remove();
-                } };
+                return {
+                    destroy: function () {
+                        active = false; request++; clearTimeout(timer);
+                        if ($input) { $input.off('.wepRules'); $input.select2('destroy'); }
+                        row.remove();
+                    }
+                };
             }
             function renderRules() {
                 closePicker();
                 if (topPicker) { topPicker.destroy(); topPicker = null; }
                 root.textContent = '';
+                property._updatedRows = [];
                 var table = el('table', 'table wep-properties-table wep-rule-table');
                 var head = el('thead'), header = el('tr');
-                ['Table', 'Reference field', 'Actions'].forEach(function (label) {
+                ['Table', 'Reference field', 'Actions', 'Updated'].forEach(function (label) {
                     var cell = el('th', '', label); cell.setAttribute('scope', 'col'); header.appendChild(cell);
                 });
                 head.appendChild(header); table.appendChild(head);
@@ -755,7 +802,9 @@
                         remove.className = 'btn btn-icon icon-error-circle';
                         remove.title = 'Remove';
                         remove.setAttribute('aria-label', 'Remove'); controls.appendChild(remove);
-                        row.appendChild(actionsCell); body.appendChild(row);
+                        row.appendChild(actionsCell);
+                        updatedCell(property, row, function () { return property.name + '.' + node.table; }, (property.updatedByTable || {})[node.table]);
+                        body.appendChild(row);
                         if (!collapsed[node.id]) render(node.children, depth + 1);
                     });
                 }
@@ -771,12 +820,14 @@
                     var combined = properties.filter(function (property) { return property.name === 'monaco.plus.update_sets.markdown_display'; })[0];
                     if (combined) {
                         var config = JSON.parse(combined.value);
-                        rows = Object.keys(config).sort().map(function (table) { return {name:prefix + table, value:JSON.stringify(config[table]), description:'', type:'string'}; });
+                        rows = Object.keys(config).sort().map(function (table) { return { name: prefix + table, value: JSON.stringify(config[table]), description: '', type: 'string', updatedOn: (combined.updatedByTable || {})[table] }; });
                     }
                 }
                 properties = properties.filter(function (property) { return property.name.indexOf(prefix) !== 0 && !(kind === 'markdown_display' && property.name === 'monaco.plus.update_sets.markdown_display'); });
-                properties.push({ name: prefix + '*', prefix: prefix, kind: kind, rows: rows, propertyCount: rows.length, value: '', type: 'string',
-                    description: kind === 'display_fields' ? 'Display fields by table. Enter comma-separated field names.' : kind === 'markdown_display' ? 'Display fields are comma-separated fallbacks, tried from left to right. Additional fields are comma-separated.' : 'Assistant configuration by table.' });
+                properties.push({
+                    name: prefix + '*', prefix: prefix, kind: kind, rows: rows, propertyCount: rows.length, value: '', type: 'string',
+                    description: kind === 'display_fields' ? 'Display fields by table. Enter comma-separated field names.' : kind === 'markdown_display' ? 'Display fields are comma-separated fallbacks, tried from left to right. Additional fields are comma-separated.' : 'Assistant configuration by table.'
+                });
             });
             if (sections) sections.textContent = '';
             if (nav) nav.textContent = '';
@@ -925,7 +976,7 @@
         });
         window.addEventListener('unload', function () {
             if (headerObserver) headerObserver.disconnect();
-            jsonEditors.forEach(function (item) { try { item.editor.dispose(); } catch (e) {} });
+            jsonEditors.forEach(function (item) { try { item.editor.dispose(); } catch (e) { } });
         });
         ajax('getProperties', {}).then(function (data) {
             render(data.properties);
