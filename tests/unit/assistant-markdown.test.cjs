@@ -322,7 +322,7 @@ test('Markdown escapes names and renders policy actions under their policy', () 
     }] }];
     const output = context._weMarkdownText(loaded, 'separate');
     assert.ok(output.includes('- **Record Producers**'));
-    assert.ok(output.includes('  - *[Producer](https://example/producer) ∉*'));
+    assert.ok(output.includes('  - ∉ *[Producer](https://example/producer)*'));
     assert.ok(output.indexOf('Catalog UI Policies') < output.indexOf('Catalog UI Policy Actions'));
     assert.ok(output.includes('Show \\[field\\] \\(now\\)'));
     assert.ok(output.includes('action.do%3Fsys_id%3Dc'));
@@ -894,7 +894,7 @@ test('Markdown includes secondary values inside context-only italics and on incl
         secondary: ['one | two', '<three>'], ancestors: [{ table: 'parent', id: 'p', type: 'Parents',
             name: 'Parent', url: '/parent', secondary: ['value'] }] }];
     const result = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
-    assert.ok(result.includes('*[Parent](/parent) (value) ∉*'));
+    assert.ok(result.includes('∉ *[Parent](/parent) (value)*'));
     assert.ok(result.includes('[Child](/child) (one \\| two | \\<three\\>)'));
     rows[0].ancestors[0].inUpdateSet = true;
     const included = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
@@ -1365,7 +1365,7 @@ test('Knowledge versions across pages consolidate by article number and retain a
         name:version,url:'/version/'+version,ancestors:[article(version)]});
     const output = context._weMarkdownText([{rows:[child('1.0'),child('3.0')]},{rows:[child('2.0'),child('1.0')]}]);
     assert.equal((output.match(/\[KB0010038\]/g)||[]).length,1);
-    assert.ok(output.includes('*[KB0010038](/article/3.0) (Article description) ∉*'));
+    assert.ok(output.includes('∉ *[KB0010038](/article/3.0) (Article description)*'));
     for (const version of ['1.0','2.0','3.0']) assert.equal(output.split('](/version/'+version+')').length-1,1);
     assert.equal((output.match(/\*\*Knowledge Version\*\*/g)||[]).length,1);
     const present = article('2.0'); present.inUpdateSet=true;
@@ -1429,7 +1429,7 @@ test('multiple sets have a stable linked legend and deduplicated records retain 
     const output=context._weMarkdownText(loaded);
     assert.ok(output.startsWith('1️⃣ [Alpha](/set/a)\n2️⃣ [Beta](/remote/b)\n\n'));
     assert.ok(output.includes('[Child](/child) 1️⃣ 2️⃣'));
-    assert.ok(output.includes('*[Parent](/parent) ∉*'));
+    assert.ok(output.includes('∉ *[Parent](/parent)*'));
     assert.ok(output.endsWith('\n\n∉ For context only - not included in update set.'));
     assert.equal(output.split('∉ For context only - not included in update set.').length - 1, 1);
     assert.equal(output.split('[Child]').length-1,1);

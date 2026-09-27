@@ -166,7 +166,7 @@ function _weMarkdownRender(container, depth, summary) {
             else if (record.isNew) name += ' 🆕';
             if (record.setMarkers.length) name += ' ' + record.setMarkers.map(_weMarkdownKeycap).join(' ');
             if (record.inUpdateSet === false) {
-                name = '*' + name + ' ∉*';
+                name = '∉ *' + name + '*';
                 summary.hasContextOnly = true;
             }
             lines.push(Array(depth * 2 + 3).join(' ') + '- ' + name);
