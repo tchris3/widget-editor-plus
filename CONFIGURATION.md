@@ -15,12 +15,21 @@ Admins can edit settings in **Widget Editor+ → Properties**.
 | `monaco.plus.code_search.display_fields.<table_name>` | *(table-specific)* | Comma-separated secondary fields shown in Code Search+ result headers. Properties are included for common Studio, Service Portal, and record-producer/catalog development tables. |
 | `monaco.plus.css.variables` | `{ "example-variable": "#a4c5ea" }` | JSON string of CSS custom property name-value pairs for autocomplete suggestions. |
 | `monaco.plus.record_limit` | `500` | Page size for record pickers (widgets, versions, providers, dependencies) with infinite scroll. |
+| `monaco.plus.update_sets.markdown_indicators` | New/trash emoji and numbered keycaps | Configure `new`, `deleted` and `update_set` indicators, including individual set numbers. Empty strings hide indicators; text, Unicode emoji and Jira codes are supported. |
 | `monaco.plus.update_sets.markdown_escape_underscores` | `false` | Escape every underscore with a backslash in Export Markdown+ labels and text. When false, underscores remain unchanged. |
 | `monaco.plus.update_sets.markdown_max_list_levels` | `9` | Maximum bullet indentation levels, counting the top level as 1. Records at the limit and deeper share the final level, formatted as name, additional display values, emoji and bold record type. Invalid or non-positive values fall back to 9. |
 | `monaco.plus.scss.variables` | `{ "$breakpoint-xs": "480px", ... }` | JSON string of SCSS variable name-value pairs for autocomplete suggestions. |
 | `monaco.plus.widget.deprecated` | `descriptionLIKEdeprecated` | Encoded query string evaluated against `sp_widget` to flag widgets as deprecated. |
 | `monaco.plus.widget.fields` | *(empty)* | Comma-separated list of additional fields on `sp_widget` to display inside Widget Editor+. |
 | `monaco.plus.widget.related_list_exclusions` | *(empty)* | Comma-separated list of `sys_ui_related_list_entry.related_list` values to exclude from related lists. |
+
+## Markdown indicators
+
+Edit `monaco.plus.update_sets.markdown_indicators` in **Widget Editor+ → Properties**. For example, use `{"new":":new:","deleted":"Deleted","update_set":"Set {number}"}` for Jira emoji, plain text and numbered update-set markers. Use `{"new":"","deleted":"","update_set":""}` to hide all three indicators.
+
+To customise numbers individually, use an object such as `"update_set":{"1":":one:","2":":two:","10":":keycap_ten:","default":"Set {number}"}`. The shipped property lists 1–10 separately. Each numbered value can be empty to hide that marker. Unspecified numbers use `default`, or numbered emoji if `default` is omitted.
+
+Update-set markers support `{number}` for the set number and `{keycap}` for its numbered emoji. The same format is used beside records and in the update-set legend, and markers appear only when exporting multiple sets. Missing keys retain their default emoji. Indicator strings are emitted as written so Jira codes and intentional Markdown formatting remain intact. Deletion strikethrough and context-only annotations remain separate from these indicators.
 
 ## Markdown primary display fields
 

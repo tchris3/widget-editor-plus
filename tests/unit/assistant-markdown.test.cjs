@@ -195,6 +195,57 @@ test('Markdown list level property defaults to nine and accepts positive whole n
     }
 });
 
+test('Markdown indicators support text, Jira codes, hidden values and individual set numbers', () => {
+    const context = {};
+    vm.createContext(context); vm.runInContext(clientSource, context);
+    const rows = Array.from({length: 11}, (_, index) => ({
+        table: 'record', id: String(index), name: 'Record ' + index, type: 'Records',
+        isNew: index !== 0, action: index === 0 ? 'DELETE' : '',
+        sourceSet: {table: 'sys_update_set', id: String(index), name: 'Set ' + String(index).padStart(2, '0'), url: '/set/' + index}
+    }));
+    const indicators = {new: ':new:', deleted: 'Deleted', update_set: {'1': ':one:', '2': '', '10': ':keycap_ten:', default: 'Set {number}'}};
+    const output = context._weMarkdownText([{rows}], true, 1, indicators);
+    assert.ok(output.includes(':one: [Set 00](/set/0)'));
+    assert.ok(output.includes('\n[Set 01](/set/1)\n'));
+    assert.ok(output.includes(':keycap_ten: [Set 09](/set/9)'));
+    assert.ok(output.includes('Set 11 [Set 10](/set/10)'));
+    assert.ok(output.includes('- ~~Record 0~~ Deleted :one: **Records**'));
+    assert.ok(output.includes('- Record 1 :new: **Records**'));
+    assert.ok(output.includes('- Record 9 :new: :keycap_ten: **Records**'));
+    assert.ok(output.includes('- Record 10 :new: Set 11 **Records**'));
+    const hidden = context._weMarkdownText([{rows}], false, 1, {new: '', deleted: '', update_set: ''});
+    assert.ok(hidden.includes('- ~~Record 0~~ **Records**'));
+    assert.ok(hidden.includes('- Record 1 **Records**'));
+    assert.ok(!/[🆕🚮🔟\u20e3]/u.test(hidden));
+    assert.equal(context._weMarkdownIndicator({update_set: {}}, 'update_set', 10), '🔟');
+    assert.equal(context._weMarkdownIndicator({update_set: '({number}) {keycap}'}, 'update_set', 10), '(10) 🔟');
+    assert.equal(context._weMarkdownIndicator({new: '✅'}, 'new'), '✅');
+});
+
+test('indicator configuration is validated and travels from the property through paging to the clipboard', async () => {
+    const config = {new: ':new:', deleted: '', update_set: {'1': ':one:', '10': '', default: '{number}'}};
+    const {api} = server({gs: {getProperty: (name, fallback) =>
+        name === 'monaco.plus.update_sets.markdown_indicators' ? JSON.stringify(config) : fallback}});
+    assert.deepEqual(JSON.parse(JSON.stringify(api._markdownIndicators())), config);
+    for (const invalid of ['null', '[]', '{"new":false}', '{"update_set":{"0":"x"}}', '{"update_set":{"1":null}}', '{"unknown":""}', 'bad']) {
+        assert.throws(() => api._parseMarkdownIndicators(invalid));
+    }
+    api._rules = () => ({groups: []});
+    const page = api._markdownPage({orderByDesc() {}, chooseWindow() {}, query() {}, next: () => false}, 0);
+    const context = {Promise}, copied = [];
+    vm.createContext(context); vm.runInContext(clientSource, context);
+    context._weMarkdownNotify = (type, message) => {assert.notEqual(type, 'error', message);};
+    context._weMarkdownAjax = async (_method, params) => ({...page, hasMore: params.offset === 0, nextOffset: 1,
+        rows: [{table: 'record', id: String(params.offset), name: 'Record', type: 'Records', isNew: true,
+            sourceSet: {table: 'sys_update_set', id: String(params.offset), name: 'Set ' + params.offset, url: '/set'}}]});
+    context._weWriteMarkdownClipboard = async value => copied.push(value);
+    await context.copyUpdateSetMarkdownPlus({getTableName: () => 'sys_update_xml', getQuery: () => ''});
+    assert.ok(copied[0].includes('Record :new: :one:'));
+    assert.ok(copied[0].includes('Record :new: 2'));
+    const invalidApi = server({gs: {getProperty: () => 'invalid JSON'}}).api;
+    assert.deepEqual(JSON.parse(JSON.stringify(invalidApi._markdownIndicators())), {});
+});
+
 test('missing reference uses payload display text before the target name', () => {
     const { api } = server();
     api._displayField = () => ({ name: 'catalog_item', reference: 'sc_cat_item' });

@@ -616,6 +616,14 @@ declare global {
                         table: 'sys_properties_category_m2m'
                         id: '37f052762c074362921d5e768ac0f8d1'
                     }
+                    'widget-editor-markdown-indicators-property': {
+                        table: 'sys_properties'
+                        id: '2d6602598e1946e9887e248d8f474ce2'
+                    }
+                    'widget-editor-markdown-indicators-property-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '16c3cfb44d2d4cb482aa3ab646c83a7c'
+                    }
                     'widget-editor-markdown-list-header-menu': {
                         table: 'sys_ui_context_menu'
                         id: '63efd354d0a54baf8f1020d4f9bd1d27'
