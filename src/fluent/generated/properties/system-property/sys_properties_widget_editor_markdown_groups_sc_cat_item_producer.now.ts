@@ -25,8 +25,6 @@ export const markdownGroupsScCatItemProducerProperty = Property({
     "sc_cat_item_dept_no_mtom",
     "sc_cat_item_group_no_mtom",
     "sc_cat_item_user_no_mtom",
-    "sc_2_kb",
-    "sc_2_sc",
     "item_option_new"
 ]`,
     description: 'Child tables grouped under Record Producer in update set Markdown export.',

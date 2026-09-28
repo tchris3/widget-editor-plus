@@ -1020,7 +1020,7 @@ test('Markdown includes secondary values inside context-only italics and on incl
 
 test('shipped grouping defaults use only child table arrays and stay well below the limit', () => {
     const parents = ['sys_security_acl', 'sys_user_group', 'sc_cat_item_producer', 'sp_widget', 'item_option_new', 'catalog_ui_policy', 'kb_knowledge', 'sp_page', 'sp_container', 'sp_row', 'sp_column', 'sys_ui_policy', 'sp_theme', 'sys_ui_action'];
-    const counts = [1, 1, 22, 4, 1, 1, 2, 3, 1, 1, 1, 2, 4, 2];
+    const counts = [1, 1, 20, 4, 1, 1, 2, 3, 1, 1, 1, 2, 4, 2];
     parents.forEach((table, index) => {
         const source = fs.readFileSync('src/fluent/generated/properties/system-property/sys_properties_widget_editor_markdown_groups_' + table + '.now.ts', 'utf8');
         const value = source.match(/value: `([\s\S]*?)`,/)[1];
