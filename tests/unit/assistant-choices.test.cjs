@@ -93,7 +93,7 @@ test('Access Control searches suggest the table named before the field suffix', 
     api._answer = value => value;
     api._getTableConfig = () => ({ rules: [] });
     api._evaluateRules = () => [];
-    api._findMetadataReferences = () => [];
+    api._findRecordReferences = () => [];
     api._findScriptFields = () => [];
     api._findFieldsOfType = () => [];
 
