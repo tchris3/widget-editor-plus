@@ -1066,7 +1066,7 @@ function displayServer() {
         sys_user_role: { name: '', description: '', secret: '', level: '' } };
     const records = { sys_security_acl_role: { ['a'.repeat(32)]: { sys_user_role: roleId, name: 'Original' } },
         sys_user_role: { [roleId]: { name: 'Friendly [role]', description: 'Read | write', secret: 'hidden', level: '0' } } };
-    const config = { sys_security_acl_role: { display: 'sys_user_role.name',
+    const config = { sys_security_acl_role: { display: 'sys_user_role',
         secondary: ['sys_user_role.description', 'sys_user_role.secret', 'sys_user_role.level'] } };
     let writes = 0;
     const result = server({
@@ -1088,13 +1088,13 @@ function displayServer() {
                 getReference: () => schema[table][field],
             }) });
             this.getValue = field => table === 'sys_properties' ? (field === 'value' ? '{}' : 'string') : data[field] || '';
-            this.getDisplayValue = field => data[field] || '';
+            this.getDisplayValue = field => table === 'sys_security_acl_role' && field === 'sys_user_role' ? 'Friendly [role]' : data[field] || '';
         },
     });
     return { ...result, writes: () => writes };
 }
 
-test('display fields validate reference dot walks and reject unknown or non-reference segments', () => {
+test('primary fields validate period joins and additional fields validate reference dot walks', () => {
     const { api, writes } = displayServer();
     assert.equal(api._validateDisplayConfig({ sys_security_acl_role: { display: 'sys_user_role.name', secondary: ['name'] } }), '');
     for (const config of [
@@ -1115,7 +1115,7 @@ test('display fields validate reference dot walks and reject unknown or non-refe
     assert.equal(writes(), 2);
 });
 
-test('display export resolves dot walks securely and preserves secondary order', () => {
+test('display export resolves additional dot walks securely and preserves secondary order', () => {
     const { api } = displayServer();
     const record = api._record('sys_security_acl_role', 'a'.repeat(32));
     assert.equal(api._name(record, 'sys_security_acl_role', 'a'.repeat(32), '', ''), 'Friendly [role]');
@@ -1170,7 +1170,7 @@ test('Variable defaults include type and additional values prefer display text w
 test('Dictionary primary fields combine securely and skip empty values', () => {
     const source = fs.readFileSync('src/fluent/generated/properties/system-property/sys_properties_widget_editor_markdown_display_sys_dictionary.now.ts', 'utf8');
     const config = JSON.parse(source.match(/value: `([\s\S]*?)`,/)[1]);
-    assert.deepEqual(config, {display_value: 'name,element', display_separator: '.', additional_fields: 'column_label,internal_type'});
+    assert.deepEqual(config, {display_value: 'name.element', additional_fields: 'column_label,internal_type'});
     const {api} = server();
     api._displayConfig = () => config;
     api._fieldPath = (_table, field) => ['name', 'element', 'column_label', 'internal_type'].includes(field) ? [{field}] : null;
@@ -1189,9 +1189,14 @@ test('Dictionary primary fields combine securely and skip empty values', () => {
     assert.equal(api._validateDisplayConfig({sys_dictionary: config}), '');
     assert.ok(api._validateDisplayConfig({sys_dictionary: {...config, display_separator: 5}}));
     assert.ok(api._validateDisplayConfig({sys_dictionary: {...config, display_value: 'name,missing'}}));
-    config.display_separator = ''; values = {name: 'incident', element: 'number'};
-    assert.equal(name(), 'incidentnumber');
-    delete config.display_separator; assert.equal(name(), 'incident');
+    for (const display_value of ['name.', '.name', 'name..element', 'name.element,']) {
+        assert.ok(api._validateDisplayConfig({sys_dictionary: {...config, display_value}}));
+    }
+    assert.deepEqual(JSON.parse(JSON.stringify(api._normaliseDisplayConfig({
+        display_value: 'name, element', display_separator: '.', additional_fields: 'column_label'
+    }))), {display_value: 'name.element', additional_fields: 'column_label'});
+    config.display_value = 'name,element'; values = {name: 'incident', element: 'number'};
+    assert.equal(name(), 'incident');
 });
 
 test('Instance defaults show the widget only once, including raw and payload fallbacks', () => {
@@ -1221,7 +1226,7 @@ test('Instance defaults show the widget only once, including raw and payload fal
 
 test('Combined primary fields and additional fields never repeat a field path', () => {
     const {api} = server();
-    api._displayConfig = () => ({display_value: 'name, element, name', display_separator: '.', additional_fields: 'element,name,label,label,other'});
+    api._displayConfig = () => ({display_value: 'name.element.name', additional_fields: 'element,name,label,label,other'});
     api._fieldPath = (_table, field) => [{field}];
     const payload = '<name>incident</name><element>number</element><label>Number</label><other>Number</other>';
     assert.equal(api._name(null, 'sys_dictionary', 'id', payload, ''), 'incident.number');
@@ -1495,17 +1500,12 @@ test('property tables render row saves and remove the saved property only after 
     descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property').onclick(); await tick();
     assert.equal(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).kind,'markdown_display');
     assert.deepEqual(JSON.parse(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).property_value),{display_value:'name,script',additional_fields:'script,name'});
-    const combine = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Combine fields');
-    const separator = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Field separator');
-    assert.equal(combine.checked, false); assert.equal(separator.hidden, true);
-    combine.checked = true; combine.onchange(); separator.value = '.'; separator.oninput();
+    assert.equal(descendants(markdown).some(n=>n.getAttribute('aria-label')==='Combine fields'), false);
+    assert.equal(descendants(markdown).some(n=>n.getAttribute('aria-label')==='Field separator'), false);
+    displayInput.value = 'name.script'; displayInput.oninput();
     descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property').onclick(); await tick();
     assert.deepEqual(JSON.parse(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).property_value),
-        {display_value:'name,script',additional_fields:'script,name',display_separator:'.'});
-    assert.equal(combine.checked, true); assert.equal(separator.hidden, false);
-    combine.checked = false; combine.onchange();
-    descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property').onclick(); await tick();
-    assert.equal(Object.hasOwn(JSON.parse(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).property_value), 'display_separator'), false);
+        {display_value:'name.script',additional_fields:'script,name'});
     extraInput.value=Array(700).fill('script').join(','); extraInput.oninput();
     const markdownSave = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property');
     assert.equal(markdownSave.disabled,false);
@@ -1613,7 +1613,7 @@ test('Markdown display rows validate fields, save string-based JSON and delete l
             this.deleteRecord=()=>{delete values[name];return true;};
         }
     });
-    api._fieldPath=(table,field)=>['widget','other'].includes(table) && ['name','script','owner.name'].includes(field) ? [{}] : null;
+    api._fieldPath=(table,field)=>['widget','other'].includes(table) && ['name','script','owner'].includes(field) ? [{}] : null;
     let params={kind:'markdown_display',table:'widget',property_value:JSON.stringify({display_value:'owner.name, name',additional_fields:'script, name'})};
     api.getParameter=key=>params[key];
     assert.equal(api.saveTableProperty().success,true);

@@ -168,6 +168,10 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         if (config && typeof config.display === 'string') {
             return { display_value: config.display, additional_fields: (config.secondary || []).join(',') };
         }
+        if (config && typeof config.display_separator === 'string') {
+            return { display_value: config.display_value.split(',').map(function (field) { return field.trim(); }).join('.'),
+                additional_fields: config.additional_fields };
+        }
         return config;
     },
     _removeLegacyDisplayTable: function (table) {
@@ -245,7 +249,7 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
                 Object.keys(config).some(function (key) { return key !== 'display_value' && key !== 'additional_fields' && key !== 'display_separator'; }))) return 'Invalid display configuration for ' + table + '.';
             var normalised = this._normaliseDisplayConfig(config);
             var extra = normalised.additional_fields.trim() ? normalised.additional_fields.split(',').map(function (field) { return field.trim(); }) : [];
-            var fields = normalised.display_value.split(',').map(function (field) { return field.trim(); }).concat(extra);
+            var fields = normalised.display_value.split(/[,.]/).map(function (field) { return field.trim(); }).concat(extra);
             for (var j = 0; j < fields.length; j++) {
                 if (!this._fieldPath(table, fields[j])) return 'Invalid field path: ' + table + '.' + String(fields[j]) + '.';
             }
@@ -309,24 +313,26 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         }
         var config = !depth && this._displayConfig(table);
         if (config && config.display_value) {
-            var fields = config.display_value.split(',').map(function (field) { return field.trim(); });
-            if (typeof config.display_separator === 'string') {
-                var parts = [], combinedFields = [];
-                for (var part = 0; part < fields.length; part++) {
-                    if (combinedFields.indexOf(fields[part]) !== -1) continue;
-                    var value = this._configuredValue(record, table, payload, fields[part]);
-                    if (value) { parts.push(selected(value, fields[part])); combinedFields.push(fields[part]); }
-                }
-                if (parts.length) return parts.join(config.display_separator);
-            }
-            // Try every display value before falling back to raw values.
+            var groups = config.display_value.split(',').map(function (group) {
+                return group.split('.').map(function (field) { return field.trim(); });
+            });
+            // Commas retain ordered fallbacks; periods combine fields on this record.
             for (var pass = 0; pass < 2; pass++) {
-                for (var index = 0; index < fields.length; index++) {
-                    var configured = this._configuredValue(record, table, payload, fields[index], pass === 0);
-                    if (configured) return selected(configured, fields[index]);
+                for (var index = 0; index < groups.length; index++) {
+                    var fields = groups[index], parts = [], chosen = [];
+                    for (var part = 0; part < fields.length; part++) {
+                        if (chosen.indexOf(fields[part]) !== -1) continue;
+                        var value = this._configuredValue(record, table, payload, fields[part], fields.length === 1 && pass === 0);
+                        if (value) { parts.push(value); chosen.push(fields[part]); }
+                    }
+                    if (parts.length) {
+                        chosen.forEach(function (field) { selected('', field); });
+                        return parts.join('.');
+                    }
                 }
             }
         }
+
         var display = this._displayField(table);
         if (record) {
             if (display.name && display.reference && this._sysId(record.getValue(display.name)) && (depth || 0) < 3) {

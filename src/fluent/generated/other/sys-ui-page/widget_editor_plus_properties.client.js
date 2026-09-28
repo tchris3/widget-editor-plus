@@ -386,25 +386,11 @@
                 var displayConfig = markdown && property ? JSON.parse(property.value) : {};
                 description.value = markdown ? (displayConfig.display_value || '') : property ? property.description : '';
                 description.setAttribute('aria-label', markdown ? 'Display fields' : 'Description');
-                if (markdown) { description.placeholder = 'name,short_description'; description.title = 'Comma-separated primary fields, in display order.'; }
+                if (markdown) { description.placeholder = 'name,short_description'; description.title = 'Use commas for primary fallbacks, or periods to join fields with a period.'; }
                 if (assistant) description.setAttribute('maxlength', '512');
                 var descriptionCounter = markdown ? null : characterCount(assistant ? 512 : 4000);
                 if (descriptionCounter) description.setAttribute('aria-describedby', descriptionCounter.id);
                 if (assistant || markdown) { var descCell = el('td'); descCell.appendChild(description); if (descriptionCounter) descCell.appendChild(descriptionCounter); row.appendChild(descCell); }
-                var combine = null, separator = null;
-                if (markdown) {
-                    var combineLabel = el('label', '', ' Combine fields');
-                    combine = el('input'); combine.type = 'checkbox';
-                    combine.setAttribute('aria-label', 'Combine fields');
-                    combine.checked = typeof displayConfig.display_separator === 'string';
-                    combineLabel.appendChild(combine); descCell.appendChild(combineLabel);
-                    separator = el('input', 'form-control'); separator.setAttribute('aria-label', 'Field separator');
-                    separator.title = 'Text between non-empty primary fields. Empty means no separator.';
-                    separator.value = combine.checked ? displayConfig.display_separator : '.';
-                    separator.hidden = !combine.checked; descCell.appendChild(separator);
-                    combine.onchange = function () { separator.hidden = !combine.checked; refresh(); };
-                    separator.oninput = refresh;
-                }
                 var input = el(assistant ? 'textarea' : 'input', 'form-control' + (assistant ? ' wep-json-fallback' : '')); input.rows = assistant ? 6 : 2;
                 input.value = markdown ? (displayConfig.additional_fields || '') : property ? property.value : (assistant ? '{"rules":[],"pickerFields":[]}' : '');
                 input.setAttribute('aria-label', assistant ? 'JSON' : markdown ? 'Additional fields' : 'Fields');
@@ -414,11 +400,10 @@
                 valueCell.appendChild(input); if (counter) valueCell.appendChild(counter); row.appendChild(valueCell);
                 var note = el('small', 'wep-status'); note.setAttribute('role', 'status');
                 var baseline = property ? snapshot() : '';
-                function snapshot() { return JSON.stringify([name.value.trim(), description.value, input.value, combine && combine.checked, separator && separator.value]); }
+                function snapshot() { return JSON.stringify([name.value.trim(), description.value, input.value]); }
                 function propertyValue() {
                     if (!markdown) return input.value;
                     var config = { display_value: description.value.trim(), additional_fields: input.value };
-                    if (combine.checked) config.display_separator = separator.value;
                     return JSON.stringify(config, null, 4);
                 }
                 function refresh() {
@@ -431,7 +416,6 @@
                 }
                 function pending(value) {
                     busy = value; input.disabled = description.disabled = value;
-                    if (combine) combine.disabled = separator.disabled = value;
                     if (picker) picker.select2('enable', !value && !saved);
                     if (editor) editor.updateOptions({ readOnly: value });
                     refresh();
@@ -454,9 +438,6 @@
                         saved = target; name.value = target;
                         if (markdown) {
                             var config = JSON.parse(result.value); description.value = config.display_value; input.value = config.additional_fields;
-                            combine.checked = typeof config.display_separator === 'string';
-                            separator.value = combine.checked ? config.display_separator : '.';
-                            separator.hidden = !combine.checked;
                         }
                         else input.value = result.value;
                         if (editor) editor.setValue(result.value);
@@ -851,7 +832,7 @@
                 properties = properties.filter(function (property) { return property.name.indexOf(prefix) !== 0 && !(kind === 'markdown_display' && property.name === 'monaco.plus.update_sets.markdown_display'); });
                 properties.push({
                     name: prefix + '*', prefix: prefix, kind: kind, rows: rows, propertyCount: rows.length, value: '', type: 'string',
-                    description: kind === 'display_fields' ? 'Display fields by table. Enter comma-separated field names.' : kind === 'markdown_display' ? 'Primary fields are comma-separated fallbacks, or combine them with a separator. Empty fields are skipped. Additional fields are separate.' : 'Assistant configuration by table.'
+                    description: kind === 'display_fields' ? 'Display fields by table. Enter comma-separated field names.' : kind === 'markdown_display' ? 'Primary fields use commas for fallbacks and periods to join fields with a period. Empty fields are skipped. Additional fields are separate.' : 'Assistant configuration by table.'
                 });
             });
             if (sections) sections.textContent = '';

@@ -6,8 +6,7 @@ export const markdownDisplaySysDictionaryProperty = Property({
     name: 'monaco.plus.update_sets.markdown_display.sys_dictionary',
     type: 'string',
     value: `{
-    "display_value": "name,element",
-    "display_separator": ".",
+    "display_value": "name.element",
     "additional_fields": "column_label,internal_type"
 }`,
     description: 'Combine table name and element as name.element, with column label and internal type, for Dictionary records in Markdown export.',

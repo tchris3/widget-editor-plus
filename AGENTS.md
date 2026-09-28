@@ -45,7 +45,7 @@ Documentation-only edits need diff and link checks, not a build.
 - Jelly can turn CSS `>` selectors inside UI-page `<style>` blocks into literal `&gt;`, breaking them. Use descendant selectors.
 - Embedded JavaScript has two escaping layers. When generated JS needs an escaped backtick, use three backslashes before it in the outer TypeScript template literal; verify the compiled output.
 - Debug Menu preferences use `we_debug_menu_prefs`; shared editor preferences use `monaco_plus.user_prefs`. Preserve unrelated settings when saving. Pass preference objects directly to `$scope.server.get`, without pre-stringifying.
-- Markdown groups form a table hierarchy: reject duplicate child placements and cycles. Primary display fields are ordered fallbacks unless `display_separator` combines them; additional fields are separate. Retain server-side validation when changing the Properties editor.
+- Markdown groups form a table hierarchy: reject duplicate child placements and cycles. Primary display fields use commas for ordered fallbacks and periods to join fields on the same record; additional fields are separate. Retain server-side validation when changing the Properties editor.
 
 ## Releases
 
