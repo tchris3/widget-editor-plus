@@ -2193,6 +2193,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             vm.toast = '';
             vm.tableFilter = '';
             vm.selectedGroupId = '';
+            var persistGroupInUrl = false;
             vm.selectedGroup = null;
             vm.viewMode = 'group_table';
             vm.tableMatchCounts = {};
@@ -2546,7 +2547,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             function updateUrlParam(term) {
                 try {
                     var url = new URL(window.location.href);
-                    if (vm.selectedGroupId) url.searchParams.set('group', vm.selectedGroupId);
+                    if (vm.selectedGroupId && persistGroupInUrl) url.searchParams.set('group', vm.selectedGroupId);
                     else url.searchParams.delete('group');
                     if (term) {
                         url.searchParams.set('q', term);
@@ -2731,9 +2732,12 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 } catch (e) {}
             }
 
-            function _selectGroup(groupId) {
+            function _selectGroup(groupId, defaultGroupId) {
                 var match = groupId && vm.groups.filter(function (g) { return g.sysId === groupId; })[0];
-                vm.selectedGroup = match || vm.groups[0];
+                var defaultGroup = defaultGroupId && vm.groups.filter(function (g) { return g.sysId === defaultGroupId; })[0];
+                vm.selectedGroup = match || defaultGroup || vm.groups[0];
+                // Automatic defaults must not become shared-link preferences on reload.
+                persistGroupInUrl = !!match;
                 vm.selectedGroupId = vm.selectedGroup.sysId;
                 vm.loadTables();
                 updateUrlParam(vm.query.trim());
@@ -2750,9 +2754,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             ajax('saveLastSearchGroup', { group_id: vm.selectedGroupId }).catch(function () {});
                         } else {
                             ajax('getLastSearchGroup').then(function (prefData) {
-                                _selectGroup(prefData && prefData.groupId);
+                                _selectGroup(prefData && prefData.groupId, data.defaultGroupId);
                             }).catch(function () {
-                                _selectGroup(null);
+                                _selectGroup(null, data.defaultGroupId);
                             });
                         }
                     }
@@ -2762,6 +2766,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             };
 
             vm.onGroupChange = function () {
+                persistGroupInUrl = true;
                 for (var i = 0; i < vm.groups.length; i++) {
                     if (vm.groups[i].sysId === vm.selectedGroupId) {
                         vm.selectedGroup = vm.groups[i];

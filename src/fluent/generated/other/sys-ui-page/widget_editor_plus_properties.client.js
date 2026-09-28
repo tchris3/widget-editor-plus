@@ -386,7 +386,7 @@
                 var displayConfig = markdown && property ? JSON.parse(property.value) : {};
                 description.value = markdown ? (displayConfig.display_value || '') : property ? property.description : '';
                 description.setAttribute('aria-label', markdown ? 'Display fields' : 'Description');
-                if (markdown) { description.placeholder = 'name,short_description'; description.title = 'Comma-separated fallback fields, tried from left to right.'; }
+                if (markdown) { description.placeholder = 'name,short_description'; description.title = 'Use commas for primary fallbacks, or periods to join fields with a period.'; }
                 if (assistant) description.setAttribute('maxlength', '512');
                 var descriptionCounter = markdown ? null : characterCount(assistant ? 512 : 4000);
                 if (descriptionCounter) description.setAttribute('aria-describedby', descriptionCounter.id);
@@ -399,9 +399,13 @@
                 if (counter) input.setAttribute('aria-describedby', counter.id);
                 valueCell.appendChild(input); if (counter) valueCell.appendChild(counter); row.appendChild(valueCell);
                 var note = el('small', 'wep-status'); note.setAttribute('role', 'status');
-                var baseline = property ? JSON.stringify([saved, description.value, input.value]) : '';
+                var baseline = property ? snapshot() : '';
                 function snapshot() { return JSON.stringify([name.value.trim(), description.value, input.value]); }
-                function propertyValue() { return markdown ? JSON.stringify({ display_value: description.value.trim(), additional_fields: input.value }, null, 4) : input.value; }
+                function propertyValue() {
+                    if (!markdown) return input.value;
+                    var config = { display_value: description.value.trim(), additional_fields: input.value };
+                    return JSON.stringify(config, null, 4);
+                }
                 function refresh() {
                     if (counter) updateCharacterCount(counter, input.value);
                     if (descriptionCounter) updateCharacterCount(descriptionCounter, description.value);
@@ -432,7 +436,9 @@
                     ajax('saveTableProperty', { kind: family.kind, table: target, property_value: propertyValue(), description: assistant ? description.value : '' }).then(function (result) {
                         if (!saved) { family.propertyCount++; family._refreshCount(); }
                         saved = target; name.value = target;
-                        if (markdown) { var config = JSON.parse(result.value); description.value = config.display_value; input.value = config.additional_fields; }
+                        if (markdown) {
+                            var config = JSON.parse(result.value); description.value = config.display_value; input.value = config.additional_fields;
+                        }
                         else input.value = result.value;
                         if (editor) editor.setValue(result.value);
                         baseline = snapshot(); status(note, 'Saved.', 'success');
@@ -826,7 +832,7 @@
                 properties = properties.filter(function (property) { return property.name.indexOf(prefix) !== 0 && !(kind === 'markdown_display' && property.name === 'monaco.plus.update_sets.markdown_display'); });
                 properties.push({
                     name: prefix + '*', prefix: prefix, kind: kind, rows: rows, propertyCount: rows.length, value: '', type: 'string',
-                    description: kind === 'display_fields' ? 'Display fields by table. Enter comma-separated field names.' : kind === 'markdown_display' ? 'Display fields are comma-separated fallbacks, tried from left to right. Additional fields are comma-separated.' : 'Assistant configuration by table.'
+                    description: kind === 'display_fields' ? 'Display fields by table. Enter comma-separated field names.' : kind === 'markdown_display' ? 'Primary fields use commas for fallbacks and periods to join fields with a period. Empty fields are skipped. Additional fields are separate.' : 'Assistant configuration by table.'
                 });
             });
             if (sections) sections.textContent = '';

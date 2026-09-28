@@ -10,6 +10,11 @@ import { markdownDisplaySysUiActionProperty } from '../system-property/sys_prope
 import { markdownDisplaySysWsOperationProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sys_ws_operation.now'
 import { markdownGroupsSysUiActionProperty } from '../system-property/sys_properties_widget_editor_markdown_groups_sys_ui_action.now'
 import { Record } from '@servicenow/sdk/core'
+import { markdownFormattingProperty } from '../system-property/sys_properties_widget_editor_markdown_formatting.now'
+import { markdownDisplaySpInstanceProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sp_instance.now'
+import { markdownDisplaySysDictionaryProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sys_dictionary.now'
+import { markdownEscapeUnderscoresProperty } from '../system-property/sys_properties_widget_editor_markdown_escape_underscores.now'
+import { markdownMaxListLevelsProperty } from '../system-property/sys_properties_widget_editor_markdown_max_list_levels.now'
 import { widgetEditorPlusPropertiesCategory } from '../system-property-category/sys_properties_category_widget_editor_plus.now'
 import { updateSetMarkdownDisplayProperty } from '../system-property/sys_properties_widget_editor_markdown_display.now'
 import { markdownDisplayKbKnowledgeProperty } from '../system-property/sys_properties_widget_editor_markdown_display_kb_knowledge.now'
@@ -26,6 +31,56 @@ import { markdownGroupsSpWidgetProperty } from '../system-property/sys_propertie
 import { markdownGroupsSysSecurityAclProperty } from '../system-property/sys_properties_widget_editor_markdown_groups_sys_security_acl.now'
 import { markdownGroupsSysUiPolicyProperty } from '../system-property/sys_properties_widget_editor_markdown_groups_sys_ui_policy.now'
 import { markdownGroupsSysUserGroupProperty } from '../system-property/sys_properties_widget_editor_markdown_groups_sys_user_group.now'
+
+Record({
+    $id: Now.ID['widget-editor-markdown-indicators-property-category'],
+    table: 'sys_properties_category_m2m',
+    data: {
+        property: markdownFormattingProperty,
+        category: widgetEditorPlusPropertiesCategory,
+        order: 4740,
+    },
+})
+
+Record({
+    $id: Now.ID['widget-editor-markdown-display-sp_instance-category'],
+    table: 'sys_properties_category_m2m',
+    data: {
+        property: markdownDisplaySpInstanceProperty,
+        category: widgetEditorPlusPropertiesCategory,
+        order: 4780,
+    },
+})
+
+Record({
+    $id: Now.ID['widget-editor-markdown-display-sys_dictionary-category'],
+    table: 'sys_properties_category_m2m',
+    data: {
+        property: markdownDisplaySysDictionaryProperty,
+        category: widgetEditorPlusPropertiesCategory,
+        order: 4770,
+    },
+})
+
+Record({
+    $id: Now.ID['widget-editor-markdown-max-list-levels-property-category'],
+    table: 'sys_properties_category_m2m',
+    data: {
+        property: markdownMaxListLevelsProperty,
+        category: widgetEditorPlusPropertiesCategory,
+        order: 4760,
+    },
+})
+
+Record({
+    $id: Now.ID['widget-editor-markdown-escape-underscores-property-category'],
+    table: 'sys_properties_category_m2m',
+    data: {
+        property: markdownEscapeUnderscoresProperty,
+        category: widgetEditorPlusPropertiesCategory,
+        order: 4750,
+    },
+})
 
 Record({
     $id: Now.ID['widget-editor-markdown-display-property-category'],

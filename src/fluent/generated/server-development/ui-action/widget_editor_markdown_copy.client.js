@@ -13,11 +13,11 @@ function copyUpdateSetMarkdownPlus(currentList, sourceElement) {
                 throw new Error('The Customer Updates list could not be found.');
             }
             var query = _weMarkdownListQuery(list);
-            _weMarkdownNotify('info', 'Preparing Markdown export…');
+            _weMarkdownNotify('info', 'Preparing Markdown export… Keep page in focus.');
             resolve(query);
         } catch (error) { reject(error); }
-    }).then(_weLoadMarkdownList).then(function (rows) {
-        var value = _weMarkdownText([{ rows: rows }]);
+    }).then(_weLoadMarkdownList).then(function (loaded) {
+        var value = _weMarkdownText([{ rows: loaded.rows }], loaded.escapeUnderscores, loaded.maxListLevels, loaded.indicators);
         if (!value) throw new Error('No customer updates match this list.');
         return _weWriteMarkdownClipboard(value);
     }).then(function () {
@@ -59,11 +59,16 @@ function _weMarkdownAjax(method, params) {
 }
 
 function _weLoadMarkdownList(query) {
-    var rows = [], offset = 0;
+    var rows = [], offset = 0, escapeUnderscores = false, maxListLevels = 9, indicators;
     function next() {
         return _weMarkdownAjax('getListPage', { list_query: query, offset: offset }).then(function (page) {
             rows = rows.concat(page.rows);
-            if (!page.hasMore) return rows;
+            if (offset === 0) {
+                escapeUnderscores = page.escapeUnderscores === true;
+                maxListLevels = page.maxListLevels;
+                indicators = page.indicators;
+            }
+            if (!page.hasMore) return { rows: rows, escapeUnderscores: escapeUnderscores, maxListLevels: maxListLevels, indicators: indicators };
             if (page.nextOffset <= offset) throw new Error('Markdown paging did not advance.');
             offset = page.nextOffset;
             return next();
@@ -72,11 +77,14 @@ function _weLoadMarkdownList(query) {
     return next();
 }
 
-function _weMarkdownEscape(value) {
-    return String(value || '').replace(/\s+/g, ' ').trim().replace(/[\\`*_{}\[\]()#+.!|<>~-]/g, '\\$&');
+function _weMarkdownEscape(value, escapeUnderscores) {
+    return String(value || '').replace(/\s+/g, ' ').trim().replace(/[\\`*{}\[\]()#+.!|<>~-]|_+/g, function (match) {
+        if (match.charAt(0) === '_' && escapeUnderscores !== true) return match;
+        return match.replace(/./g, '\\$&');
+    });
 }
-function _weMarkdownLink(name, url) {
-    var label = _weMarkdownEscape(name);
+function _weMarkdownLink(name, url, escapeUnderscores) {
+    var label = _weMarkdownEscape(name, escapeUnderscores);
     return url ? '[' + label + '](' + String(url).replace(/\(/g, '%28').replace(/\)/g, '%29') + ')' : label;
 }
 function _weMarkdownContainer() { return { types: {} }; }
@@ -159,44 +167,75 @@ function _weMarkdownTree(rows) {
     markNewBranches(root);
     return root;
 }
-function _weMarkdownRender(container, depth, summary, suppressNew) {
+function _weMarkdownRender(container, depth, summary, suppressNew, escapeUnderscores, maxListLevels, indicators) {
+    maxListLevels = Number(maxListLevels);
+    if (!isFinite(maxListLevels) || maxListLevels < 1 || Math.floor(maxListLevels) !== maxListLevels) maxListLevels = 9;
     summary = summary || {};
     var lines = [];
     Object.keys(container.types).sort(function (a, b) {
         return a.localeCompare(b);
     }).forEach(function (label) {
         var type = container.types[label];
-        lines.push(Array(depth * 2 + 1).join(' ') + '- **' + _weMarkdownEscape(label) + '**');
+        var flat = depth + 2 >= maxListLevels;
+        var typeLabel = '**' + _weMarkdownEscape(label, escapeUnderscores) + '**';
+        if (depth + 1 < maxListLevels) lines.push(Array(depth * 2 + 1).join(' ') + '- ' + typeLabel);
         Object.keys(type.records).sort(function (a, b) {
             return type.records[a].name.localeCompare(type.records[b].name) || a.localeCompare(b);
         }).forEach(function (key) {
             var record = type.records[key];
-            var name = _weMarkdownLink(record.name, record.url);
+            var name = _weMarkdownLink(record.name, record.url, escapeUnderscores);
             if (record.action === 'DELETE') name = '~~' + name + '~~';
-            if (record.secondary.length) name += ' (' + record.secondary.map(_weMarkdownEscape).join(' | ') + ')';
-            if (record.action === 'DELETE') name += ' 🚮';
-            else if (record.isNew && !suppressNew) name += ' 🆕';
-            if (record.setMarkers.length) name += ' ' + record.setMarkers.map(_weMarkdownKeycap).join(' ');
+            var separator = _weMarkdownFormatOption(indicators, 'display_field_separator');
+            if (separator && !/\s$/.test(separator)) separator += ' ';
+            var wrapper = _weMarkdownFormatOption(indicators, 'display_field_wrapper');
+            if (record.secondary.length) name += ' ' + wrapper.charAt(0) + record.secondary.map(function (value) {
+                return _weMarkdownEscape(value, escapeUnderscores);
+            }).join(separator) + wrapper.charAt(1);
+            var statusMarker = record.action === 'DELETE' ? _weMarkdownIndicator(indicators, 'deleted') :
+                record.isNew && (!suppressNew || flat) ? _weMarkdownIndicator(indicators, 'new') : '';
+            if (statusMarker) name += ' ' + statusMarker;
+            var setMarkers = record.setMarkers.map(function (number) {
+                return _weMarkdownIndicator(indicators, 'update_set', number);
+            }).filter(function (value) { return value; });
+            if (setMarkers.length) name += ' ' + setMarkers.join(' ');
             if (record.inUpdateSet === false) {
-                name = '∉ *' + name + '*';
+                var contextMarker = _weMarkdownFormatOption(indicators, 'context_indicator');
+                name = (contextMarker ? contextMarker + ' ' : '') + '*' + name + '*';
                 summary.hasContextOnly = true;
             }
-            lines.push(Array(depth * 2 + 3).join(' ') + '- ' + name);
-            lines = lines.concat(_weMarkdownRender(record, depth + 2, summary, suppressNew || record.allNew));
+            if (flat) name += ' ' + typeLabel;
+            var recordDepth = Math.min(depth + 1, maxListLevels - 1);
+            lines.push(Array(recordDepth * 2 + 1).join(' ') + '- ' + name);
+            lines = lines.concat(_weMarkdownRender(record, depth + 2, summary, suppressNew || record.allNew, escapeUnderscores, maxListLevels, indicators));
         });
     });
     return lines;
 }
 function _weMarkdownKeycap(number) {
-    if (number === 10) return '🔟';
+    if (number === 10) return '\uD83D\uDD1F';
     return String(number).split('').map(function (digit) { return digit + '\uFE0F\u20E3'; }).join('');
+}
+function _weMarkdownIndicator(config, kind, number) {
+    var defaults = { 'new': '\uD83C\uDD95', deleted: '\uD83D\uDEAE' };
+    var value = config && typeof config[kind] === 'string' ? config[kind] : defaults[kind];
+    if (kind === 'update_set') {
+        var markers = config && config.update_set;
+        value = markers && typeof markers[number] === 'string' ? markers[number] :
+            !config && number >= 1 && number <= 10 ? _weMarkdownKeycap(number) : '';
+    }
+    // Indicator text is intentional markup, including Jira emoji such as :new:.
+    return value.replace(/\s+/g, ' ').trim();
+}
+function _weMarkdownFormatOption(config, key) {
+    var defaults = { display_field_separator: ',', context_indicator: '\u2209', display_field_wrapper: '()' };
+    return config && typeof config[key] === 'string' ? config[key] : defaults[key];
 }
 function _weMarkdownMergeMarkers(first, second) {
     return (first || []).concat(second || []).filter(function (value, index, values) {
         return values.indexOf(value) === index;
     }).sort(function (a, b) { return a - b; });
 }
-function _weMarkdownText(loaded) {
+function _weMarkdownText(loaded, escapeUnderscores, maxListLevels, indicators) {
     var sets = {}, seen = {}, rows = [];
     function setKey(set) { return set.table + ':' + set.id; }
     loaded.forEach(function (item) {
@@ -214,7 +253,7 @@ function _weMarkdownText(loaded) {
             var markers = keys.length > 1 && set ? [keys.indexOf(setKey(set)) + 1] : [];
             var row = Object.assign({}, source, {
                 setMarkers: markers, ancestors: (source.ancestors || []).map(function (parent) {
-                return Object.assign({}, parent, { setMarkers: parent.inUpdateSet ? markers : [] });
+                    return Object.assign({}, parent, { setMarkers: parent.inUpdateSet ? markers : [] });
                 })
             });
             var key = row.table + ':' + row.id;
@@ -236,12 +275,14 @@ function _weMarkdownText(loaded) {
     });
     var legend = keys.map(function (key, index) {
         var set = sets[key];
-        return (keys.length > 1 ? _weMarkdownKeycap(index + 1) + ' ' : '') + _weMarkdownLink(set.name, set.url);
+        var marker = keys.length > 1 ? _weMarkdownIndicator(indicators, 'update_set', index + 1) : '';
+        return (marker ? marker + ' ' : '') + _weMarkdownLink(set.name, set.url, escapeUnderscores);
     }).join('\n');
     var summary = {};
-    var list = _weMarkdownRender(_weMarkdownTree(rows), 0, summary).join('\n');
+    var list = _weMarkdownRender(_weMarkdownTree(rows), 0, summary, false, escapeUnderscores, maxListLevels, indicators).join('\n');
+    var contextMarker = _weMarkdownFormatOption(indicators, 'context_indicator');
     return (legend ? legend + '\n\n' : '') + list +
-        (summary.hasContextOnly ? '\n\n∉ For context only - not included in update set.' : '');
+        (summary.hasContextOnly ? '\n\n' + (contextMarker ? contextMarker + ' ' : '') + 'For context only - not included in update set.' : '');
 }
 
 function _weMarkdownNotify(type, message) {

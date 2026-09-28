@@ -2280,6 +2280,8 @@ export const widgetEditorAssistantUiPage = UiPage({
                         var minimapTransform = { scale: 1, x: 0, y: 0 };
                         var minimapPointerId = null;
                         var lastTopologySignature = '';
+                        var scanSourceKey = null;
+                        var layoutRevision = 0;
                         var dpr = Math.max(1, $window.devicePixelRatio || 1);
                         var viewportWidth = 1;
                         var viewportHeight = 1;
@@ -2791,6 +2793,29 @@ export const widgetEditorAssistantUiPage = UiPage({
                             rebuildActionButtons();
                         }
 
+                        // Match the layout animation with an equal camera movement so the
+                        // searched record stays at the same screen position and zoom.
+                        function preserveScanSource(previous, animate) {
+                            var from = previous[scanSourceKey];
+                            var node = layout.byKey[scanSourceKey];
+                            if (!from || !node) {
+                                scanSourceKey = null;
+                                return false;
+                            }
+                            cancelCameraTween();
+                            var target = {
+                                x: camera.x + (from.x - node.x) * camera.scale,
+                                y: camera.y + (from.y - node.y) * camera.scale,
+                                scale: camera.scale,
+                            };
+                            if (animate) animateCameraTo(target);
+                            else {
+                                camera.x = target.x;
+                                camera.y = target.y;
+                            }
+                            return true;
+                        }
+
                         function setZoomLabel() {
                             scope.zoomPercent = Math.round(camera.scale * 100);
                         }
@@ -3254,7 +3279,11 @@ export const widgetEditorAssistantUiPage = UiPage({
                         function runAction(action) {
                             if (!action || !action.node) return;
                             scope.$apply(function () {
-                                if (action.type === 'scan') scope.onScan({ row: action.node.row });
+                                if (action.type === 'scan') {
+                                    scanSourceKey = action.node.key;
+                                    cancelCameraTween();
+                                    scope.onScan({ row: action.node.row });
+                                }
                                 if (action.type === 'open') scope.onOpen({ row: action.node.row });
                                 if (action.type === 'remove') scope.onRemove({ row: action.node.row });
                                 if (action.type === 'toggle') scope.onToggle({ row: action.node.row });
@@ -3409,29 +3438,33 @@ export const widgetEditorAssistantUiPage = UiPage({
                                 (graph.edges || []).map(function (edge) { return edge.key; }).join('|');
                             var topologyChanged = topologySignature !== lastTopologySignature;
                             lastTopologySignature = topologySignature;
+                            var revision = ++layoutRevision;
                             var previous = snapshotPositions();
                             var animate = Object.keys(previous).length > 0;
                             buildLayout();
+                            var sourcePreserved = preserveScanSource(previous, animate);
                             if (animate) animateLayoutFrom(previous);
+                            var shouldFit = topologyChanged && !sourcePreserved;
                             if (host.clientWidth > 1 && host.clientHeight > 1) {
                                 resize();
-                                if (topologyChanged) fitGraph(animate);
+                                if (shouldFit) fitGraph(animate);
                             } else {
                                 // Initial ng-if insertion can report zero dimensions for one turn.
                                 // The overlay remains hidden until a correctly-sized frame is ready.
                                 $timeout(function () {
+                                    if (destroyed || revision !== layoutRevision) return;
                                     resize();
-                                    if (topologyChanged) fitGraph(animate);
+                                    if (shouldFit) fitGraph(animate);
                                 });
                             }
-                            if (topologyChanged) {
+                            if (shouldFit) {
                                 // The host can still be mid-transition (e.g. a sidebar width
                                 // animation) when the fit above runs, so its clientWidth/Height
                                 // aren't final yet. Re-fit once more after paint settles so the
                                 // automatic fit lands on the same size a manual Fit click would see.
                                 $window.requestAnimationFrame(function () {
                                     $window.requestAnimationFrame(function () {
-                                        if (destroyed) return;
+                                        if (destroyed || revision !== layoutRevision || scanSourceKey) return;
                                         resize();
                                         fitGraph(animate);
                                         scope.$evalAsync();

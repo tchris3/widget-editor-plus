@@ -1,4 +1,5 @@
 import { Record } from '@servicenow/sdk/core'
+import { codeSearchDefaultSearchGroupProperty } from '../system-property/sys_properties_widget_editor_code_search_default_search_group.now'
 import { widgetEditorPlusPropertiesCategory } from '../system-property-category/sys_properties_category_widget_editor_plus.now'
 import { recordLimitProperty } from '../system-property/sys_properties_ad6ba1d936344db993031b6e49532e2b.now'
 import { widgetFieldsProperty } from '../system-property/sys_properties_7e8518328358031070b8b5dfeeaad3e7.now'
@@ -45,6 +46,16 @@ import {
     codeSearchDisplayFieldsSysUiStyleProperty,
     codeSearchDisplayFieldsSysScriptEmailProperty,
 } from '../system-property/sys_properties_widget_editor_code_search_display_fields.now'
+
+Record({
+    $id: Now.ID['widget-editor-code-search-default-search-group-category'],
+    table: 'sys_properties_category_m2m',
+    data: {
+        property: codeSearchDefaultSearchGroupProperty,
+        category: widgetEditorPlusPropertiesCategory,
+        order: 3900,
+    },
+})
 
 Record({
     $id: Now.ID['widget-editor-plus-category-m2m-record-limit'],

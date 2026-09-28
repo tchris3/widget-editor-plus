@@ -85,6 +85,10 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         var payload = String(update.getValue('payload') || '');
         var root = payload.match(/<record_update\b[^>]*\btable=["']([a-z][a-z0-9_]*)["']/i);
         var table = root ? root[1] : '';
+        // Composite-keyed updates such as dictionary entries omit the root table.
+        // The child element names the record table, not its table attribute.
+        var recordElement = payload.match(/<record_update\b[^>]*>\s*(?:<!--[\s\S]*?-->\s*)*<([a-z][a-z0-9_]*)\b/i);
+        if (recordElement) table = recordElement[1];
         var id = '';
         if (this._table(table)) {
             try {
@@ -98,7 +102,10 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
                 }
             } catch (e) {}
         }
-        if (!this._sysId(id)) id = this._payloadField(payload, 'sys_id').value;
+        if (!this._sysId(id) && this._table(table)) {
+            var recordPayload = payload.match(new RegExp('<' + table + '\\b[^>]*>([\\s\\S]*?)<\\/' + table + '>', 'i'));
+            if (recordPayload) id = this._payloadField(recordPayload[1], 'sys_id').value.trim();
+        }
         if (this._table(table) && this._sysId(id)) return { table: table, id: id, payload: payload };
         // Forced updates can have a sparse payload. The final 32 hex characters of
         // sys_update_xml.name are the target ID; the prefix is the whole table name.
@@ -160,6 +167,10 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
     _normaliseDisplayConfig: function (config) {
         if (config && typeof config.display === 'string') {
             return { display_value: config.display, additional_fields: (config.secondary || []).join(',') };
+        }
+        if (config && typeof config.display_separator === 'string') {
+            return { display_value: config.display_value.split(',').map(function (field) { return field.trim(); }).join('.'),
+                additional_fields: config.additional_fields };
         }
         return config;
     },
@@ -234,10 +245,11 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             if (legacy ? (Object.keys(config).some(function (key) { return key !== 'display' && key !== 'secondary'; }) ||
                 (config.secondary !== undefined && !Array.isArray(config.secondary))) :
                 (typeof config.display_value !== 'string' || typeof config.additional_fields !== 'string' ||
-                Object.keys(config).some(function (key) { return key !== 'display_value' && key !== 'additional_fields'; }))) return 'Invalid display configuration for ' + table + '.';
+                (config.display_separator !== undefined && typeof config.display_separator !== 'string') ||
+                Object.keys(config).some(function (key) { return key !== 'display_value' && key !== 'additional_fields' && key !== 'display_separator'; }))) return 'Invalid display configuration for ' + table + '.';
             var normalised = this._normaliseDisplayConfig(config);
             var extra = normalised.additional_fields.trim() ? normalised.additional_fields.split(',').map(function (field) { return field.trim(); }) : [];
-            var fields = normalised.display_value.split(',').map(function (field) { return field.trim(); }).concat(extra);
+            var fields = normalised.display_value.split(/[,.]/).map(function (field) { return field.trim(); }).concat(extra);
             for (var j = 0; j < fields.length; j++) {
                 if (!this._fieldPath(table, fields[j])) return 'Invalid field path: ' + table + '.' + String(fields[j]) + '.';
             }
@@ -277,54 +289,76 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         return { key: number, name: number,
             version: this._configuredValue(record, table, payload, 'display_number') };
     },
-    _secondaryValues: function (record, table, payload) {
+    _secondaryValues: function (record, table, payload, usedFields) {
         var config = this._displayConfig(table), result = [];
         if (!config || !config.additional_fields) return result;
+        if (!usedFields) {
+            usedFields = [];
+            this._name(record, table, '', payload, '', 0, usedFields);
+        }
+        var seen = usedFields.slice();
         var fields = config.additional_fields.split(',').map(function (field) { return field.trim(); });
         for (var i = 0; i < fields.length; i++) {
+            if (seen.indexOf(fields[i]) !== -1) continue;
+            seen.push(fields[i]);
             var value = this._configuredValue(record, table, payload, fields[i]);
             if (value) result.push(value);
         }
         return result;
     },
-    _name: function (record, table, id, payload, fallback, depth) {
+    _name: function (record, table, id, payload, fallback, depth, usedFields) {
+        function selected(value, field) {
+            if (usedFields && field && usedFields.indexOf(field) === -1) usedFields.push(field);
+            return value;
+        }
         var config = !depth && this._displayConfig(table);
         if (config && config.display_value) {
-            var fields = config.display_value.split(',').map(function (field) { return field.trim(); });
-            // Try every display value before falling back to raw values.
+            var groups = config.display_value.split(',').map(function (group) {
+                return group.split('.').map(function (field) { return field.trim(); });
+            });
+            // Commas retain ordered fallbacks; periods combine fields on this record.
             for (var pass = 0; pass < 2; pass++) {
-                for (var index = 0; index < fields.length; index++) {
-                    var configured = this._configuredValue(record, table, payload, fields[index], pass === 0);
-                    if (configured) return configured;
+                for (var index = 0; index < groups.length; index++) {
+                    var fields = groups[index], parts = [], chosen = [];
+                    for (var part = 0; part < fields.length; part++) {
+                        if (chosen.indexOf(fields[part]) !== -1) continue;
+                        var value = this._configuredValue(record, table, payload, fields[part], fields.length === 1 && pass === 0);
+                        if (value) { parts.push(value); chosen.push(fields[part]); }
+                    }
+                    if (parts.length) {
+                        chosen.forEach(function (field) { selected('', field); });
+                        return parts.join('.');
+                    }
                 }
             }
         }
+
         var display = this._displayField(table);
         if (record) {
             if (display.name && display.reference && this._sysId(record.getValue(display.name)) && (depth || 0) < 3) {
                 var referenced = new GlideRecordSecure(display.reference);
                 if (referenced.isValid() && referenced.get(record.getValue(display.name))) {
                     var refName = this._name(referenced, display.reference, record.getValue(display.name), '', '', (depth || 0) + 1);
-                    if (refName && refName !== display.reference + ':' + record.getValue(display.name) && !this._sysId(refName)) return refName;
+                    if (refName && refName !== display.reference + ':' + record.getValue(display.name) && !this._sysId(refName)) return selected(refName, display.name);
                 }
             }
             if (display.name) {
                 var fieldName = String(record.getDisplayValue(display.name) || '');
-                if (fieldName && !this._sysId(fieldName)) return fieldName;
+                if (fieldName && !this._sysId(fieldName)) return selected(fieldName, display.name);
             }
             var name = String(record.getDisplayValue() || '');
-            if (name && !this._sysId(name)) return name;
+            if (name && !this._sysId(name)) return selected(name, display.name);
         }
         if (display.name) {
             var payloadDisplay = this._payloadField(payload, display.name);
-            if (payloadDisplay.display && !this._sysId(payloadDisplay.display)) return payloadDisplay.display;
-            if (payloadDisplay.value && !this._sysId(payloadDisplay.value)) return payloadDisplay.value;
+            if (payloadDisplay.display && !this._sysId(payloadDisplay.display)) return selected(payloadDisplay.display, display.name);
+            if (payloadDisplay.value && !this._sysId(payloadDisplay.value)) return selected(payloadDisplay.value, display.name);
         }
         var fields = ['name', 'short_description', 'title', 'question_text'];
         for (var i = 0; i < fields.length; i++) {
             var field = this._payloadField(payload, fields[i]);
-            if (field.display && !this._sysId(field.display)) return field.display;
-            if (field.value && !this._sysId(field.value)) return field.value;
+            if (field.display && !this._sysId(field.display)) return selected(field.display, fields[i]);
+            if (field.value && !this._sysId(field.value)) return selected(field.value, fields[i]);
         }
         return fallback && !this._sysId(fallback) ? fallback : (table + ':' + id);
     },
@@ -498,13 +532,14 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             var parentRecord = this._record(parent.table, parentId);
             var parentUpdate = this._updateForTarget(parent.table, parentId, setTable, setId);
             if (!parentRecord && !parentUpdate) return ordinary;
+            var primaryFields = [];
             ancestors.unshift({ table: parent.table, id: parentId,
                 inUpdateSet: !!parentUpdate, action: parentUpdate ? parentUpdate.action : '',
                 isNew: !!parentUpdate && this._isNewUpdate(parentUpdate.action, parent.table + '_' + parentId, setTable, setId),
                 consolidation: this._consolidation(parentRecord, parent.table, parentUpdate ? parentUpdate.payload : ''), type: parent.label, typeOrder: match.orders[i - 1],
                 name: this._name(parentRecord, parent.table, parentId, parentUpdate ? parentUpdate.payload : '',
-                    parentUpdate ? parentUpdate.name : ''),
-                secondary: this._secondaryValues(parentRecord, parent.table, parentUpdate ? parentUpdate.payload : ''),
+                    parentUpdate ? parentUpdate.name : '', 0, primaryFields),
+                secondary: this._secondaryValues(parentRecord, parent.table, parentUpdate ? parentUpdate.payload : '', primaryFields),
                 url: parentRecord ? this._url(parent.table, parentId) : this._url('sys_update_xml', parentUpdate.id) });
             childId = parentId;
             childRecord = parentRecord;
@@ -617,17 +652,48 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             var action = String(gr.getValue('action') || '');
             var live = this._record(target.table, target.id);
             var grouping = this._ancestors(target.table, target.id, target.payload, rules, setTable, setId);
+            var primaryFields = [];
             rows.push({ table: target.table, id: target.id, sourceSet: sourceSet, type: grouping.type,
                 typeOrder: grouping.typeOrder, inUpdateSet: true,
                 consolidation: this._consolidation(live, target.table, target.payload),
-                name: this._name(live, target.table, target.id, target.payload, String(gr.getValue('target_name') || '')),
-                secondary: this._secondaryValues(live, target.table, target.payload),
+                name: this._name(live, target.table, target.id, target.payload, String(gr.getValue('target_name') || ''), 0, primaryFields),
+                secondary: this._secondaryValues(live, target.table, target.payload, primaryFields),
                 url: live ? this._url(target.table, target.id) : this._url('sys_update_xml', updateId),
                 ancestors: grouping.ancestors, action: action, isNew: this._isNewUpdate(action, String(gr.getValue('name') || ''), setTable, setId), updateId: updateId });
         }
         var hasMore = rows.length > this.PAGE_SIZE;
         if (hasMore) rows.pop();
-        return this._answer({ success: true, rows: rows, hasMore: hasMore, nextOffset: offset + rows.length });
+        var maxListLevels = Number(gs.getProperty('monaco.plus.update_sets.markdown_max_list_levels', '9'));
+        if (!isFinite(maxListLevels) || maxListLevels < 1 || Math.floor(maxListLevels) !== maxListLevels) maxListLevels = 9;
+        return this._answer({ success: true, rows: rows, hasMore: hasMore, nextOffset: offset + rows.length,
+            maxListLevels: maxListLevels, indicators: this._markdownFormatting(),
+            escapeUnderscores: String(gs.getProperty('monaco.plus.update_sets.markdown_escape_underscores', 'false')) === 'true' });
+    },
+    _parseMarkdownFormatting: function (value) {
+        var config = JSON.parse(value);
+        if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('Formatting must be a JSON object.');
+        Object.keys(config).forEach(function (key) {
+            if (key === 'update_set' && config[key] && typeof config[key] === 'object' && !Array.isArray(config[key])) {
+                Object.keys(config[key]).forEach(function (number) {
+                    if (!/^[1-9][0-9]*$/.test(number) || typeof config[key][number] !== 'string') {
+                        throw new Error('Update-set indicators must use positive number keys, with string values.');
+                    }
+                });
+                return;
+            }
+            if (key === 'display_field_wrapper' && typeof config[key] === 'string' && config[key].length !== 0 && config[key].length !== 2) {
+                throw new Error('Use two characters for the display-field wrapper, such as (), or an empty string.');
+            }
+            if (['new', 'deleted', 'display_field_separator', 'context_indicator', 'display_field_wrapper'].indexOf(key) === -1 || typeof config[key] !== 'string') {
+                throw new Error('Use string formatting values and a numbered object for update_set.');
+            }
+        });
+        return config;
+    },
+    _markdownFormatting: function () {
+        try {
+            return this._parseMarkdownFormatting(String(gs.getProperty('monaco.plus.update_sets.markdown_formatting', gs.getProperty('monaco.plus.update_sets.markdown_indicators', 'null'))));
+        } catch (e) { return null; } // Invalid external edits fall back to the built-in indicators.
     },
     _groupPropertyTables: function () {
         var properties = new GlideRecordSecure('sys_properties'), tables = [];
@@ -699,6 +765,10 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         } catch (e) {}
         if (json) {
             try { JSON.parse(value); } catch (e) { return this._answer({ success: false, error: 'Invalid JSON.' }); }
+        }
+        if (name === 'monaco.plus.update_sets.markdown_formatting') {
+            try { this._parseMarkdownFormatting(value); }
+            catch (e) { return this._answer({ success: false, error: e.message || String(e) }); }
         }
         var type = String(property.getValue('type') || 'string');
         if (type === 'boolean' && value !== 'true' && value !== 'false') {

@@ -110,9 +110,9 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
      * Suggests related components for a record: admin-configured table_config rules
      * (see _getTableConfig) plus, for every table, script include/table/property/event/
      * integration/flow references scanned from its script-type field(s), whatever table
-     * its table_name-type field(s) name, and any reference field into an application-file
-     * table. sys_db_object is special-cased to suggest tables referenced by the viewed
-     * table's own reference-type dictionary fields, rather than its own fields.
+     * its table_name-type field(s) name, and records named by its reference fields.
+     * sys_db_object is special-cased to suggest tables referenced by the viewed table's
+     * own reference-type dictionary fields, rather than its own fields.
      * Accepts `table` and `sys_id`.
      * @returns {{success: boolean, related: Array.<{table: string, sys_id: string,
      *   label: string, category: string, updatedOn: string}>}} Return value.
@@ -153,9 +153,9 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             // Generic fallback: any table with its own script-type field(s) gets scanned for
             // further Script Include, table, property, event, integration and flow references;
             // any table_name-type field(s) suggest whatever table that field names; and any
-            // reference field into an application-file table is followed — whatever the table
+            // populated reference field is followed — whatever the target table
             // happens to be. Always runs, alongside any table_config rules above.
-            var generic = this._findMetadataReferences(gr, table);
+            var generic = this._findRecordReferences(gr, table);
             if (table === 'sys_security_acl') {
                 // ACL names are either a table or table.field (including table.*).
                 // Resolve the table portion as an exact sys_db_object name.
@@ -643,14 +643,13 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
     },
 
     /**
-     * Follows the record's own reference fields into any application-file table
-     * (hierarchy root sys_metadata), so e.g. a catalogue item links to its workflow and a
-     * notification to its email template without a per-table rule.
+     * Follows populated reference fields, including inherited fields, to readable
+     * records without requiring a per-table rule.
      * @param {GlideRecordSecure} gr - The source record, already .get()'d.
      * @param {string} table - Its table name.
      * @returns {Array.<{table: string, sys_id: string, label: string, category: string, updatedOn: string}>} Matches.
      */
-    _findMetadataReferences: function (gr, table) {
+    _findRecordReferences: function (gr, table) {
         var results = [];
         var dict = new GlideRecordSecure('sys_dictionary');
         dict.addQuery('name', 'IN', this._tableHierarchyNames(table).join(','));
@@ -660,7 +659,7 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
         while (dict.next()) {
             var field = dict.getValue('element');
             var refTable = dict.getValue('reference');
-            if (!field || !refTable || !this._isMetadataTable(refTable)) continue;
+            if (!field || !refTable) continue;
             var value = gr.getValue(field);
             if (!value) continue;
             try {
@@ -678,23 +677,6 @@ WidgetEditorAssistantAjax.prototype = Object.extendsObject(AbstractAjaxProcessor
             }
         }
         return results;
-    },
-
-    /**
-     * Whether a table is an application file (extends sys_metadata), per-call cached.
-     * @param {string} table - Table name.
-     * @returns {boolean}
-     */
-    _isMetadataTable: function (table) {
-        this._metadataTableCache = this._metadataTableCache || {};
-        if (this._metadataTableCache[table] === undefined) {
-            var isMetadata = false;
-            try {
-                isMetadata = String(new GlideTableHierarchy(table).getRoot()) === 'sys_metadata';
-            } catch (e) {}
-            this._metadataTableCache[table] = isMetadata;
-        }
-        return this._metadataTableCache[table];
     },
 
     /**

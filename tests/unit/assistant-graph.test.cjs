@@ -160,7 +160,7 @@ test('Graph metadata updates draw atomically without flashing overlays at the or
     const watchEnd = source.indexOf("scope.$watch('command'", watchStart);
     const watchSource = source.slice(watchStart, watchEnd);
     assert.ok(watchSource.includes('resize();'));
-    assert.ok(watchSource.includes('if (topologyChanged) fitGraph(animate);'));
+    assert.ok(watchSource.includes('if (shouldFit) fitGraph(animate);'));
     assert.ok(watchSource.includes('lastTopologySignature = topologySignature;'));
 });
 
@@ -223,4 +223,75 @@ test('Canvas provides an interactive minimap overview', () => {
     assert.ok(source.includes("minimap.addEventListener('pointerdown', onMinimapPointerDown)"));
     assert.ok(source.includes("minimap.addEventListener('pointermove', onMinimapPointerMove)"));
     assert.ok(source.includes('clampCameraToVisibleNode();'));
+});
+
+function scanAnchorHarness(reducedMotion = false) {
+    const callbacks = {};
+    const frames = [];
+    const context = {
+        camera: { x: 70, y: 90, scale: 0.8 },
+        layout: { nodes: [{ key: 'source', x: 100, y: 120 }], byKey: {} },
+        scanSourceKey: 'source', lastTopologySignature: '', layoutRevision: 0,
+        nodeTween: null, cameraTween: null, animationFrame: null, destroyed: false,
+        LAYOUT_ANIMATION_MS: 420,
+        reducedMotionMedia: { matches: reducedMotion },
+        scope: { graph: { nodes: [{ key: 'source' }, { key: 'new' }], edges: [] }, $evalAsync() {},
+            $watch(name, callback) { callbacks[name] = callback; } },
+        host: { clientWidth: 1000, clientHeight: 700 },
+        $window: { requestAnimationFrame(callback) { frames.push(callback); return frames.length; } },
+        $timeout(callback) { callback(); },
+        draw() {}, resize() {}, setZoomLabel() {},
+        fitGraph() { context.fits++; }, fits: 0,
+        buildLayout() {
+            const node = { key: 'source', x: 640, y: 800 };
+            context.layout = { nodes: [node, { key: 'new', x: 100, y: 200 }], byKey: { source: node } };
+        },
+    };
+    vm.createContext(context);
+    const helpers = source.slice(source.indexOf('function easeOutCubic('), source.indexOf('// Clamps to [AUTO_FIT_MIN_SCALE'));
+    const anchor = source.slice(source.indexOf('function preserveScanSource('), source.indexOf('function setZoomLabel()'));
+    const watch = source.slice(source.indexOf("scope.$watch('graph',"), source.indexOf("scope.$watch('command',"));
+    vm.runInContext(helpers + anchor + watch, context);
+    return { context, rebuild: callbacks.graph, frames };
+}
+
+for (const reducedMotion of [false, true]) {
+    test('Scanning preserves source position and zoom' + (reducedMotion ? ' with reduced motion' : ' throughout animation'), () => {
+        const { context, rebuild } = scanAnchorHarness(reducedMotion);
+        rebuild();
+        const check = () => {
+            const node = context.layout.byKey.source;
+            assert.ok(Math.abs(context.camera.x + node.x * context.camera.scale - 150) < 1e-9);
+            assert.ok(Math.abs(context.camera.y + node.y * context.camera.scale - 186) < 1e-9);
+            assert.equal(context.camera.scale, 0.8);
+        };
+        check();
+        if (!reducedMotion) {
+            for (const time of [0, 105, 210, 315, 420]) {
+                context.stepAnimation(time);
+                check();
+            }
+        }
+        assert.equal(context.fits, 0);
+    });
+}
+
+test('Graph resumes automatic fitting if the searched source is removed', () => {
+    const { context, rebuild } = scanAnchorHarness();
+    context.scanSourceKey = 'removed';
+    rebuild();
+    assert.equal(context.scanSourceKey, null);
+    assert.equal(context.fits, 1);
+});
+
+test('A deferred fit cannot override a subsequent source-preserving rebuild', () => {
+    const { context, rebuild, frames } = scanAnchorHarness();
+    context.scanSourceKey = null;
+    rebuild();
+    const deferredFit = frames.pop();
+    context.scanSourceKey = 'source';
+    rebuild();
+    deferredFit();
+    frames.pop()();
+    assert.equal(context.fits, 1);
 });
