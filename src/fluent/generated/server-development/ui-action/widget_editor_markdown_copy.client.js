@@ -13,7 +13,7 @@ function copyUpdateSetMarkdownPlus(currentList, sourceElement) {
                 throw new Error('The Customer Updates list could not be found.');
             }
             var query = _weMarkdownListQuery(list);
-            _weMarkdownNotify('info', 'Preparing Markdown export… Keep tab in focus.');
+            _weMarkdownNotify('info', 'Preparing Markdown export… Keep page in focus.');
             resolve(query);
         } catch (error) { reject(error); }
     }).then(_weLoadMarkdownList).then(function (loaded) {
