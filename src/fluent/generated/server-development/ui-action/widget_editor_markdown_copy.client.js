@@ -13,7 +13,7 @@ function copyUpdateSetMarkdownPlus(currentList, sourceElement) {
                 throw new Error('The Customer Updates list could not be found.');
             }
             var query = _weMarkdownListQuery(list);
-            _weMarkdownNotify('info', 'Preparing Markdown export…');
+            _weMarkdownNotify('info', 'Preparing Markdown export… Keep tab in focus.');
             resolve(query);
         } catch (error) { reject(error); }
     }).then(_weLoadMarkdownList).then(function (loaded) {
@@ -212,17 +212,12 @@ function _weMarkdownKeycap(number) {
     return String(number).split('').map(function (digit) { return digit + '\uFE0F\u20E3'; }).join('');
 }
 function _weMarkdownIndicator(config, kind, number) {
-    var defaults = { 'new': '\uD83C\uDD95', deleted: '\uD83D\uDEAE', update_set: '{keycap}' };
+    var defaults = { 'new': '\uD83C\uDD95', deleted: '\uD83D\uDEAE' };
     var value = config && typeof config[kind] === 'string' ? config[kind] : defaults[kind];
     if (kind === 'update_set') {
         var markers = config && config.update_set;
-        if (markers && typeof markers === 'object' && !Array.isArray(markers)) {
-            value = typeof markers[number] === 'string' ? markers[number] :
-                typeof markers.default === 'string' ? markers.default : defaults.update_set;
-        }
-        value = value.replace(/\{number\}|\{keycap\}/g, function (token) {
-            return token === '{number}' ? String(number) : _weMarkdownKeycap(number);
-        });
+        value = markers && typeof markers[number] === 'string' ? markers[number] :
+            !config && number >= 1 && number <= 10 ? _weMarkdownKeycap(number) : '';
     }
     // Indicator text is intentional markup, including Jira emoji such as :new:.
     return value.replace(/\s+/g, ' ').trim();
@@ -250,7 +245,7 @@ function _weMarkdownText(loaded, escapeUnderscores, maxListLevels, indicators) {
             var markers = keys.length > 1 && set ? [keys.indexOf(setKey(set)) + 1] : [];
             var row = Object.assign({}, source, {
                 setMarkers: markers, ancestors: (source.ancestors || []).map(function (parent) {
-                return Object.assign({}, parent, { setMarkers: parent.inUpdateSet ? markers : [] });
+                    return Object.assign({}, parent, { setMarkers: parent.inUpdateSet ? markers : [] });
                 })
             });
             var key = row.table + ':' + row.id;

@@ -203,7 +203,7 @@ test('Markdown indicators support text, Jira codes, hidden values and individual
         isNew: index !== 0, action: index === 0 ? 'DELETE' : '',
         sourceSet: {table: 'sys_update_set', id: String(index), name: 'Set ' + String(index).padStart(2, '0'), url: '/set/' + index}
     }));
-    const indicators = {new: ':new:', deleted: 'Deleted', update_set: {'1': ':one:', '2': '', '10': ':keycap_ten:', default: 'Set {number}'}};
+    const indicators = {new: ':new:', deleted: 'Deleted', update_set: {'1': ':one:', '2': '', '10': ':keycap_ten:', '11': 'Set 11'}};
     const output = context._weMarkdownText([{rows}], true, 1, indicators);
     assert.ok(output.includes(':one: [Set 00](/set/0)'));
     assert.ok(output.includes('\n[Set 01](/set/1)\n'));
@@ -213,21 +213,21 @@ test('Markdown indicators support text, Jira codes, hidden values and individual
     assert.ok(output.includes('- Record 1 :new: **Records**'));
     assert.ok(output.includes('- Record 9 :new: :keycap_ten: **Records**'));
     assert.ok(output.includes('- Record 10 :new: Set 11 **Records**'));
-    const hidden = context._weMarkdownText([{rows}], false, 1, {new: '', deleted: '', update_set: ''});
+    const hidden = context._weMarkdownText([{rows}], false, 1, {new: '', deleted: '', update_set: {}});
     assert.ok(hidden.includes('- ~~Record 0~~ **Records**'));
     assert.ok(hidden.includes('- Record 1 **Records**'));
     assert.ok(!/[🆕🚮🔟\u20e3]/u.test(hidden));
-    assert.equal(context._weMarkdownIndicator({update_set: {}}, 'update_set', 10), '🔟');
-    assert.equal(context._weMarkdownIndicator({update_set: '({number}) {keycap}'}, 'update_set', 10), '(10) 🔟');
+    assert.equal(context._weMarkdownIndicator({update_set: {}}, 'update_set', 10), '');
+    assert.equal(context._weMarkdownIndicator({update_set: {'10': '{keycap}'}}, 'update_set', 10), '{keycap}');
     assert.equal(context._weMarkdownIndicator({new: '✅'}, 'new'), '✅');
 });
 
 test('indicator configuration is validated and travels from the property through paging to the clipboard', async () => {
-    const config = {new: ':new:', deleted: '', update_set: {'1': ':one:', '10': '', default: '{number}'}};
+    const config = {new: ':new:', deleted: '', update_set: {'1': ':one:', '10': '', '2': '2'}};
     const {api} = server({gs: {getProperty: (name, fallback) =>
         name === 'monaco.plus.update_sets.markdown_indicators' ? JSON.stringify(config) : fallback}});
     assert.deepEqual(JSON.parse(JSON.stringify(api._markdownIndicators())), config);
-    for (const invalid of ['null', '[]', '{"new":false}', '{"update_set":{"0":"x"}}', '{"update_set":{"1":null}}', '{"unknown":""}', 'bad']) {
+    for (const invalid of ['null', '[]', '{"new":false}', '{"update_set":{"0":"x"}}', '{"update_set":{"1":null}}', '{"unknown":""}', '{"update_set":{"default":"x"}}', '{"update_set":"x"}', 'bad']) {
         assert.throws(() => api._parseMarkdownIndicators(invalid));
     }
     api._rules = () => ({groups: []});
@@ -243,7 +243,7 @@ test('indicator configuration is validated and travels from the property through
     assert.ok(copied[0].includes('Record :new: :one:'));
     assert.ok(copied[0].includes('Record :new: 2'));
     const invalidApi = server({gs: {getProperty: () => 'invalid JSON'}}).api;
-    assert.deepEqual(JSON.parse(JSON.stringify(invalidApi._markdownIndicators())), {});
+    assert.deepEqual(JSON.parse(JSON.stringify(invalidApi._markdownIndicators())), null);
 });
 
 test('missing reference uses payload display text before the target name', () => {

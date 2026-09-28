@@ -669,22 +669,22 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         Object.keys(config).forEach(function (key) {
             if (key === 'update_set' && config[key] && typeof config[key] === 'object' && !Array.isArray(config[key])) {
                 Object.keys(config[key]).forEach(function (number) {
-                    if ((number !== 'default' && !/^[1-9][0-9]*$/.test(number)) || typeof config[key][number] !== 'string') {
-                        throw new Error('Update-set indicators must use positive number keys or default, with string values.');
+                    if (!/^[1-9][0-9]*$/.test(number) || typeof config[key][number] !== 'string') {
+                        throw new Error('Update-set indicators must use positive number keys, with string values.');
                     }
                 });
                 return;
             }
-            if (['new', 'deleted', 'update_set'].indexOf(key) === -1 || typeof config[key] !== 'string') {
-                throw new Error('Use strings for new and deleted. Use a string or numbered object for update_set. Empty strings hide indicators.');
+            if (['new', 'deleted'].indexOf(key) === -1 || typeof config[key] !== 'string') {
+                throw new Error('Use strings for new and deleted. Use a numbered object for update_set. Empty strings hide indicators.');
             }
         });
         return config;
     },
     _markdownIndicators: function () {
         try {
-            return this._parseMarkdownIndicators(String(gs.getProperty('monaco.plus.update_sets.markdown_indicators', '{}')));
-        } catch (e) { return {}; } // Invalid external edits fall back to the built-in indicators.
+            return this._parseMarkdownIndicators(String(gs.getProperty('monaco.plus.update_sets.markdown_indicators', 'null')));
+        } catch (e) { return null; } // Invalid external edits fall back to the built-in indicators.
     },
     _groupPropertyTables: function () {
         var properties = new GlideRecordSecure('sys_properties'), tables = [];

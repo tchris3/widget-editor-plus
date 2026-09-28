@@ -18,11 +18,10 @@ export const markdownIndicatorsProperty = Property({
         "7": "7\\ufe0f\\u20e3",
         "8": "8\\ufe0f\\u20e3",
         "9": "9\\ufe0f\\u20e3",
-        "10": "\\ud83d\\udd1f",
-        "default": "{keycap}"
+        "10": "\\ud83d\\udd1f"
     }
 }`,
-    description: 'Export Markdown+ indicators: new, deleted and update_set. Use empty strings to hide, plain text, emoji or Jira codes such as :new:. Set update_set to a string or an object with individual number keys and a default. Supports {number} and {keycap}. Missing keys use the default emoji.',
+    description: 'Export Markdown+ indicators: new, deleted and update_set. Set update_set to an object with individually configured number keys. Use empty strings to hide, plain text, emoji or Jira codes such as :new:. Unspecified set numbers have no indicator.',
     ignoreCache: true,
     roles: { read: ['sp_admin'], write: ['admin'] },
 })

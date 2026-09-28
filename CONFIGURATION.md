@@ -25,11 +25,9 @@ Admins can edit settings in **Widget Editor+ → Properties**.
 
 ## Markdown indicators
 
-Edit `monaco.plus.update_sets.markdown_indicators` in **Widget Editor+ → Properties**. For example, use `{"new":":new:","deleted":"Deleted","update_set":"Set {number}"}` for Jira emoji, plain text and numbered update-set markers. Use `{"new":"","deleted":"","update_set":""}` to hide all three indicators.
+Edit `monaco.plus.update_sets.markdown_indicators` in **Widget Editor+ → Properties**. Each update-set number has its own literal value, for example `{"new":":new:","deleted":"Deleted","update_set":{"1":":one:","2":":two:","10":"TEN"}}`. The shipped property lists emoji for numbers 1–10. Add further number keys as needed.
 
-To customise numbers individually, use an object such as `"update_set":{"1":":one:","2":":two:","10":":keycap_ten:","default":"Set {number}"}`. The shipped property lists 1–10 separately. Each numbered value can be empty to hide that marker. Unspecified numbers use `default`, or numbered emoji if `default` is omitted.
-
-Update-set markers support `{number}` for the set number and `{keycap}` for its numbered emoji. The same format is used beside records and in the update-set legend, and markers appear only when exporting multiple sets. Missing keys retain their default emoji. Indicator strings are emitted as written so Jira codes and intentional Markdown formatting remain intact. Deletion strikethrough and context-only annotations remain separate from these indicators.
+Empty or unspecified set numbers have no indicator. Use `{"new":"","deleted":"","update_set":{}}` to hide all three indicator types. There are no default formats or placeholders. Values are used beside records and in the update-set legend, with set markers appearing only for multiple sets. Jira codes and intentional Markdown formatting remain intact. Deletion strikethrough and context-only annotations remain separate.
 
 ## Markdown primary display fields
 
