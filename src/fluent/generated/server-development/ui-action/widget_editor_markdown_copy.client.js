@@ -16,8 +16,8 @@ function copyUpdateSetMarkdownPlus(currentList, sourceElement) {
             _weMarkdownNotify('info', 'Preparing Markdown export…');
             resolve(query);
         } catch (error) { reject(error); }
-    }).then(_weLoadMarkdownList).then(function (rows) {
-        var value = _weMarkdownText([{ rows: rows }]);
+    }).then(_weLoadMarkdownList).then(function (loaded) {
+        var value = _weMarkdownText([{ rows: loaded.rows }], loaded.escapeUnderscores);
         if (!value) throw new Error('No customer updates match this list.');
         return _weWriteMarkdownClipboard(value);
     }).then(function () {
@@ -59,11 +59,14 @@ function _weMarkdownAjax(method, params) {
 }
 
 function _weLoadMarkdownList(query) {
-    var rows = [], offset = 0;
+    var rows = [], offset = 0, escapeUnderscores = false;
     function next() {
         return _weMarkdownAjax('getListPage', { list_query: query, offset: offset }).then(function (page) {
             rows = rows.concat(page.rows);
-            if (!page.hasMore) return rows;
+            if (offset === 0) {
+                escapeUnderscores = page.escapeUnderscores === true;
+            }
+            if (!page.hasMore) return { rows: rows, escapeUnderscores: escapeUnderscores };
             if (page.nextOffset <= offset) throw new Error('Markdown paging did not advance.');
             offset = page.nextOffset;
             return next();
@@ -72,11 +75,14 @@ function _weLoadMarkdownList(query) {
     return next();
 }
 
-function _weMarkdownEscape(value) {
-    return String(value || '').replace(/\s+/g, ' ').trim().replace(/[\\`*_{}\[\]()#+.!|<>~-]/g, '\\$&');
+function _weMarkdownEscape(value, escapeUnderscores) {
+    return String(value || '').replace(/\s+/g, ' ').trim().replace(/[\\`*{}\[\]()#+.!|<>~-]|_+/g, function (match) {
+        if (match.charAt(0) === '_' && escapeUnderscores !== true) return match;
+        return match.replace(/./g, '\\$&');
+    });
 }
-function _weMarkdownLink(name, url) {
-    var label = _weMarkdownEscape(name);
+function _weMarkdownLink(name, url, escapeUnderscores) {
+    var label = _weMarkdownEscape(name, escapeUnderscores);
     return url ? '[' + label + '](' + String(url).replace(/\(/g, '%28').replace(/\)/g, '%29') + ')' : label;
 }
 function _weMarkdownContainer() { return { types: {} }; }
@@ -159,21 +165,23 @@ function _weMarkdownTree(rows) {
     markNewBranches(root);
     return root;
 }
-function _weMarkdownRender(container, depth, summary, suppressNew) {
+function _weMarkdownRender(container, depth, summary, suppressNew, escapeUnderscores) {
     summary = summary || {};
     var lines = [];
     Object.keys(container.types).sort(function (a, b) {
         return a.localeCompare(b);
     }).forEach(function (label) {
         var type = container.types[label];
-        lines.push(Array(depth * 2 + 1).join(' ') + '- **' + _weMarkdownEscape(label) + '**');
+        lines.push(Array(depth * 2 + 1).join(' ') + '- **' + _weMarkdownEscape(label, escapeUnderscores) + '**');
         Object.keys(type.records).sort(function (a, b) {
             return type.records[a].name.localeCompare(type.records[b].name) || a.localeCompare(b);
         }).forEach(function (key) {
             var record = type.records[key];
-            var name = _weMarkdownLink(record.name, record.url);
+            var name = _weMarkdownLink(record.name, record.url, escapeUnderscores);
             if (record.action === 'DELETE') name = '~~' + name + '~~';
-            if (record.secondary.length) name += ' (' + record.secondary.map(_weMarkdownEscape).join(' | ') + ')';
+            if (record.secondary.length) name += ' (' + record.secondary.map(function (value) {
+                return _weMarkdownEscape(value, escapeUnderscores);
+            }).join(' | ') + ')';
             if (record.action === 'DELETE') name += ' \uD83D\uDEAE';
             else if (record.isNew && !suppressNew) name += ' \uD83C\uDD95';
             if (record.setMarkers.length) name += ' ' + record.setMarkers.map(_weMarkdownKeycap).join(' ');
@@ -182,7 +190,7 @@ function _weMarkdownRender(container, depth, summary, suppressNew) {
                 summary.hasContextOnly = true;
             }
             lines.push(Array(depth * 2 + 3).join(' ') + '- ' + name);
-            lines = lines.concat(_weMarkdownRender(record, depth + 2, summary, suppressNew || record.allNew));
+            lines = lines.concat(_weMarkdownRender(record, depth + 2, summary, suppressNew || record.allNew, escapeUnderscores));
         });
     });
     return lines;
@@ -196,7 +204,7 @@ function _weMarkdownMergeMarkers(first, second) {
         return values.indexOf(value) === index;
     }).sort(function (a, b) { return a - b; });
 }
-function _weMarkdownText(loaded) {
+function _weMarkdownText(loaded, escapeUnderscores) {
     var sets = {}, seen = {}, rows = [];
     function setKey(set) { return set.table + ':' + set.id; }
     loaded.forEach(function (item) {
@@ -236,10 +244,10 @@ function _weMarkdownText(loaded) {
     });
     var legend = keys.map(function (key, index) {
         var set = sets[key];
-        return (keys.length > 1 ? _weMarkdownKeycap(index + 1) + ' ' : '') + _weMarkdownLink(set.name, set.url);
+        return (keys.length > 1 ? _weMarkdownKeycap(index + 1) + ' ' : '') + _weMarkdownLink(set.name, set.url, escapeUnderscores);
     }).join('\n');
     var summary = {};
-    var list = _weMarkdownRender(_weMarkdownTree(rows), 0, summary).join('\n');
+    var list = _weMarkdownRender(_weMarkdownTree(rows), 0, summary, false, escapeUnderscores).join('\n');
     return (legend ? legend + '\n\n' : '') + list +
         (summary.hasContextOnly ? '\n\n∉ For context only - not included in update set.' : '');
 }

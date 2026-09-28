@@ -634,7 +634,8 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         }
         var hasMore = rows.length > this.PAGE_SIZE;
         if (hasMore) rows.pop();
-        return this._answer({ success: true, rows: rows, hasMore: hasMore, nextOffset: offset + rows.length });
+        return this._answer({ success: true, rows: rows, hasMore: hasMore, nextOffset: offset + rows.length,
+            escapeUnderscores: String(gs.getProperty('monaco.plus.update_sets.markdown_escape_underscores', 'false')) === 'true' });
     },
     _groupPropertyTables: function () {
         var properties = new GlideRecordSecure('sys_properties'), tables = [];

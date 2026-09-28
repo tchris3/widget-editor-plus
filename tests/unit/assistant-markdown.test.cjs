@@ -96,6 +96,51 @@ test('dictionary updates resolve from the record element without a root table or
         'must not link the companion record when the dictionary ID is missing');
 });
 
+test('Markdown underscore escaping is disabled by default and can be enabled', () => {
+    const context = {};
+    vm.createContext(context); vm.runInContext(clientSource, context);
+    assert.equal(context._weMarkdownEscape('sys_dictionary u_my__field'), 'sys_dictionary u_my__field');
+    assert.equal(context._weMarkdownEscape('_label_ __label__'), '_label_ __label__');
+    assert.equal(context._weMarkdownEscape('_label_ __label__', true), '\\_label\\_ \\_\\_label\\_\\_');
+    assert.equal(context._weMarkdownEscape('sys_dictionary', true), 'sys\\_dictionary');
+    const output = context._weMarkdownText([{rows: [{
+        table: 'sys_dictionary', id: 'a', type: 'Dictionary', name: 'u_my_field',
+        secondary: ['sys_dictionary'], url: '/record'
+    }]}]);
+    assert.ok(output.includes('[u_my_field](/record) (sys_dictionary)'));
+});
+
+test('export passes the system property through paging to all rendered text', async () => {
+    for (const setting of [undefined, 'false', 'true']) {
+        const { api } = server({gs: {getProperty: (name, fallback) =>
+            setting === undefined ? fallback : setting}});
+        api._rules = () => ({groups: []});
+        const page = api._markdownPage({orderByDesc() {}, chooseWindow() {}, query() {}, next: () => false}, 0);
+        assert.equal(page.escapeUnderscores, setting === 'true');
+        const copied = [], errors = [];
+        const context = {Promise};
+        vm.createContext(context); vm.runInContext(clientSource, context);
+        context._weMarkdownNotify = (type, message) => { if (type === 'error') errors.push(message); };
+        context._weMarkdownAjax = async (_method, params) => ({
+            ...page, hasMore: params.offset === 0, nextOffset: 1,
+            rows: [{table: 'child', id: String(params.offset), name: 'child_name', type: 'child_type',
+                secondary: ['extra_value'], url: '/child_name',
+                ancestors: [{table: 'parent', id: 'p', name: 'parent_name', type: 'parent_type', url: '/parent_name'}],
+                sourceSet: {table: 'sys_update_set', id: 's', name: 'set_name', url: '/set_name'}}]
+        });
+        context._weWriteMarkdownClipboard = async value => copied.push(value);
+        await context.copyUpdateSetMarkdownPlus({getTableName: () => 'sys_update_xml', getQuery: () => ''});
+        assert.deepEqual(errors, []);
+        assert.equal(copied.length, 1);
+        for (const label of ['child_name', 'child_type', 'extra_value', 'parent_name', 'parent_type', 'set_name']) {
+            assert.ok(copied[0].includes(setting === 'true' ? label.replace('_', '\\_') : label));
+        }
+        assert.ok(copied[0].includes('](/child_name)'), 'URLs are unchanged');
+        assert.ok(copied[0].includes(setting === 'true' ? '**child\\_type**' : '**child_type**'));
+        if (setting !== 'true') assert.ok(!copied[0].includes('\\_'));
+    }
+});
+
 test('Markdown emoji survive a script transport that removes supplementary Unicode characters', () => {
     const context = {};
     vm.createContext(context);
@@ -482,7 +527,7 @@ test('clipboard success and failures use notifications without a fallback', asyn
             assert.equal(notifications.length, 1, 'show progress before loading the export');
             assert.equal(notifications[0].event, 'glide:ui_notification.info');
             assert.equal(notifications[0].text, 'Preparing Markdown export…');
-            return [{table: 'sp_widget', id: 'a', type: 'Widgets', name: 'Widget', ancestors: []}];
+            return { rows: [{table: 'sp_widget', id: 'a', type: 'Widgets', name: 'Widget', ancestors: []}] };
         };
         await context.copyUpdateSetMarkdownPlus({ getTableName: () => 'sys_update_xml', getQuery: () => '' });
         assert.equal(notifications.length, 2);
