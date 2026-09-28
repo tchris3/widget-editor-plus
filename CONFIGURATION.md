@@ -22,6 +22,14 @@ Admins can edit settings in **Widget Editor+ → Properties**.
 | `monaco.plus.widget.fields` | *(empty)* | Comma-separated list of additional fields on `sp_widget` to display inside Widget Editor+. |
 | `monaco.plus.widget.related_list_exclusions` | *(empty)* | Comma-separated list of `sys_ui_related_list_entry.related_list` values to exclude from related lists. |
 
+## Markdown primary display fields
+
+In **Widget Editor+ → Properties**, Markdown display rows can use primary fields as ordered fallbacks or enable **Combine fields** with a separator. Empty or unreadable fields are skipped. Additional fields remain separate.
+
+Per-table properties use `monaco.plus.update_sets.markdown_display.<table>`. Set `display_value` to comma-separated field paths and optionally add `display_separator` to combine them. Omitting the separator preserves fallback behaviour; an empty separator joins values directly.
+
+The default `monaco.plus.update_sets.markdown_display.sys_dictionary` uses `{"display_value":"name,element","display_separator":".","additional_fields":"column_label,internal_type"}`, producing names such as `incident.short_description` with the column label and internal type as additional values. A table-level dictionary entry with no element displays only its table name as the primary value.
+
 ## UI Scripts Reference
 
 | UI Script | Purpose |

@@ -420,6 +420,14 @@ declare global {
                         table: 'sys_properties_category_m2m'
                         id: '2197fff429c3450a8e592ab1d5495cec'
                     }
+                    'widget-editor-markdown-display-sys_dictionary': {
+                        table: 'sys_properties'
+                        id: '9ee1d661c56e47e5ba7724dde6161927'
+                    }
+                    'widget-editor-markdown-display-sys_dictionary-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: 'da777e1b46b44f3a92d84e17c7b3fbe2'
+                    }
                     'widget-editor-markdown-display-sys_script': {
                         table: 'sys_properties'
                         id: '790c4d399be9406b891bab33c6fa6dca'

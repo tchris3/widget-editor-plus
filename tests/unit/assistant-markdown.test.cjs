@@ -1116,6 +1116,33 @@ test('Variable defaults include type and additional values prefer display text w
     ]) assert.deepEqual(Array.from(api._secondaryValues(null,'item_option_new',payload)),expected);
 });
 
+test('Dictionary primary fields combine securely and skip empty values', () => {
+    const source = fs.readFileSync('src/fluent/generated/properties/system-property/sys_properties_widget_editor_markdown_display_sys_dictionary.now.ts', 'utf8');
+    const config = JSON.parse(source.match(/value: `([\s\S]*?)`,/)[1]);
+    assert.deepEqual(config, {display_value: 'name,element', display_separator: '.', additional_fields: 'column_label,internal_type'});
+    const {api} = server();
+    api._displayConfig = () => config;
+    api._fieldPath = (_table, field) => ['name', 'element', 'column_label', 'internal_type'].includes(field) ? [{field}] : null;
+    api._displayField = () => ({name: ''});
+    let readable = true, values = {name: 'incident', element: 'short_description'};
+    const record = {getElement: field => ({canRead: () => field !== 'element' || readable}),
+        getValue: field => values[field], getDisplayValue: field => field ? values[field] : 'Fallback'};
+    const name = () => api._name(record, 'sys_dictionary', 'id', '', '');
+    assert.equal(name(), 'incident.short_description');
+    readable = false; assert.equal(name(), 'incident');
+    readable = true; values.element = ''; assert.equal(name(), 'incident');
+    values = {}; assert.equal(name(), 'Fallback');
+    assert.equal(api._name(null, 'sys_dictionary', 'id', '<name>incident</name><element>short_description</element>', ''), 'incident.short_description');
+    assert.deepEqual(Array.from(api._secondaryValues(null, 'sys_dictionary',
+        '<column_label>Short description</column_label><internal_type display_value="String">string</internal_type>')), ['Short description', 'String']);
+    assert.equal(api._validateDisplayConfig({sys_dictionary: config}), '');
+    assert.ok(api._validateDisplayConfig({sys_dictionary: {...config, display_separator: 5}}));
+    assert.ok(api._validateDisplayConfig({sys_dictionary: {...config, display_value: 'name,missing'}}));
+    config.display_separator = ''; values = {name: 'incident', element: 'number'};
+    assert.equal(name(), 'incidentnumber');
+    delete config.display_separator; assert.equal(name(), 'incident');
+});
+
 test('Markdown includes secondary values inside context-only italics and on included records', () => {
     const context = { console };
     vm.createContext(context); vm.runInContext(clientSource, context);
@@ -1373,6 +1400,17 @@ test('property tables render row saves and remove the saved property only after 
     descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property').onclick(); await tick();
     assert.equal(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).kind,'markdown_display');
     assert.deepEqual(JSON.parse(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).property_value),{display_value:'name,script',additional_fields:'script,name'});
+    const combine = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Combine fields');
+    const separator = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Field separator');
+    assert.equal(combine.checked, false); assert.equal(separator.hidden, true);
+    combine.checked = true; combine.onchange(); separator.value = '.'; separator.oninput();
+    descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property').onclick(); await tick();
+    assert.deepEqual(JSON.parse(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).property_value),
+        {display_value:'name,script',additional_fields:'script,name',display_separator:'.'});
+    assert.equal(combine.checked, true); assert.equal(separator.hidden, false);
+    combine.checked = false; combine.onchange();
+    descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property').onclick(); await tick();
+    assert.equal(Object.hasOwn(JSON.parse(requests.filter(r=>r.sysparm_name==='saveTableProperty').at(-1).property_value), 'display_separator'), false);
     extraInput.value=Array(700).fill('script').join(','); extraInput.oninput();
     const markdownSave = descendants(markdown).find(n=>n.getAttribute('aria-label')==='Save property');
     assert.equal(markdownSave.disabled,false);

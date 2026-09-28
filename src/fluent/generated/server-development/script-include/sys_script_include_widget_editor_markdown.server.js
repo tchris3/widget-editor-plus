@@ -241,7 +241,8 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             if (legacy ? (Object.keys(config).some(function (key) { return key !== 'display' && key !== 'secondary'; }) ||
                 (config.secondary !== undefined && !Array.isArray(config.secondary))) :
                 (typeof config.display_value !== 'string' || typeof config.additional_fields !== 'string' ||
-                Object.keys(config).some(function (key) { return key !== 'display_value' && key !== 'additional_fields'; }))) return 'Invalid display configuration for ' + table + '.';
+                (config.display_separator !== undefined && typeof config.display_separator !== 'string') ||
+                Object.keys(config).some(function (key) { return key !== 'display_value' && key !== 'additional_fields' && key !== 'display_separator'; }))) return 'Invalid display configuration for ' + table + '.';
             var normalised = this._normaliseDisplayConfig(config);
             var extra = normalised.additional_fields.trim() ? normalised.additional_fields.split(',').map(function (field) { return field.trim(); }) : [];
             var fields = normalised.display_value.split(',').map(function (field) { return field.trim(); }).concat(extra);
@@ -298,6 +299,14 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         var config = !depth && this._displayConfig(table);
         if (config && config.display_value) {
             var fields = config.display_value.split(',').map(function (field) { return field.trim(); });
+            if (typeof config.display_separator === 'string') {
+                var parts = [];
+                for (var part = 0; part < fields.length; part++) {
+                    var value = this._configuredValue(record, table, payload, fields[part]);
+                    if (value) parts.push(value);
+                }
+                if (parts.length) return parts.join(config.display_separator);
+            }
             // Try every display value before falling back to raw values.
             for (var pass = 0; pass < 2; pass++) {
                 for (var index = 0; index < fields.length; index++) {
