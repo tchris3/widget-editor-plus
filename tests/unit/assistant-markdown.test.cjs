@@ -236,17 +236,41 @@ test('Markdown indicators support text, Jira codes, hidden values and individual
     assert.equal(context._weMarkdownIndicator({ new: '✅' }, 'new'), '✅');
 });
 
+test('Markdown formatting controls additional fields and both context-only markers', () => {
+    const context = {};
+    vm.createContext(context); vm.runInContext(clientSource, context);
+    const rows = [{table: 'child', id: 'c', name: 'Child', type: 'Children', secondary: ['One', 'Two'],
+        ancestors: [{table: 'parent', id: 'p', name: 'Parent', type: 'Parents', url: '/parent', inUpdateSet: false, secondary: ['A', 'B']}]}];
+    const render = formatting => context._weMarkdownText([{rows}], false, 9, formatting);
+    assert.ok(render().includes('[Parent](/parent) (A, B)'));
+    const custom = render({display_field_separator: ' | ', display_field_wrapper: '[]', context_indicator: ':info:'});
+    assert.ok(custom.includes(':info: *[Parent](/parent) [A | B]*'));
+    assert.ok(custom.includes('Child [One | Two]'));
+    assert.ok(custom.endsWith(':info: For context only - not included in update set.'));
+    const hidden = render({display_field_separator: '', display_field_wrapper: '', context_indicator: ''});
+    assert.ok(hidden.includes('*[Parent](/parent) AB*'));
+    assert.ok(hidden.includes('Child OneTwo'));
+    assert.ok(hidden.endsWith('\n\nFor context only - not included in update set.'));
+    assert.ok(!hidden.includes('∉'));
+    const {api} = server();
+    const config = {display_field_separator: ',', display_field_wrapper: '()', context_indicator: '∉'};
+    assert.deepEqual(JSON.parse(JSON.stringify(api._parseMarkdownFormatting(JSON.stringify(config)))), config);
+    for (const display_field_wrapper of ['(', 'long', null, 4]) {
+        assert.throws(() => api._parseMarkdownFormatting(JSON.stringify({...config, display_field_wrapper})));
+    }
+});
+
 test('indicator configuration is validated and travels from the property through paging to the clipboard', async () => {
     const config = { new: ':new:', deleted: '', update_set: { '1': ':one:', '10': '', '2': '2' } };
     const { api } = server({
         gs: {
             getProperty: (name, fallback) =>
-                name === 'monaco.plus.update_sets.markdown_indicators' ? JSON.stringify(config) : fallback
+                name === 'monaco.plus.update_sets.markdown_formatting' ? JSON.stringify(config) : fallback
         }
     });
-    assert.deepEqual(JSON.parse(JSON.stringify(api._markdownIndicators())), config);
+    assert.deepEqual(JSON.parse(JSON.stringify(api._markdownFormatting())), config);
     for (const invalid of ['null', '[]', '{"new":false}', '{"update_set":{"0":"x"}}', '{"update_set":{"1":null}}', '{"unknown":""}', '{"update_set":{"default":"x"}}', '{"update_set":"x"}', 'bad']) {
-        assert.throws(() => api._parseMarkdownIndicators(invalid));
+        assert.throws(() => api._parseMarkdownFormatting(invalid));
     }
     api._rules = () => ({ groups: [] });
     const page = api._markdownPage({ orderByDesc() { }, chooseWindow() { }, query() { }, next: () => false }, 0);
@@ -265,7 +289,7 @@ test('indicator configuration is validated and travels from the property through
     assert.ok(copied[0].includes('Record :new: :one:'));
     assert.ok(copied[0].includes('Record :new: 2'));
     const invalidApi = server({ gs: { getProperty: () => 'invalid JSON' } }).api;
-    assert.deepEqual(JSON.parse(JSON.stringify(invalidApi._markdownIndicators())), null);
+    assert.deepEqual(JSON.parse(JSON.stringify(invalidApi._markdownFormatting())), null);
 });
 
 test('missing reference uses payload display text before the target name', () => {
@@ -706,8 +730,8 @@ test('record markers and global deduplication preserve one canonical parent and 
     const annotated = context._weMarkdownRender(context._weMarkdownTree(rows.slice(0, 2).map(row => ({
         ...row, secondary: ['extra', 'details'], setMarkers: [1, 2],
     }))), 0).join('\n');
-    assert.ok(annotated.includes('~~[Parent](/parent)~~ (extra | details) 🚮 1️⃣ 2️⃣'));
-    assert.ok(annotated.includes('[Child](/child) (extra | details) 🆕 1️⃣ 2️⃣'));
+    assert.ok(annotated.includes('~~[Parent](/parent)~~ (extra, details) 🚮 1️⃣ 2️⃣'));
+    assert.ok(annotated.includes('[Child](/child) (extra, details) 🆕 1️⃣ 2️⃣'));
 });
 
 test('entirely new branches show one new marker while mixed branches retain individual markers', () => {
@@ -1344,7 +1368,7 @@ test('Markdown includes secondary values inside context-only italics and on incl
     }];
     const result = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
     assert.ok(result.includes('∉ *[Parent](/parent) (value)*'));
-    assert.ok(result.includes('[Child](/child) (one \\| two | \\<three\\>)'));
+    assert.ok(result.includes('[Child](/child) (one \\| two, \\<three\\>)'));
     rows[0].ancestors[0].inUpdateSet = true;
     const included = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
     assert.ok(included.includes('- [Parent](/parent) (value)'));

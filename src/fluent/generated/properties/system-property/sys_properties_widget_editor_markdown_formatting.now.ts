@@ -1,11 +1,14 @@
 import { Property } from '@servicenow/sdk/core'
 
-export const markdownIndicatorsProperty = Property({
+export const markdownFormattingProperty = Property({
     $id: Now.ID['widget-editor-markdown-indicators-property'],
     $meta: { installMethod: 'first install' },
-    name: 'monaco.plus.update_sets.markdown_indicators',
+    name: 'monaco.plus.update_sets.markdown_formatting',
     type: 'string',
     value: `{
+    "display_field_separator": ",",
+    "context_indicator": "\\u2209",
+    "display_field_wrapper": "()",
     "new": "\\ud83c\\udd95",
     "deleted": "\\ud83d\\udeae",
     "update_set": {
@@ -21,7 +24,7 @@ export const markdownIndicatorsProperty = Property({
         "10": "\\ud83d\\udd1f"
     }
 }`,
-    description: 'Export Markdown+ indicators: new, deleted and update_set. Set update_set to an object with individually configured number keys. Use empty strings to hide, plain text, emoji or Jira codes such as :new:. Unspecified set numbers have no indicator.',
+    description: 'Markdown markers, additional-field separator and two-character wrapper. Empty strings hide markers or wrappers; update_set maps each number to its marker.',
     ignoreCache: true,
     roles: { read: ['sp_admin'], write: ['admin'] },
 })

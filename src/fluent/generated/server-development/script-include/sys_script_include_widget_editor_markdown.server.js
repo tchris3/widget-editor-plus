@@ -666,12 +666,12 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         var maxListLevels = Number(gs.getProperty('monaco.plus.update_sets.markdown_max_list_levels', '9'));
         if (!isFinite(maxListLevels) || maxListLevels < 1 || Math.floor(maxListLevels) !== maxListLevels) maxListLevels = 9;
         return this._answer({ success: true, rows: rows, hasMore: hasMore, nextOffset: offset + rows.length,
-            maxListLevels: maxListLevels, indicators: this._markdownIndicators(),
+            maxListLevels: maxListLevels, indicators: this._markdownFormatting(),
             escapeUnderscores: String(gs.getProperty('monaco.plus.update_sets.markdown_escape_underscores', 'false')) === 'true' });
     },
-    _parseMarkdownIndicators: function (value) {
+    _parseMarkdownFormatting: function (value) {
         var config = JSON.parse(value);
-        if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('Indicators must be a JSON object.');
+        if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('Formatting must be a JSON object.');
         Object.keys(config).forEach(function (key) {
             if (key === 'update_set' && config[key] && typeof config[key] === 'object' && !Array.isArray(config[key])) {
                 Object.keys(config[key]).forEach(function (number) {
@@ -681,15 +681,18 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
                 });
                 return;
             }
-            if (['new', 'deleted'].indexOf(key) === -1 || typeof config[key] !== 'string') {
-                throw new Error('Use strings for new and deleted. Use a numbered object for update_set. Empty strings hide indicators.');
+            if (key === 'display_field_wrapper' && typeof config[key] === 'string' && config[key].length !== 0 && config[key].length !== 2) {
+                throw new Error('Use two characters for the display-field wrapper, such as (), or an empty string.');
+            }
+            if (['new', 'deleted', 'display_field_separator', 'context_indicator', 'display_field_wrapper'].indexOf(key) === -1 || typeof config[key] !== 'string') {
+                throw new Error('Use string formatting values and a numbered object for update_set.');
             }
         });
         return config;
     },
-    _markdownIndicators: function () {
+    _markdownFormatting: function () {
         try {
-            return this._parseMarkdownIndicators(String(gs.getProperty('monaco.plus.update_sets.markdown_indicators', 'null')));
+            return this._parseMarkdownFormatting(String(gs.getProperty('monaco.plus.update_sets.markdown_formatting', gs.getProperty('monaco.plus.update_sets.markdown_indicators', 'null'))));
         } catch (e) { return null; } // Invalid external edits fall back to the built-in indicators.
     },
     _groupPropertyTables: function () {
@@ -763,8 +766,8 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         if (json) {
             try { JSON.parse(value); } catch (e) { return this._answer({ success: false, error: 'Invalid JSON.' }); }
         }
-        if (name === 'monaco.plus.update_sets.markdown_indicators') {
-            try { this._parseMarkdownIndicators(value); }
+        if (name === 'monaco.plus.update_sets.markdown_formatting') {
+            try { this._parseMarkdownFormatting(value); }
             catch (e) { return this._answer({ success: false, error: e.message || String(e) }); }
         }
         var type = String(property.getValue('type') || 'string');

@@ -10,7 +10,7 @@ import { markdownDisplaySysUiActionProperty } from '../system-property/sys_prope
 import { markdownDisplaySysWsOperationProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sys_ws_operation.now'
 import { markdownGroupsSysUiActionProperty } from '../system-property/sys_properties_widget_editor_markdown_groups_sys_ui_action.now'
 import { Record } from '@servicenow/sdk/core'
-import { markdownIndicatorsProperty } from '../system-property/sys_properties_widget_editor_markdown_indicators.now'
+import { markdownFormattingProperty } from '../system-property/sys_properties_widget_editor_markdown_formatting.now'
 import { markdownDisplaySpInstanceProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sp_instance.now'
 import { markdownDisplaySysDictionaryProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sys_dictionary.now'
 import { markdownEscapeUnderscoresProperty } from '../system-property/sys_properties_widget_editor_markdown_escape_underscores.now'
@@ -36,7 +36,7 @@ Record({
     $id: Now.ID['widget-editor-markdown-indicators-property-category'],
     table: 'sys_properties_category_m2m',
     data: {
-        property: markdownIndicatorsProperty,
+        property: markdownFormattingProperty,
         category: widgetEditorPlusPropertiesCategory,
         order: 4740,
     },

@@ -185,9 +185,12 @@ function _weMarkdownRender(container, depth, summary, suppressNew, escapeUndersc
             var record = type.records[key];
             var name = _weMarkdownLink(record.name, record.url, escapeUnderscores);
             if (record.action === 'DELETE') name = '~~' + name + '~~';
-            if (record.secondary.length) name += ' (' + record.secondary.map(function (value) {
+            var separator = _weMarkdownFormatOption(indicators, 'display_field_separator');
+            if (separator && !/\s$/.test(separator)) separator += ' ';
+            var wrapper = _weMarkdownFormatOption(indicators, 'display_field_wrapper');
+            if (record.secondary.length) name += ' ' + wrapper.charAt(0) + record.secondary.map(function (value) {
                 return _weMarkdownEscape(value, escapeUnderscores);
-            }).join(' | ') + ')';
+            }).join(separator) + wrapper.charAt(1);
             var statusMarker = record.action === 'DELETE' ? _weMarkdownIndicator(indicators, 'deleted') :
                 record.isNew && (!suppressNew || flat) ? _weMarkdownIndicator(indicators, 'new') : '';
             if (statusMarker) name += ' ' + statusMarker;
@@ -196,7 +199,8 @@ function _weMarkdownRender(container, depth, summary, suppressNew, escapeUndersc
             }).filter(function (value) { return value; });
             if (setMarkers.length) name += ' ' + setMarkers.join(' ');
             if (record.inUpdateSet === false) {
-                name = '∉ *' + name + '*';
+                var contextMarker = _weMarkdownFormatOption(indicators, 'context_indicator');
+                name = (contextMarker ? contextMarker + ' ' : '') + '*' + name + '*';
                 summary.hasContextOnly = true;
             }
             if (flat) name += ' ' + typeLabel;
@@ -221,6 +225,10 @@ function _weMarkdownIndicator(config, kind, number) {
     }
     // Indicator text is intentional markup, including Jira emoji such as :new:.
     return value.replace(/\s+/g, ' ').trim();
+}
+function _weMarkdownFormatOption(config, key) {
+    var defaults = { display_field_separator: ',', context_indicator: '\u2209', display_field_wrapper: '()' };
+    return config && typeof config[key] === 'string' ? config[key] : defaults[key];
 }
 function _weMarkdownMergeMarkers(first, second) {
     return (first || []).concat(second || []).filter(function (value, index, values) {
@@ -272,8 +280,9 @@ function _weMarkdownText(loaded, escapeUnderscores, maxListLevels, indicators) {
     }).join('\n');
     var summary = {};
     var list = _weMarkdownRender(_weMarkdownTree(rows), 0, summary, false, escapeUnderscores, maxListLevels, indicators).join('\n');
+    var contextMarker = _weMarkdownFormatOption(indicators, 'context_indicator');
     return (legend ? legend + '\n\n' : '') + list +
-        (summary.hasContextOnly ? '\n\n∉ For context only - not included in update set.' : '');
+        (summary.hasContextOnly ? '\n\n' + (contextMarker ? contextMarker + ' ' : '') + 'For context only - not included in update set.' : '');
 }
 
 function _weMarkdownNotify(type, message) {
