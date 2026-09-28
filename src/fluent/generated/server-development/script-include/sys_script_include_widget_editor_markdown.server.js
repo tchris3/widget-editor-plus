@@ -85,6 +85,10 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         var payload = String(update.getValue('payload') || '');
         var root = payload.match(/<record_update\b[^>]*\btable=["']([a-z][a-z0-9_]*)["']/i);
         var table = root ? root[1] : '';
+        // Composite-keyed updates such as dictionary entries omit the root table.
+        // The child element names the record table, not its table attribute.
+        var recordElement = payload.match(/<record_update\b[^>]*>\s*(?:<!--[\s\S]*?-->\s*)*<([a-z][a-z0-9_]*)\b/i);
+        if (recordElement) table = recordElement[1];
         var id = '';
         if (this._table(table)) {
             try {
@@ -98,7 +102,10 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
                 }
             } catch (e) {}
         }
-        if (!this._sysId(id)) id = this._payloadField(payload, 'sys_id').value;
+        if (!this._sysId(id) && this._table(table)) {
+            var recordPayload = payload.match(new RegExp('<' + table + '\\b[^>]*>([\\s\\S]*?)<\\/' + table + '>', 'i'));
+            if (recordPayload) id = this._payloadField(recordPayload[1], 'sys_id').value.trim();
+        }
         if (this._table(table) && this._sysId(id)) return { table: table, id: id, payload: payload };
         // Forced updates can have a sparse payload. The final 32 hex characters of
         // sys_update_xml.name are the target ID; the prefix is the whole table name.

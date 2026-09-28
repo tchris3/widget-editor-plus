@@ -81,6 +81,36 @@ test('reference-valued record display field uses referenced record name', () => 
     assert.equal(api._name(record, 'u_record', 'a'.repeat(32), '', ''), 'Friendly producer');
 });
 
+test('dictionary updates resolve from the record element without a root table or sys_id in the update name', () => {
+    const { api } = server();
+    const id = 'a'.repeat(32), companionId = 'b'.repeat(32);
+    const payload = '<?xml version="1.0"?><record_update><!-- dictionary -->' +
+        '<sys_dictionary action="INSERT_OR_UPDATE" element="u_field" table="u_example">' +
+        '<sys_id><![CDATA[' + id + ']]></sys_id></sys_dictionary>' +
+        '<sys_app_file><sys_id>' + companionId + '</sys_id></sys_app_file></record_update>';
+    const update = value => ({ getValue: key => key === 'payload' ? value : 'sys_dictionary_u_example_u_field' });
+    const target = api._target(update(payload));
+    assert.equal(target.table, 'sys_dictionary');
+    assert.equal(target.id, id);
+    assert.equal(api._target(update(payload.replace('<sys_id><![CDATA[' + id + ']]></sys_id>', ''))), null,
+        'must not link the companion record when the dictionary ID is missing');
+});
+
+test('Markdown emoji survive a script transport that removes supplementary Unicode characters', () => {
+    const context = {};
+    vm.createContext(context);
+    vm.runInContext(clientSource.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, ''), context);
+    const rows = Array.from({length: 10}, (_, index) => ({
+        table: 'u_record', id: String(index), name: 'Record ' + index, type: 'Records',
+        isNew: index !== 0, action: index === 0 ? 'DELETE' : '',
+        sourceSet: {table: 'sys_update_set', id: String(index), name: 'Set ' + index, url: '/set/' + index}
+    }));
+    const output = context._weMarkdownText([{rows}]);
+    assert.ok(output.includes('~~Record 0~~ 🚮 1️⃣'));
+    assert.ok(output.includes('Record 9 🆕 🔟'));
+    assert.ok(output.includes('🔟 [Set 9](/set/9)'));
+});
+
 test('missing reference uses payload display text before the target name', () => {
     const { api } = server();
     api._displayField = () => ({ name: 'catalog_item', reference: 'sc_cat_item' });

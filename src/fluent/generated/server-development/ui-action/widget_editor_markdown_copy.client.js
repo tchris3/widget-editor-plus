@@ -174,8 +174,8 @@ function _weMarkdownRender(container, depth, summary, suppressNew) {
             var name = _weMarkdownLink(record.name, record.url);
             if (record.action === 'DELETE') name = '~~' + name + '~~';
             if (record.secondary.length) name += ' (' + record.secondary.map(_weMarkdownEscape).join(' | ') + ')';
-            if (record.action === 'DELETE') name += ' 🚮';
-            else if (record.isNew && !suppressNew) name += ' 🆕';
+            if (record.action === 'DELETE') name += ' \uD83D\uDEAE';
+            else if (record.isNew && !suppressNew) name += ' \uD83C\uDD95';
             if (record.setMarkers.length) name += ' ' + record.setMarkers.map(_weMarkdownKeycap).join(' ');
             if (record.inUpdateSet === false) {
                 name = '∉ *' + name + '*';
@@ -188,7 +188,7 @@ function _weMarkdownRender(container, depth, summary, suppressNew) {
     return lines;
 }
 function _weMarkdownKeycap(number) {
-    if (number === 10) return '🔟';
+    if (number === 10) return '\uD83D\uDD1F';
     return String(number).split('').map(function (digit) { return digit + '\uFE0F\u20E3'; }).join('');
 }
 function _weMarkdownMergeMarkers(first, second) {
