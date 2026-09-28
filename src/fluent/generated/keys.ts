@@ -404,6 +404,14 @@ declare global {
                         table: 'sys_properties_category_m2m'
                         id: '36e256c5e37d4c8f9585555cadbe2e91'
                     }
+                    'widget-editor-markdown-display-sp_instance': {
+                        table: 'sys_properties'
+                        id: '8ae67d2c335544a5b095b53ed41f3102'
+                    }
+                    'widget-editor-markdown-display-sp_instance-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '51b9008bc112452ebc97d79201feb507'
+                    }
                     'widget-editor-markdown-display-sp_page': {
                         table: 'sys_properties'
                         id: 'b7d0a0c9bb7941ffb08fa024436164e6'

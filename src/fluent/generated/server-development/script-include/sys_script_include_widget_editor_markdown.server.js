@@ -285,25 +285,37 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         return { key: number, name: number,
             version: this._configuredValue(record, table, payload, 'display_number') };
     },
-    _secondaryValues: function (record, table, payload) {
+    _secondaryValues: function (record, table, payload, usedFields) {
         var config = this._displayConfig(table), result = [];
         if (!config || !config.additional_fields) return result;
+        if (!usedFields) {
+            usedFields = [];
+            this._name(record, table, '', payload, '', 0, usedFields);
+        }
+        var seen = usedFields.slice();
         var fields = config.additional_fields.split(',').map(function (field) { return field.trim(); });
         for (var i = 0; i < fields.length; i++) {
+            if (seen.indexOf(fields[i]) !== -1) continue;
+            seen.push(fields[i]);
             var value = this._configuredValue(record, table, payload, fields[i]);
             if (value) result.push(value);
         }
         return result;
     },
-    _name: function (record, table, id, payload, fallback, depth) {
+    _name: function (record, table, id, payload, fallback, depth, usedFields) {
+        function selected(value, field) {
+            if (usedFields && field && usedFields.indexOf(field) === -1) usedFields.push(field);
+            return value;
+        }
         var config = !depth && this._displayConfig(table);
         if (config && config.display_value) {
             var fields = config.display_value.split(',').map(function (field) { return field.trim(); });
             if (typeof config.display_separator === 'string') {
-                var parts = [];
+                var parts = [], combinedFields = [];
                 for (var part = 0; part < fields.length; part++) {
+                    if (combinedFields.indexOf(fields[part]) !== -1) continue;
                     var value = this._configuredValue(record, table, payload, fields[part]);
-                    if (value) parts.push(value);
+                    if (value) { parts.push(selected(value, fields[part])); combinedFields.push(fields[part]); }
                 }
                 if (parts.length) return parts.join(config.display_separator);
             }
@@ -311,7 +323,7 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             for (var pass = 0; pass < 2; pass++) {
                 for (var index = 0; index < fields.length; index++) {
                     var configured = this._configuredValue(record, table, payload, fields[index], pass === 0);
-                    if (configured) return configured;
+                    if (configured) return selected(configured, fields[index]);
                 }
             }
         }
@@ -321,26 +333,26 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
                 var referenced = new GlideRecordSecure(display.reference);
                 if (referenced.isValid() && referenced.get(record.getValue(display.name))) {
                     var refName = this._name(referenced, display.reference, record.getValue(display.name), '', '', (depth || 0) + 1);
-                    if (refName && refName !== display.reference + ':' + record.getValue(display.name) && !this._sysId(refName)) return refName;
+                    if (refName && refName !== display.reference + ':' + record.getValue(display.name) && !this._sysId(refName)) return selected(refName, display.name);
                 }
             }
             if (display.name) {
                 var fieldName = String(record.getDisplayValue(display.name) || '');
-                if (fieldName && !this._sysId(fieldName)) return fieldName;
+                if (fieldName && !this._sysId(fieldName)) return selected(fieldName, display.name);
             }
             var name = String(record.getDisplayValue() || '');
-            if (name && !this._sysId(name)) return name;
+            if (name && !this._sysId(name)) return selected(name, display.name);
         }
         if (display.name) {
             var payloadDisplay = this._payloadField(payload, display.name);
-            if (payloadDisplay.display && !this._sysId(payloadDisplay.display)) return payloadDisplay.display;
-            if (payloadDisplay.value && !this._sysId(payloadDisplay.value)) return payloadDisplay.value;
+            if (payloadDisplay.display && !this._sysId(payloadDisplay.display)) return selected(payloadDisplay.display, display.name);
+            if (payloadDisplay.value && !this._sysId(payloadDisplay.value)) return selected(payloadDisplay.value, display.name);
         }
         var fields = ['name', 'short_description', 'title', 'question_text'];
         for (var i = 0; i < fields.length; i++) {
             var field = this._payloadField(payload, fields[i]);
-            if (field.display && !this._sysId(field.display)) return field.display;
-            if (field.value && !this._sysId(field.value)) return field.value;
+            if (field.display && !this._sysId(field.display)) return selected(field.display, fields[i]);
+            if (field.value && !this._sysId(field.value)) return selected(field.value, fields[i]);
         }
         return fallback && !this._sysId(fallback) ? fallback : (table + ':' + id);
     },
@@ -514,13 +526,14 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             var parentRecord = this._record(parent.table, parentId);
             var parentUpdate = this._updateForTarget(parent.table, parentId, setTable, setId);
             if (!parentRecord && !parentUpdate) return ordinary;
+            var primaryFields = [];
             ancestors.unshift({ table: parent.table, id: parentId,
                 inUpdateSet: !!parentUpdate, action: parentUpdate ? parentUpdate.action : '',
                 isNew: !!parentUpdate && this._isNewUpdate(parentUpdate.action, parent.table + '_' + parentId, setTable, setId),
                 consolidation: this._consolidation(parentRecord, parent.table, parentUpdate ? parentUpdate.payload : ''), type: parent.label, typeOrder: match.orders[i - 1],
                 name: this._name(parentRecord, parent.table, parentId, parentUpdate ? parentUpdate.payload : '',
-                    parentUpdate ? parentUpdate.name : ''),
-                secondary: this._secondaryValues(parentRecord, parent.table, parentUpdate ? parentUpdate.payload : ''),
+                    parentUpdate ? parentUpdate.name : '', 0, primaryFields),
+                secondary: this._secondaryValues(parentRecord, parent.table, parentUpdate ? parentUpdate.payload : '', primaryFields),
                 url: parentRecord ? this._url(parent.table, parentId) : this._url('sys_update_xml', parentUpdate.id) });
             childId = parentId;
             childRecord = parentRecord;
@@ -633,11 +646,12 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             var action = String(gr.getValue('action') || '');
             var live = this._record(target.table, target.id);
             var grouping = this._ancestors(target.table, target.id, target.payload, rules, setTable, setId);
+            var primaryFields = [];
             rows.push({ table: target.table, id: target.id, sourceSet: sourceSet, type: grouping.type,
                 typeOrder: grouping.typeOrder, inUpdateSet: true,
                 consolidation: this._consolidation(live, target.table, target.payload),
-                name: this._name(live, target.table, target.id, target.payload, String(gr.getValue('target_name') || '')),
-                secondary: this._secondaryValues(live, target.table, target.payload),
+                name: this._name(live, target.table, target.id, target.payload, String(gr.getValue('target_name') || ''), 0, primaryFields),
+                secondary: this._secondaryValues(live, target.table, target.payload, primaryFields),
                 url: live ? this._url(target.table, target.id) : this._url('sys_update_xml', updateId),
                 ancestors: grouping.ancestors, action: action, isNew: this._isNewUpdate(action, String(gr.getValue('name') || ''), setTable, setId), updateId: updateId });
         }

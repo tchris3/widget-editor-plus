@@ -24,11 +24,13 @@ Admins can edit settings in **Widget Editor+ → Properties**.
 
 ## Markdown primary display fields
 
-In **Widget Editor+ → Properties**, Markdown display rows can use primary fields as ordered fallbacks or enable **Combine fields** with a separator. Empty or unreadable fields are skipped. Additional fields remain separate.
+In **Widget Editor+ → Properties**, Markdown display rows can use primary fields as ordered fallbacks or enable **Combine fields** with a separator. Empty or unreadable fields are skipped. A field is shown only once: fields used in the primary value are omitted from additional values, and repeated fields are ignored.
 
 Per-table properties use `monaco.plus.update_sets.markdown_display.<table>`. Set `display_value` to comma-separated field paths and optionally add `display_separator` to combine them. Omitting the separator preserves fallback behaviour; an empty separator joins values directly.
 
 The default `monaco.plus.update_sets.markdown_display.sys_dictionary` uses `{"display_value":"name,element","display_separator":".","additional_fields":"column_label,internal_type"}`, producing names such as `incident.short_description` with the column label and internal type as additional values. A table-level dictionary entry with no element displays only its table name as the primary value.
+
+The default `monaco.plus.update_sets.markdown_display.sp_instance` uses primary fallbacks `name,sp_widget` and additional field `sp_widget`. An instance with a name shows its widget separately; an unnamed instance uses the widget as its primary name without repeating it.
 
 ## UI Scripts Reference
 

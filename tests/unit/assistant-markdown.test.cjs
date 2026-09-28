@@ -1143,6 +1143,50 @@ test('Dictionary primary fields combine securely and skip empty values', () => {
     delete config.display_separator; assert.equal(name(), 'incident');
 });
 
+test('Instance defaults show the widget only once, including raw and payload fallbacks', () => {
+    const source = fs.readFileSync('src/fluent/generated/properties/system-property/sys_properties_widget_editor_markdown_display_sp_instance.now.ts', 'utf8');
+    const config = JSON.parse(source.match(/value: `([\s\S]*?)`,/)[1]);
+    assert.deepEqual(config, {display_value: 'name,sp_widget', additional_fields: 'sp_widget'});
+    const {api} = server();
+    api._displayConfig = () => config;
+    api._fieldPath = (_table, field) => [{field}];
+    api._displayField = () => ({name: 'name'});
+    let values = {name: 'Instance', sp_widget: 'Widget'}, displays = values;
+    const record = {getElement: () => ({canRead: () => true}),
+        getValue: field => values[field], getDisplayValue: field => displays[field] || ''};
+    function render(current, payload = '') {
+        const used = [];
+        const name = api._name(current, 'sp_instance', 'id', payload, '', 0, used);
+        return {name, secondary: Array.from(api._secondaryValues(current, 'sp_instance', payload, used))};
+    }
+    assert.deepEqual(render(record), {name: 'Instance', secondary: ['Widget']});
+    values.name = ''; assert.deepEqual(render(record), {name: 'Widget', secondary: []});
+    displays = {}; assert.deepEqual(render(record), {name: 'Widget', secondary: []});
+    assert.deepEqual(render(null, '<sp_widget display_value="Widget">' + 'b'.repeat(32) + '</sp_widget>'),
+        {name: 'Widget', secondary: []});
+    values.name = 'Widget'; displays = values;
+    assert.deepEqual(render(record), {name: 'Widget', secondary: ['Widget']}, 'distinct fields with equal text are retained');
+});
+
+test('Combined primary fields and additional fields never repeat a field path', () => {
+    const {api} = server();
+    api._displayConfig = () => ({display_value: 'name, element, name', display_separator: '.', additional_fields: 'element,name,label,label,other'});
+    api._fieldPath = (_table, field) => [{field}];
+    const payload = '<name>incident</name><element>number</element><label>Number</label><other>Number</other>';
+    assert.equal(api._name(null, 'sys_dictionary', 'id', payload, ''), 'incident.number');
+    assert.deepEqual(Array.from(api._secondaryValues(null, 'sys_dictionary', payload)), ['Number', 'Number']);
+});
+
+test('Normal name fallbacks also exclude their field from additional values', () => {
+    const {api} = server();
+    api._displayConfig = () => ({display_value: 'missing', additional_fields: 'title,title,name'});
+    api._fieldPath = (_table, field) => [{field}];
+    api._displayField = () => ({name: 'title'});
+    const payload = '<title>Primary</title><name>Additional</name>';
+    assert.equal(api._name(null, 'widget', 'id', payload, ''), 'Primary');
+    assert.deepEqual(Array.from(api._secondaryValues(null, 'widget', payload)), ['Additional']);
+});
+
 test('Markdown includes secondary values inside context-only italics and on included records', () => {
     const context = { console };
     vm.createContext(context); vm.runInContext(clientSource, context);
