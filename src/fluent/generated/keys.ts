@@ -231,6 +231,14 @@ declare global {
                         table: 'sys_app_module'
                         id: 'deaa8cc3dff245e1a514318575fe7e28'
                     }
+                    'widget-editor-code-search-default-search-group': {
+                        table: 'sys_properties'
+                        id: 'de82eb4734e443a1815744694a0035fc'
+                    }
+                    'widget-editor-code-search-default-search-group-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '93f20caf8f65497281d5173fa938edc3'
+                    }
                     'widget-editor-code-search-display-fields-catalog-script-client': {
                         table: 'sys_properties'
                         id: '64fc931ebec44451b39c3c8d0b434d34'

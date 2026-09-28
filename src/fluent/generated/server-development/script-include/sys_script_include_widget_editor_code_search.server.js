@@ -80,7 +80,9 @@ WidgetEditorCodeSearchAjax.prototype = Object.extendsObject(AbstractAjaxProcesso
             return a.name.localeCompare(b.name);
         });
 
-        return this._answer({ success: true, groups: groups });
+        var defaultGroupId = String(gs.getProperty('monaco.plus.code_search.default_search_group', '') || '').trim();
+        return this._answer({ success: true, groups: groups,
+            defaultGroupId: this._isSysId(defaultGroupId) ? defaultGroupId : '' });
     },
 
     getGroupTables: function () {

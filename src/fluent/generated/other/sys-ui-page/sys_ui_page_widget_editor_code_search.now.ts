@@ -2731,9 +2731,10 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 } catch (e) {}
             }
 
-            function _selectGroup(groupId) {
+            function _selectGroup(groupId, defaultGroupId) {
                 var match = groupId && vm.groups.filter(function (g) { return g.sysId === groupId; })[0];
-                vm.selectedGroup = match || vm.groups[0];
+                var defaultGroup = defaultGroupId && vm.groups.filter(function (g) { return g.sysId === defaultGroupId; })[0];
+                vm.selectedGroup = match || defaultGroup || vm.groups[0];
                 vm.selectedGroupId = vm.selectedGroup.sysId;
                 vm.loadTables();
                 updateUrlParam(vm.query.trim());
@@ -2750,9 +2751,9 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                             ajax('saveLastSearchGroup', { group_id: vm.selectedGroupId }).catch(function () {});
                         } else {
                             ajax('getLastSearchGroup').then(function (prefData) {
-                                _selectGroup(prefData && prefData.groupId);
+                                _selectGroup(prefData && prefData.groupId, data.defaultGroupId);
                             }).catch(function () {
-                                _selectGroup(null);
+                                _selectGroup(null, data.defaultGroupId);
                             });
                         }
                     }
