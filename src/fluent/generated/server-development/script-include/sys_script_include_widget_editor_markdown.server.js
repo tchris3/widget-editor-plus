@@ -634,7 +634,10 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         }
         var hasMore = rows.length > this.PAGE_SIZE;
         if (hasMore) rows.pop();
+        var maxListLevels = Number(gs.getProperty('monaco.plus.update_sets.markdown_max_list_levels', '9'));
+        if (!isFinite(maxListLevels) || maxListLevels < 1 || Math.floor(maxListLevels) !== maxListLevels) maxListLevels = 9;
         return this._answer({ success: true, rows: rows, hasMore: hasMore, nextOffset: offset + rows.length,
+            maxListLevels: maxListLevels,
             escapeUnderscores: String(gs.getProperty('monaco.plus.update_sets.markdown_escape_underscores', 'false')) === 'true' });
     },
     _groupPropertyTables: function () {

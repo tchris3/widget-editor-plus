@@ -604,6 +604,14 @@ declare global {
                         table: 'sys_ui_context_menu'
                         id: '63efd354d0a54baf8f1020d4f9bd1d27'
                     }
+                    'widget-editor-markdown-max-list-levels-property': {
+                        table: 'sys_properties'
+                        id: 'c52eb8ff794e49d1a4c7a54a29026423'
+                    }
+                    'widget-editor-markdown-max-list-levels-property-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '6fc105d6967341e59215c7e59ff88343'
+                    }
                     'widget-editor-markdown-options-removal': {
                         table: 'sys_script_fix'
                         id: '85e291547bb440c7a0792f854acc61a3'

@@ -11,6 +11,7 @@ import { markdownDisplaySysWsOperationProperty } from '../system-property/sys_pr
 import { markdownGroupsSysUiActionProperty } from '../system-property/sys_properties_widget_editor_markdown_groups_sys_ui_action.now'
 import { Record } from '@servicenow/sdk/core'
 import { markdownEscapeUnderscoresProperty } from '../system-property/sys_properties_widget_editor_markdown_escape_underscores.now'
+import { markdownMaxListLevelsProperty } from '../system-property/sys_properties_widget_editor_markdown_max_list_levels.now'
 import { widgetEditorPlusPropertiesCategory } from '../system-property-category/sys_properties_category_widget_editor_plus.now'
 import { updateSetMarkdownDisplayProperty } from '../system-property/sys_properties_widget_editor_markdown_display.now'
 import { markdownDisplayKbKnowledgeProperty } from '../system-property/sys_properties_widget_editor_markdown_display_kb_knowledge.now'
@@ -27,6 +28,16 @@ import { markdownGroupsSpWidgetProperty } from '../system-property/sys_propertie
 import { markdownGroupsSysSecurityAclProperty } from '../system-property/sys_properties_widget_editor_markdown_groups_sys_security_acl.now'
 import { markdownGroupsSysUiPolicyProperty } from '../system-property/sys_properties_widget_editor_markdown_groups_sys_ui_policy.now'
 import { markdownGroupsSysUserGroupProperty } from '../system-property/sys_properties_widget_editor_markdown_groups_sys_user_group.now'
+
+Record({
+    $id: Now.ID['widget-editor-markdown-max-list-levels-property-category'],
+    table: 'sys_properties_category_m2m',
+    data: {
+        property: markdownMaxListLevelsProperty,
+        category: widgetEditorPlusPropertiesCategory,
+        order: 4760,
+    },
+})
 
 Record({
     $id: Now.ID['widget-editor-markdown-escape-underscores-property-category'],

@@ -113,7 +113,7 @@ test('Markdown underscore escaping is disabled by default and can be enabled', (
 test('export passes the system property through paging to all rendered text', async () => {
     for (const setting of [undefined, 'false', 'true']) {
         const { api } = server({gs: {getProperty: (name, fallback) =>
-            setting === undefined ? fallback : setting}});
+            name.endsWith('markdown_max_list_levels') ? '1' : setting === undefined ? fallback : setting}});
         api._rules = () => ({groups: []});
         const page = api._markdownPage({orderByDesc() {}, chooseWindow() {}, query() {}, next: () => false}, 0);
         assert.equal(page.escapeUnderscores, setting === 'true');
@@ -136,6 +136,7 @@ test('export passes the system property through paging to all rendered text', as
             assert.ok(copied[0].includes(setting === 'true' ? label.replace('_', '\\_') : label));
         }
         assert.ok(copied[0].includes('](/child_name)'), 'URLs are unchanged');
+        assert.ok(!copied[0].split('\n').some(line => /^ +- /.test(line)), 'list limit reaches the clipboard through paging');
         assert.ok(copied[0].includes(setting === 'true' ? '**child\\_type**' : '**child_type**'));
         if (setting !== 'true') assert.ok(!copied[0].includes('\\_'));
     }
@@ -154,6 +155,44 @@ test('Markdown emoji survive a script transport that removes supplementary Unico
     assert.ok(output.includes('~~Record 0~~ 🚮 1️⃣'));
     assert.ok(output.includes('Record 9 🆕 🔟'));
     assert.ok(output.includes('🔟 [Set 9](/set/9)'));
+});
+
+test('Markdown caps bullet levels and appends record types to flattened records', () => {
+    const context = {};
+    vm.createContext(context); vm.runInContext(clientSource, context);
+    const records = Array.from({length: 6}, (_, index) => ({
+        table: 'table_' + index, id: String(index), name: 'Record ' + index, type: 'Type ' + index,
+        secondary: ['extra_' + index], url: '/record_' + index, inUpdateSet: true,
+        isNew: index !== 5, action: index === 5 ? 'DELETE' : ''
+    }));
+    const loaded = [{rows: [{...records[5], ancestors: records.slice(0, 5)}]}];
+    for (const limit of [1, 2, 8, 9, 12, 20]) {
+        const output = context._weMarkdownText(loaded, false, limit);
+        const bullets = output.split('\n').filter(line => /^\s*- /.test(line));
+        assert.ok(bullets.every(line => (line.match(/^ */)[0].length / 2 + 1) <= limit));
+        for (let index = 0; index < records.length; index++) {
+            const line = bullets.find(line => line.includes('[Record ' + index + ']'));
+            assert.ok(line, 'every record is retained');
+            const level = Math.min(index * 2 + 2, limit);
+            assert.equal(line.match(/^ */)[0].length / 2 + 1, level);
+            assert.equal(line.endsWith('**Type ' + index + '**'), index * 2 + 2 >= limit);
+        }
+    }
+    const output = context._weMarkdownText(loaded);
+    assert.ok(output.includes('                - [Record 4](/record_4) (extra_4) 🆕 **Type 4**'));
+    assert.ok(output.includes('                - ~~[Record 5](/record_5)~~ (extra_5) 🚮 **Type 5**'));
+    assert.ok(!output.includes('- **Type 4**'));
+    assert.equal(output, context._weMarkdownText(loaded, false, 9));
+});
+
+test('Markdown list level property defaults to nine and accepts positive whole numbers', () => {
+    for (const [setting, expected] of [[undefined, 9], ['9', 9], ['1', 1], ['8', 8], ['0', 9], ['-1', 9], ['2.5', 9], ['bad', 9]]) {
+        const { api } = server({gs: {getProperty: (name, fallback) =>
+            name.endsWith('markdown_max_list_levels') && setting !== undefined ? setting : fallback}});
+        api._rules = () => ({groups: []});
+        const page = api._markdownPage({orderByDesc() {}, chooseWindow() {}, query() {}, next: () => false}, 0);
+        assert.equal(page.maxListLevels, expected);
+    }
 });
 
 test('missing reference uses payload display text before the target name', () => {
