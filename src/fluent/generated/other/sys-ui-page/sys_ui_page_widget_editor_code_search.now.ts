@@ -2193,6 +2193,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             vm.toast = '';
             vm.tableFilter = '';
             vm.selectedGroupId = '';
+            var persistGroupInUrl = false;
             vm.selectedGroup = null;
             vm.viewMode = 'group_table';
             vm.tableMatchCounts = {};
@@ -2546,7 +2547,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             function updateUrlParam(term) {
                 try {
                     var url = new URL(window.location.href);
-                    if (vm.selectedGroupId) url.searchParams.set('group', vm.selectedGroupId);
+                    if (vm.selectedGroupId && persistGroupInUrl) url.searchParams.set('group', vm.selectedGroupId);
                     else url.searchParams.delete('group');
                     if (term) {
                         url.searchParams.set('q', term);
@@ -2735,6 +2736,8 @@ export const widgetEditorCodeSearchUiPage = UiPage({
                 var match = groupId && vm.groups.filter(function (g) { return g.sysId === groupId; })[0];
                 var defaultGroup = defaultGroupId && vm.groups.filter(function (g) { return g.sysId === defaultGroupId; })[0];
                 vm.selectedGroup = match || defaultGroup || vm.groups[0];
+                // Automatic defaults must not become shared-link preferences on reload.
+                persistGroupInUrl = !!match;
                 vm.selectedGroupId = vm.selectedGroup.sysId;
                 vm.loadTables();
                 updateUrlParam(vm.query.trim());
@@ -2763,6 +2766,7 @@ export const widgetEditorCodeSearchUiPage = UiPage({
             };
 
             vm.onGroupChange = function () {
+                persistGroupInUrl = true;
                 for (var i = 0; i < vm.groups.length; i++) {
                     if (vm.groups[i].sysId === vm.selectedGroupId) {
                         vm.selectedGroup = vm.groups[i];

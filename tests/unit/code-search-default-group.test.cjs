@@ -7,14 +7,19 @@ const page = fs.readFileSync('src/fluent/generated/other/sys-ui-page/sys_ui_page
 const server = fs.readFileSync('src/fluent/generated/server-development/script-include/sys_script_include_widget_editor_code_search.server.js', 'utf8');
 const first = 'a'.repeat(32), preferred = 'b'.repeat(32), adminDefault = 'c'.repeat(32);
 const groups = [first, preferred, adminDefault].map(sysId => ({sysId}));
-const loadSource = page.slice(page.indexOf('            function _selectGroup('), page.indexOf('            vm.onGroupChange ='));
+const loadSource = page.slice(page.indexOf('            function _selectGroup('), page.indexOf('            vm.loadTables ='));
 
-async function load({saved, configured = adminDefault, shared = null, failPreference = false, available = groups} = {}) {
+const urlSource = page.slice(page.indexOf('            function updateUrlParam('), page.indexOf('            function _parseUrlFilters('));
+
+async function load({saved, configured = adminDefault, shared = null, failPreference = false, available = groups, href = 'https://example.test/ui_page.do?sys_id=page'} = {}) {
     const calls = [], errors = [];
     let loads = 0;
+    const window = {location: {href}, history: {replaceState(_state, _title, url) {window.location.href = url;}}};
+    window.top = window;
     const context = {
-        vm: {query: '', loadTables() {loads++;}}, urlGroupId: shared,
-        updateUrlParam() {}, notify(message) {errors.push(message);},
+        URL, window, persistGroupInUrl: false,
+        vm: {query: '', loadTables() {loads++;}}, urlGroupId: shared || new URL(href).searchParams.get('group'),
+        _validSecondaryFiltersForUrl: () => [], notify(message) {errors.push(message);},
         ajax: async (method, params) => {
             calls.push({method, params});
             if (method === 'getGroups') return {groups: available, defaultGroupId: configured};
@@ -25,11 +30,11 @@ async function load({saved, configured = adminDefault, shared = null, failPrefer
             return {success: true};
         },
     };
-    vm.createContext(context); vm.runInContext(loadSource, context);
+    vm.createContext(context); vm.runInContext(urlSource + loadSource, context);
     context.vm.loadGroups();
     await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(errors, []);
-    return {selected: context.vm.selectedGroupId, calls, loads};
+    return {selected: context.vm.selectedGroupId, calls, loads, context, href: window.location.href};
 }
 
 test('Code Search uses the admin default without saving it as a user choice', async () => {
@@ -48,6 +53,30 @@ test('saved groups and shared links retain their priority over the admin default
     assert.equal(shared.selected, first);
     assert.equal(shared.calls.find(call => call.method === 'saveLastSearchGroup').params.group_id, first);
     assert.ok(!shared.calls.some(call => call.method === 'getLastSearchGroup'));
+});
+
+test('reloading an automatic default never saves a preference or pins the previous default', async () => {
+    const initial = await load();
+    assert.equal(new URL(initial.href).searchParams.has('group'), false);
+    // Running or clearing a query also updates the URL without claiming a group choice.
+    initial.context.updateUrlParam('needle');
+    assert.equal(new URL(initial.context.window.location.href).searchParams.has('group'), false);
+    const reloaded = await load({href: initial.context.window.location.href});
+    assert.equal(reloaded.selected, adminDefault);
+    assert.ok(!reloaded.calls.some(call => call.method === 'saveLastSearchGroup'));
+    const changed = await load({href: reloaded.href, configured: preferred});
+    assert.equal(changed.selected, preferred);
+    assert.ok(!changed.calls.some(call => call.method === 'saveLastSearchGroup'));
+});
+
+test('an explicit group change remains shareable and persists across reloads', async () => {
+    const initial = await load();
+    initial.context.vm.selectedGroupId = preferred;
+    initial.context.vm.onGroupChange();
+    assert.equal(new URL(initial.context.window.location.href).searchParams.get('group'), preferred);
+    assert.equal(initial.calls.find(call => call.method === 'saveLastSearchGroup').params.group_id, preferred);
+    const reloaded = await load({href: initial.context.window.location.href});
+    assert.equal(reloaded.selected, preferred);
 });
 
 test('missing groups and preference failures have safe selection fallbacks', async () => {
