@@ -720,7 +720,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             return this._answer({ success: false, error: 'Customer update not found.' });
         }
 
-        var target = this._parseCustomerUpdateTarget(update.getValue('payload'));
+        var target = this._parseCustomerUpdateTarget(update.getValue('payload'), update.getValue('name'));
         if (!target) {
             return this._answer({
                 success: false,
@@ -4234,11 +4234,14 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     /**
      * Extracts the table and sys_id from a Customer Update/Version payload.
      * @param {string} payload - Raw record_update XML.
+     * @param {string} [updateName] Update name for forced records with sparse payloads.
      * @returns {?{table: string, sys_id: string}} Parsed target, or null.
      */
-    _parseCustomerUpdateTarget: function (payload) {
+    _parseCustomerUpdateTarget: function (payload, updateName) {
+        var nameMatch = String(updateName || '').match(/^([a-z_][a-z0-9_]*)_([0-9a-f]{32})$/i);
+        var namedTarget = nameMatch ? { table: nameMatch[1], sys_id: nameMatch[2] } : null;
         if (!payload) {
-            return null;
+            return namedTarget;
         }
         try {
             var xmlDoc = new XMLDocument2();
@@ -4253,7 +4256,10 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                     recordEl = candidate; table = nodeName; break;
                 }
             }
-            if (!recordEl) return null;
+            if (!recordEl) {
+                var rootTable = String(root.getAttribute('table') || '');
+                return namedTarget && (!rootTable || rootTable === namedTarget.table) ? namedTarget : null;
+            }
 
             // Read only the target record's direct fields, never a companion record's ID.
             var fields = {}, children = recordEl.getChildNodeIterator();
@@ -4281,7 +4287,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
                     if (!dictionary.next() && /^[0-9a-f]{32}$/i.test(sysId)) return { table: table, sys_id: sysId };
                 }
             }
-            return null;
+            return namedTarget && namedTarget.table === table ? namedTarget : null;
         } catch (e) {
             gs.error('WidgetEditorAjax: customer update target parse failed: ' + e.message);
             return null;

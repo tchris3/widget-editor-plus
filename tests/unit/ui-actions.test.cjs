@@ -110,3 +110,9 @@ test('copying the record URL notifies once the clipboard write succeeds', () => 
         /if \(copied\) \{\s*_weNotifyRecordUrlCopied\(\);\s*\} else \{\s*window\.prompt/
     );
 });
+
+test('copy record URL permits readable forced updates without requiring sys_metadata membership', () => {
+    assert.match(copyRecordUrlSource, /condition: 'current\.canRead\(\)'/);
+    assert.match(copyRecordUrlSource, /roles: \['sp_admin'\]/);
+    assert.doesNotMatch(copyRecordUrlSource, /new GlideRecord\("sys_metadata"\)/);
+});

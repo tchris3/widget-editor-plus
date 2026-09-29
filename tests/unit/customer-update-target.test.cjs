@@ -13,7 +13,7 @@ function node(value) {
         getTextContent: () => name === '#text' ? String(value[name]) : children.map(child => node(child).getTextContent()).join(''),
         getChildNodeIterator: () => iterator(children.map(node)) };
 }
-function apiFor(payload, entries = [], readable = true) {
+function apiFor(payload, entries = [], readable = true, updateName = '') {
     const queries = [];
     const context = {
         Class: { create: () => function () {} }, AbstractAjaxProcessor: {},
@@ -28,7 +28,7 @@ function apiFor(payload, entries = [], readable = true) {
             this.getFirstNode = path => path === '/record_update' && parsed.find(value => value.record_update) ? node(parsed.find(value => value.record_update)) : null;
         },
         GlideRecordSecure: function (table) {
-            if (table === 'sys_update_xml') return { get: () => readable, getValue: () => payload };
+            if (table === 'sys_update_xml') return { get: () => readable, getValue: field => field === 'name' ? updateName : payload };
             assert.equal(table, 'sys_dictionary');
             let index = -1;
             this.addQuery = (field, value) => queries.push([field, value]);
@@ -82,4 +82,27 @@ test('unreadable, missing, ambiguous, invalid and malformed targets fail without
         assert.equal(api.getCustomerUpdateTarget().success, false);
         assert.deepEqual(queries, []);
     }
+});
+
+test('forced Knowledge Version updates resolve from their payload without a metadata lookup', () => {
+    const { api } = apiFor('<record_update><kb_version action="INSERT_OR_UPDATE"><sys_id>' + id + '</sys_id><version>1.0</version></kb_version></record_update>', [], true, 'kb_version_' + id);
+    assert.deepEqual(api.getCustomerUpdateTarget(), { success: true, table: 'kb_version', record_id: id });
+});
+
+test('forced updates with sparse payloads use the complete table name and validated sys_id suffix', () => {
+    for (const payload of ['', '<record_update/>', '<record_update table="kb_version"/>', '<record_update><kb_version action="INSERT_OR_UPDATE"/></record_update>']) {
+        const { api } = apiFor(payload, [], true, 'kb_version_' + id);
+        assert.deepEqual(api.getCustomerUpdateTarget(), { success: true, table: 'kb_version', record_id: id });
+    }
+    assert.equal(apiFor('', [], false, 'kb_version_' + id).api.getCustomerUpdateTarget().success, false);
+    for (const updateName of ['kb_version_bad', 'kb_version_' + id + 'extra', 'kb_version^ORname=x_' + id]) {
+        assert.equal(apiFor('<record_update/>', [], true, updateName).api.getCustomerUpdateTarget().success, false);
+    }
+});
+
+test('name fallback cannot override payload identity or bypass a malformed payload', () => {
+    const mismatches = ['<record_update table="sp_widget"/>', '<record_update><sp_widget/></record_update>', '<record_update>', '<other/>'];
+    for (const payload of mismatches) assert.equal(apiFor(payload, [], true, 'kb_version_' + id).api.getCustomerUpdateTarget().success, false);
+    const { api } = apiFor('<record_update><kb_version><sys_id>' + companion + '</sys_id></kb_version></record_update>', [], true, 'kb_version_' + id);
+    assert.equal(api.getCustomerUpdateTarget().record_id, companion);
 });
