@@ -261,9 +261,9 @@ test('Markdown formatting controls additional fields and both context-only marke
     assert.ok(hidden.includes('[Parent](/parent) AB'));
     assert.ok(hidden.includes('Child OneTwo'));
     assert.ok(hidden.endsWith('\n\nFor context only - not included in update set.'));
-    assert.ok(!hidden.includes('※'));
+    assert.ok(!hidden.includes('↪'));
     const {api} = server();
-    const config = {display_field_separator: ',', display_field_wrapper: '()', context_indicator: '※'};
+    const config = {display_field_separator: ',', display_field_wrapper: '()', context_indicator: '↪'};
     assert.deepEqual(JSON.parse(JSON.stringify(api._parseMarkdownFormatting(JSON.stringify(config)))), config);
     for (const display_field_wrapper of ['(', 'long', null, 4]) {
         assert.throws(() => api._parseMarkdownFormatting(JSON.stringify({...config, display_field_wrapper})));
@@ -562,7 +562,7 @@ test('Markdown escapes names and renders policy actions under their policy', () 
     }];
     const output = context._weMarkdownText(loaded, true);
     assert.ok(output.includes('- **Record Producers**'));
-    assert.ok(output.includes('  - ※ [Producer](https://example/producer)'));
+    assert.ok(output.includes('  - ↪ [Producer](https://example/producer)'));
     assert.ok(output.indexOf('Catalog UI Policies') < output.indexOf('Catalog UI Policy Actions'));
     assert.ok(output.includes('Show \\[field\\] \\(now\\)'));
     assert.ok(output.includes('action.do%3Fsys_id%3Dc'));
@@ -1377,12 +1377,12 @@ test('Markdown includes secondary values on plain context-only and included reco
         }]
     }];
     const result = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
-    assert.ok(result.includes('※ [Parent](/parent) (value)'));
+    assert.ok(result.includes('↪ [Parent](/parent) (value)'));
     assert.ok(result.includes('[Child](/child) (one | two, <three>)'));
     rows[0].ancestors[0].inUpdateSet = true;
     const included = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
     assert.ok(included.includes('- [Parent](/parent) (value)'));
-    assert.ok(!included.includes('※'));
+    assert.ok(!included.includes('↪'));
 });
 
 
@@ -1899,14 +1899,14 @@ test('Knowledge versions across pages consolidate by article number and retain a
     });
     const output = context._weMarkdownText([{ rows: [child('1.0'), child('3.0')] }, { rows: [child('2.0'), child('1.0')] }]);
     assert.equal((output.match(/\[KB0010038\]/g) || []).length, 1);
-    assert.ok(output.includes('※ [KB0010038](/article/3.0) (Article description)'));
+    assert.ok(output.includes('↪ [KB0010038](/article/3.0) (Article description)'));
     for (const version of ['1.0', '2.0', '3.0']) assert.equal(output.split('](/version/' + version + ')').length - 1, 1);
     assert.equal((output.match(/\*\*Knowledge Version\*\*/g) || []).length, 1);
     const present = article('2.0'); present.inUpdateSet = true;
     const included = context._weMarkdownText([{ rows: [child('1.0'), { ...child('2.0'), ancestors: [present] }, child('3.0')] }]);
-    assert.ok(!included.includes('※'));
+    assert.ok(!included.includes('↪'));
     const explicit = context._weMarkdownText([{ rows: [child('1.0'), child('3.0'), { ...article('2.0'), updateId: 'update', ancestors: [] }] }]);
-    assert.ok(!explicit.includes('※'));
+    assert.ok(!explicit.includes('↪'));
 });
 
 test('Knowledge consolidation never merges unrelated articles or records without a readable article number', () => {
@@ -1989,15 +1989,15 @@ test('multiple sets have a stable linked legend and deduplicated records retain 
     const output = context._weMarkdownText(loaded);
     assert.ok(output.startsWith('1️⃣ [Alpha](/set/a)\n2️⃣ [Beta](/remote/b)\n\n'));
     assert.ok(output.includes('[Child](/child) 1️⃣ 2️⃣'));
-    assert.ok(output.includes('※ [Parent](/parent)'));
-    assert.ok(output.endsWith('\n\n※ For context only - not included in update set.'));
-    assert.equal(output.split('※ For context only - not included in update set.').length - 1, 1);
+    assert.ok(output.includes('↪ [Parent](/parent)'));
+    assert.ok(output.endsWith('\n\n↪ For context only - not included in update set.'));
+    assert.equal(output.split('↪ For context only - not included in update set.').length - 1, 1);
     assert.equal(output.split('[Child]').length - 1, 1);
     assert.equal(context._weMarkdownText(loaded), output, 'rendering does not mutate source rows');
     loaded[1].rows[0].ancestors = [{ ...parent, inUpdateSet: true }];
     const included = context._weMarkdownText(loaded);
     assert.ok(included.includes('[Parent](/parent) 1️⃣'));
-    assert.ok(!included.includes('※'));
+    assert.ok(!included.includes('↪'));
     assert.equal(context._weMarkdownKeycap(10), '🔟');
     assert.equal(context._weMarkdownKeycap(11), '1️⃣1️⃣');
     assert.equal(context._weMarkdownText([{ rows: [], set: first }]), '');
@@ -2029,7 +2029,7 @@ test('options cleanup removes only the retired page, its ACL and linked roles an
 
 test('GlideAjax JSON responses preserve emoji and Unicode without raw non-ASCII code units', () => {
     const { api } = server();
-    const config = { new: '🆕', deleted: '🚮', update_set: { '1': '1️⃣', '10': '🔟' }, context_indicator: '※' };
+    const config = { new: '🆕', deleted: '🚮', update_set: { '1': '1️⃣', '10': '🔟' }, context_indicator: '↪' };
     const value = { success: true, indicators: config, properties: [{ value: JSON.stringify(config), description: 'Emoji 🆕' }],
         name: 'Café 中文 👩🏽‍💻', literal: '\\ud83c\\udd95', unpaired: '\ud83c' };
     api.setAnswer = answer => {
@@ -2106,8 +2106,8 @@ test('context rows keep linked names and nested parentheses free of automatic it
     for (const maxLevels of [1, 9]) {
         const output = context._weMarkdownText([{ rows }], false, maxLevels);
         const line = output.split('\n').find(value => value.includes('[KB0010038]'));
-        assert.equal(line.trim(), '- ※ [KB0010038](/article) (' + description + ')' + (maxLevels === 1 ? ' **Knowledge**' : ''));
+        assert.equal(line.trim(), '- ↪ [KB0010038](/article) (' + description + ')' + (maxLevels === 1 ? ' **Knowledge**' : ''));
         assert.ok(output.includes('[1.0](/version) 🆕'));
-        assert.ok(output.endsWith('※ For context only - not included in update set.'));
+        assert.ok(output.endsWith('↪ For context only - not included in update set.'));
     }
 });

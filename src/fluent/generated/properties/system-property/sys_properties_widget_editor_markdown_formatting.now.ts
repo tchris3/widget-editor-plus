@@ -7,7 +7,7 @@ export const markdownFormattingProperty = Property({
     type: 'string',
     value: `{
     "display_field_separator": ",",
-    "context_indicator": "\\u203b",
+    "context_indicator": "\\u21aa",
     "display_field_wrapper": "()",
     "new": "\\ud83c\\udd95",
     "deleted": "\\ud83d\\udeae",

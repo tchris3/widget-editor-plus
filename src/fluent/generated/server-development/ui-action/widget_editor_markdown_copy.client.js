@@ -227,7 +227,7 @@ function _weMarkdownIndicator(config, kind, number) {
     return value.replace(/\s+/g, ' ').trim();
 }
 function _weMarkdownFormatOption(config, key) {
-    var defaults = { display_field_separator: ',', context_indicator: '\u203b', display_field_wrapper: '()' };
+    var defaults = { display_field_separator: ',', context_indicator: '\u21aa', display_field_wrapper: '()' };
     return config && typeof config[key] === 'string' ? config[key] : defaults[key];
 }
 function _weMarkdownMergeMarkers(first, second) {
