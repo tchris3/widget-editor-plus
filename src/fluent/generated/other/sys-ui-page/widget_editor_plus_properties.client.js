@@ -36,7 +36,16 @@
             return new Promise(function (resolve, reject) {
                 var ga = new GlideAjax('WidgetEditorMarkdownAjax');
                 ga.addParam('sysparm_name', method);
-                Object.keys(params || {}).forEach(function (key) { ga.addParam(key, params[key]); });
+                Object.keys(params || {}).forEach(function (key) {
+                    var value = params[key];
+                    if (method === 'saveProperty' && params.property_name === 'monaco.plus.update_sets.markdown_formatting' && key === 'property_value') {
+                        // JSON escapes preserve emoji through request decoding and property storage.
+                        value = value.replace(/[\u007f-\uffff]/g, function (character) {
+                            return '\\u' + ('0000' + character.charCodeAt(0).toString(16)).slice(-4);
+                        });
+                    }
+                    ga.addParam(key, value);
+                });
                 ga.getXMLAnswer(function (answer) {
                     var data;
                     try { data = JSON.parse(answer || '{}'); }

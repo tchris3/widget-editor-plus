@@ -61,7 +61,13 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         });
         return this._answer({ success: true, tables: related });
     },
-    _answer: function (value) { return this.setAnswer(JSON.stringify(value)); },
+    _escapeJsonUnicode: function (value) {
+        // Keep UTF-16 code units out of XML transport and property storage.
+        return value.replace(/[\u007f-\uffff]/g, function (character) {
+            return '\\u' + ('0000' + character.charCodeAt(0).toString(16)).slice(-4);
+        });
+    },
+    _answer: function (value) { return this.setAnswer(this._escapeJsonUnicode(JSON.stringify(value))); },
     _sysId: function (value) { return /^[0-9a-f]{32}$/i.test(String(value || '')); },
     _table: function (value) { return /^[a-z][a-z0-9_]*$/i.test(String(value || '')); },
     _url: function (table, id) {
@@ -667,7 +673,7 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         if (!isFinite(maxListLevels) || maxListLevels < 1 || Math.floor(maxListLevels) !== maxListLevels) maxListLevels = 9;
         return this._answer({ success: true, rows: rows, hasMore: hasMore, nextOffset: offset + rows.length,
             maxListLevels: maxListLevels, indicators: this._markdownFormatting(),
-            escapeUnderscores: String(gs.getProperty('monaco.plus.update_sets.markdown_escape_underscores', 'false')) === 'true' });
+            escapeMarkdown: String(gs.getProperty('monaco.plus.update_sets.markdown_escape_characters', 'false')) === 'true' });
     },
     _parseMarkdownFormatting: function (value) {
         var config = JSON.parse(value);
@@ -767,7 +773,10 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
             try { JSON.parse(value); } catch (e) { return this._answer({ success: false, error: 'Invalid JSON.' }); }
         }
         if (name === 'monaco.plus.update_sets.markdown_formatting') {
-            try { this._parseMarkdownFormatting(value); }
+            try {
+                this._parseMarkdownFormatting(value);
+                value = this._escapeJsonUnicode(value);
+            }
             catch (e) { return this._answer({ success: false, error: e.message || String(e) }); }
         }
         var type = String(property.getValue('type') || 'string');

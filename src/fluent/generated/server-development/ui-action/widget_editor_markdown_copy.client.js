@@ -17,7 +17,7 @@ function copyUpdateSetMarkdownPlus(currentList, sourceElement) {
             resolve(query);
         } catch (error) { reject(error); }
     }).then(_weLoadMarkdownList).then(function (loaded) {
-        var value = _weMarkdownText([{ rows: loaded.rows }], loaded.escapeUnderscores, loaded.maxListLevels, loaded.indicators);
+        var value = _weMarkdownText([{ rows: loaded.rows }], loaded.escapeMarkdown, loaded.maxListLevels, loaded.indicators);
         if (!value) throw new Error('No customer updates match this list.');
         return _weWriteMarkdownClipboard(value);
     }).then(function () {
@@ -59,16 +59,16 @@ function _weMarkdownAjax(method, params) {
 }
 
 function _weLoadMarkdownList(query) {
-    var rows = [], offset = 0, escapeUnderscores = false, maxListLevels = 9, indicators;
+    var rows = [], offset = 0, escapeMarkdown = false, maxListLevels = 9, indicators;
     function next() {
         return _weMarkdownAjax('getListPage', { list_query: query, offset: offset }).then(function (page) {
             rows = rows.concat(page.rows);
             if (offset === 0) {
-                escapeUnderscores = page.escapeUnderscores === true;
+                escapeMarkdown = page.escapeMarkdown === true;
                 maxListLevels = page.maxListLevels;
                 indicators = page.indicators;
             }
-            if (!page.hasMore) return { rows: rows, escapeUnderscores: escapeUnderscores, maxListLevels: maxListLevels, indicators: indicators };
+            if (!page.hasMore) return { rows: rows, escapeMarkdown: escapeMarkdown, maxListLevels: maxListLevels, indicators: indicators };
             if (page.nextOffset <= offset) throw new Error('Markdown paging did not advance.');
             offset = page.nextOffset;
             return next();
@@ -77,14 +77,13 @@ function _weLoadMarkdownList(query) {
     return next();
 }
 
-function _weMarkdownEscape(value, escapeUnderscores) {
-    return String(value || '').replace(/\s+/g, ' ').trim().replace(/[\\`*{}\[\]()#+.!|<>~-]|_+/g, function (match) {
-        if (match.charAt(0) === '_' && escapeUnderscores !== true) return match;
-        return match.replace(/./g, '\\$&');
-    });
+function _weMarkdownEscape(value, escapeMarkdown) {
+    var text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (escapeMarkdown !== true) return text;
+    return text.replace(/[\\`*_{}\[\]()#+.!|<>~-]/g, '\\$&');
 }
-function _weMarkdownLink(name, url, escapeUnderscores) {
-    var label = _weMarkdownEscape(name, escapeUnderscores);
+function _weMarkdownLink(name, url, escapeMarkdown) {
+    var label = _weMarkdownEscape(name, escapeMarkdown);
     return url ? '[' + label + '](' + String(url).replace(/\(/g, '%28').replace(/\)/g, '%29') + ')' : label;
 }
 function _weMarkdownContainer() { return { types: {} }; }
@@ -167,7 +166,7 @@ function _weMarkdownTree(rows) {
     markNewBranches(root);
     return root;
 }
-function _weMarkdownRender(container, depth, summary, suppressNew, escapeUnderscores, maxListLevels, indicators) {
+function _weMarkdownRender(container, depth, summary, suppressNew, escapeMarkdown, maxListLevels, indicators) {
     maxListLevels = Number(maxListLevels);
     if (!isFinite(maxListLevels) || maxListLevels < 1 || Math.floor(maxListLevels) !== maxListLevels) maxListLevels = 9;
     summary = summary || {};
@@ -177,19 +176,19 @@ function _weMarkdownRender(container, depth, summary, suppressNew, escapeUndersc
     }).forEach(function (label) {
         var type = container.types[label];
         var flat = depth + 2 >= maxListLevels;
-        var typeLabel = '**' + _weMarkdownEscape(label, escapeUnderscores) + '**';
+        var typeLabel = '**' + _weMarkdownEscape(label, escapeMarkdown) + '**';
         if (depth + 1 < maxListLevels) lines.push(Array(depth * 2 + 1).join(' ') + '- ' + typeLabel);
         Object.keys(type.records).sort(function (a, b) {
             return type.records[a].name.localeCompare(type.records[b].name) || a.localeCompare(b);
         }).forEach(function (key) {
             var record = type.records[key];
-            var name = _weMarkdownLink(record.name, record.url, escapeUnderscores);
+            var name = _weMarkdownLink(record.name, record.url, escapeMarkdown);
             if (record.action === 'DELETE') name = '~~' + name + '~~';
             var separator = _weMarkdownFormatOption(indicators, 'display_field_separator');
             if (separator && !/\s$/.test(separator)) separator += ' ';
             var wrapper = _weMarkdownFormatOption(indicators, 'display_field_wrapper');
             if (record.secondary.length) name += ' ' + wrapper.charAt(0) + record.secondary.map(function (value) {
-                return _weMarkdownEscape(value, escapeUnderscores);
+                return _weMarkdownEscape(value, escapeMarkdown);
             }).join(separator) + wrapper.charAt(1);
             var statusMarker = record.action === 'DELETE' ? _weMarkdownIndicator(indicators, 'deleted') :
                 record.isNew && (!suppressNew || flat) ? _weMarkdownIndicator(indicators, 'new') : '';
@@ -200,13 +199,14 @@ function _weMarkdownRender(container, depth, summary, suppressNew, escapeUndersc
             if (setMarkers.length) name += ' ' + setMarkers.join(' ');
             if (record.inUpdateSet === false) {
                 var contextMarker = _weMarkdownFormatOption(indicators, 'context_indicator');
-                name = (contextMarker ? contextMarker + ' ' : '') + '*' + name + '*';
+                // Avoid emphasis spanning links and additional values in Markdown paste converters.
+                name = (contextMarker ? contextMarker + ' ' : '') + name;
                 summary.hasContextOnly = true;
             }
             if (flat) name += ' ' + typeLabel;
             var recordDepth = Math.min(depth + 1, maxListLevels - 1);
             lines.push(Array(recordDepth * 2 + 1).join(' ') + '- ' + name);
-            lines = lines.concat(_weMarkdownRender(record, depth + 2, summary, suppressNew || record.allNew, escapeUnderscores, maxListLevels, indicators));
+            lines = lines.concat(_weMarkdownRender(record, depth + 2, summary, suppressNew || record.allNew, escapeMarkdown, maxListLevels, indicators));
         });
     });
     return lines;
@@ -223,11 +223,11 @@ function _weMarkdownIndicator(config, kind, number) {
         value = markers && typeof markers[number] === 'string' ? markers[number] :
             !config && number >= 1 && number <= 10 ? _weMarkdownKeycap(number) : '';
     }
-    // Indicator text is intentional markup, including Jira emoji such as :new:.
+    // Indicator text is intentional markup and is returned unchanged.
     return value.replace(/\s+/g, ' ').trim();
 }
 function _weMarkdownFormatOption(config, key) {
-    var defaults = { display_field_separator: ',', context_indicator: '\u2209', display_field_wrapper: '()' };
+    var defaults = { display_field_separator: ',', context_indicator: '\u203b', display_field_wrapper: '()' };
     return config && typeof config[key] === 'string' ? config[key] : defaults[key];
 }
 function _weMarkdownMergeMarkers(first, second) {
@@ -235,7 +235,7 @@ function _weMarkdownMergeMarkers(first, second) {
         return values.indexOf(value) === index;
     }).sort(function (a, b) { return a - b; });
 }
-function _weMarkdownText(loaded, escapeUnderscores, maxListLevels, indicators) {
+function _weMarkdownText(loaded, escapeMarkdown, maxListLevels, indicators) {
     var sets = {}, seen = {}, rows = [];
     function setKey(set) { return set.table + ':' + set.id; }
     loaded.forEach(function (item) {
@@ -276,10 +276,10 @@ function _weMarkdownText(loaded, escapeUnderscores, maxListLevels, indicators) {
     var legend = keys.map(function (key, index) {
         var set = sets[key];
         var marker = keys.length > 1 ? _weMarkdownIndicator(indicators, 'update_set', index + 1) : '';
-        return (marker ? marker + ' ' : '') + _weMarkdownLink(set.name, set.url, escapeUnderscores);
+        return (marker ? marker + ' ' : '') + _weMarkdownLink(set.name, set.url, escapeMarkdown);
     }).join('\n');
     var summary = {};
-    var list = _weMarkdownRender(_weMarkdownTree(rows), 0, summary, false, escapeUnderscores, maxListLevels, indicators).join('\n');
+    var list = _weMarkdownRender(_weMarkdownTree(rows), 0, summary, false, escapeMarkdown, maxListLevels, indicators).join('\n');
     var contextMarker = _weMarkdownFormatOption(indicators, 'context_indicator');
     return (legend ? legend + '\n\n' : '') + list +
         (summary.hasContextOnly ? '\n\n' + (contextMarker ? contextMarker + ' ' : '') + 'For context only - not included in update set.' : '');

@@ -13,7 +13,7 @@ import { Record } from '@servicenow/sdk/core'
 import { markdownFormattingProperty } from '../system-property/sys_properties_widget_editor_markdown_formatting.now'
 import { markdownDisplaySpInstanceProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sp_instance.now'
 import { markdownDisplaySysDictionaryProperty } from '../system-property/sys_properties_widget_editor_markdown_display_sys_dictionary.now'
-import { markdownEscapeUnderscoresProperty } from '../system-property/sys_properties_widget_editor_markdown_escape_underscores.now'
+import { markdownEscapeCharactersProperty } from '../system-property/sys_properties_widget_editor_markdown_escape_characters.now'
 import { markdownMaxListLevelsProperty } from '../system-property/sys_properties_widget_editor_markdown_max_list_levels.now'
 import { widgetEditorPlusPropertiesCategory } from '../system-property-category/sys_properties_category_widget_editor_plus.now'
 import { updateSetMarkdownDisplayProperty } from '../system-property/sys_properties_widget_editor_markdown_display.now'
@@ -73,10 +73,10 @@ Record({
 })
 
 Record({
-    $id: Now.ID['widget-editor-markdown-escape-underscores-property-category'],
+    $id: Now.ID['widget-editor-markdown-escape-characters-property-category'],
     table: 'sys_properties_category_m2m',
     data: {
-        property: markdownEscapeUnderscoresProperty,
+        property: markdownEscapeCharactersProperty,
         category: widgetEditorPlusPropertiesCategory,
         order: 4750,
     },

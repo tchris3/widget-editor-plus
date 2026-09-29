@@ -98,9 +98,15 @@ test('dictionary updates resolve from the record element without a root table or
         'must not link the companion record when the dictionary ID is missing');
 });
 
-test('Markdown underscore escaping is disabled by default and can be enabled', () => {
+test('Markdown character escaping is disabled by default and can be enabled', () => {
     const context = {};
     vm.createContext(context); vm.runInContext(clientSource, context);
+    const punctuation = '\\`*_{}[]()#+.!|<>~-';
+    for (const setting of [undefined, false, 'true']) {
+        assert.equal(context._weMarkdownEscape(punctuation, setting), punctuation);
+        assert.equal(context._weMarkdownEscape(' Widget Editor+ \n u_field ', setting), 'Widget Editor+ u_field');
+    }
+    assert.equal(context._weMarkdownEscape(punctuation, true), Array.from(punctuation, char => '\\' + char).join(''));
     assert.equal(context._weMarkdownEscape('sys_dictionary u_my__field'), 'sys_dictionary u_my__field');
     assert.equal(context._weMarkdownEscape('_label_ __label__'), '_label_ __label__');
     assert.equal(context._weMarkdownEscape('_label_ __label__', true), '\\_label\\_ \\_\\_label\\_\\_');
@@ -118,13 +124,17 @@ test('export passes the system property through paging to all rendered text', as
     for (const setting of [undefined, 'false', 'true']) {
         const { api } = server({
             gs: {
-                getProperty: (name, fallback) =>
-                    name.endsWith('markdown_max_list_levels') ? '1' : setting === undefined ? fallback : setting
+                getProperty: (name, fallback) => {
+                    if (name.endsWith('markdown_max_list_levels')) return '1';
+                    if (name === 'monaco.plus.update_sets.markdown_escape_underscores') return 'true';
+                    if (name === 'monaco.plus.update_sets.markdown_escape_characters' && setting !== undefined) return setting;
+                    return fallback;
+                }
             }
         });
         api._rules = () => ({ groups: [] });
         const page = api._markdownPage({ orderByDesc() { }, chooseWindow() { }, query() { }, next: () => false }, 0);
-        assert.equal(page.escapeUnderscores, setting === 'true');
+        assert.equal(page.escapeMarkdown, setting === 'true');
         const copied = [], errors = [];
         const context = { Promise };
         vm.createContext(context); vm.runInContext(clientSource, context);
@@ -132,22 +142,22 @@ test('export passes the system property through paging to all rendered text', as
         context._weMarkdownAjax = async (_method, params) => ({
             ...page, hasMore: params.offset === 0, nextOffset: 1,
             rows: [{
-                table: 'child', id: String(params.offset), name: 'child_name', type: 'child_type',
-                secondary: ['extra_value'], url: '/child_name',
-                ancestors: [{ table: 'parent', id: 'p', name: 'parent_name', type: 'parent_type', url: '/parent_name' }],
-                sourceSet: { table: 'sys_update_set', id: 's', name: 'set_name', url: '/set_name' }
+                table: 'child', id: String(params.offset), name: 'child_name+ [x].', type: 'child_type+ [x].',
+                secondary: ['extra_value+ [x].'], url: '/child_name',
+                ancestors: [{ table: 'parent', id: 'p', name: 'parent_name+ [x].', type: 'parent_type+ [x].', url: '/parent_name' }],
+                sourceSet: { table: 'sys_update_set', id: 's', name: 'set_name+ [x].', url: '/set_name' }
             }]
         });
         context._weWriteMarkdownClipboard = async value => copied.push(value);
         await context.copyUpdateSetMarkdownPlus({ getTableName: () => 'sys_update_xml', getQuery: () => '' });
         assert.deepEqual(errors, []);
         assert.equal(copied.length, 1);
-        for (const label of ['child_name', 'child_type', 'extra_value', 'parent_name', 'parent_type', 'set_name']) {
-            assert.ok(copied[0].includes(setting === 'true' ? label.replace('_', '\\_') : label));
+        for (const label of ['child_name+ [x].', 'child_type+ [x].', 'extra_value+ [x].', 'parent_name+ [x].', 'parent_type+ [x].', 'set_name+ [x].']) {
+            assert.ok(copied[0].includes(setting === 'true' ? label.replace(/[_+\[\].]/g, '\\$&') : label));
         }
         assert.ok(copied[0].includes('](/child_name)'), 'URLs are unchanged');
         assert.ok(!copied[0].split('\n').some(line => /^ +- /.test(line)), 'list limit reaches the clipboard through paging');
-        assert.ok(copied[0].includes(setting === 'true' ? '**child\\_type**' : '**child_type**'));
+        assert.ok(copied[0].includes(setting === 'true' ? '**child\\_type\\+ \\[x\\]\\.**' : '**child_type+ [x].**'));
         if (setting !== 'true') assert.ok(!copied[0].includes('\\_'));
     }
 });
@@ -209,7 +219,7 @@ test('Markdown list level property defaults to nine and accepts positive whole n
     }
 });
 
-test('Markdown indicators support text, Jira codes, hidden values and individual set numbers', () => {
+test('Markdown indicators support text, custom shortcodes, hidden values and individual set numbers', () => {
     const context = {};
     vm.createContext(context); vm.runInContext(clientSource, context);
     const rows = Array.from({ length: 11 }, (_, index) => ({
@@ -244,16 +254,16 @@ test('Markdown formatting controls additional fields and both context-only marke
     const render = formatting => context._weMarkdownText([{rows}], false, 9, formatting);
     assert.ok(render().includes('[Parent](/parent) (A, B)'));
     const custom = render({display_field_separator: ' | ', display_field_wrapper: '[]', context_indicator: ':info:'});
-    assert.ok(custom.includes(':info: *[Parent](/parent) [A | B]*'));
+    assert.ok(custom.includes(':info: [Parent](/parent) [A | B]'));
     assert.ok(custom.includes('Child [One | Two]'));
     assert.ok(custom.endsWith(':info: For context only - not included in update set.'));
     const hidden = render({display_field_separator: '', display_field_wrapper: '', context_indicator: ''});
-    assert.ok(hidden.includes('*[Parent](/parent) AB*'));
+    assert.ok(hidden.includes('[Parent](/parent) AB'));
     assert.ok(hidden.includes('Child OneTwo'));
     assert.ok(hidden.endsWith('\n\nFor context only - not included in update set.'));
-    assert.ok(!hidden.includes('∉'));
+    assert.ok(!hidden.includes('※'));
     const {api} = server();
-    const config = {display_field_separator: ',', display_field_wrapper: '()', context_indicator: '∉'};
+    const config = {display_field_separator: ',', display_field_wrapper: '()', context_indicator: '※'};
     assert.deepEqual(JSON.parse(JSON.stringify(api._parseMarkdownFormatting(JSON.stringify(config)))), config);
     for (const display_field_wrapper of ['(', 'long', null, 4]) {
         assert.throws(() => api._parseMarkdownFormatting(JSON.stringify({...config, display_field_wrapper})));
@@ -550,9 +560,9 @@ test('Markdown escapes names and renders policy actions under their policy', () 
             ],
         }]
     }];
-    const output = context._weMarkdownText(loaded, 'separate');
+    const output = context._weMarkdownText(loaded, true);
     assert.ok(output.includes('- **Record Producers**'));
-    assert.ok(output.includes('  - ∉ *[Producer](https://example/producer)*'));
+    assert.ok(output.includes('  - ※ [Producer](https://example/producer)'));
     assert.ok(output.indexOf('Catalog UI Policies') < output.indexOf('Catalog UI Policy Actions'));
     assert.ok(output.includes('Show \\[field\\] \\(now\\)'));
     assert.ok(output.includes('action.do%3Fsys_id%3Dc'));
@@ -1356,7 +1366,7 @@ test('Normal name fallbacks also exclude their field from additional values', ()
     assert.deepEqual(Array.from(api._secondaryValues(null, 'widget', payload)), ['Additional']);
 });
 
-test('Markdown includes secondary values inside context-only italics and on included records', () => {
+test('Markdown includes secondary values on plain context-only and included records', () => {
     const context = { console };
     vm.createContext(context); vm.runInContext(clientSource, context);
     const rows = [{
@@ -1367,12 +1377,12 @@ test('Markdown includes secondary values inside context-only italics and on incl
         }]
     }];
     const result = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
-    assert.ok(result.includes('∉ *[Parent](/parent) (value)*'));
-    assert.ok(result.includes('[Child](/child) (one \\| two, \\<three\\>)'));
+    assert.ok(result.includes('※ [Parent](/parent) (value)'));
+    assert.ok(result.includes('[Child](/child) (one | two, <three>)'));
     rows[0].ancestors[0].inUpdateSet = true;
     const included = context._weMarkdownRender(context._weMarkdownTree(rows), 0).join('\n');
     assert.ok(included.includes('- [Parent](/parent) (value)'));
-    assert.ok(!included.includes('∉'));
+    assert.ok(!included.includes('※'));
 });
 
 
@@ -1889,14 +1899,14 @@ test('Knowledge versions across pages consolidate by article number and retain a
     });
     const output = context._weMarkdownText([{ rows: [child('1.0'), child('3.0')] }, { rows: [child('2.0'), child('1.0')] }]);
     assert.equal((output.match(/\[KB0010038\]/g) || []).length, 1);
-    assert.ok(output.includes('∉ *[KB0010038](/article/3.0) (Article description)*'));
+    assert.ok(output.includes('※ [KB0010038](/article/3.0) (Article description)'));
     for (const version of ['1.0', '2.0', '3.0']) assert.equal(output.split('](/version/' + version + ')').length - 1, 1);
     assert.equal((output.match(/\*\*Knowledge Version\*\*/g) || []).length, 1);
     const present = article('2.0'); present.inUpdateSet = true;
     const included = context._weMarkdownText([{ rows: [child('1.0'), { ...child('2.0'), ancestors: [present] }, child('3.0')] }]);
-    assert.ok(!included.includes('∉'));
+    assert.ok(!included.includes('※'));
     const explicit = context._weMarkdownText([{ rows: [child('1.0'), child('3.0'), { ...article('2.0'), updateId: 'update', ancestors: [] }] }]);
-    assert.ok(!explicit.includes('∉'));
+    assert.ok(!explicit.includes('※'));
 });
 
 test('Knowledge consolidation never merges unrelated articles or records without a readable article number', () => {
@@ -1964,7 +1974,7 @@ test('export includes a linked single set heading without any keycaps', () => {
     const set = { table: 'sys_update_set', id: 'a', name: 'Release [one]', url: '/set/a' };
     const row = { table: 'widget', id: 'x', name: 'Widget', type: 'Widgets', url: '/widget/x', sourceSet: set };
     const output = context._weMarkdownText([{ rows: [row, row] }]);
-    assert.ok(output.startsWith('[Release \\[one\\]](/set/a)\n\n- **Widgets**'));
+    assert.ok(output.startsWith('[Release [one]](/set/a)\n\n- **Widgets**'));
     assert.ok(!output.includes('\u20E3'));
     assert.equal(output.split('[Widget]').length - 1, 1);
 });
@@ -1979,15 +1989,15 @@ test('multiple sets have a stable linked legend and deduplicated records retain 
     const output = context._weMarkdownText(loaded);
     assert.ok(output.startsWith('1️⃣ [Alpha](/set/a)\n2️⃣ [Beta](/remote/b)\n\n'));
     assert.ok(output.includes('[Child](/child) 1️⃣ 2️⃣'));
-    assert.ok(output.includes('∉ *[Parent](/parent)*'));
-    assert.ok(output.endsWith('\n\n∉ For context only - not included in update set.'));
-    assert.equal(output.split('∉ For context only - not included in update set.').length - 1, 1);
+    assert.ok(output.includes('※ [Parent](/parent)'));
+    assert.ok(output.endsWith('\n\n※ For context only - not included in update set.'));
+    assert.equal(output.split('※ For context only - not included in update set.').length - 1, 1);
     assert.equal(output.split('[Child]').length - 1, 1);
     assert.equal(context._weMarkdownText(loaded), output, 'rendering does not mutate source rows');
     loaded[1].rows[0].ancestors = [{ ...parent, inUpdateSet: true }];
     const included = context._weMarkdownText(loaded);
     assert.ok(included.includes('[Parent](/parent) 1️⃣'));
-    assert.ok(!included.includes('∉'));
+    assert.ok(!included.includes('※'));
     assert.equal(context._weMarkdownKeycap(10), '🔟');
     assert.equal(context._weMarkdownKeycap(11), '1️⃣1️⃣');
     assert.equal(context._weMarkdownText([{ rows: [], set: first }]), '');
@@ -2015,4 +2025,89 @@ test('options cleanup removes only the retired page, its ACL and linked roles an
     assert.deepEqual(records.sys_ui_page.map(row => row.sys_id), ['other']);
     assert.deepEqual(records.sys_security_acl.map(row => row.sys_id), ['properties']);
     assert.deepEqual(records.sys_security_acl_role.map(row => row.sys_id), ['admin-role']);
+});
+
+test('GlideAjax JSON responses preserve emoji and Unicode without raw non-ASCII code units', () => {
+    const { api } = server();
+    const config = { new: '🆕', deleted: '🚮', update_set: { '1': '1️⃣', '10': '🔟' }, context_indicator: '※' };
+    const value = { success: true, indicators: config, properties: [{ value: JSON.stringify(config), description: 'Emoji 🆕' }],
+        name: 'Café 中文 👩🏽‍💻', literal: '\\ud83c\\udd95', unpaired: '\ud83c' };
+    api.setAnswer = answer => {
+        assert.doesNotMatch(answer, /[^\x00-\x7f]/, 'XML answer must contain only ASCII');
+        assert.deepEqual(JSON.parse(answer), value);
+        return answer;
+    };
+    assert.match(api._answer(value), /\\ud83c\\udd95/i);
+});
+
+test('formatting emoji survive Properties save, property storage and Markdown XML response', async () => {
+    const propertyName = 'monaco.plus.update_sets.markdown_formatting';
+    const config = { new: '🆕', deleted: '🚮', update_set: { '1': '1️⃣', '10': '🔟' } };
+    let saved = '{}', params = {};
+    const { api } = server({
+        gs: {
+            hasRole: () => true,
+            setProperty: (name, value) => {
+                assert.equal(name, propertyName);
+                assert.doesNotMatch(value, /[^\x00-\x7f]/, 'stored formatting must be ASCII');
+                saved = value;
+            },
+            getProperty: (name, fallback) => name === propertyName ? saved : fallback
+        },
+        GlideRecordSecure: function (table) {
+            this.get = () => true;
+            this.next = () => false;
+            this.addQuery = this.setLimit = this.query = () => {};
+            this.getValue = field => field === 'value' ? saved : 'string';
+        }
+    });
+    api.getParameter = key => params[key];
+    api.setAnswer = answer => {
+        assert.doesNotMatch(answer, /[^\x00-\x7f]/, 'response must survive an ASCII-only transport');
+        return answer;
+    };
+    const source = fs.readFileSync('src/fluent/generated/other/sys-ui-page/widget_editor_plus_properties.client.js', 'utf8');
+    const context = { Promise, refreshUpdatedTimes() {}, GlideAjax: function () {
+        params = {};
+        this.addParam = (key, value) => { params[key] = value; };
+        this.getXMLAnswer = callback => {
+            assert.doesNotMatch(params.property_value, /[^\x00-\x7f]/, 'request must escape emoji before transport');
+            callback(api.saveProperty());
+        };
+    } };
+    vm.createContext(context);
+    vm.runInContext(source.slice(source.indexOf('        function ajax('), source.indexOf('        function el(')), context);
+    const response = await context.ajax('saveProperty', { property_name: propertyName, property_value: JSON.stringify(config) });
+    assert.equal(response.success, true);
+    assert.deepEqual(JSON.parse(saved), config);
+    assert.deepEqual(JSON.parse(response.value), config);
+    // Other callers that send literal emoji must also receive safe storage.
+    params = { property_name: propertyName, property_value: JSON.stringify(config) };
+    assert.equal(JSON.parse(api.saveProperty()).success, true);
+    api._rules = () => ({ groups: [] });
+    const page = JSON.parse(api._markdownPage({ orderByDesc() {}, chooseWindow() {}, query() {}, next: () => false }, 0));
+    assert.deepEqual(page.indicators, config);
+    const client = {};
+    vm.createContext(client); vm.runInContext(clientSource, client);
+    const markdown = client._weMarkdownText([{ rows: [{ table: 'widget', id: 'a', type: 'Widgets', name: 'Example', isNew: true }] }], false, 9, page.indicators);
+    assert.ok(markdown.includes('Example 🆕'));
+    assert.ok(!markdown.includes('\\ud83c'));
+    params.property_value = JSON.stringify({ new: '🆕'.repeat(340) });
+    assert.match(JSON.parse(api.saveProperty()).error, /exceeds 4000 characters/);
+    assert.deepEqual(JSON.parse(saved), config, 'escaped-length overflow must not overwrite the property');
+});
+test('context rows keep linked names and nested parentheses free of automatic italics', () => {
+    const context = {};
+    vm.createContext(context); vm.runInContext(clientSource, context);
+    const description = 'Defining User Criteria for an Article (demo article for a "How to" template and an AQI review)';
+    const rows = [{ table: 'kb_version', id: 'v1', type: 'Knowledge Version', name: '1.0', url: '/version', isNew: true,
+        ancestors: [{ table: 'kb_knowledge', id: 'article', type: 'Knowledge', name: 'KB0010038',
+            url: '/article', secondary: [description], inUpdateSet: false }] }];
+    for (const maxLevels of [1, 9]) {
+        const output = context._weMarkdownText([{ rows }], false, maxLevels);
+        const line = output.split('\n').find(value => value.includes('[KB0010038]'));
+        assert.equal(line.trim(), '- ※ [KB0010038](/article) (' + description + ')' + (maxLevels === 1 ? ' **Knowledge**' : ''));
+        assert.ok(output.includes('[1.0](/version) 🆕'));
+        assert.ok(output.endsWith('※ For context only - not included in update set.'));
+    }
 });
