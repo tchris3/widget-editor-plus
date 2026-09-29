@@ -5258,6 +5258,9 @@ Record({
             // _globalSetupDone prevents re-execution on subsequent language inits.
             if (!_globalSetupDone) {
                 _globalSetupDone = true;
+                if (global.SNMonacoPlusBootstrap && global.SNMonacoPlusBootstrap.registerUnicodeHover) {
+                    global.SNMonacoPlusBootstrap.registerUnicodeHover(monaco);
+                }
                 applyCompilerOptions();
                 _installUnusedVarSeverityPatch();
                 _registerCssVarCompletions();

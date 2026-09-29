@@ -72,6 +72,75 @@ Record({
     var MONACO_WORKER_BASE = '/scripts/snc-code-editor/';
     var MONACO_CSS_URL = '/monacoIncludes.cssx';
 
+    var _unicodeHoverMonaco = null;
+    function registerUnicodeHover(monaco) {
+        _ensureMonacoCss();
+        _ensureHoverCodeColorFix();
+        if (!monaco || !monaco.languages || !monaco.languages.registerHoverProvider || _unicodeHoverMonaco === monaco) return;
+        _unicodeHoverMonaco = monaco;
+        var provider = {
+            provideHover: function (model, position) {
+                var line = model.getLineContent(position.lineNumber);
+                var language = model.getLanguageId();
+                var escapes = /\\\\u(?:\\{[0-9a-fA-F]+\\}|[0-9a-fA-F]{4})/g;
+                var match;
+                while ((match = escapes.exec(line))) {
+                    var start = match.index, end = escapes.lastIndex, preceding = 0;
+                    for (var i = start - 1; i >= 0 && line.charAt(i) === '\\\\'; i--) preceding++;
+                    if (preceding % 2) continue; // A literal backslash, not a Unicode escape.
+                    var braced = match[0].charAt(2) === '{';
+                    if (braced && (language === 'json' || language === 'jsonc')) continue;
+                    var code = parseInt(braced ? match[0].slice(3, -1) : match[0].slice(2), 16);
+                    if (code > 0x10ffff) continue;
+                    if (code >= 0xd800 && code <= 0xdbff && !braced) {
+                        var low = /^\\\\u([dD][c-fC-F][0-9a-fA-F]{2})/.exec(line.slice(end));
+                        if (!low) continue;
+                        code = 0x10000 + (code - 0xd800) * 0x400 + parseInt(low[1], 16) - 0xdc00;
+                        end += low[0].length;
+                        escapes.lastIndex = end;
+                    } else if (code >= 0xd800 && code <= 0xdfff) continue;
+                    var keycap = null, keycapCodes = null;
+                    var tail = /^(?:\\\\u[fF][eE]0[fF])?\\\\u20[eE]3/.exec(line.slice(end));
+                    if ((code >= 48 && code <= 57 || code === 35 || code === 42) && tail) {
+                        keycap = String.fromCodePoint(code) + '\\ufe0f\\u20e3';
+                        keycapCodes = tail[0].length === 12 ? [code, 0xfe0f, 0x20e3] : [code, 0x20e3];
+                        end += tail[0].length;
+                    } else if ((code === 0xfe0f || code === 0x20e3) && /[0-9#*]/.test(line.charAt(start - 1)) && start > 0) {
+                        var suffix = /^\\\\u20[eE]3/.exec(line.slice(end));
+                        if (code === 0x20e3 || suffix) {
+                            var base = line.charCodeAt(start - 1);
+                            keycap = String.fromCodePoint(base) + '\\ufe0f\\u20e3';
+                            keycapCodes = code === 0xfe0f ? [base, 0xfe0f, 0x20e3] : [base, 0x20e3];
+                            start--;
+                            if (suffix && code === 0xfe0f) end += suffix[0].length;
+                        }
+                    }
+                    escapes.lastIndex = end;
+                    if (position.column < start + 1 || position.column >= end + 1) continue;
+                    var labels = { 0: 'NULL', 9: 'TAB', 10: 'LINE FEED', 13: 'CARRIAGE RETURN', 32: 'SPACE', 160: 'NO-BREAK SPACE', 8203: 'ZERO WIDTH SPACE', 8204: 'ZERO WIDTH NON-JOINER', 8205: 'ZERO WIDTH JOINER', 65279: 'ZERO WIDTH NO-BREAK SPACE', 65038: 'TEXT VARIATION SELECTOR', 65039: 'EMOJI VARIATION SELECTOR', 8419: 'COMBINING ENCLOSING KEYCAP' };
+                    var hidden = code < 32 || (code >= 0x7f && code <= 0x9f) || (code >= 0x200e && code <= 0x200f) || (code >= 0x2028 && code <= 0x202e) || (code >= 0x2060 && code <= 0x206f);
+                    var preview = keycap || labels[code] || (hidden ? 'Non-printing character' : String.fromCodePoint(code));
+                    var codePoints = (keycapCodes || [code]).map(function (point) {
+                        var hex = point.toString(16).toUpperCase();
+                        while (hex.length < 4) hex = '0' + hex;
+                        return 'U+' + hex;
+                    }).join(' ');
+                    // Plain Markdown avoids asynchronous code-block rendering in older Monaco bundles.
+                    var text = preview.replace(/[\\\\\`*_{}\\[\\]()#+.!|~\\-]/g, '\\\\$&')
+                        .replace(/&/g, '&' + 'amp;').replace(/</g, '&' + 'lt;').replace(/>/g, '&' + 'gt;');
+                    return {
+                        range: new monaco.Range(position.lineNumber, start + 1, position.lineNumber, end + 1),
+                        contents: [{ value: '**Unicode preview:** ' + text + '\\n\\n' + codePoints, isTrusted: false, supportHtml: false }]
+                    };
+                }
+                return null;
+            }
+        };
+        ['json', 'jsonc', 'javascript', 'typescript'].forEach(function (language) {
+            monaco.languages.registerHoverProvider(language, provider);
+        });
+    }
+
     var _coreLoadPromise = null;
     var _userPrefsPromise = null;
 
@@ -720,6 +789,7 @@ Record({
 
     global.SNMonacoPlusBootstrap = {
         init: init,
+        registerUnicodeHover: registerUnicodeHover,
         ensureCoreLoaded: ensureCoreLoaded,
         upgradeEditor: upgradeEditor,
         getUserPrefs: _loadUserPrefs,

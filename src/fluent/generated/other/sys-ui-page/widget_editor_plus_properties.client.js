@@ -114,6 +114,13 @@
             node.onclick = action;
             return node;
         }
+        function iconButton(icon, label, action) {
+            var control = button('', action);
+            control.title = label; control.setAttribute('aria-label', label);
+            var glyph = el('span', 'glyphicon glyphicon-' + icon);
+            glyph.setAttribute('aria-hidden', 'true'); control.appendChild(glyph);
+            return control;
+        }
         function status(node, value, kind) {
             if (!node) return;
             node.textContent = value;
@@ -203,11 +210,15 @@
             if (!window.monaco || !window.monaco.editor) return null;
             try {
                 ensureMonacoWorker();
+                if (window.SNMonacoPlusBootstrap && window.SNMonacoPlusBootstrap.registerUnicodeHover) {
+                    window.SNMonacoPlusBootstrap.registerUnicodeHover(window.monaco);
+                }
                 var theme = monacoTheme();
                 var editor = window.monaco.editor.create(host, {
                     value: input.value, language: 'json', theme: theme,
                     automaticLayout: true, minimap: { enabled: false },
                     scrollBeyondLastLine: false, wordWrap: 'on',
+                    fixedOverflowWidgets: true,
                 });
                 function describeEditor() {
                     var field = host.querySelector('textarea, [role="textbox"]');
@@ -428,11 +439,6 @@
                     if (picker) picker.select2('enable', !value && !saved);
                     if (editor) editor.updateOptions({ readOnly: value });
                     refresh();
-                }
-                function iconButton(icon, label, action) {
-                    var b = button('', action); b.title = label; b.setAttribute('aria-label', label);
-                    var glyph = el('span', 'glyphicon glyphicon-' + icon); glyph.setAttribute('aria-hidden', 'true'); b.appendChild(glyph);
-                    return b;
                 }
                 var save = iconButton('floppy-disk', 'Save property', function () {
                     var target = name.value.trim();
@@ -707,13 +713,7 @@
                 inputs.appendChild(input);
                 var hint = el('span', 'wep-status'); hint.setAttribute('role', 'status'); inputs.appendChild(hint);
                 var selected = null, active = true, timer = null, request = 0, $input = null;
-                function iconButton(icon, label, action) {
-                    var control = button('', action);
-                    control.className = 'btn btn-icon ' + icon;
-                    control.title = label; control.setAttribute('aria-label', label);
-                    controls.appendChild(control); return control;
-                }
-                var add = iconButton('icon-add', 'Add table', function () {
+                var add = iconButton('floppy-disk', 'Add table', function () {
                     if (!selected || contains(selected.table, rules.groups)) return;
                     (parent ? parent.children : rules.groups).push({
                         id: 'group_' + Date.now().toString(36), table: selected.table,
@@ -722,10 +722,12 @@
                     if (parent) collapsed[parent.id] = false;
                     markRules(); renderRules();
                 });
+                add.className = 'btn btn-primary';
+                controls.appendChild(add);
                 add.disabled = true;
-                if (parent) iconButton('icon-error-circle', 'Cancel', function () {
+                if (parent) controls.appendChild(iconButton('remove', 'Cancel', function () {
                     closePicker(); if (trigger) trigger.focus();
-                });
+                }));
                 var jq = window.$j || window.jQuery;
                 if (!jq || !jq.fn || !jq.fn.select2) {
                     status(hint, 'The Select2 table picker is unavailable. Reload the page.', 'error');
@@ -795,9 +797,9 @@
                         name.style.paddingLeft = (10 + depth * 20) + 'px';
                         var branch = el('div', 'wep-rule-name');
                         if (node.children.length) {
-                            var expand = button('', function () { collapsed[node.id] = !collapsed[node.id]; renderRules(); });
-                            expand.className = 'btn btn-icon wep-rule-toggle ' + (collapsed[node.id] ? 'icon-chevron-right' : 'icon-chevron-down');
-                            expand.setAttribute('aria-label', (collapsed[node.id] ? 'Expand ' : 'Collapse ') + node.label);
+                            var expand = iconButton(collapsed[node.id] ? 'chevron-right' : 'chevron-down',
+                                (collapsed[node.id] ? 'Expand ' : 'Collapse ') + node.label,
+                                function () { collapsed[node.id] = !collapsed[node.id]; renderRules(); });
                             expand.setAttribute('aria-expanded', String(!collapsed[node.id])); branch.appendChild(expand);
                         } else branch.appendChild(el('span', 'wep-rule-spacer'));
                         var text = el('span', 'wep-rule-label'); text.appendChild(el('strong', '', node.label));
@@ -806,17 +808,12 @@
                         var actionsCell = el('td', 'wep-rule-actions');
                         var controls = el('div', 'wep-rule-action-group');
                         actionsCell.appendChild(controls);
-                        var child = button('', function () { openPicker(node, row, depth, child); });
-                        child.className = 'btn btn-icon icon-search';
-                        child.title = 'Add related tables';
-                        child.setAttribute('aria-label', 'Add related tables');
+                        var child = iconButton('plus', 'Add child table', function () { openPicker(node, row, depth, child); });
                         child.disabled = depth >= 6; controls.appendChild(child);
-                        var remove = button('', function () {
+                        var remove = iconButton('remove', 'Remove table', function () {
                             nodes.splice(nodes.indexOf(node), 1); closePicker(); markRules(); renderRules();
                         });
-                        remove.className = 'btn btn-icon icon-error-circle';
-                        remove.title = 'Remove';
-                        remove.setAttribute('aria-label', 'Remove'); controls.appendChild(remove);
+                        controls.appendChild(remove);
                         row.appendChild(actionsCell);
                         updatedCell(property, row, function () { return property.name + '.' + node.table; }, (property.updatedByTable || {})[node.table]);
                         body.appendChild(row);
