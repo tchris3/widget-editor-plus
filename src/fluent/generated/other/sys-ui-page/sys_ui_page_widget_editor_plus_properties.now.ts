@@ -293,6 +293,7 @@ UiPage({
     .wep-config-table textarea { resize:vertical; }
     select.wep-value { max-width: 14rem; }
     textarea.wep-value { min-height:76px; max-height:50vh; overflow-y:auto; resize:vertical; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important; font-size:0.8125rem; line-height:1.45; }
+    textarea.wep-value.wep-plain-textarea { min-height:0; max-height:none; overflow-y:hidden; }
     textarea.wep-json-fallback[hidden] { display:none !important; }
     .wep-monaco {
       height: 76px;

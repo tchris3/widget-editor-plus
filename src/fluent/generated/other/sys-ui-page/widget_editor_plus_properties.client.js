@@ -179,6 +179,12 @@
         function resizePlainTextarea(input) {
             if (!input || input.hidden || !input.parentNode) return;
             input.style.height = 'auto';
+            if (input.className.indexOf('wep-plain-textarea') !== -1) {
+                var border = Math.max(0, (input.offsetHeight || 0) - (input.clientHeight || 0));
+                input.style.height = (input.scrollHeight + border) + 'px';
+                input.style.overflowY = 'hidden';
+                return;
+            }
             var fitContents = input.className.indexOf('wep-description-input') !== -1;
             var cap = fitContents ? Infinity : Math.max(76, Math.floor(window.innerHeight * 0.5));
             var needed = Math.max(fitContents ? 48 : 76, input.scrollHeight);
@@ -293,7 +299,7 @@
                 });
             } else {
                 input = el('textarea', 'form-control wep-value' + (json ? ' wep-json-fallback' : ' wep-plain-textarea'));
-                input.rows = json || property.value.length > 160 ? 8 : 3;
+                input.rows = json ? 8 : 1;
                 input.setAttribute('aria-label', property.name);
             }
             input.setAttribute('aria-describedby', counter.id);
@@ -533,11 +539,10 @@
             var rules = null, collapsed = {}, revision = 0, mode = 'UI', jsonEditor = null, syncing = false;
             var relatedPicker = null, topPicker = null;
             var modes = el('div', 'wep-hierarchy-toolbar');
-            var modeLink = el('a', '', 'Switch to JSON'); modeLink.href = '#';
-            modeLink.onclick = function (event) {
-                event.preventDefault(); setMode(mode === 'UI' ? 'JSON' : 'UI');
-            };
-            modes.appendChild(modeLink); panel.appendChild(modes);
+            var modeButton = button('Switch to JSON', function () {
+                setMode(mode === 'UI' ? 'JSON' : 'UI');
+            });
+            modes.appendChild(modeButton); panel.appendChild(modes);
             panel.appendChild(root);
             var jsonPanel = el('div', 'wep-hierarchy-json'); jsonPanel.hidden = true;
             var jsonInput = el('textarea', 'form-control wep-value wep-json-fallback');
@@ -595,7 +600,7 @@
             }
             function displayMode(next) {
                 mode = next; root.hidden = mode !== 'UI'; jsonPanel.hidden = mode !== 'JSON';
-                modeLink.textContent = mode === 'UI' ? 'Switch to JSON' : 'Switch to UI';
+                modeButton.textContent = mode === 'UI' ? 'Switch to JSON' : 'Switch to UI';
                 if (mode === 'JSON' && !jsonEditor) {
                     var host = el('div', 'wep-monaco'); jsonPanel.appendChild(host);
                     jsonEditor = mountJsonEditor(jsonInput, host, jsonChanged);

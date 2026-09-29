@@ -974,7 +974,7 @@ test('UI placements and admin-only properties page are declared', () => {
         const jsonPanel = hierarchy.querySelectorAll('.wep-hierarchy-json')[0];
         const save = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Save property');
         const revert = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Revert');
-        const toggle = descendants(hierarchy).find(node => node.tagName === 'A' && node.textContent === 'Switch to UI');
+        const toggle = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Switch to UI');
         const json = hierarchy.querySelectorAll('.wep-json-fallback')[0];
         assert.equal(jsonPanel.hidden, false);
         assert.deepEqual(JSON.parse(json.value), savedHierarchy);
@@ -1046,7 +1046,7 @@ test('UI placements and admin-only properties page are declared', () => {
     assert.equal(rowTime.children[2].textContent, new Date('2026-09-27T02:34:56Z').toLocaleTimeString());
     assert.equal(revert.hidden, true);
     assert.equal(descendants(hierarchy).some(node => node.textContent === 'Save hierarchy'), false);
-    const toggle = descendants(hierarchy).find(node => node.tagName === 'A' && node.textContent === 'Switch to JSON');
+    const toggle = descendants(hierarchy).find(node => node.tagName === 'BUTTON' && node.textContent === 'Switch to JSON');
     toggle.onclick({ preventDefault() { } });
     const json = hierarchy.querySelectorAll('.wep-json-fallback')[0];
     assert.deepEqual(JSON.parse(json.value), { a: ['b'] });
