@@ -7,7 +7,7 @@ export const markdownFormattingProperty = Property({
     type: 'string',
     value: `{
     "display_field_separator": ",",
-    "context_indicator": "\\u2209",
+    "context_indicator": "\\u21aa",
     "display_field_wrapper": "()",
     "new": "\\ud83c\\udd95",
     "deleted": "\\ud83d\\udeae",
@@ -24,7 +24,7 @@ export const markdownFormattingProperty = Property({
         "10": "\\ud83d\\udd1f"
     }
 }`,
-    description: 'Markdown markers, additional-field separator and two-character wrapper. Empty strings hide markers or wrappers; update_set maps each number to its marker.',
+    description: 'Markdown markers, additional-field separator and two-character wrapper. Empty strings hide markers or wrappers; update_set maps each number to its marker. Use JSON Unicode escapes for emoji.',
     ignoreCache: true,
     roles: { read: ['sp_admin'], write: ['admin'] },
 })

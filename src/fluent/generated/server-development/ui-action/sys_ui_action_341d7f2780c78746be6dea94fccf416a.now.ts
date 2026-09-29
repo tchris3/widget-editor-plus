@@ -21,8 +21,8 @@ UiAction({
 
 }`,
     },
-    condition:
-        'new GlideRecord("sys_metadata").get("sys_update_name", current.name.toString())',
+    // Forced updates can target data tables that do not extend sys_metadata.
+    condition: 'current.canRead()',
     comments:
         'Copies the navigation URL for the target record represented by this customer update.',
     messages: [

@@ -289,10 +289,11 @@ UiPage({
     .wep-config-table th:nth-last-child(2) { width:130px; }
     .wep-config-table th:last-child { width:120px; }
     .wep-config-table .wep-status { display:block; margin-top:6px; }
-    .wep-config-table .btn + .btn { margin-left:4px; }
+    .wep-properties-table .btn + .btn { margin-left:4px; }
     .wep-config-table textarea { resize:vertical; }
     select.wep-value { max-width: 14rem; }
     textarea.wep-value { min-height:76px; max-height:50vh; overflow-y:auto; resize:vertical; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important; font-size:0.8125rem; line-height:1.45; }
+    textarea.wep-value.wep-plain-textarea { min-height:0; max-height:none; overflow-y:hidden; }
     textarea.wep-json-fallback[hidden] { display:none !important; }
     .wep-monaco {
       height: 76px;
@@ -341,7 +342,7 @@ UiPage({
     .wep-rule-scroll { overflow: visible; }
     .wep-rule-table { width: 100%; table-layout: fixed; font-size: 13px; }
     .wep-rule-table th:nth-child(2) { width: 24%; }
-    .wep-rule-table th:nth-child(3) { width: 84px; }
+    .wep-rule-table th:nth-child(3) { width: 112px; }
     .wep-rule-table th:last-child { width: 120px; }
     .wep-rule-table td { overflow-wrap: anywhere; }
     .wep-updated-cell time span { white-space: nowrap; }
@@ -350,19 +351,11 @@ UiPage({
       border-bottom: 1px solid rgb(var(--now-color_border--secondary, 205, 212, 217));
       vertical-align: middle;
     }
-    .wep-rule-name { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; column-gap: 16px; }
+    .wep-rule-name { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: center; column-gap: 16px; }
     .wep-rule-label { grid-column: 2; grid-row: 1; min-width: 0; }
     .wep-rule-name code { display: block; padding: 0; background: transparent; color: inherit; font-size: 11px; }
-    .wep-rule-name .wep-rule-toggle, .wep-rule-name .wep-rule-spacer {
-      grid-column: 1; grid-row: 1; display: inline-block; width: 22px; min-width: 0; max-width: 22px; margin: 0; padding: 0;
-    }
-    .wep-rule-name .wep-rule-toggle { height: 28px; }
     .wep-rule-reference { font-family: monospace; font-size: 12px; }
     .wep-rule-actions { white-space: nowrap; }
-    .wep-rule-action-group { display: flex; gap: 4px; }
-    .wep-rule-table .wep-rule-action-group .btn {
-      flex: 0 0 28px; width: 28px; min-width: 28px; height: 28px; padding: 0; margin: 0;
-    }
     .wep-empty {
       padding: 1.5rem;
       text-align: center;

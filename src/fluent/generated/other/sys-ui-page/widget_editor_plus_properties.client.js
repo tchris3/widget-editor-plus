@@ -36,7 +36,16 @@
             return new Promise(function (resolve, reject) {
                 var ga = new GlideAjax('WidgetEditorMarkdownAjax');
                 ga.addParam('sysparm_name', method);
-                Object.keys(params || {}).forEach(function (key) { ga.addParam(key, params[key]); });
+                Object.keys(params || {}).forEach(function (key) {
+                    var value = params[key];
+                    if (method === 'saveProperty' && params.property_name === 'monaco.plus.update_sets.markdown_formatting' && key === 'property_value') {
+                        // JSON escapes preserve emoji through request decoding and property storage.
+                        value = value.replace(/[\u007f-\uffff]/g, function (character) {
+                            return '\\u' + ('0000' + character.charCodeAt(0).toString(16)).slice(-4);
+                        });
+                    }
+                    ga.addParam(key, value);
+                });
                 ga.getXMLAnswer(function (answer) {
                     var data;
                     try { data = JSON.parse(answer || '{}'); }
@@ -105,6 +114,13 @@
             node.onclick = action;
             return node;
         }
+        function iconButton(icon, label, action) {
+            var control = button('', action);
+            control.title = label; control.setAttribute('aria-label', label);
+            var glyph = el('span', 'glyphicon glyphicon-' + icon);
+            glyph.setAttribute('aria-hidden', 'true'); control.appendChild(glyph);
+            return control;
+        }
         function status(node, value, kind) {
             if (!node) return;
             node.textContent = value;
@@ -163,6 +179,12 @@
         function resizePlainTextarea(input) {
             if (!input || input.hidden || !input.parentNode) return;
             input.style.height = 'auto';
+            if (input.className.indexOf('wep-plain-textarea') !== -1) {
+                var border = Math.max(0, (input.offsetHeight || 0) - (input.clientHeight || 0));
+                input.style.height = (input.scrollHeight + border) + 'px';
+                input.style.overflowY = 'hidden';
+                return;
+            }
             var fitContents = input.className.indexOf('wep-description-input') !== -1;
             var cap = fitContents ? Infinity : Math.max(76, Math.floor(window.innerHeight * 0.5));
             var needed = Math.max(fitContents ? 48 : 76, input.scrollHeight);
@@ -194,11 +216,15 @@
             if (!window.monaco || !window.monaco.editor) return null;
             try {
                 ensureMonacoWorker();
+                if (window.SNMonacoPlusBootstrap && window.SNMonacoPlusBootstrap.registerUnicodeHover) {
+                    window.SNMonacoPlusBootstrap.registerUnicodeHover(window.monaco);
+                }
                 var theme = monacoTheme();
                 var editor = window.monaco.editor.create(host, {
                     value: input.value, language: 'json', theme: theme,
                     automaticLayout: true, minimap: { enabled: false },
                     scrollBeyondLastLine: false, wordWrap: 'on',
+                    fixedOverflowWidgets: true,
                 });
                 function describeEditor() {
                     var field = host.querySelector('textarea, [role="textbox"]');
@@ -273,7 +299,7 @@
                 });
             } else {
                 input = el('textarea', 'form-control wep-value' + (json ? ' wep-json-fallback' : ' wep-plain-textarea'));
-                input.rows = json || property.value.length > 160 ? 8 : 3;
+                input.rows = json ? 8 : 1;
                 input.setAttribute('aria-label', property.name);
             }
             input.setAttribute('aria-describedby', counter.id);
@@ -420,11 +446,6 @@
                     if (editor) editor.updateOptions({ readOnly: value });
                     refresh();
                 }
-                function iconButton(icon, label, action) {
-                    var b = button('', action); b.title = label; b.setAttribute('aria-label', label);
-                    var glyph = el('span', 'glyphicon glyphicon-' + icon); glyph.setAttribute('aria-hidden', 'true'); b.appendChild(glyph);
-                    return b;
-                }
                 var save = iconButton('floppy-disk', 'Save property', function () {
                     var target = name.value.trim();
                     var duplicate = Array.prototype.some.call(rows.children, function (other) {
@@ -518,11 +539,10 @@
             var rules = null, collapsed = {}, revision = 0, mode = 'UI', jsonEditor = null, syncing = false;
             var relatedPicker = null, topPicker = null;
             var modes = el('div', 'wep-hierarchy-toolbar');
-            var modeLink = el('a', '', 'Switch to JSON'); modeLink.href = '#';
-            modeLink.onclick = function (event) {
-                event.preventDefault(); setMode(mode === 'UI' ? 'JSON' : 'UI');
-            };
-            modes.appendChild(modeLink); panel.appendChild(modes);
+            var modeButton = button('Switch to JSON', function () {
+                setMode(mode === 'UI' ? 'JSON' : 'UI');
+            });
+            modes.appendChild(modeButton); panel.appendChild(modes);
             panel.appendChild(root);
             var jsonPanel = el('div', 'wep-hierarchy-json'); jsonPanel.hidden = true;
             var jsonInput = el('textarea', 'form-control wep-value wep-json-fallback');
@@ -580,7 +600,7 @@
             }
             function displayMode(next) {
                 mode = next; root.hidden = mode !== 'UI'; jsonPanel.hidden = mode !== 'JSON';
-                modeLink.textContent = mode === 'UI' ? 'Switch to JSON' : 'Switch to UI';
+                modeButton.textContent = mode === 'UI' ? 'Switch to JSON' : 'Switch to UI';
                 if (mode === 'JSON' && !jsonEditor) {
                     var host = el('div', 'wep-monaco'); jsonPanel.appendChild(host);
                     jsonEditor = mountJsonEditor(jsonInput, host, jsonChanged);
@@ -698,13 +718,7 @@
                 inputs.appendChild(input);
                 var hint = el('span', 'wep-status'); hint.setAttribute('role', 'status'); inputs.appendChild(hint);
                 var selected = null, active = true, timer = null, request = 0, $input = null;
-                function iconButton(icon, label, action) {
-                    var control = button('', action);
-                    control.className = 'btn btn-icon ' + icon;
-                    control.title = label; control.setAttribute('aria-label', label);
-                    controls.appendChild(control); return control;
-                }
-                var add = iconButton('icon-add', 'Add table', function () {
+                var add = iconButton('floppy-disk', 'Add table', function () {
                     if (!selected || contains(selected.table, rules.groups)) return;
                     (parent ? parent.children : rules.groups).push({
                         id: 'group_' + Date.now().toString(36), table: selected.table,
@@ -713,10 +727,12 @@
                     if (parent) collapsed[parent.id] = false;
                     markRules(); renderRules();
                 });
+                add.className = 'btn btn-primary';
+                controls.appendChild(add);
                 add.disabled = true;
-                if (parent) iconButton('icon-error-circle', 'Cancel', function () {
+                if (parent) controls.appendChild(iconButton('remove', 'Cancel', function () {
                     closePicker(); if (trigger) trigger.focus();
-                });
+                }));
                 var jq = window.$j || window.jQuery;
                 if (!jq || !jq.fn || !jq.fn.select2) {
                     status(hint, 'The Select2 table picker is unavailable. Reload the page.', 'error');
@@ -786,9 +802,9 @@
                         name.style.paddingLeft = (10 + depth * 20) + 'px';
                         var branch = el('div', 'wep-rule-name');
                         if (node.children.length) {
-                            var expand = button('', function () { collapsed[node.id] = !collapsed[node.id]; renderRules(); });
-                            expand.className = 'btn btn-icon wep-rule-toggle ' + (collapsed[node.id] ? 'icon-chevron-right' : 'icon-chevron-down');
-                            expand.setAttribute('aria-label', (collapsed[node.id] ? 'Expand ' : 'Collapse ') + node.label);
+                            var expand = iconButton(collapsed[node.id] ? 'chevron-right' : 'chevron-down',
+                                (collapsed[node.id] ? 'Expand ' : 'Collapse ') + node.label,
+                                function () { collapsed[node.id] = !collapsed[node.id]; renderRules(); });
                             expand.setAttribute('aria-expanded', String(!collapsed[node.id])); branch.appendChild(expand);
                         } else branch.appendChild(el('span', 'wep-rule-spacer'));
                         var text = el('span', 'wep-rule-label'); text.appendChild(el('strong', '', node.label));
@@ -797,17 +813,12 @@
                         var actionsCell = el('td', 'wep-rule-actions');
                         var controls = el('div', 'wep-rule-action-group');
                         actionsCell.appendChild(controls);
-                        var child = button('', function () { openPicker(node, row, depth, child); });
-                        child.className = 'btn btn-icon icon-search';
-                        child.title = 'Add related tables';
-                        child.setAttribute('aria-label', 'Add related tables');
+                        var child = iconButton('plus', 'Add child table', function () { openPicker(node, row, depth, child); });
                         child.disabled = depth >= 6; controls.appendChild(child);
-                        var remove = button('', function () {
+                        var remove = iconButton('remove', 'Remove table', function () {
                             nodes.splice(nodes.indexOf(node), 1); closePicker(); markRules(); renderRules();
                         });
-                        remove.className = 'btn btn-icon icon-error-circle';
-                        remove.title = 'Remove';
-                        remove.setAttribute('aria-label', 'Remove'); controls.appendChild(remove);
+                        controls.appendChild(remove);
                         row.appendChild(actionsCell);
                         updatedCell(property, row, function () { return property.name + '.' + node.table; }, (property.updatedByTable || {})[node.table]);
                         body.appendChild(row);

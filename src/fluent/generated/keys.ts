@@ -476,13 +476,23 @@ declare global {
                         table: 'sys_properties_category_m2m'
                         id: '23104e60fb984c8f989c6cf3eb2e4d09'
                     }
+                    'widget-editor-markdown-escape-characters-property': {
+                        table: 'sys_properties'
+                        id: 'c5bb4cc3e8a24ad7ad70a754b81d2903'
+                    }
+                    'widget-editor-markdown-escape-characters-property-category': {
+                        table: 'sys_properties_category_m2m'
+                        id: '8ef325d3818c414aa20730eedabecc85'
+                    }
                     'widget-editor-markdown-escape-underscores-property': {
                         table: 'sys_properties'
                         id: 'be1a3236e948410182585898ed317111'
+                        deleted: true
                     }
                     'widget-editor-markdown-escape-underscores-property-category': {
                         table: 'sys_properties_category_m2m'
                         id: '3798dc9f3cbb44c3ac03d5b8a807c4fa'
+                        deleted: true
                     }
                     'widget-editor-markdown-groups-catalog_ui_policy': {
                         table: 'sys_properties'

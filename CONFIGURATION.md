@@ -16,8 +16,8 @@ Admins can edit settings in **Widget Editor+ → Properties**.
 | `monaco.plus.code_search.default_search_group` | *(empty)* | Sys_id of the default `sn_codesearch_search_group` for users without an available saved group. Saved choices and shared-link selections take priority. Empty, invalid or unavailable defaults use the first available group. Automatic selection does not save a user preference. |
 | `monaco.plus.css.variables` | `{ "example-variable": "#a4c5ea" }` | JSON string of CSS custom property name-value pairs for autocomplete suggestions. |
 | `monaco.plus.record_limit` | `500` | Page size for record pickers (widgets, versions, providers, dependencies) with infinite scroll. |
-| `monaco.plus.update_sets.markdown_formatting` | Emoji, `,`, `∉`, `()` | Configure `new`, `deleted` and `update_set` indicators, plus `display_field_separator`, `context_indicator` and `display_field_wrapper`. Empty strings hide markers or wrappers. |
-| `monaco.plus.update_sets.markdown_escape_underscores` | `false` | Escape every underscore with a backslash in Export Markdown+ labels and text. When false, underscores remain unchanged. |
+| `monaco.plus.update_sets.markdown_formatting` | Emoji, `,`, `↪`, `()` | Configure `new`, `deleted` and `update_set` indicators, plus `display_field_separator`, `context_indicator` and `display_field_wrapper`. Empty strings hide markers or wrappers. |
+| `monaco.plus.update_sets.markdown_escape_characters` | `false` | Escape Markdown punctuation with backslashes in Export Markdown+ labels and text. When false, no escaping is added. |
 | `monaco.plus.update_sets.markdown_max_list_levels` | `9` | Maximum bullet indentation levels, counting the top level as 1. Records at the limit and deeper share the final level, formatted as name, additional display values, emoji and bold record type. Invalid or non-positive values fall back to 9. |
 | `monaco.plus.scss.variables` | `{ "$breakpoint-xs": "480px", ... }` | JSON string of SCSS variable name-value pairs for autocomplete suggestions. |
 | `monaco.plus.widget.deprecated` | `descriptionLIKEdeprecated` | Encoded query string evaluated against `sp_widget` to flag widgets as deprecated. |
@@ -26,11 +26,17 @@ Admins can edit settings in **Widget Editor+ → Properties**.
 
 ## Markdown formatting
 
+`monaco.plus.update_sets.markdown_escape_characters` defaults to `false`, so exported labels and display values retain their punctuation without added backslashes. This replaces the underscore-only setting; the old `monaco.plus.update_sets.markdown_escape_underscores` property is no longer read.
+
+Enable it to escape backslashes, backticks, asterisks, underscores, braces, square brackets, parentheses, hashes, plus signs, full stops, exclamation marks, pipes, angle brackets, tildes and hyphens. These characters can participate in Markdown syntax, depending on the renderer and context. For example, `+` can start a bullet list, although it does not need escaping in a name such as “Widget Editor+”. When enabled, the exporter conservatively escapes every occurrence in labels and display values. Generated bullets, links and emphasis, configured formatting indicators and URL handling remain unchanged.
+
 Edit `monaco.plus.update_sets.markdown_formatting` in **Widget Editor+ → Properties**. Each update-set number has its own literal value, for example `{"new":":new:","deleted":"Deleted","update_set":{"1":":one:","2":":two:","10":"TEN"}}`. The shipped property lists emoji for numbers 1–10. Add further number keys as needed.
 
-Empty or unspecified set numbers have no indicator. Use `{"new":"","deleted":"","update_set":{}}` to hide all three indicator types. There are no default formats or placeholders. Values are used beside records and in the update-set legend, with set markers appearing only for multiple sets. Jira codes and intentional Markdown formatting remain intact. Deletion strikethrough and context-only italics remain separate.
+Emoji in the formatting JSON are stored as Unicode escapes (for example, `\ud83c\udd95` for 🆕) to preserve them through property storage and XML transport. They appear as emoji in the exported Markdown.
 
-Additional values use `"display_field_separator":","` and `"display_field_wrapper":"()"`, producing `(value one, value two)`. The separator gets a trailing space for readability unless it is empty or already ends in whitespace. The wrapper is two characters, such as `[]`, or an empty string for no wrapper. `"context_indicator":"∉"` controls both context-only record prefixes and the explanatory footer; an empty string hides the symbol. The symbol is stored as a JSON Unicode escape in the shipped default.
+Empty or unspecified set numbers have no indicator. Use `{"new":"","deleted":"","update_set":{}}` to hide all three indicator types. There are no default formats or placeholders. Values are used beside records and in the update-set legend, with set markers appearing only for multiple sets. Custom marker text and intentional Markdown formatting remain intact. Deleted record names retain strikethrough. Context-only records use the configured marker without automatic italics, keeping links and additional values simpler for Markdown editors.
+
+Additional values use `"display_field_separator":","` and `"display_field_wrapper":"()"`, producing `(value one, value two)`. The separator gets a trailing space for readability unless it is empty or already ends in whitespace. The wrapper is two characters, such as `[]`, or an empty string for no wrapper. `"context_indicator":"↪"` controls both context-only record prefixes and the explanatory footer; an empty string hides the symbol. The symbol is stored as a JSON Unicode escape in the shipped default.
 
 ## Markdown primary display fields
 

@@ -720,7 +720,7 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
             return this._answer({ success: false, error: 'Customer update not found.' });
         }
 
-        var target = this._parseCustomerUpdateTarget(update.getValue('payload'));
+        var target = this._parseCustomerUpdateTarget(update.getValue('payload'), update.getValue('name'));
         if (!target) {
             return this._answer({
                 success: false,
@@ -4234,36 +4234,60 @@ WidgetEditorAjax.prototype = Object.extendsObject(AbstractAjaxProcessor, {
     /**
      * Extracts the table and sys_id from a Customer Update/Version payload.
      * @param {string} payload - Raw record_update XML.
+     * @param {string} [updateName] Update name for forced records with sparse payloads.
      * @returns {?{table: string, sys_id: string}} Parsed target, or null.
      */
-    _parseCustomerUpdateTarget: function (payload) {
+    _parseCustomerUpdateTarget: function (payload, updateName) {
+        var nameMatch = String(updateName || '').match(/^([a-z_][a-z0-9_]*)_([0-9a-f]{32})$/i);
+        var namedTarget = nameMatch ? { table: nameMatch[1], sys_id: nameMatch[2] } : null;
         if (!payload) {
-            return null;
+            return namedTarget;
         }
         try {
-            var tableMatch = payload.match(/<([a-z_][a-z0-9_]*)\s[^>]*action=/i);
-            var table = tableMatch ? tableMatch[1] : '';
-            if (!table) {
-                return null;
-            }
-
             var xmlDoc = new XMLDocument2();
-            xmlDoc.parseXML(payload);
-            var recordEl = xmlDoc.getFirstNode('//' + table);
-            if (!recordEl) {
-                return null;
-            }
-
-            var sysId = '';
-            var children = recordEl.getChildNodeIterator();
-            while (children.hasNext()) {
-                var child = children.next();
-                if (child.getNodeName() === 'sys_id') {
-                    sysId = child.getTextContent() || '';
-                    break;
+            xmlDoc.parseXML(String(payload));
+            var root = xmlDoc.getFirstNode('/record_update');
+            if (!root) return null;
+            var records = root.getChildNodeIterator(), recordEl = null, table = '';
+            while (records.hasNext()) {
+                var candidate = records.next();
+                var nodeName = String(candidate.getNodeName() || '');
+                if (/^[a-z_][a-z0-9_]*$/i.test(nodeName)) {
+                    recordEl = candidate; table = nodeName; break;
                 }
             }
-            return sysId ? { table: table, sys_id: sysId } : null;
+            if (!recordEl) {
+                var rootTable = String(root.getAttribute('table') || '');
+                return namedTarget && (!rootTable || rootTable === namedTarget.table) ? namedTarget : null;
+            }
+
+            // Read only the target record's direct fields, never a companion record's ID.
+            var fields = {}, children = recordEl.getChildNodeIterator();
+            while (children.hasNext()) {
+                var child = children.next(), field = String(child.getNodeName());
+                if (field === 'sys_id' || field === 'name' || field === 'element') {
+                    fields[field] = String(child.getTextContent() || '').trim();
+                }
+            }
+            if (fields.sys_id) {
+                return /^[0-9a-f]{32}$/i.test(fields.sys_id) ? { table: table, sys_id: fields.sys_id } : null;
+            }
+            // Dictionary updates may identify the field by table and element instead of sys_id.
+            if (table === 'sys_dictionary') {
+                var dictionaryTable = String(recordEl.getAttribute('table') || fields.name || '');
+                var element = String(recordEl.getAttribute('element') || fields.element || '');
+                if (!/^[a-z_][a-z0-9_]*$/i.test(dictionaryTable) || !/^[a-z0-9_]*$/i.test(element)) return null;
+                var dictionary = new GlideRecordSecure('sys_dictionary');
+                dictionary.addQuery('name', dictionaryTable);
+                dictionary.addQuery('element', element);
+                dictionary.setLimit(2);
+                dictionary.query();
+                if (dictionary.next()) {
+                    var sysId = String(dictionary.getUniqueValue() || '');
+                    if (!dictionary.next() && /^[0-9a-f]{32}$/i.test(sysId)) return { table: table, sys_id: sysId };
+                }
+            }
+            return namedTarget && namedTarget.table === table ? namedTarget : null;
         } catch (e) {
             gs.error('WidgetEditorAjax: customer update target parse failed: ' + e.message);
             return null;

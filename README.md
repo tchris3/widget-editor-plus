@@ -42,6 +42,7 @@ A Monaco-based editor for Service Portal widgets.
 - Edit widget templates, styles, scripts and JSON, with per-field saving.
 - ServiceNow and AngularJS IntelliSense, including table fields, Script Includes and providers.
 - AngularJS expression validation and syntax highlighting.
+- Hover over Unicode escapes in JSON and scripts to preview characters and emoji.
 - Widget search, recent history, live developer presence and SN Utils integration.
 
 ---
