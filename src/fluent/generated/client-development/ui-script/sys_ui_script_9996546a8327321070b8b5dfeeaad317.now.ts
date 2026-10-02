@@ -25,7 +25,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
  *   - Custom Monarch tokenizer extending Monaco's built-in HTML tokenizer
  *     ({{ }} interpolation, ng-* / data-* / sp-* attribute highlighting,
  *     embedded <script> / <style>)
- *   - HTML document/range formatting provider
+ *   - HTML document formatting provider
  *   - Mismatched/unclosed tag diagnostics (custom 'LINT_MARKER' validation)
  *   - Linked editing (renames a tag's matching open/close pair together)
  *   - window.MONACO_LANGUAGE_HTML.register(monaco) — idempotent entry point
@@ -1675,33 +1675,116 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
     // Helpers — completion and hover context detection
     // -------------------------------------------------------------------------
 
-    // Returns true when the cursor is in an HTML tag's attribute zone
-    // (i.e., after the tag name but before the closing > or />).
-    function _isInTagAttributes(model, position) {
-        var text = model.getValueInRange({
+    // Finds an unfinished tag, respecting quoted values, comments and raw content.
+    function _getHtmlTagContext(text) {
+        var i = 0;
+        while (i < text.length) {
+            var start = text.indexOf('<', i);
+            if (start === -1) { return null; }
+            if (text.substr(start, 4) === '<!--') {
+                var commentEnd = text.indexOf('-->', start + 4);
+                if (commentEnd === -1) { return null; }
+                i = commentEnd + 3;
+                continue;
+            }
+            var name = text.substring(start).match(/^<(\\/?)([\\w:-]+)/);
+            if (!name) { i = start + 1; continue; }
+            var quote = null;
+            i = start + name[0].length;
+            for (; i < text.length; i++) {
+                var ch = text.charAt(i);
+                if (quote) {
+                    if (ch === quote) { quote = null; }
+                } else if (ch === '"' || ch === "'") {
+                    quote = ch;
+                } else if (ch === '>') {
+                    break;
+                }
+            }
+            if (i === text.length) {
+                return { offset: start, name: name[2], closing: !!name[1],
+                    quote: quote, text: text.substring(start) };
+            }
+            i++;
+            var lower = name[2].toLowerCase();
+            if (!name[1] && /^(script|style|textarea)$/.test(lower) &&
+                !/\\/\\s*>$/.test(text.substring(start, i))) {
+                var close = new RegExp('</' + lower + '(?=[\\\\s>])', 'ig');
+                close.lastIndex = i;
+                var found = close.exec(text);
+                if (!found) { return { raw: true, name: name[2], offset: start }; }
+                i = found.index;
+            }
+        }
+        return null;
+    }
+
+    function _isInTagAttributes(model, position, allowAfterTagName) {
+        var context = _getHtmlTagContext(model.getValueInRange({
+            startLineNumber: 1, startColumn: 1,
+            endLineNumber: position.lineNumber, endColumn: position.column
+        }));
+        return !!context && !context.raw && !context.closing && !context.quote &&
+            (/^<[\\w:-]+\\s/.test(context.text) ||
+             (allowAfterTagName && /^<[\\w:-]+$/.test(context.text)));
+    }
+
+    /* Derives child and sibling indentation from the opening tag rather than
+       the final attribute line, and recognises a closing tag after the cursor. */
+    function _getHtmlElementNewline(model, position) {
+        var line = model.getLineContent(position.lineNumber);
+        var after = line.substring(position.column - 1);
+        if (line.substring(0, position.column - 1).indexOf('>') === -1) {
+            return null;
+        }
+        var before = model.getValueInRange({
             startLineNumber: 1, startColumn: 1,
             endLineNumber: position.lineNumber, endColumn: position.column
         });
-        var lastLt = text.lastIndexOf('<');
-        var lastGt = text.lastIndexOf('>');
-        if (lastLt === -1 || lastGt > lastLt) {
-            return false;
+        var tags = /<!--[\\s\\S]*?(?:-->|$)|<(\\/?)\\s*([\\w:-]+)((?:[^"'>]|"[^"]*"|'[^']*')*?)>/g;
+        var stack = [];
+        var last = null;
+        var match;
+        while ((match = tags.exec(before)) !== null) {
+            if (match[0].substr(0, 4) === '<!--') { continue; }
+            var name = match[2].toLowerCase();
+            var closing = !!match[1];
+            var selfClosing = /\\/\\s*>$/.test(match[0]) || !!VOID_ELEMENTS[name];
+            var opener = null;
+            if (closing) {
+                for (var i = stack.length - 1; i >= 0; i--) {
+                    if (stack[i].name === name) {
+                        opener = stack[i].offset;
+                        stack.length = i;
+                        break;
+                    }
+                }
+            } else if (selfClosing) {
+                opener = match.index;
+            } else {
+                opener = match.index;
+                stack.push({ name: name, offset: match.index });
+            }
+            last = { end: tags.lastIndex, opener: opener, name: name,
+                completed: closing || selfClosing };
+            if (!closing && !selfClosing && /^(script|style|textarea)$/.test(name)) {
+                var rawClose = new RegExp('</' + name + '(?=[\\\\s>])', 'ig');
+                rawClose.lastIndex = tags.lastIndex;
+                var rawEnd = rawClose.exec(before);
+                if (!rawEnd) { break; }
+                tags.lastIndex = rawEnd.index;
+            }
         }
-        // Check we're inside a comment
-        var lastCommentOpen  = text.lastIndexOf('<!--');
-        var lastCommentClose = text.lastIndexOf('-->');
-        if (lastCommentOpen > lastCommentClose) {
-            return false;
-        }
-        // Check we're past the tag name (there must be whitespace after the name)
-        var afterLt = text.substring(lastLt);
-        if (!/^<\\/?\\s*[\\w:-]+\\s/.test(afterLt)) {
-            return false;
-        }
-        // Check we're not inside a quoted attribute value
-        var insideDq = (afterLt.split('"').length - 1) % 2 !== 0;
-        var insideSq = (afterLt.split("'").length - 1) % 2 !== 0;
-        return !insideDq && !insideSq;
+        if (!last || last.opener === null ||
+            before.substring(last.end).trim()) { return null; }
+        var openPos = model.getPositionAt(last.opener);
+        var indent = model.getLineContent(openPos.lineNumber)
+            .substring(0, openPos.column - 1);
+        if (!/^[ \\t]*$/.test(indent)) { return null; }
+        var close = !last.completed && new RegExp('^([ \\t]*)</' + last.name + '\\\\s*>', 'i').exec(after);
+        if (after.trim() && !close) { return null; }
+        return { indent: indent, completed: last.completed,
+            closeWhitespace: close ? close[1].length : null };
     }
 
     // Returns { typed, range } when the cursor is inside a class="..." value, else null.
@@ -2210,25 +2293,176 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
 
     /* HTML Formatting — DocumentFormattingEditProvider for 'html'. */
 
+    function _isAngularObjectAttribute(name) {
+        name = name.toLowerCase().replace(/^(data|x)[-_:]/, '').replace(/[:_]/g, '-');
+        return /^ng-(class(?:-even|-odd)?|style)$/.test(name);
+    }
+
+    function _scanAngularExpression(text, state) {
+        for (var i = 0; i < text.length; i++) {
+            var ch = text.charAt(i);
+            var entity = ch === '&' && text.substring(i).match(/^&(?:quot|apos|#0*(?:34|39)|#x0*(?:22|27));/i);
+            if (entity) {
+                ch = /(?:quot|34|22)/i.test(entity[0]) ? '"' : "'";
+                i += entity[0].length - 1;
+            }
+            if (state.quote) {
+                if (state.escaped) { state.escaped = false; }
+                else if (ch === '\\\\') { state.escaped = true; }
+                else if (ch === state.quote) { state.quote = null; }
+            } else if (ch === '"' || ch === "'") {
+                state.quote = ch;
+            } else if ('{[('.indexOf(ch) !== -1) {
+                state.stack.push(ch);
+            } else if ('}])'.indexOf(ch) !== -1) {
+                var expected = '{[('.charAt('}])'.indexOf(ch));
+                if (state.stack.pop() !== expected) { state.invalid = true; }
+            }
+        }
+    }
+
+    function _htmlVisualWidth(text, tabSize, initialWidth) {
+        var width = initialWidth || 0;
+        for (var i = 0; i < text.length; i++) {
+            width += text.charAt(i) === '\\t' ? tabSize - (width % tabSize) : 1;
+        }
+        return width;
+    }
+
+    function _indentAngularObject(value, column, tabSize) {
+        if (value.indexOf('\\n') === -1 || !/^[ \\t]*[\\[{]/.test(value)) { return value; }
+        var lines = value.split('\\n');
+        var state = { stack: [], quote: null, escaped: false, invalid: false };
+        var base = column + value.match(/^[ \\t]*/)[0].length;
+        var out = [];
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            if (i && !state.quote) {
+                var content = line.replace(/^[ \\t]*/, '');
+                var closing = content.match(/^[}\\])]+/);
+                var depth = Math.max(0, state.stack.length - (closing ? closing[0].length : 0));
+                line = content ? new Array(base + depth * tabSize + 1).join(' ') + content : '';
+            }
+            out.push(line);
+            _scanAngularExpression(line + '\\n', state);
+        }
+        return state.invalid || state.quote || state.stack.length ? value : out.join('\\n');
+    }
+
+    function _formatAngularAttributes(text, tabSize) {
+        var tags = /<!--[\\s\\S]*?(?:-->|$)|<(\\/?)([\\w:-]+)(?:[^"'>]|"[^"]*"|'[^']*')*>/g;
+        var out = '';
+        var end = 0;
+        var tag;
+        while ((tag = tags.exec(text)) !== null) {
+            out += text.substring(end, tag.index);
+            var prefix = out.substring(out.lastIndexOf('\\n') + 1);
+            var initialWidth = _htmlVisualWidth(prefix, tabSize);
+            var raw = tag[0];
+            var attributes = /([\\w:.-]+)\\s*=\\s*(["'])([\\s\\S]*?)\\2/g;
+            var formatted = '';
+            var attrEnd = 0;
+            var attr;
+            while (tag[2] && (attr = attributes.exec(raw)) !== null) {
+                var valueStart = attr.index + attr[0].length - attr[3].length - 1;
+                formatted += raw.substring(attrEnd, valueStart);
+                var lastNewline = formatted.lastIndexOf('\\n');
+                var column = _htmlVisualWidth(formatted.substring(lastNewline + 1), tabSize,
+                    lastNewline === -1 ? initialWidth : 0);
+                formatted += _isAngularObjectAttribute(attr[1])
+                    ? _indentAngularObject(attr[3], column, tabSize) : attr[3];
+                attrEnd = attributes.lastIndex - 1;
+            }
+            out += formatted + raw.substring(attrEnd);
+            end = tags.lastIndex;
+            if (tag[2] && !tag[1] && PRESERVE_CONTENT[tag[2].toLowerCase()] && !/\\/\\s*>$/.test(raw)) {
+                var close = new RegExp('</' + tag[2] + '(?=[\\\\s>])', 'ig');
+                close.lastIndex = end;
+                var found = close.exec(text);
+                tags.lastIndex = found ? found.index : text.length;
+            }
+        }
+        return out + text.substring(end);
+    }
+
+    function _angularAttributeNewline(model, position, context) {
+        if (!context || !context.quote || context.raw || context.closing) { return null; }
+        var attributes = /([\\w:.-]+)\\s*=\\s*(["'])/g;
+        var attr;
+        while ((attr = attributes.exec(context.text)) !== null) {
+            var start = attributes.lastIndex;
+            var end = context.text.indexOf(attr[2], start);
+            if (end !== -1) { attributes.lastIndex = end + 1; continue; }
+            if (!_isAngularObjectAttribute(attr[1])) { return null; }
+            var value = context.text.substring(start);
+            if (!/^[ \\t]*[\\[{]/.test(value)) { return null; }
+            var state = { stack: [], quote: null, escaped: false, invalid: false };
+            _scanAngularExpression(value, state);
+            if (state.invalid || state.quote || !state.stack.length) { return null; }
+            var tabSize = model.getOptions().tabSize || 4;
+            var opening = model.getPositionAt(context.offset + start + value.match(/^[ \\t]*/)[0].length);
+            var prefix = model.getLineContent(opening.lineNumber).substring(0, opening.column - 1);
+            var base = _htmlVisualWidth(prefix, tabSize);
+            var after = model.getLineContent(position.lineNumber).substring(position.column - 1);
+            var closing = after.match(/^[ \\t]*([}\\]])/);
+            var expected = state.stack[state.stack.length - 1] === '{' ? '}' : ']';
+            var pair = closing && closing[1] === expected;
+            var pad = new Array(base + state.stack.length * tabSize + 1).join(' ');
+            return { text: '\\n' + pad + (pair
+                ? '\\n' + new Array(base + (state.stack.length - 1) * tabSize + 1).join(' ') : ''),
+                column: pad.length + 1,
+                removeWhitespace: pair ? closing[0].length - 1 : 0 };
+        }
+        return null;
+    }
+
     function _makeIndent(level, tab) {
         var s = '';
         for (var i = 0; i < level; i++) s += tab;
         return s;
     }
 
-    /* Continuation pad uses spaces unless the indent itself is tabs. */
-    function _formatTagLine(tok, indent, tab, tabSize) {
+    /* Normalise whitespace between attributes, preserving quoted values exactly. */
+    function _htmlTagParts(raw) {
+        var parts = [];
+        var part = '';
+        var quote = null;
+        var space = false;
+        for (var i = 0; i < raw.length; i++) {
+            var ch = raw.charAt(i);
+            if (quote) {
+                part += ch;
+                if (ch === quote) { quote = null; }
+            } else if (ch === '"' || ch === "'") {
+                if (space && part) { part += ' '; }
+                space = false;
+                part += ch;
+                quote = ch;
+            } else if (ch === '\\n') {
+                if (part) { parts.push(part); }
+                part = '';
+                space = false;
+            } else if (/\\s/.test(ch)) {
+                space = true;
+            } else {
+                if (space && part) { part += ' '; }
+                space = false;
+                part += ch;
+            }
+        }
+        if (part) { parts.push(part); }
+        return parts;
+    }
+
+    function _normaliseHtmlTag(raw) {
+        return _htmlTagParts(raw).join(' ');
+    }
+
+    /* Attribute continuation uses spaces to align visually, including with tabs. */
+    function _formatTagLine(tok, indent, tab, tabSize, precedingWidth) {
         var raw = tok.value;
         var indentStr = _makeIndent(indent, tab);
-        if (raw.indexOf('\\n') === -1) {
-            return indentStr + raw.replace(/\\s+/g, ' ').trim();
-        }
-        var rawLines = raw.split(/\\r?\\n/);
-        var clean = [];
-        for (var p = 0; p < rawLines.length; p++) {
-            var piece = rawLines[p].replace(/[ \\t]+/g, ' ').trim();
-            if (piece) clean.push(piece);
-        }
+        var clean = _htmlTagParts(raw);
         if (clean.length <= 1) {
             return indentStr + clean.join(' ');
         }
@@ -2244,7 +2478,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
             return indentStr + firstLine;
         }
         var indentWidth = tab === '\\t' ? indent * tabSize : indentStr.length;
-        var padLen = indentWidth + spaceIdx + 1;
+        var padLen = indentWidth + (precedingWidth || 0) + spaceIdx + 1;
         var pad = '';
         for (var q = 0; q < padLen; q++) pad += ' ';
         var out = indentStr + firstLine;
@@ -2278,6 +2512,13 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 cEnd = cEnd === -1 ? len : cEnd + 3;
                 tokens.push({ type: 'comment', value: text.substring(i, cEnd), hadSpace: hadSpace, hadNewline: hadNewline, hadBlankLine: hadBlankLine });
                 i = cEnd;
+
+            } else if (text.substr(i, 2) === '<!') {
+                var declarationEnd = text.indexOf('>', i + 2);
+                declarationEnd = declarationEnd === -1 ? len : declarationEnd + 1;
+                tokens.push({ type: 'comment', value: text.substring(i, declarationEnd),
+                    hadSpace: hadSpace, hadNewline: hadNewline, hadBlankLine: hadBlankLine });
+                i = declarationEnd;
 
             } else if (text[i] === '<' && i + 1 < len &&
                        (text[i + 1] === '/' || /[a-zA-Z]/.test(text[i + 1]))) {
@@ -2313,15 +2554,16 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
 
                 /* Preserve raw content for script / style / pre / textarea */
                 if (!isClosing && !isSelfClose && PRESERVE_CONTENT[tagName]) {
-                    var closeTag = '</' + tagName;
-                    var closeIdx = text.toLowerCase().indexOf(closeTag, i);
-                    if (closeIdx !== -1) {
-                        tokens.push({
-                            type: 'preserved', value: text.substring(i, closeIdx),
-                            tagName: tagName, hadSpace: false
-                        });
-                        i = closeIdx;
-                    }
+                    var closePattern = new RegExp('</' + tagName + '(?=[\\\\s>])', 'ig');
+                    closePattern.lastIndex = i;
+                    var closeMatch = closePattern.exec(text);
+                    var closeIdx = closeMatch ? closeMatch.index : -1;
+                    if (closeIdx === -1) { closeIdx = len; }
+                    tokens.push({
+                        type: 'preserved', value: text.substring(i, closeIdx),
+                        tagName: tagName, hadSpace: false
+                    });
+                    i = closeIdx;
                 }
 
             } else {
@@ -2379,7 +2621,6 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         var tabSize = (options && options.tabSize) || 4;
         var useTabs = options && options.insertSpaces === false;
         var tab      = useTabs ? '\\t' : new Array(tabSize + 1).join(' ');
-        var expandWs = new Array(tabSize + 1).join(' '); /* for tab-normalisation */
         var tokens   = _tokenizeHtmlForFormat(text);
         var lines    = [];
         var indent   = 0;
@@ -2410,8 +2651,8 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
 
         function tryBlockCollapse(startIdx) {
             var openTok = tokens[startIdx];
-            if (openTok.value.indexOf('\\n') !== -1) { return null; }
-            var content = openTok.value.replace(/\\s+/g, ' ').trim();
+            if (_htmlTagParts(openTok.value).length > 1) { return null; }
+            var content = _normaliseHtmlTag(openTok.value);
             var idx = startIdx + 1;
             var hasText = false;
 
@@ -2422,7 +2663,7 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
 
                 if (tk.type === 'tag' && tk.isClosing && tk.tagName === openTok.tagName) {
                     if (!hasText && idx !== startIdx + 1) { return null; }
-                    content += tk.value.replace(/\\s+/g, ' ').trim();
+                    content += _normaliseHtmlTag(tk.value);
                     if (content.length <= 100) {
                         return { line: _makeIndent(indent, tab) + content, endIndex: idx };
                     }
@@ -2432,17 +2673,17 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                     !INLINE_ELEMENTS[tk.tagName] && !VOID_ELEMENTS[tk.tagName]) {
                     return null;
                 }
-                if (tk.type === 'tag' && tk.value.indexOf('\\n') !== -1) {
+                if (tk.type === 'tag' && _htmlTagParts(tk.value).length > 1) {
                     return null;
                 }
                 if (tk.type === 'preserved') {
                     return null;
                 }
-                if (tk.type === 'text') { hasText = true; }
+                if (tk.type === 'text' || tk.type === 'comment') { hasText = true; }
 
                 if (tk.hadSpace && content) { content += ' '; }
                 content += (tk.type === 'tag')
-                    ? tk.value.replace(/\\s+/g, ' ').trim()
+                    ? _normaliseHtmlTag(tk.value)
                     : tk.value;
                 idx++;
             }
@@ -2457,8 +2698,8 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
 
                 if (isInline && !tok.isSelfClosing && !tok.isClosing) {
                     var next = tokens[t + 1];
-                    var multilineAttrs = tok.value.indexOf('\\n') !== -1;
-                    var blockLike = (next && next.hadNewline) || multilineAttrs;
+                    var multilineAttrs = _htmlTagParts(tok.value).length > 1;
+                    var blockLike = next && next.hadNewline;
                     if (blockLike) {
                         if (inlineBuf) { flushInline(); }
                         if (tok.hadBlankLine && lines.length) { lines.push(''); }
@@ -2467,7 +2708,14 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                         indent++;
                     } else {
                         inlineStack.push({ name: tok.tagName, indented: false });
-                        appendInline(tok.value.replace(/\\s+/g, ' ').trim(), tok.hadSpace, tok.hadNewline, tok.hadBlankLine);
+                        var preceding = !tok.hadNewline
+                            ? inlineBuf.substring(inlineBuf.lastIndexOf('\\n') + 1) : '';
+                        var precedingWidth = preceding.length + (preceding && tok.hadSpace ? 1 : 0);
+                        var inlineTag = multilineAttrs
+                            ? _formatTagLine(tok, indent, tab, tabSize, precedingWidth)
+                                .substring(_makeIndent(indent, tab).length)
+                            : _normaliseHtmlTag(tok.value);
+                        appendInline(inlineTag, tok.hadSpace, tok.hadNewline, tok.hadBlankLine);
                     }
 
                 } else if (isInline && tok.isClosing &&
@@ -2480,16 +2728,16 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                         indent = Math.max(0, indent - 1);
                         lines.push(_formatTagLine(tok, indent, tab, tabSize));
                     } else {
-                        appendInline(tok.value.replace(/\\s+/g, ' ').trim(), tok.hadSpace, tok.hadNewline, tok.hadBlankLine);
+                        appendInline(_normaliseHtmlTag(tok.value), tok.hadSpace, tok.hadNewline, tok.hadBlankLine);
                     }
 
                 } else if (isInline || tok.isSelfClosing) {
-                    if (tok.value.indexOf('\\n') !== -1) {
+                    if (_htmlTagParts(tok.value).length > 1) {
                         flushInline();
                         if (tok.hadBlankLine && lines.length) { lines.push(''); }
                         lines.push(_formatTagLine(tok, indent, tab, tabSize));
                     } else {
-                        appendInline(tok.value.replace(/\\s+/g, ' ').trim(), tok.hadSpace, tok.hadNewline, tok.hadBlankLine);
+                        appendInline(_normaliseHtmlTag(tok.value), tok.hadSpace, tok.hadNewline, tok.hadBlankLine);
                     }
 
                 } else if (tok.isClosing) {
@@ -2508,6 +2756,18 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                     /* Block opening tag — try to collapse short content */
                     flushInline();
                     if (tok.hadBlankLine && lines.length) { lines.push(''); }
+                    if (PRESERVE_CONTENT[tok.tagName] &&
+                        tokens[t + 1] && tokens[t + 1].type === 'preserved') {
+                        /* The content is literal text. Joining it through lines[] would
+                           insert a newline into an empty textarea on every format. */
+                        var close = tokens[t + 2];
+                        var hasClose = close && close.type === 'tag' && close.isClosing &&
+                            close.tagName === tok.tagName;
+                        lines.push(_formatTagLine(tok, indent, tab, tabSize) +
+                            tokens[t + 1].value + (hasClose ? close.value.trim() : ''));
+                        t += hasClose ? 2 : 1;
+                        continue;
+                    }
                     var collapsed = tryBlockCollapse(t);
                     if (collapsed) {
                         lines.push(collapsed.line);
@@ -2524,6 +2784,10 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 appendInline(tok.value, tok.hadSpace, tok.hadNewline, tok.hadBlankLine);
 
             } else if (tok.type === 'comment') {
+                if (inlineBuf && !tok.hadNewline) {
+                    appendInline(tok.value, tok.hadSpace, false, false);
+                    continue;
+                }
                 flushInline();
                 if (tok.hadBlankLine && lines.length) { lines.push(''); }
                 var commentLines = tok.value.split('\\n');
@@ -2534,46 +2798,15 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                     }
                 }
 
-            } else if (tok.type === 'preserved') {
-                var raw = tok.value;
-                /* Trim the newline that immediately follows the opening tag */
-                if (raw.charAt(0) === '\\n') { raw = raw.substring(1); }
-                /* Trim the newline that immediately precedes the closing tag */
-                if (raw.length && raw.charAt(raw.length - 1) === '\\n') {
-                    raw = raw.substring(0, raw.length - 1);
-                }
-
-                if (tok.tagName === 'pre' || tok.tagName === 'textarea') {
-                    lines.push(raw);
-                } else {
-                    /* Script / style — re-indent to match nesting */
-                    var pLines = raw.split('\\n');
-                    var minWs  = Infinity;
-                    for (var pl = 0; pl < pLines.length; pl++) {
-                        if (!pLines[pl].trim()) { continue; }
-                        var expanded = pLines[pl].replace(/\\t/g, expandWs);
-                        var lc = 0;
-                        while (lc < expanded.length && expanded[lc] === ' ') { lc++; }
-                        if (lc < minWs) { minWs = lc; }
-                    }
-                    if (minWs === Infinity) { minWs = 0; }
-                    for (var pl2 = 0; pl2 < pLines.length; pl2++) {
-                        if (!pLines[pl2].trim()) {
-                            lines.push('');
-                            continue;
-                        }
-                        var expanded2 = pLines[pl2].replace(/\\t/g, expandWs);
-                        lines.push(_makeIndent(indent, tab) + expanded2.substring(minWs));
-                    }
-                }
             }
         }
 
         flushInline();
 
-        var result = lines.join('\\n');
+        var result = _formatAngularAttributes(lines.join('\\n'), tabSize);
         /* Ensure single trailing newline */
-        if (result && result.charAt(result.length - 1) !== '\\n') {
+        if (result && result.charAt(result.length - 1) !== '\\n' &&
+            tokens[tokens.length - 1].type !== 'preserved') {
             result += '\\n';
         }
         return result;
@@ -2668,6 +2901,8 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
     // register(monaco) — installs tokenizer + completion + hover + lint + format
     // -------------------------------------------------------------------------
     var _registered = false;
+    var _attachHtmlEditor = null;
+    var _htmlEditorsWithHandlers = new WeakSet();
 
     function register(monaco) {
         if (_registered) {
@@ -2931,7 +3166,9 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         monaco.editor.onDidCreateModel(_watchHtmlModel);
 
         // 5. Auto-close HTML tags — insert </tagName> when the user types >
-        monaco.editor.onDidCreateEditor(function (editor) {
+        _attachHtmlEditor = function (editor) {
+            if (_htmlEditorsWithHandlers.has(editor)) { return; }
+            _htmlEditorsWithHandlers.add(editor);
             editor.onDidChangeModelContent(function (e) {
                 if (!_htmlAutoCloseTagsEnabled) {
                     return;
@@ -2957,31 +3194,27 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                     return;
                 }
                 /* Find the tag name that was just closed by > */
-                var pos = editor.getPosition();
+                var pos = typeof change.rangeOffset === 'number'
+                    ? model.getPositionAt(change.rangeOffset + inserted.length)
+                    : editor.getPosition();
                 var textBefore = model.getValueInRange({
                     startLineNumber: 1,
                     startColumn: 1,
                     endLineNumber: pos.lineNumber,
                     endColumn: pos.column
                 });
-                /* Walks backward from > to find the opening <tagName, skipping closing tags and comments. */
-                var tagMatch = textBefore.match(/<([\\w:-]+)(?:[^"'>]|"[^"]*"|'[^']*')*>$/);
-                if (!tagMatch) {
-                    return;
-                }
-                var tagName = tagMatch[1];
+                var context = _getHtmlTagContext(textBefore.substring(0, textBefore.length - 1));
+                if (!context || context.raw || context.closing || context.quote || /\\/\\s*$/.test(context.text)) return;
+                var tagName = context.name;
                 var lower = tagName.toLowerCase();
                 if (VOID_ELEMENTS[lower]) {
                     return;
                 }
-                /* Don't insert if the closing tag already follows the cursor */
-                var afterPos = model.getValueInRange({
-                    startLineNumber: pos.lineNumber,
-                    startColumn: pos.column,
-                    endLineNumber: pos.lineNumber,
-                    endColumn: pos.column + tagName.length + 3
-                });
-                if (afterPos === '</' + tagName + '>') {
+                /* A matching closer can follow spaces or a newline, and HTML tag
+                   names are case-insensitive. Retyping > must not duplicate it. */
+                var afterPos = model.getValue().substring(model.getOffsetAt(pos));
+                var existingClose = new RegExp('^\\\\s*</' + tagName + '\\\\s*>', 'i');
+                if (existingClose.test(afterPos)) {
                     return;
                 }
                 var closeTag = '</' + tagName + '>';
@@ -3005,21 +3238,82 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
                 var model = editor.getModel();
                 if (!model || model.getLanguageId() !== 'html') return;
+                if (editor.getSelections) {
+                    var selections = editor.getSelections();
+                    if (!selections || selections.length !== 1 || !selections[0].isEmpty()) return;
+                }
+                if (editor.getOption && monaco.editor.EditorOption &&
+                    (editor.getOption(monaco.editor.EditorOption.autoIndent) === 0 ||
+                     editor.getOption(monaco.editor.EditorOption.readOnly))) return;
                 var domNode = editor.getDomNode();
                 if (domNode && domNode.querySelector('.suggest-widget.visible')) return;
                 var pos = editor.getPosition();
-                if (!pos || !_isInTagAttributes(model, pos)) return;
-
+                if (!pos) return;
                 var textBefore = model.getValueInRange({
                     startLineNumber: 1, startColumn: 1,
                     endLineNumber: pos.lineNumber, endColumn: pos.column
                 });
-                var ltIdx = textBefore.lastIndexOf('<');
-                if (ltIdx === -1) return;
-                var tagMatch = textBefore.substring(ltIdx).match(/^<\\/?\\s*([\\w:-]+)/);
+                var context = _getHtmlTagContext(textBefore);
+                if (context && context.raw) return;
+                var expressionNewline = _angularAttributeNewline(model, pos, context);
+                if (expressionNewline) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    editor.executeEdits('htmlExpressionNewline', [{
+                        range: {
+                            startLineNumber: pos.lineNumber, startColumn: pos.column,
+                            endLineNumber: pos.lineNumber,
+                            endColumn: pos.column + expressionNewline.removeWhitespace
+                        },
+                        text: expressionNewline.text,
+                        forceMoveMarkers: true
+                    }]);
+                    editor.setPosition({ lineNumber: pos.lineNumber + 1,
+                        column: expressionNewline.column });
+                    return;
+                }
+                var newline = _getHtmlElementNewline(model, pos);
+                if (newline !== null) {
+                    var indent = newline.indent;
+                    if (!newline.completed) {
+                        var options = model.getOptions();
+                        indent += options.insertSpaces === false ? '\\t'
+                            : new Array((options.tabSize || 4) + 1).join(' ');
+                    }
+                    var insertion = '\\n' + indent;
+                    if (newline.closeWhitespace !== null) {
+                        insertion += '\\n' + newline.indent;
+                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    editor.executeEdits('htmlElementNewline', [{
+                        range: {
+                            startLineNumber: pos.lineNumber, startColumn: pos.column,
+                            endLineNumber: pos.lineNumber,
+                            endColumn: pos.column + (newline.closeWhitespace || 0)
+                        },
+                        text: insertion,
+                        forceMoveMarkers: true
+                    }]);
+                    editor.setPosition({ lineNumber: pos.lineNumber + 1,
+                        column: indent.length + 1 });
+                    return;
+                }
+                if (!_isInTagAttributes(model, pos, true)) return;
+
+                if (!context) return;
+                var ltIdx = context.offset;
+                var tagMatch = context.text.match(/^<([\\w:-]+)/);
                 if (!tagMatch) return;
                 var ltPos = model.getPositionAt(ltIdx);
-                var alignCol = ltPos.column + 1 + tagMatch[1].length + 1;
+                var tabSize = (model.getOptions && model.getOptions().tabSize) || 4;
+                var prefix = model.getLineContent(ltPos.lineNumber).substring(0, ltPos.column - 1);
+                var visualCol = 1;
+                for (var p = 0; p < prefix.length; p++) {
+                    visualCol += prefix.charAt(p) === '\\t'
+                        ? tabSize - ((visualCol - 1) % tabSize) : 1;
+                }
+                var alignCol = visualCol + 1 + tagMatch[1].length + 1;
                 var pad = '';
                 for (var k = 1; k < alignCol; k++) pad += ' ';
 
@@ -3035,19 +3329,33 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
                 }]);
                 editor.setPosition({ lineNumber: pos.lineNumber + 1, column: alignCol });
             });
-        });
+        };
+        monaco.editor.onDidCreateEditor(_attachHtmlEditor);
 
         // 6. HTML document formatting — registered after the built-in formatter (see 1b) so Monaco's "last registered wins" rule gives it precedence.
         function _registerFormattingProvider(monaco) {
         monaco.languages.registerDocumentFormattingEditProvider('html', {
             provideDocumentFormattingEdits: function (model, options) {
-                var formatted = _formatHtml(model.getValue(), options);
-                if (formatted == null) {
+                var original = model.getValue();
+                var formatted = _formatHtml(original, options);
+                if (formatted == null || formatted === original) {
                     return [];
                 }
+                var start = 0;
+                while (start < original.length && start < formatted.length &&
+                       original.charAt(start) === formatted.charAt(start)) { start++; }
+                var originalEnd = original.length;
+                var formattedEnd = formatted.length;
+                while (originalEnd > start && formattedEnd > start &&
+                       original.charAt(originalEnd - 1) === formatted.charAt(formattedEnd - 1)) {
+                    originalEnd--;
+                    formattedEnd--;
+                }
+                var from = model.getPositionAt(start);
+                var to = model.getPositionAt(originalEnd);
                 return [{
-                    range: model.getFullModelRange(),
-                    text: formatted
+                    range: new monaco.Range(from.lineNumber, from.column, to.lineNumber, to.column),
+                    text: formatted.substring(start, formattedEnd)
                 }];
             }
         });
@@ -3071,6 +3379,9 @@ Registers as window.MONACO_LANGUAGE_HTML.`,
         directives: DIRECTIVES,
         tokenizer:  TOKENIZER,
         register:   register,
+        attachEditor: function (editor) {
+            if (_attachHtmlEditor) { _attachHtmlEditor(editor); }
+        },
 
         /** Rebuilds Angular Provider directive scope-property completions/hover/validation. @param {Array} providers - {sys_id, name, type, script}[] */
         setProviders: setProviders,

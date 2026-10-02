@@ -7664,6 +7664,92 @@ Features version history, side-by-side diff comparison, related lists, and user 
 
                 var _jsFormattingProviderRegistered = false;
 
+                function _removeLeadingCssRuleGaps(formatted) {
+                    var lines = formatted.split('\\n');
+                    for (var i = 0; i < lines.length - 2; i++) {
+                        if (!/\\{[ \\t]*$/.test(lines[i])) {
+                            continue;
+                        }
+                        var next = i + 1;
+                        while (next < lines.length && !lines[next].trim()) {
+                            next++;
+                        }
+                        if (next === i + 1) {
+                            continue;
+                        }
+                        var childRule = false;
+                        for (var k = next; k < lines.length; k++) {
+                            var line = lines[k].trim();
+                            if (!line || /^\\/\\*|^\\/\\//.test(line) || /[;}]/.test(line)) {
+                                break;
+                            }
+                            if (line.indexOf('{') !== -1) {
+                                childRule = true;
+                                break;
+                            }
+                        }
+                        if (childRule) {
+                            lines.splice(i + 1, next - i - 1);
+                        }
+                    }
+                    return lines.join('\\n');
+                }
+
+                function _restoreInlineCssComments(before, after) {
+                    var sourceLines = before.split(/\\r?\\n/);
+                    var lines = after.split('\\n');
+                    var searchFrom = 0;
+                    sourceLines.forEach(function (sourceLine) {
+                        var inline = sourceLine.match(/^(.*\\S)[ \\t]+(\\/\\*[^\\n]*?\\*\\/)[ \\t]*$/);
+                        if (!inline) {
+                            return;
+                        }
+                        var anchor = inline[1].replace(/\\s/g, '');
+                        for (var i = searchFrom; i < lines.length; i++) {
+                            if (lines[i].trim() !== inline[2]) {
+                                continue;
+                            }
+                            var previous = i - 1;
+                            while (previous >= 0 && !lines[previous].trim()) {
+                                previous--;
+                            }
+                            if (previous < 0 || lines[previous].replace(/\\s/g, '') !== anchor) {
+                                continue;
+                            }
+                            lines[previous] += ' ' + inline[2];
+                            lines.splice(previous + 1, i - previous);
+                            searchFrom = previous + 1;
+                            break;
+                        }
+                    });
+                    return lines.join('\\n');
+                }
+
+                function _applyCssFormattingEdit(editor, model, before, after) {
+                    if (before === after) {
+                        return;
+                    }
+                    var start = 0;
+                    while (start < before.length && start < after.length &&
+                           before.charAt(start) === after.charAt(start)) {
+                        start++;
+                    }
+                    var beforeEnd = before.length;
+                    var afterEnd = after.length;
+                    while (beforeEnd > start && afterEnd > start &&
+                           before.charAt(beforeEnd - 1) === after.charAt(afterEnd - 1)) {
+                        beforeEnd--;
+                        afterEnd--;
+                    }
+                    var from = model.getPositionAt(start);
+                    var to = model.getPositionAt(beforeEnd);
+                    editor.executeEdits('cssFormattingSpacing', [{
+                        range: new monaco.Range(from.lineNumber, from.column,
+                            to.lineNumber, to.column),
+                        text: after.substring(start, afterEnd),
+                    }]);
+                }
+
                 // Calls the TypeScript worker directly, forwarding user prefs as format options; more reliable than the removed setFormattingOptions.
                 function _registerJsFormattingProvider() {
                     if (_jsFormattingProviderRegistered || !window.monaco) {
@@ -7679,91 +7765,118 @@ Features version history, side-by-side diff comparison, related lists, and user 
                     _jsFormattingProviderRegistered = true;
 
                     function _buildFmtProvider(getWorker) {
-                        return {
-                            provideDocumentFormattingEdits: function (
-                                model,
-                                monacoOptions
-                            ) {
-                                return getWorker()
-                                    .then(function (workerFactory) {
-                                        return workerFactory(model.uri);
-                                    })
-                                    .then(function (worker) {
-                                        return worker.getFormattingEditsForDocument(
-                                            model.uri.toString(),
-                                            {
-                                                baseIndentSize: 0,
-                                                indentSize:
-                                                    $scope.userPrefs.tabSize,
-                                                tabSize:
-                                                    $scope.userPrefs.tabSize,
-                                                convertTabsToSpaces:
-                                                    monacoOptions.insertSpaces,
-                                                insertSpaces:
-                                                    monacoOptions.insertSpaces,
-                                                newLineCharacter: '\\n',
-                                                indentStyle: 2, // Smart
-                                                insertSpaceAfterCommaDelimiter: true,
-                                                insertSpaceAfterConstructor: false,
-                                                insertSpaceAfterSemicolonInForStatements: true,
-                                                insertSpaceBeforeAndAfterBinaryOperators: true,
-                                                insertSpaceAfterKeywordsInControlFlowStatements: true,
-                                                insertSpaceAfterFunctionKeywordForAnonymousFunctions:
-                                                    !!$scope.userPrefs
-                                                        .insertSpaceBeforeFuncParen,
-                                                insertSpaceBeforeFunctionParenthesis:
-                                                    !!$scope.userPrefs
-                                                        .insertSpaceBeforeFuncParen,
-                                                insertSpaceAfterOpeningAndBeforeClosingNonemptyParenthesis: false,
-                                                insertSpaceAfterOpeningAndBeforeClosingNonemptyBrackets: false,
-                                                insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces: true,
-                                                insertSpaceAfterOpeningAndBeforeClosingEmptyBraces: false,
-                                                insertSpaceAfterOpeningAndBeforeClosingTemplateStringBraces: false,
-                                                insertSpaceAfterOpeningAndBeforeClosingJsxExpressionBraces: false,
-                                                trimTrailingWhitespace: true,
-                                                semicolons: 'ignore',
-                                            }
-                                        );
-                                    })
-                                    .then(function (edits) {
-                                        if (!edits || !edits.length) {
-                                            return [];
-                                        }
-                                        return edits.map(function (edit) {
-                                            var start = model.getPositionAt(
-                                                edit.span.start
-                                            );
-                                            var end = model.getPositionAt(
-                                                edit.span.start +
-                                                    edit.span.length
-                                            );
-                                            return {
-                                                range: new monaco.Range(
-                                                    start.lineNumber,
-                                                    start.column,
-                                                    end.lineNumber,
-                                                    end.column
-                                                ),
-                                                text: edit.newText,
-                                            };
-                                        });
+                        function format(model, monacoOptions, range) {
+                            var before = model.getValue();
+                            var version = model.getVersionId();
+                            var start = range ? model.getOffsetAt({ lineNumber: range.startLineNumber, column: range.startColumn }) : 0;
+                            var end = range ? model.getOffsetAt({ lineNumber: range.endLineNumber, column: range.endColumn }) : before.length;
+                            var options = {
+                                baseIndentSize: 0,
+                                indentSize:
+                                    $scope.userPrefs.tabSize,
+                                tabSize:
+                                    $scope.userPrefs.tabSize,
+                                convertTabsToSpaces:
+                                    monacoOptions.insertSpaces,
+                                insertSpaces:
+                                    monacoOptions.insertSpaces,
+                                newLineCharacter: '\\n',
+                                indentStyle: 2, // Smart
+                                insertSpaceAfterCommaDelimiter: true,
+                                insertSpaceAfterConstructor: false,
+                                insertSpaceAfterSemicolonInForStatements: true,
+                                insertSpaceBeforeAndAfterBinaryOperators: true,
+                                insertSpaceAfterKeywordsInControlFlowStatements: true,
+                                insertSpaceAfterFunctionKeywordForAnonymousFunctions:
+                                    !!$scope.userPrefs
+                                        .insertSpaceBeforeFuncParen,
+                                insertSpaceBeforeFunctionParenthesis:
+                                    !!$scope.userPrefs
+                                        .insertSpaceBeforeFuncParen,
+                                insertSpaceAfterOpeningAndBeforeClosingNonemptyParenthesis: false,
+                                insertSpaceAfterOpeningAndBeforeClosingNonemptyBrackets: false,
+                                insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces: true,
+                                insertSpaceAfterOpeningAndBeforeClosingEmptyBraces: false,
+                                insertSpaceAfterOpeningAndBeforeClosingTemplateStringBraces: false,
+                                insertSpaceAfterOpeningAndBeforeClosingJsxExpressionBraces: false,
+                                trimTrailingWhitespace: true,
+                                semicolons: 'ignore',
+                            };
+                            return getWorker()
+                                .then(function (factory) { return factory(model.uri); })
+                                .then(function (worker) {
+                                    return range
+                                        ? worker.getFormattingEditsForRange(model.uri.toString(), start, end, options)
+                                        : worker.getFormattingEditsForDocument(model.uri.toString(), options);
+                                })
+                                .then(function (edits) {
+                                    if (model.isDisposed() || model.getVersionId() !== version) return [];
+                                    var after = before;
+                                    (edits || []).slice().sort(function (a, b) { return b.span.start - a.span.start; }).forEach(function (edit) {
+                                        after = after.substring(0, edit.span.start) + edit.newText + after.substring(edit.span.start + edit.span.length);
                                     });
-                            },
+                                    // Tokenise the whole document so comment-like text in strings is left alone.
+                                    var lines = after.split('\\n');
+                                    var tokens = monaco.editor.tokenize(after, model.getLanguageId());
+                                    var firstLine = range ? range.startLineNumber - 1 : 0;
+                                    var lastLine = range ? range.endLineNumber - 1 : lines.length - 1;
+                                    function isComment(line, column) {
+                                        var list = tokens[line] || [];
+                                        for (var t = list.length - 1; t >= 0; t--) {
+                                            if (list[t].offset <= column) return /comment/.test(list[t].type);
+                                        }
+                                        return false;
+                                    }
+                                    function width(indent) {
+                                        var result = 0;
+                                        for (var k = 0; k < indent.length; k++) {
+                                            result += indent.charAt(k) === '\\t' ? options.tabSize - result % options.tabSize : 1;
+                                        }
+                                        return result;
+                                    }
+                                    for (var i = firstLine; i <= lastLine; i++) {
+                                        var opening = /^([ \\t]*)\\/\\*\\*?[ \\t]*\\r?$/.exec(lines[i]);
+                                        if (!opening || !isComment(i, opening[1].length)) continue;
+                                        var j = i + 1;
+                                        var body = [];
+                                        for (; j <= lastLine; j++) {
+                                            var marker = /^([ \\t]*)\\*(.*)$/.exec(lines[j]);
+                                            if (!marker || !isComment(j, marker[1].length)) break;
+                                            body.push({ line: j, indent: marker[1], rest: '*' + marker[2] });
+                                            if (/^\\/[ \\t]*\\r?$/.test(marker[2])) break;
+                                        }
+                                        if (!body.length || !/^\\*\\/[ \\t]*\\r?$/.test(body[body.length - 1].rest)) continue;
+                                        var base = width(opening[1]);
+                                        // Retain the usual aligned or one-space-offset style; remove excess padding.
+                                        var offset = body.some(function (item) { return width(item.indent) === base + 1; }) ? ' ' : '';
+                                        body.forEach(function (item) {
+                                            if (width(item.indent) > base + 1) lines[item.line] = opening[1] + offset + item.rest;
+                                        });
+                                        i = j;
+                                    }
+                                    after = lines.join('\\n');
+                                    if (after === before) return [];
+                                    var prefix = 0;
+                                    while (prefix < before.length && prefix < after.length && before.charAt(prefix) === after.charAt(prefix)) prefix++;
+                                    var beforeEnd = before.length, afterEnd = after.length;
+                                    while (beforeEnd > prefix && afterEnd > prefix && before.charAt(beforeEnd - 1) === after.charAt(afterEnd - 1)) { beforeEnd--; afterEnd--; }
+                                    var from = model.getPositionAt(prefix), to = model.getPositionAt(beforeEnd);
+                                    return [{ range: new monaco.Range(from.lineNumber, from.column, to.lineNumber, to.column), text: after.substring(prefix, afterEnd) }];
+                                });
+                        }
+                        return {
+                            provideDocumentFormattingEdits: function (model, options) { return format(model, options); },
+                            provideDocumentRangeFormattingEdits: function (model, range, options) { return format(model, options, range); },
                         };
                     }
-                    monaco.languages.registerDocumentFormattingEditProvider(
-                        'javascript',
-                        _buildFmtProvider(
-                            monaco.languages.typescript.getJavaScriptWorker
-                        )
-                    );
+                    function register(language, getWorker) {
+                        var provider = _buildFmtProvider(getWorker);
+                        monaco.languages.registerDocumentFormattingEditProvider(language, provider);
+                        monaco.languages.registerDocumentRangeFormattingEditProvider(language, provider);
+                    }
+                    register('javascript', monaco.languages.typescript.getJavaScriptWorker);
                     if (monaco.languages.typescript.getTypeScriptWorker) {
-                        monaco.languages.registerDocumentFormattingEditProvider(
-                            'typescript',
-                            _buildFmtProvider(
-                                monaco.languages.typescript.getTypeScriptWorker
-                            )
-                        );
+                        register('typescript', monaco.languages.typescript.getTypeScriptWorker);
                     }
                 }
 
@@ -7967,6 +8080,10 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     /* Monaco reads FormattingOptions from the
                                        model, so both must be updated. */
                                     var _fmtModel = ed.getModel();
+                                    var _cssSource = _fmtModel &&
+                                        /^(css|scss)$/.test(_fmtModel.getLanguageId())
+                                            ? _fmtModel.getValue()
+                                            : null;
                                     ed.updateOptions({
                                         insertSpaces: !!useSpaces,
                                     });
@@ -7987,7 +8104,19 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     }
                                     var result = action.run();
                                     if (result && result.then) {
-                                        result.then(_resetIndent, _resetIndent);
+                                        result.then(function () {
+                                            if (_cssSource !== null && _fmtModel &&
+                                                !_fmtModel.isDisposed()) {
+                                                var formatted = _fmtModel.getValue();
+                                                var restored = _restoreInlineCssComments(
+                                                    _cssSource,
+                                                    _removeLeadingCssRuleGaps(formatted)
+                                                );
+                                                _applyCssFormattingEdit(ed, _fmtModel,
+                                                    formatted, restored);
+                                            }
+                                            _resetIndent();
+                                        }, _resetIndent);
                                     } else {
                                         _resetIndent();
                                     }
@@ -8331,11 +8460,15 @@ Features version history, side-by-side diff comparison, related lists, and user 
                                     },
                                 });
                             }
+                            if (lang === 'html') {
+                                loadHtmlMonarchDts(function () {
+                                    if (window.MONACO_LANGUAGE_HTML &&
+                                        MONACO_LANGUAGE_HTML.attachEditor) {
+                                        MONACO_LANGUAGE_HTML.attachEditor(ed);
+                                    }
+                                });
+                            }
                         } // end _doCreate
-                        // HTML Monarch bundle loads async; editor renders with the built-in tokenizer until it's registered, then re-tokenizes automatically.
-                        if (lang === 'html') {
-                            loadHtmlMonarchDts();
-                        }
                         _doCreate();
                     }
 
