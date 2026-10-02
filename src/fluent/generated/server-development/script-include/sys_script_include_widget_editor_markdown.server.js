@@ -93,7 +93,18 @@ WidgetEditorMarkdownAjax.prototype = Object.extendsObject(AbstractAjaxProcessor,
         var table = root ? root[1] : '';
         // Composite-keyed updates such as dictionary entries omit the root table.
         // The child element names the record table, not its table attribute.
-        var recordElement = payload.match(/<record_update\b[^>]*>\s*(?:<!--[\s\S]*?-->\s*)*<([a-z][a-z0-9_]*)\b/i);
+        var rootElement = payload.match(/<record_update\b[^>]*>/i);
+        var cursor = rootElement ? rootElement.index + rootElement[0].length : -1;
+        if (cursor !== -1) {
+            while (cursor < payload.length) {
+                if (/\s/.test(payload.charAt(cursor))) { cursor++; continue; }
+                if (payload.slice(cursor, cursor + 4) !== '<!--') break;
+                var commentEnd = payload.indexOf('-->', cursor + 4);
+                if (commentEnd === -1) { cursor = -1; break; }
+                cursor = commentEnd + 3;
+            }
+        }
+        var recordElement = cursor === -1 ? null : payload.slice(cursor).match(/^<([a-z][a-z0-9_]*)\b/i);
         if (recordElement) table = recordElement[1];
         var id = '';
         if (this._table(table)) {

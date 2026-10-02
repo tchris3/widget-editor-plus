@@ -98,6 +98,16 @@ test('dictionary updates resolve from the record element without a root table or
         'must not link the companion record when the dictionary ID is missing');
 });
 
+test('record element lookup handles long comment runs and an unfinished comment', () => {
+    const { api } = server();
+    const id = 'a'.repeat(32);
+    const update = payload => ({ getValue: key => key === 'payload' ? payload : '' });
+    const comments = '<!-- note -->'.repeat(3000);
+    const payload = '<record_update>' + comments + '<sys_dictionary><sys_id>' + id + '</sys_id></sys_dictionary></record_update>';
+    assert.equal(api._target(update(payload)).table, 'sys_dictionary');
+    assert.equal(api._target(update('<record_update>' + comments + '<!-- unfinished')), null);
+});
+
 test('Markdown character escaping is disabled by default and can be enabled', () => {
     const context = {};
     vm.createContext(context); vm.runInContext(clientSource, context);
