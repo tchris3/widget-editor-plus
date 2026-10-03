@@ -1042,6 +1042,7 @@ UiPage({
             margin-left: 1rem;
             width: 2rem;
             height: 2rem;
+            padding: 0;
         }
         button.dc-collapse-btn::before {
             content: '';
@@ -1070,6 +1071,7 @@ UiPage({
             margin-left: 1rem;
             width: 2rem;
             height: 2rem;
+            padding: 0;
         }
       
         button.da-expand-btn::before {
