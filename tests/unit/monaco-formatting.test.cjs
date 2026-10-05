@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const { readFluentField } = require('../helpers/fluent-source.cjs');
 
 function embeddedScript(path, marker) {
     const source = fs.readFileSync(path, 'utf8');
@@ -11,6 +12,11 @@ function embeddedScript(path, marker) {
     function visit(node) {
         if (ts.isNoSubstitutionTemplateLiteral(node) && node.text.includes(marker)) {
             script = node.text;
+        }
+        if (ts.isPropertyAssignment(node) && ts.isCallExpression(node.initializer)
+            && node.initializer.expression.getText(ast) === 'Now.include') {
+            const included = readFluentField(path, node.name.getText(ast));
+            if (included.includes(marker)) script = included;
         }
         ts.forEachChild(node, visit);
     }

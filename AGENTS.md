@@ -16,7 +16,7 @@ Key paths beneath `src/fluent/generated/`:
 
 | Path | Purpose |
 |---|---|
-| `other/sys-ui-page/` | Widget Editor+, Compare+, Assistant, Code Search+ and Properties pages. The editor and Compare+ filenames use sys_ids; newer pages have descriptive names. |
+| `other/sys-ui-page/` | Widget Editor+, Compare+, Assistant, Code Search+ and Properties pages. `.now.ts` files declare metadata and include adjacent `.html` and `.client.js` files; the editor and Compare+ metadata filenames use sys_ids. |
 | `other/sp-widget/sp_widget_widget_editor_debug_menu/` | Debug Context Menu template, scripts and styles. |
 | `client-development/ui-script/` | Monaco bootstrap, language services and code actions. |
 | `server-development/script-include/` | Server APIs for the editor, Assistant, Code Search and Markdown export. |
@@ -28,16 +28,20 @@ Key paths beneath `src/fluent/generated/`:
 
 Run from the repository root:
 
+Use Node.js 24 LTS, as specified in `.nvmrc` and `package.json`.
+
 | Command | Purpose |
 |---|---|
 | `npm run build` | Compile Fluent metadata; run after source changes and inspect relevant `dist/app/update/` output. |
-| `node --test tests/unit/*.test.cjs` | Unit suite; some checks launch a browser. Use relevant test files during development. |
+| `npm run test:unit` | Unit suite; some checks launch a browser. Use relevant test files during development. |
 | `npm run test:e2e` | Playwright against the instance configured in `.env`; fixtures create and remove test records. |
 | `npm run pack` | Package the build and generate retrieved update-set XML in `target/`. |
 | `npm run deploy` | Install on the configured ServiceNow instance. |
 | `npm run transform` / `npm run types` | Transform metadata / refresh instance typings. |
 
 Documentation-only edits need diff and link checks, not a build.
+
+Pull requests run the build and unit suite through the `Build and unit tests` check. Require this check in the target branch's protection settings before merging. Release workflows also run the unit suite before packaging or publishing; never bypass a failing check.
 
 ## Platform pitfalls
 

@@ -1,0 +1,2053 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+    <j:set var="jvar_hide_response_time" value="true"/>
+
+    <!-- Ensure the ServiceNow header frame is present; redirect if accessed directly -->
+    <script>
+        (function () {
+            if (window.top === window) {
+                var page = window.location.pathname.substring(1) + window.location.search + window.location.hash;
+                window.location.replace('/now/nav/ui/classic/params/target/' + encodeURIComponent(page));
+            }
+        })();
+    </script>
+
+    <g:requires name="scripts/snc-code-editor/monaco.bundle.min.jsx" params="sysparm_substitute=false" />
+    <g:requires name="monaco_plus_bootstrap.jsdbx" params="sysparm_substitute=false" />
+    <g:requires name="we_history_sync.jsdbx" params="sysparm_substitute=false" />
+    <g:requires name="scripts/angular_1.5.11/angular.min.js" position="last" />
+    <link rel="stylesheet" href="/styles/retina_icons/retina_icons.css" />
+
+    <script>
+        window.WE_CODE_SEARCH_CONFIG = {
+            siteTitle: '${gs.getProperty("glide.product.name", "ServiceNow")}'
+        };
+    </script>
+
+    <style>
+        #page_timing_div {
+            display: none !important;
+        }
+
+        /* Base Reset */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 16px;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0 !important;
+            overflow: hidden;
+            overscroll-behavior: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: var(--now-global-font-size--md, 14px);
+            line-height: 1.45;
+            background: rgb(var(--now-color_background--primary, 255 255 255));
+            color: rgb(var(--now-color_text--primary, 29 29 29));
+        }
+
+        button, input, select, textarea {
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
+        }
+
+        [ng-cloak], .ng-cloak {
+            display: none !important;
+        }
+
+        /* App Shell */
+        .cs-app {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100vw;
+            height: 100vh;
+            max-height: 100vh;
+            display: grid;
+            grid-template-rows: auto auto minmax(0, 1fr);
+            overflow: hidden !important;
+            overscroll-behavior: none;
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+        }
+
+        .dc-header {
+            grid-row: 1;
+            background: rgb(var(--now-color_chrome--brand-5, var(--now-color--primary-0, 221, 237, 233)));
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235)));
+            flex-shrink: 0;
+            z-index: 10;
+            margin: 0;
+        }
+
+        .dc-header-row {
+            padding: 0.75rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.25rem;
+        }
+
+        .dc-title {
+            font-size: var(--now-font-size--lg, 18px);
+            font-weight: 600;
+            color: rgb(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56)));
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .dc-title strong {
+            font-weight: 700;
+        }
+
+        .cs-header-search {
+            display: flex;
+            flex: 1;
+            gap: 0.5rem;
+            margin: 0 auto;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cs-search-input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            max-width: 38rem;
+        }
+
+        .cs-search-control {
+            width: 100%;
+            height: 2.25rem;
+            padding: 0 4.25rem 0 0.875rem;
+            font-size: var(--now-global-font-size--md, 14px);
+            font-family: inherit;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            border: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 200, 204, 210)));
+            border-radius: var(--now-form-field--border-radius, 4px);
+            outline: none;
+            box-shadow: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .cs-search-control:hover {
+            border-color: rgb(var(--now-color_border--primary, 150, 155, 165));
+        }
+
+        .cs-search-control:focus {
+            border-color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            box-shadow: 0 0 0 1px rgb(var(--now-color--primary-2, 23, 103, 91));
+        }
+
+        .cs-search-actions {
+            position: absolute;
+            right: 0.35rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+            height: 1.75rem;
+        }
+
+        .cs-search-actions .btn {
+            border: none;
+            background: transparent;
+            color: rgb(var(--now-color_text--secondary, 110, 115, 125));
+            height: 100%;
+            padding: 0 0.35rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: none;
+            border-radius: var(--now-button--border-radius, 4px);
+            transition: color 0.15s ease;
+        }
+        .cs-search-actions .btn:hover {
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            background: transparent;
+        }
+
+        /* Header action buttons matching Compare+ styling */
+        .cs-header-search .btn {
+            height: 2.25rem;
+            padding: 0 0.875rem;
+            font-size: var(--now-global-font-size--md, 14px);
+            font-weight: 600;
+            line-height: 1;
+            border-radius: var(--now-button--border-radius, 4px);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: none;
+        }
+        .cs-header-search .btn:focus-visible {
+            outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142)));
+            outline-offset: 2px;
+        }
+        .cs-header-search .btn:disabled,
+        .cs-header-search .btn[disabled] {
+            opacity: 0.45;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        /* Primary button: Search submit &amp; header bar primary buttons */
+        .dc-header .btn-primary,
+        .cs-header-search .btn-primary {
+            background-color: rgb(var(--now-button--primary--background-color, var(--now-color--primary-1, 30, 133, 109))) !important;
+            border: 1px solid rgb(var(--now-button--primary--border-color, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color, var(--now-color--neutral-0, 255, 255, 255))) !important;
+        }
+        .dc-header .btn-primary:hover:not(:disabled),
+        .cs-header-search .btn-primary:hover:not(:disabled) {
+            background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--hover, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--hover, var(--now-color--neutral-0, 255, 255, 255))) !important;
+        }
+        .dc-header .btn-primary:focus,
+        .dc-header .btn-primary:focus:hover,
+        .cs-header-search .btn-primary:focus,
+        .cs-header-search .btn-primary:focus:hover {
+            background-color: rgb(var(--now-button--primary--background-color--hover, var(--now-color--primary-2, 23, 100, 82))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--hover, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--hover, var(--now-color--neutral-0, 255, 255, 255))) !important;
+            outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
+            outline-offset: 2px !important;
+        }
+        .dc-header .btn-primary:active:not(:disabled),
+        .dc-header .btn-primary.active,
+        .dc-header .btn-primary:active:hover,
+        .dc-header .btn-primary:active:focus,
+        .cs-header-search .btn-primary:active:not(:disabled),
+        .cs-header-search .btn-primary.active,
+        .cs-header-search .btn-primary:active:hover,
+        .cs-header-search .btn-primary:active:focus {
+            background-color: rgb(var(--now-button--primary--background-color--active, var(--now-color--primary-3, 15, 67, 55))) !important;
+            border-color: rgb(var(--now-button--primary--border-color--active, var(--now-color--primary-3, 15, 67, 55))) !important;
+            color: rgb(var(--now-button--primary--color--active, var(--now-color--neutral-0, 255, 255, 255))) !important;
+        }
+        .dc-header .btn-primary:disabled,
+        .dc-header .btn-primary[disabled],
+        .cs-header-search .btn-primary:disabled,
+        .cs-header-search .btn-primary[disabled] {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
+        }
+        /* Secondary button: Filter toggle &amp; any btn-default in header (header chrome styling) */
+        .dc-header .btn-default,
+        .cs-header-search .btn-default {
+            background-color: rgb(var(--now-color_background--primary, 255, 255, 255)) !important;
+            border: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 205, 212, 217))) !important;
+            color: rgb(var(--now-button--secondary--color, var(--now-color--neutral-18, 22, 27, 28))) !important;
+            border-radius: var(--now-button--border-radius, 4px) !important;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .dc-header .btn-default *,
+        .cs-header-search .btn-default * {
+            color: inherit !important;
+            fill: currentColor !important;
+        }
+        .dc-header .btn-default:hover:not(:disabled),
+        .cs-header-search .btn-default:hover:not(:disabled) {
+            background-color: rgba(var(--now-color--secondary-1, 1, 119, 142), 0.1) !important;
+            border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
+            color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
+        }
+        .dc-header .btn-default:focus,
+        .dc-header .btn-default:focus:hover,
+        .cs-header-search .btn-default:focus,
+        .cs-header-search .btn-default:focus:hover {
+            background-color: rgba(var(--now-color--secondary-1, 1, 119, 142), 0.1) !important;
+            border-color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
+            color: rgb(var(--now-color--secondary-1, 1, 119, 142)) !important;
+            outline: 2px solid rgb(var(--now-color_focus-ring, var(--now-color--focus-ring, 1, 119, 142))) !important;
+            outline-offset: 2px !important;
+        }
+        .dc-header .btn-default:active:not(:disabled),
+        .dc-header .btn-default.active,
+        .dc-header .btn-default:active:hover,
+        .dc-header .btn-default:active:focus,
+        .cs-header-search .btn-default:active:not(:disabled),
+        .cs-header-search .btn-default.active,
+        .cs-header-search .btn-default:active:hover,
+        .cs-header-search .btn-default:active:focus {
+            background-color: rgba(var(--now-color--secondary-1, 1, 119, 142), 0.18) !important;
+            border-color: rgb(var(--now-color--secondary-2, 1, 89, 107)) !important;
+            color: rgb(var(--now-color--secondary-2, 1, 89, 107)) !important;
+        }
+        .dc-header .btn-default:disabled,
+        .dc-header .btn-default[disabled],
+        .cs-header-search .btn-default:disabled,
+        .cs-header-search .btn-default[disabled] {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
+        }
+
+        .cs-header-toggles {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .cs-toggle-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-weight: 500;
+            color: rgb(var(--now-color--neutral-0, var(--now-color--neutral-12, 38, 50, 56)));
+            cursor: pointer;
+            user-select: none;
+            margin: 0;
+            white-space: nowrap;
+            padding: 0.35rem 0.55rem;
+            border-radius: 4px;
+            transition: background 0.12s ease;
+        }
+
+        .cs-toggle-label:hover {
+            background: rgba(var(--now-color--neutral-0, 0, 0, 0), 0.05);
+        }
+
+        .cs-toggle-label input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+            accent-color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            width: 1rem;
+            height: 1rem;
+        }
+
+        /* Body Layout */
+        .cs-body {
+            grid-row: 3;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: 21rem minmax(0, 1fr);
+            grid-template-rows: minmax(0, 1fr);
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .cs-sidebar {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            border-right: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235)));
+            overflow: hidden;
+        }
+
+        /* Sidebar Panes (Accordion) */
+        .cs-pane {
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+        }
+
+        .cs-pane-expanded {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+
+        .cs-pane-collapsed {
+            flex: 0 0 auto;
+        }
+
+        .cs-pane-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s ease;
+        }
+
+        .cs-pane-head:hover {
+            background: rgb(var(--now-color_background--tertiary, 238, 240, 242));
+        }
+
+        .cs-pane-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .cs-pane-chevron {
+            font-size: 0.72rem;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+        }
+
+        .cs-pane-badge {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            max-width: 9.5rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cs-pane-disabled {
+            opacity: 0.55;
+        }
+
+        .cs-pane-disabled .cs-pane-head {
+            cursor: not-allowed;
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+        }
+
+        .cs-pane-disabled .cs-pane-head:hover {
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+        }
+
+        .cs-pane-disabled-text {
+            font-size: 0.72rem;
+            font-style: italic;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+        }
+
+        .cs-pane-body {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+        }
+
+        .cs-side-group-box {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+        }
+
+        .cs-label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.35rem;
+        }
+
+        .cs-table-header-bar {
+            padding: 0.65rem 1rem;
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+        }
+
+        .cs-table-actions-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .cs-table-count-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            display: flex;
+            align-items: center;
+        }
+
+        .cs-table-count-badge strong {
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            margin: 0 0.25rem 0 0;
+        }
+
+        .cs-results-pane-header {
+            padding: 0.65rem 1rem;
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+        }
+
+        .cs-pane-empty-notice {
+            padding: 2rem 1rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+        }
+
+        .cs-table-list {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .cs-table-item {
+            border: 1px solid transparent;
+            border-radius: var(--now-form-field--border-radius, 4px);
+            padding: 0.45rem 0.6rem;
+            margin-bottom: 0.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.12s ease, border-color 0.12s ease;
+            cursor: pointer;
+        }
+
+        .cs-table-item:hover {
+            background: rgb(var(--now-color_background--tertiary, 238, 240, 242));
+        }
+
+        .cs-table-item.active {
+            background: rgba(var(--now-color--primary-0, 221, 237, 233), 0.5);
+            border-color: rgba(var(--now-color--primary-2, 23, 103, 91), 0.35);
+        }
+
+        .cs-table-result-item {
+            padding: 0.5rem 0.65rem;
+        }
+
+        /* Tracks which table's results section is currently scrolled into view — reuses the
+           same subtle background as :hover rather than introducing another highlight colour. */
+        .cs-table-result-item.in-view {
+            background: rgb(var(--now-color_background--tertiary, 238, 240, 242));
+        }
+
+        .cs-check {
+            accent-color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            width: 0.95rem;
+            height: 0.95rem;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .cs-table-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .cs-table-name {
+            font-weight: 600;
+            font-size: 0.82rem;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cs-table-name-label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cs-session-dot {
+            display: inline-block;
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            background: rgb(var(--now-color_alert--high-2, 221 145 34));
+            margin-left: 0.25rem;
+            flex-shrink: 0;
+            vertical-align: middle;
+            position: relative;
+            top: -0.0625rem;
+        }
+
+        .cs-table-id {
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cs-filter-badge {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.62rem;
+            font-weight: 700;
+            padding: 0.05rem 0.3rem;
+            border-radius: 9999px;
+            background: rgb(var(--now-alert--warning--background-color, 254, 243, 199));
+            color: rgb(var(--now-alert--warning--color, 146, 64, 14));
+            border: 1px solid rgba(var(--now-color_alert--warning-1, 245, 158, 11), 0.3);
+            vertical-align: middle;
+        }
+
+        .cs-table-count-pill {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.1rem 0.45rem;
+            border-radius: 9999px;
+            background: rgba(var(--now-color--primary-2, 23, 103, 91), 0.15);
+            color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            flex-shrink: 0;
+        }
+
+        /* Main Search Results Area */
+        .cs-main {
+            min-width: 0;
+            min-height: 0;
+            height: 100%;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+            position: relative;
+        }
+
+        .cs-advanced { grid-row: 2; padding: .6rem 1rem; border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235)); flex-shrink: 0; max-height: 35vh; overflow: auto; }
+
+        .cs-cond-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .cs-cond-joiner {
+            flex-shrink: 0;
+            width: 2.25rem;
+            text-transform: lowercase;
+            font-weight: 700;
+            font-size: 0.78rem;
+            color: rgb(var(--now-color--primary-2, 23, 103, 91));
+        }
+
+        .cs-cond-operator {
+            width: 13rem;
+        }
+
+        .cs-cond-term {
+            min-width: 12rem;
+            width: 30rem;
+            field-sizing: content;
+        }
+
+        .cs-cond-joiner-btns {
+            display: flex;
+            gap: 0.25rem;
+            flex-shrink: 0;
+        }
+
+        .cs-toolbar {
+            grid-row: 3;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.65rem 1.25rem;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, var(--now-color_divider--secondary, 228, 230, 235)));
+            flex-shrink: 0;
+            min-height: 3.125rem;
+        }
+
+        .cs-toolbar-summary {
+            font-size: 0.84rem;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .cs-toolbar-summary strong {
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            font-weight: 700;
+        }
+
+        .cs-toolbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .cs-summary-sep {
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            opacity: 0.5;
+            padding: 0 0.15rem;
+        }
+
+        .cs-field-pill {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.15rem 0.5rem;
+            border-radius: var(--now-form-field--border-radius, 4px);
+            background: rgba(var(--now-color--primary-2, 23, 103, 91), 0.12);
+            color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            letter-spacing: 0.02em;
+        }
+
+        .cs-results-container-wrap {
+            display: contents;
+        }
+
+        .cs-field-pill.inactive {
+            background: rgb(var(--now-color_background--secondary, 246, 246, 248));
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+        }
+
+        .cs-results {
+            flex: 1 1 0%;
+            min-height: 0;
+            overflow-y: auto !important;
+            overflow-x: hidden;
+            position: relative;
+            padding: 0 1rem 1.25rem;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+
+        /* Empty / Initial State */
+        .cs-empty {
+            height: 100%;
+            min-height: 20rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            padding: 2rem;
+        }
+
+        .cs-empty-icon {
+            width: 3.5rem;
+            height: 3.5rem;
+            margin-bottom: 0.875rem;
+            color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            opacity: 0.7;
+        }
+
+        
+        /* No Results Icon */
+        .cs-empty h2 {
+            font-size: var(--now-font-size--lg, 1.15rem);
+            font-weight: 700;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            margin-bottom: 0.35rem;
+        }
+
+        .cs-empty p {
+            max-width: 28rem;
+            font-size: 0.84rem;
+            line-height: 1.5;
+        }
+
+        /* Searching Initial Empty State */
+        .cs-searching-empty {
+            padding: 4rem 1.5rem;
+            text-align: center;
+        }
+
+        .cs-searching-empty-msg {
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+
+        /* Toolbar searching state */
+        .cs-toolbar-searching-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .cs-toolbar-glass-wrap {
+            width: 1.75rem;
+            height: 1.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .cs-toolbar-glass-svg {
+            width: 1.15rem;
+            height: 1.15rem;
+            color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            animation: csSearchGlassScan 2.4s ease-in-out infinite;
+            transform-origin: 10px 10px;
+        }
+
+        @keyframes csSearchGlassScan {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+            25% {
+                transform: translate(2px, -2px) rotate(8deg);
+            }
+            50% {
+                transform: translate(-1.5px, -1.5px) rotate(-8deg);
+            }
+            75% {
+                transform: translate(-1px, 1.5px) rotate(-4deg);
+            }
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+        }
+
+        .cs-glass-glow {
+            animation: csGlassGlowPulse 1.8s ease-in-out infinite;
+            transform-origin: 10px 10px;
+        }
+
+        @keyframes csGlassGlowPulse {
+            0%, 100% {
+                opacity: 0.35;
+                transform: scale(0.92);
+            }
+            50% {
+                opacity: 0.9;
+                transform: scale(1.06);
+            }
+        }
+
+        .cs-toolbar-searching-text {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.84rem;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cs-toolbar-searching-title {
+            font-weight: 700;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+        }
+
+        .cs-toolbar-curr-table {
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cs-toolbar-curr-table code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8em;
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            background: rgba(var(--now-color--neutral-0, 0, 0, 0), 0.06);
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+        }
+
+        .cs-toolbar-searching-right {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            flex-shrink: 0;
+        }
+
+        .cs-toolbar-progress-count {
+            font-size: 0.78rem;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .cs-toolbar-progress-bar {
+            width: 9rem;
+            height: 0.45rem;
+            margin-bottom: 0;
+            background-color: rgb(var(--now-color_background--secondary, 232, 235, 240));
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+
+        .cs-toolbar-progress-fill {
+            height: 100%;
+            background-color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            transition: width 0.25s ease-out;
+            border-radius: 9999px;
+        }
+
+        .cs-toolbar-progress-percent {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            min-width: 2.1rem;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        /* Hierarchical Indentation */
+        .cs-table-group {
+            margin-bottom: 1.5rem;
+        }
+
+        /* Cancels .cs-results' own top padding so the first sticky table header sits flush
+           against the top of the results pane from the start, instead of leaving a gap that
+           only closes once scrolled past. */
+        .cs-group-table-view {
+            margin-top: -1rem;
+        }
+
+        /* Sticky table header: bleeds out to the full width of the results pane (cancelling
+           its horizontal padding) and stays pinned, with the field pills, while that table's
+           records scroll underneath. Opaque so scrolled-past cards never show through it. */
+        .cs-table-group-sticky {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            margin: 0 -1.25rem 0.75rem;
+            padding: 0.55rem 1.25rem 0.6rem;
+            background: rgb(var(--now-color_surface--brand-3, 255, 255, 255));
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            scroll-margin-top: 0.5rem;
+        }
+
+        /* Level 1: Record table (no indent) */
+        .cs-table-group-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .cs-field-toggle-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.4rem;
+            margin: 0.5rem 0 0;
+        }
+
+        .cs-field-toggle-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-right: 0.1rem;
+        }
+
+        .cs-field-toggle-pill {
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.15rem 0.55rem;
+            border-radius: 9999px;
+            border: 1px solid rgba(var(--now-color--primary-2, 23, 103, 91), 0.35);
+            background: rgba(var(--now-color--primary-0, 221, 237, 233), 0.45);
+            color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            cursor: pointer;
+            transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+        }
+
+        .cs-field-toggle-pill:hover {
+            opacity: 0.85;
+        }
+
+        .cs-field-toggle-pill.inactive {
+            background: transparent;
+            border-color: rgb(var(--now-color_border--secondary, 228, 230, 235));
+            color: rgb(var(--now-color_text--tertiary, 140, 145, 155));
+            text-decoration: line-through;
+        }
+
+        .cs-field-toggle-pill:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .cs-field-toggle-pill:disabled:hover {
+            opacity: 0.5;
+        }
+
+        .cs-match-meta .btn-icon:disabled {
+            cursor: not-allowed;
+            opacity: 0.45;
+        }
+
+        .cs-table-group-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .cs-table-group-label {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+        }
+
+        .cs-table-group-name {
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.75rem;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+        }
+
+        .cs-table-group-badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.12rem 0.5rem;
+            border-radius: 9999px;
+            background: rgba(var(--now-color--primary-2, 23, 103, 91), 0.12);
+            color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.12s ease;
+        }
+
+        .cs-table-group-badge:hover {
+            background: rgba(var(--now-color--primary-2, 23, 103, 91), 0.22);
+        }
+
+        /* Level 2: Record name (indented) */
+        .cs-card {
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            border-radius: var(--now-form-field--border-radius, 4px);
+            margin-left: 1.5rem;
+            margin-bottom: 0.85rem;
+            overflow: hidden;
+            /* Keep Monaco's high-z-index find/hover widgets inside the card's stacking
+               context so they pass underneath the sticky table header while scrolling. */
+            isolation: isolate;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+        }
+
+        .cs-card-flat {
+            margin-left: 0 !important;
+        }
+
+        .cs-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.6rem 0.85rem;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+        }
+
+        .cs-card-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        .cs-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            border-radius: 9999px;
+            padding: 0.1rem 0.45rem;
+            white-space: nowrap;
+        }
+
+        .cs-status-pill {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.65rem;
+            font-weight: 700;
+            line-height: 1;
+            padding: 0.15rem 0.45rem;
+            border-radius: 9999px;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .cs-status-active {
+            background: rgb(var(--now-alert--success--background-color, 220, 245, 227));
+            color: rgb(var(--now-alert--success--color, 22, 122, 66));
+            border: 1px solid rgba(var(--now-color_alert--success-1, 61, 174, 106), 0.35);
+        }
+
+        .cs-status-inactive {
+            background: rgb(var(--now-color_background--tertiary, 238, 240, 242));
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+        }
+
+        .cs-secondary-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.72rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: var(--now-form-field--border-radius, 4px);
+            background: rgb(var(--now-color_background--secondary, 246, 246, 248));
+            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            white-space: nowrap;
+        }
+
+        .cs-sec-label {
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            font-weight: 600;
+        }
+
+        .cs-record-link {
+            color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.9rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cs-filter-match-link {
+            font-weight: 700;
+            text-decoration: underline;
+        }
+
+        .cs-record-link:hover {
+            text-decoration: underline;
+            color: rgb(var(--now-color--primary-3, 18, 85, 75));
+        }
+
+        .cs-card-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .cs-updated {
+            font-size: 0.75rem;
+            color: rgb(var(--now-color_text--tertiary, 140, 145, 155));
+        }
+
+        /* Level 3: Fields (indented again) */
+        .cs-match-container {
+            margin: 0.6rem 0.85rem 0.85rem 1.5rem;
+            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            border-left: 3px solid rgb(var(--now-color--primary-2, 23, 103, 91));
+            border-radius: var(--now-form-field--border-radius, 4px);
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+            overflow: hidden;
+        }
+
+        .cs-match-row {
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+        }
+
+        .cs-match-row:last-child {
+            border-bottom: none;
+        }
+
+        .cs-match-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.35rem 0.85rem;
+            background: rgb(var(--now-color_background--secondary, 246, 246, 248));
+            border-bottom: 1px solid rgba(var(--now-color--neutral-0, 0, 0, 0), 0.06);
+        }
+
+        .cs-field-pill {
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: rgb(var(--now-color--primary-2, 23, 103, 91));
+            background: rgba(var(--now-color--primary-0, 221, 237, 233), 0.45);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+        }
+
+        .cs-line-pill {
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.7rem;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            margin-left: 0.4rem;
+        }
+
+        /* Monaco keyword matching uses native Monaco findController styling */
+
+        /* Monaco-style Code Snippet Box */
+        .cs-code-editor-box {
+            display: block;
+            position: relative;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            line-height: 1.55;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            border-top: 1px solid rgb(var(--now-color--neutral-2, 0, 0, 0));
+            overflow-x: auto;
+            padding: 0.45rem 0;
+        }
+
+        /* Paint the gutter on the container so its background and divider include the
+           vertical padding, while the line content keeps that breathing room. */
+        .cs-code-editor-box.cs-has-gutter::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 3.5rem;
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249));
+            border-right: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+        }
+
+        .cs-code-row {
+            display: flex;
+            position: relative;
+            min-width: max-content;
+        }
+
+        .cs-gutter-num {
+            display: block;
+            padding: 0 0.65rem 0 0.5rem;
+            color: rgb(var(--now-color_text--secondary, 140, 145, 155));
+            flex: 0 0 3.5rem;
+            user-select: none;
+            text-align: right;
+        }
+
+        .cs-code-line {
+            padding: 0 0.85rem;
+            white-space: pre;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            line-height: 1.55;
+            flex: 1 0 auto;
+        }
+
+        /* A separator is one shared row, so its rule cannot drift between independently rendered
+           gutter and content columns. */
+        .cs-code-row.cs-sep {
+            position: relative;
+            height: 1.55em;
+            min-width: 100%;
+        }
+
+        .cs-code-row.cs-sep::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            border-top: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+        }
+
+        .cs-code-box {
+            padding: 0.65rem 0.85rem;
+            margin: 0;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            line-height: 1.55;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+        }
+
+        mark.cs-highlight {
+            background: rgb(var(--now-alert--warning--background-color, var(--now-color_alert--warning-0, 254, 243, 199)));
+            color: rgb(var(--now-alert--warning--color, var(--now-color_alert--warning-3, 146, 64, 14)));
+            border-radius: 2px;
+            padding: 0 2px;
+            font-weight: 700;
+            box-shadow: 0 0 0 1px rgba(var(--now-color_alert--warning-1, 245, 158, 11), 0.4);
+        }
+
+        mark.cs-highlight-secondary {
+            background: rgb(var(--now-alert--info--background-color, var(--now-color_alert--info-0, 219, 234, 254)));
+            color: rgb(var(--now-alert--info--color, var(--now-color_alert--info-3, 30, 64, 175)));
+            border-radius: 2px;
+            padding: 0 2px;
+            font-weight: 700;
+            box-shadow: 0 0 0 1px rgba(var(--now-color_alert--info-1, 59, 130, 246), 0.4);
+        }
+
+        .cs-token-comment {
+            color: rgb(var(--now-color_text--tertiary, 92, 122, 92));
+            font-style: italic;
+        }
+
+        .cs-token-string {
+            color: rgb(var(--now-color--secondary-2, 163, 76, 46));
+        }
+
+        .cs-token-keyword {
+            color: rgb(var(--now-color--primary-2, 91, 72, 168));
+            font-weight: 600;
+        }
+
+        .cs-token-number,
+        .cs-token-literal {
+            color: rgb(var(--now-color--secondary-3, 31, 101, 143));
+        }
+
+        /* Inline Monaco Editor Box */
+        .cs-inline-monaco-wrap {
+            position: relative;
+            width: 100%;
+            background: rgb(var(--now-color_background--primary, 255 255 255));
+            border-top: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+        }
+
+        .cs-inline-monaco-host {
+            width: 100%;
+            height: 380px;
+            background: rgb(var(--now-color_background--primary, 255 255 255));
+        }
+
+        .cs-inline-monaco-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 2rem 1rem;
+            color: rgb(var(--now-color_text--tertiary, 92, 122, 92));
+            background: rgb(var(--now-color_background--primary, 255 255 255));
+            font-size: 0.85rem;
+        }
+
+        /* Drawer / Flyout Panel */
+        .cs-drawer-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.35);
+            z-index: 100;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .cs-drawer {
+            width: min(32rem, 92vw);
+            height: 100%;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            border-left: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            box-shadow: -8px 0 24px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            animation: csSlideIn 0.18s ease-out;
+        }
+
+        @keyframes csSlideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        .cs-drawer-head {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgb(var(--now-color_background--secondary, 246, 246, 248));
+        }
+
+        .cs-drawer-head h2 {
+            margin: 0;
+            font-size: var(--now-font-size--lg, 1.1rem);
+            font-weight: 700;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+        }
+
+        .cs-modal-close-btn {
+            all: unset;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            cursor: pointer;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            border-radius: var(--now-button--border-radius, 4px);
+            transition: background 0.12s ease, color 0.12s ease;
+        }
+
+        .cs-modal-close-btn:hover {
+            background: rgba(var(--now-color--neutral-0, 0, 0, 0), 0.08);
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+        }
+
+        .cs-drawer-body {
+            padding: 1.25rem;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .cs-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .cs-form-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+        }
+
+        .cs-textarea {
+            width: 100%;
+            min-height: 6rem;
+            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            border-radius: var(--now-form-field--border-radius, 4px);
+            padding: 0.6rem 0.65rem;
+            background: rgb(var(--now-color_background--primary, 255, 255, 255));
+            color: rgb(var(--now-color_text--primary, 29, 29, 29));
+            resize: vertical;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.8rem;
+            line-height: 1.45;
+            outline: none;
+        }
+
+        .cs-textarea:focus {
+            border-color: rgb(var(--now-color--primary-2, 30, 133, 203));
+            box-shadow: 0 0 0 2px rgba(var(--now-color--primary-2, 30, 133, 203), 0.2);
+        }
+
+        .cs-help {
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108));
+            font-size: 0.75rem;
+            line-height: 1.45;
+        }
+
+        .cs-drawer-foot {
+            border-top: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235));
+            padding: 0.875rem 1.25rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.625rem;
+            background: rgb(var(--now-color_background--secondary, 246, 246, 248));
+        }
+
+        .cs-drawer-foot a.btn {
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* Select2 multi-select styles in drawer */
+        .cs-drawer .select2-container {
+            width: 100% !important;
+        }
+        .cs-drawer .select2-choices {
+            background: rgb(var(--now-color_background--primary, 255, 255, 255)) !important;
+            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235)) !important;
+            border-radius: var(--now-form-field--border-radius, 4px) !important;
+            min-height: 2.25rem;
+            padding: 0.15rem 0.35rem !important;
+            box-shadow: none !important;
+            background-image: none !important;
+            cursor: text;
+        }
+        .cs-drawer .select2-search-choice {
+            display: inline-flex !important;
+            align-items: center;
+            padding: 0.2rem 0.5rem !important;
+            margin: 0.15rem 0.25rem 0.15rem 0 !important;
+            background: rgba(var(--now-color--primary-2, 23, 103, 91), 0.12) !important;
+            color: rgb(var(--now-color--primary-2, 23, 103, 91)) !important;
+            border: 1px solid rgba(var(--now-color--primary-2, 23, 103, 91), 0.25) !important;
+            border-radius: 9999px !important;
+            box-shadow: none !important;
+            font-size: 0.78rem !important;
+            font-weight: 600 !important;
+            line-height: 1.3 !important;
+        }
+        .cs-drawer .select2-search-choice-close {
+            opacity: 0.6;
+            position: static !important;
+            margin-left: 0.35rem !important;
+        }
+        .cs-drawer .select2-search-choice-close:hover {
+            opacity: 1;
+        }
+        .cs-drawer .select2-container-multi.select2-container-active .select2-choices {
+            border-color: rgb(var(--now-color--primary-2, 23, 103, 91)) !important;
+            box-shadow: 0 0 0 2px rgba(var(--now-color--primary-2, 23, 103, 91), 0.2) !important;
+        }
+        .cs-drawer .select2-input {
+            font-family: inherit !important;
+            font-size: 0.82rem !important;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29)) !important;
+            padding: 0.2rem 0.35rem !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        .cs-drawer .select2-container-multi .select2-choices .select2-search-field input.select2-active {
+            background-image: none !important;
+        }
+
+        /* Select2 Dropdown */
+        .cs-fields-picker-drop.select2-drop {
+            background: rgb(var(--now-color_background--primary, 255, 255, 255)) !important;
+            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235)) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+            border-radius: var(--now-form-field--border-radius, 4px) !important;
+            z-index: 10000 !important;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29)) !important;
+        }
+        .cs-fields-picker-drop .select2-search {
+            padding: 0.4rem !important;
+        }
+        .cs-fields-picker-drop .select2-search input {
+            background: rgb(var(--now-color_background--secondary, 246, 247, 249)) !important;
+            border: 1px solid rgb(var(--now-color_border--secondary, 228, 230, 235)) !important;
+            border-radius: var(--now-form-field--border-radius, 4px) !important;
+            color: rgb(var(--now-color_text--primary, 29, 29, 29)) !important;
+            font-size: 0.82rem !important;
+            padding: 0.35rem 0.5rem !important;
+            box-shadow: none !important;
+            background-image: none !important;
+        }
+        .cs-fields-picker-drop .select2-results {
+            max-height: 220px !important;
+            padding: 0.25rem !important;
+            background: transparent !important;
+        }
+        .cs-fields-picker-drop .select2-result-label {
+            color: rgb(var(--now-color_text--primary, 29, 29, 29)) !important;
+            font-size: 0.82rem !important;
+            padding: 0.35rem 0.55rem !important;
+            border-radius: 3px !important;
+        }
+        .cs-fields-picker-drop .select2-result.select2-highlighted .select2-result-label {
+            background: rgba(var(--now-color--primary-2, 23, 103, 91), 0.12) !important;
+            color: rgb(var(--now-color--primary-2, 23, 103, 91)) !important;
+        }
+        .cs-fields-picker-drop .select2-searching,
+        .cs-fields-picker-drop .select2-no-results {
+            background: transparent !important;
+            color: rgb(var(--now-color_text--secondary, 96, 100, 108)) !important;
+            font-size: 0.8rem !important;
+            padding: 0.5rem !important;
+        }
+
+        /* Toast Feedback - ServiceNow Next Experience / Polaris Dark Surface */
+        .cs-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 1.5rem;
+            transform: translateX(-50%);
+            background: rgb(var(--now-color_surface--dark, var(--now-color--neutral-20, var(--now-color--neutral-18, 30 41 59))));
+            color: rgb(var(--now-color_text--inverse, var(--now-color--neutral-0, 255 255 255)));
+            border: 1px solid rgb(var(--now-color_border--inverse, var(--now-color--neutral-15, 60 75 90)));
+            padding: 0.65rem 1.25rem;
+            border-radius: var(--now-form-field--border-radius, 4px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+            font-size: 0.85rem;
+            font-weight: 500;
+            z-index: 1000;
+            pointer-events: none;
+            animation: csFadeIn 0.15s ease;
+        }
+
+        @keyframes csFadeIn {
+            from { opacity: 0; transform: translate(-50%, 8px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        /* Spinner animation */
+        .cs-spin {
+            animation: csSpin 0.75s linear infinite;
+        }
+
+        @keyframes csSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 900px) {
+            .cs-body {
+                grid-template-columns: 16rem minmax(0, 1fr);
+            }
+        }
+    </style>
+
+    <div class="cs-app" id="codeSearchApp" ng-controller="CodeSearchController as ctrl" ng-cloak="true">
+        <header class="dc-header">
+            <div class="dc-header-row">
+                <div class="dc-title">
+                    <span>Code Search+</span>
+                </div>
+
+                <form class="cs-header-search" ng-submit="ctrl.onSearchSubmit()">
+                    <div class="cs-search-input-group">
+                        <input type="text"
+                               class="cs-search-control"
+                               ng-model="ctrl.query"
+                               placeholder="Search code across tables…"
+                               aria-label="Search code across configured tables"
+                               autofocus="autofocus" />
+                        <div class="cs-search-actions">
+                            <button type="button"
+                                    class="btn cs-clear-btn"
+                                    ng-if="ctrl.query"
+                                    ng-click="ctrl.clearInput()"
+                                    title="Clear search"
+                                    aria-label="Clear search">
+                                <span class="icon-error-circle" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn" ng-class="ctrl.hasActiveConditions() ? 'btn-primary active' : 'btn-default'" ng-click="ctrl.toggleAdvanced()" title="Additional conditions" aria-expanded="{{ctrl.isFilterPanelVisible()}}" aria-controls="secondary-filters"><span class="icon-filter" aria-hidden="true"></span><span class="sr-only">Advanced conditions</span></button>
+
+                    <button type="submit"
+                            class="btn btn-primary"
+                            ng-disabled="ctrl.loading || !ctrl.query.trim()"
+                            title="Search"
+                            aria-label="Search">
+                        <span ng-if="!ctrl.loading" class="icon-search" aria-hidden="true"></span>
+                        <span ng-if="ctrl.loading" class="icon-loading" aria-hidden="true"></span>
+                    </button>
+                </form>
+
+                <!-- Options / Toggles -->
+                <div class="cs-header-toggles">
+                    <label class="cs-toggle-label" title="Match case exactly">
+                        <input type="checkbox" ng-model="ctrl.caseSensitive" ng-change="ctrl.onOptionChange()" />
+                        <span class="sr-only">Case sensitive</span>
+                        <span aria-hidden="true">Aa</span>
+                    </label>
+                    <label class="cs-toggle-label" title="Only show active records">
+                        <input type="checkbox" ng-model="ctrl.activeOnly" ng-change="ctrl.onOptionChange()" />
+                        <span>Active</span>
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <form class="cs-advanced" id="secondary-filters" ng-if="ctrl.isFilterPanelVisible()" ng-submit="ctrl.onSearchSubmit()">
+            <div class="cs-cond-row" ng-repeat="filter in ctrl.secondaryFilters track by $index">
+                <span class="cs-cond-joiner" ng-if="filter.joiner === 'or'">or</span>
+                <select class="form-control cs-cond-operator" ng-model="filter.operator" aria-label="Secondary filter operator">
+                    <option value="contains">Contains</option>
+                    <option value="not_contains">Does not contain</option>
+                </select>
+                <input class="form-control cs-cond-term" ng-model="filter.term" maxlength="250" />
+                <div class="cs-cond-joiner-btns">
+                    <button type="button" class="btn btn-default" ng-click="ctrl.addSecondaryFilter($index, 'and')" ng-disabled="ctrl.secondaryFilters.length >= 20" title="Add an AND condition after this one">AND</button>
+                    <button type="button" class="btn btn-default" ng-click="ctrl.addSecondaryFilter($index, 'or')" ng-disabled="ctrl.secondaryFilters.length >= 20" title="Add an OR condition after this one">OR</button>
+                </div>
+                <button type="button" class="btn btn-danger" ng-click="ctrl.removeSecondaryFilter($index)" aria-label="Remove condition" title="Remove condition">
+                    <i class="icon-cross" aria-hidden="true"></i>
+                </button>
+            </div>
+        </form>
+        <!-- Body -->
+        <div class="cs-body">
+            <!-- Sidebar: Search Group &amp; Results Panes -->
+            <aside class="cs-sidebar">
+                <!-- Pane 1: Search Group (Configured Tables) -->
+                <div class="cs-pane" ng-class="{'cs-pane-collapsed': !ctrl.paneGroupOpen, 'cs-pane-expanded': ctrl.paneGroupOpen}">
+                    <div class="cs-pane-head" ng-click="ctrl.togglePane('group')" title="Toggle Search Group pane">
+                        <div class="cs-pane-title">
+                            <i ng-class="ctrl.paneGroupOpen ? 'icon-chevron-down' : 'icon-chevron-right'" class="cs-pane-chevron" aria-hidden="true"></i>
+                            <span>Search Group</span>
+                        </div>
+                        <span class="cs-pane-badge" ng-if="ctrl.selectedGroup">{{ctrl.selectedGroup.name}}</span>
+                    </div>
+                    <div class="cs-pane-body" ng-show="ctrl.paneGroupOpen">
+                        <div class="cs-side-group-box">
+                            <label class="cs-label" for="group-select">Search Group</label>
+                            <select id="group-select" class="form-control" ng-model="ctrl.selectedGroupId" ng-change="ctrl.onGroupChange()">
+                                <option ng-repeat="g in ctrl.groups track by g.sysId" ng-value="g.sysId">
+                                    {{g.name}} ({{g.tableCount}})
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="cs-table-header-bar">
+                            <div class="cs-table-actions-row">
+                                <span class="cs-table-count-badge">Tables<span class="cs-summary-sep">•</span><strong>{{ctrl.enabledCount()}}</strong> of {{ctrl.tables.length}} enabled</span>
+                                <div style="display: flex; gap: 0.25rem;">
+                                    <button type="button" class="btn btn-default" ng-click="ctrl.selectAllTables(true)" title="Enable all tables">All</button>
+                                    <button type="button" class="btn btn-default" ng-click="ctrl.selectAllTables(false)" title="Disable all tables">None</button>
+                                </div>
+                            </div>
+                            <input type="text" class="form-control" ng-model="ctrl.tableFilter" placeholder="Filter tables by name or ID…" aria-label="Filter tables" />
+                        </div>
+
+                        <div class="cs-table-list">
+                            <div class="cs-table-item" ng-repeat="table in ctrl.filteredConfigTables track by table.sysId" ng-class="{active: ctrl.editing === table}" ng-click="ctrl.toggleTable(table)" title="Click to {{table.enabled ? 'disable' : 'enable'}} {{table.label}}">
+                                <input class="cs-check" type="checkbox" ng-model="table.enabled" ng-click="$event.stopPropagation()" aria-label="Include {{table.label}} in search" />
+                                <div class="cs-table-info">
+                                    <div class="cs-table-name">
+                                        <span class="cs-table-name-label">{{table.label}}</span>
+                                        <span class="cs-session-dot" ng-if="ctrl.hasCustomSessionConfig(table)" title="{{ctrl.getSessionConfigTooltip(table)}}"></span>
+                                        <span class="cs-filter-badge" ng-if="table.additionalFilter" title="Custom encoded query filter applied">FILTER</span>
+                                    </div>
+                                    <div class="cs-table-id">{{table.table}}</div>
+                                </div>
+                                <button type="button" class="btn btn-icon" ng-click="$event.stopPropagation(); ctrl.openConfig(table)" title="Configure table search fields and filters" aria-label="Configure table">
+                                    <i class="icon-cog" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pane 2: Tables with Results -->
+                <div class="cs-pane" ng-class="{'cs-pane-collapsed': !ctrl.paneResultsOpen, 'cs-pane-expanded': ctrl.paneResultsOpen, 'cs-pane-disabled': !ctrl.hasSearched}">
+                    <div class="cs-pane-head" ng-click="ctrl.togglePane('results')" title="{{ctrl.hasSearched ? 'Toggle Tables with Results' : 'Perform a search to view matching tables'}}">
+                        <div class="cs-pane-title">
+                            <i ng-class="ctrl.paneResultsOpen ? 'icon-chevron-down' : 'icon-chevron-right'" class="cs-pane-chevron" aria-hidden="true"></i>
+                            <span>Tables with Results</span>
+                        </div>
+                        <span class="cs-table-count-pill" ng-if="ctrl.hasSearched">{{ctrl.tablesWithResults.length}}</span>
+                        <span class="cs-pane-disabled-text" ng-if="!ctrl.hasSearched">N/A</span>
+                    </div>
+                    <div class="cs-pane-body" ng-show="ctrl.paneResultsOpen &amp;&amp; ctrl.hasSearched">
+                        <div class="cs-results-pane-header">
+                            <span class="cs-table-count-badge">
+                                <strong>{{ctrl.sortedResults.length}}</strong>
+                                <span>{{ctrl.sortedResults.length === 1 ? 'record' : 'records'}}</span>
+                            </span>
+                        </div>
+                        <div class="cs-table-list">
+                            <div class="cs-table-item cs-table-result-item" ng-class="{'in-view': ctrl.currentViewedTable === table.table}" ng-repeat="table in ctrl.tablesWithResults track by table.sysId" ng-click="ctrl.scrollToTable(table.table)" title="{{table.searchFieldsDisplay || ctrl.getTableSearchFieldsDisplay(table)}}">
+                                <div class="cs-table-info">
+                                    <div class="cs-table-name">
+                                        <span class="cs-table-name-label">{{table.label}}</span>
+                                        <span class="cs-session-dot" ng-if="ctrl.hasCustomSessionConfig(table)" title="{{ctrl.getSessionConfigTooltip(table)}}"></span>
+                                        <span class="cs-session-dot" ng-if="ctrl.hasExcludedResultFields(table.table)" title="One or more matching fields are excluded from these results"></span>
+                                    </div>
+                                    <div class="cs-table-id">{{table.table}}</div>
+                                </div>
+                                <span class="cs-table-count-pill" title="{{ctrl.tableMatchCounts[table.table]}} matching records">{{ctrl.tableMatchCounts[table.table] || 0}}</span>
+                            </div>
+                            <div class="cs-pane-empty-notice" ng-if="ctrl.loading &amp;&amp; !ctrl.tablesWithResults.length">
+                                Searching tables…
+                            </div>
+                            <div class="cs-pane-empty-notice" ng-if="!ctrl.loading &amp;&amp; !ctrl.tablesWithResults.length">
+                                No matching tables found.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Results Area -->
+            <main class="cs-main">
+                <div class="cs-toolbar" ng-if="ctrl.hasSearched">
+                    <!-- Standard Summary (when search is finished) -->
+                    <div class="cs-toolbar-summary" ng-if="!ctrl.loading">
+                        <span>Found</span>
+                        <strong>{{ctrl.sortedResults.length}}</strong>
+                        <span>matching records across</span>
+                        <strong>{{ctrl.searchedTables}}</strong>
+                        <span>tables</span>
+                        <span ng-if="ctrl.elapsed" class=" icon-stop-watch" aria-hidden="true"></span>
+                        <span ng-if="ctrl.elapsed">{{ctrl.formatElapsed(ctrl.elapsed)}}</span>
+                    </div>
+
+                    <!-- Progress &amp; Current Table being searched (during search) -->
+                    <div class="cs-toolbar-searching-left" ng-if="ctrl.loading">
+                        <div class="cs-toolbar-glass-wrap" aria-hidden="true">
+                            <svg class="cs-toolbar-glass-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <circle class="cs-glass-glow" cx="10" cy="10" r="6" fill="rgba(23, 103, 91, 0.15)" stroke="none"/>
+                                <circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="2"/>
+                                <path d="M7 7A3 3 0 0 1 11 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/>
+                                <path d="M14.5 14.5L20 20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div class="cs-toolbar-searching-text">
+                            <span class="cs-toolbar-searching-title">Searching</span>
+                            <span class="cs-toolbar-curr-table" ng-if="ctrl.searchProgress.currentTable">
+                                <span><code>{{ctrl.searchProgress.currentTable}}</code>…</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- View Select: Only displayed when NOT searching -->
+                    <div ng-if="!ctrl.loading" class="cs-toolbar-actions">
+                        <select id="view-select" class="form-control" ng-model="ctrl.viewMode" aria-label="Sort or group results">
+                            <option value="group_table">Group by record type</option>
+                            <option value="date_asc">Sort by updated date (oldest to newest)</option>
+                            <option value="date_desc">Sort by updated date (newest to oldest)</option>
+                        </select>
+                    </div>
+
+                    <!-- Progress Bar on Right: Displayed during search -->
+                    <div class="cs-toolbar-searching-right" ng-if="ctrl.loading">
+                        <span class="cs-toolbar-progress-count">{{ctrl.searchProgress.completed}} of {{ctrl.searchProgress.total}} tables</span>
+                        <div class="progress cs-toolbar-progress-bar">
+                            <div class="progress-bar progress-bar-striped active cs-toolbar-progress-fill"
+                                 role="progressbar"
+                                 aria-valuenow="{{ctrl.searchProgress.percent}}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100"
+                                 ng-style="{'width': ctrl.searchProgress.percent + '%'}">
+                            </div>
+                        </div>
+                        <span class="cs-toolbar-progress-percent">{{ctrl.searchProgress.percent}}%</span>
+                        <button type="button" class="btn btn-icon" ng-click="ctrl.cancelSearch()" title="Cancel search" aria-label="Cancel search">
+                            <span class="icon-connect-close"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="cs-results" id="cs-results-container">
+                    <!-- Initial Welcome State -->
+                    <div class="cs-empty cs-welcome-state" ng-if="!ctrl.hasSearched &amp;&amp; !ctrl.loading">
+                        <h2>Search for code</h2>
+                        <p>Search fields across configured tables.</p>
+                    </div>
+
+                    <!-- No Results State -->
+                    <div class="cs-empty cs-no-results-state" ng-if="ctrl.hasSearched &amp;&amp; !ctrl.loading &amp;&amp; !ctrl.results.length">
+                        <h2>No results found</h2>
+                    </div>
+
+                    <!-- View 1: Grouped by Record Type (Table) -->
+                    <div class="cs-group-table-view" ng-if="ctrl.hasSearched &amp;&amp; ctrl.viewMode === 'group_table'">
+                        <section class="cs-table-group" id="table-group-{{group.table}}" data-table="{{group.table}}" ng-repeat="group in ctrl.groupedResults track by group.table" ng-if="group.records.length">
+                            <!-- Level 1: Record table (no indent). Sticky so the table name and its
+                                 field pills stay visible while that table's records scroll beneath. -->
+                            <div class="cs-table-group-sticky" id="table-group-head-{{group.table}}">
+                                <div class="cs-table-group-head">
+                                    <div class="cs-table-group-title">
+                                        <span class="cs-table-group-label">{{group.tableLabel}}</span>
+                                        <span class="cs-session-dot" ng-if="ctrl.hasCustomSessionConfigForTable(group.table)" title="{{ctrl.getSessionConfigTooltipForTable(group.table)}}"></span>
+                                        <span class="cs-table-group-name">{{group.table}}</span>
+                                    </div>
+                                    <a class="cs-table-group-badge" ng-href="{{ctrl.getGroupListUrl(group)}}" target="_blank" title="Open {{group.tableLabel}} list{{ctrl.caseSensitive ? '' : ' (case insensitive)'}}">{{group.records.length}} {{group.records.length === 1 ? 'record' : 'records'}}</a>
+                                </div>
+
+                                <div class="cs-field-toggle-row" ng-if="group.fields.length">
+                                    <span class="cs-field-toggle-label">Fields:</span>
+                                    <button type="button"
+                                            class="cs-field-toggle-pill"
+                                            ng-repeat="f in group.fields track by f.field"
+                                            ng-class="{'inactive': !ctrl.tableActiveFields[group.table][f.field]}"
+                                            ng-click="ctrl.toggleGroupField(group, f.field)"
+                                            ng-disabled="ctrl.isLastActiveField(group, f.field)"
+                                            title="{{ctrl.isLastActiveField(group, f.field) ? 'At least one field must stay included' : (ctrl.tableActiveFields[group.table][f.field] ? 'Exclude results where the keyword only appears in ' + f.label : 'Include results where the keyword appears in ' + f.label)}}">
+                                        {{f.label}}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Level 2: Record name (indented) -->
+                            <article class="cs-card" ng-repeat="result in group.records track by result.table + result.sysId">
+                                <header class="cs-card-head">
+                                    <div class="cs-card-title-wrap">
+                                        <a class="cs-record-link" ng-href="{{result.url}}" target="_blank" title="Open record in new tab">{{result.displayValue}}</a>
+                                        <span class="cs-status-pill cs-status-active" ng-if="result.hasActive &amp;&amp; result.isActive">Active</span>
+                                        <span class="cs-status-pill cs-status-inactive" ng-if="result.hasActive &amp;&amp; !result.isActive">Inactive</span>
+                                        <span class="cs-secondary-badge" ng-repeat="sec in result.secondaryValues track by sec.field">
+                                            <span class="cs-sec-label">{{sec.label}}:</span>
+                                            <code>{{sec.value}}</code>
+                                        </span>
+                                    </div>
+                                    <div class="cs-card-actions">
+                                        <span class="cs-updated" ng-if="result.updatedOn">Updated on {{ctrl.formatDate(result.updatedOn)}}</span>
+                                        <a class="btn btn-default" ng-if="result.isWidget" ng-href="{{result.widgetEditorUrl}}" target="_blank" title="Open widget in Widget Editor+">
+                                            <span>Widget Editor+</span>
+                                        </a>
+                                    </div>
+                                </header>
+
+                                <!-- Level 3: Fields (indented again) -->
+                                <div class="cs-match-container">
+                                    <div class="cs-match-row" ng-repeat="match in result.visibleMatches">
+                                        <div class="cs-match-meta">
+                                            <div>
+                                                <span class="cs-field-pill">{{match.fieldLabel || match.field}}</span>
+                                            </div>
+                                            <button type="button" class="btn btn-icon" ng-if="!match.allLinesShown" ng-class="{'active': match.expanded}" ng-disabled="ctrl.loading &amp;&amp; !match.expanded" ng-click="ctrl.toggleMatchExpand(result, match, $index)" title="{{match.expanded ? 'Collapse to snippet' : (ctrl.loading ? 'Available when search completes' : 'View entire field')}}" aria-label="{{match.expanded ? 'Collapse to snippet' : (ctrl.loading ? 'View entire field unavailable while searching' : 'View entire field')}}">
+                                                <span ng-class="match.expanded ? 'icon-pop-in' : 'icon-pop-out'" aria-hidden="true"></span>
+                                            </button>
+                                        </div>
+
+                                        <!-- Initial snippet state -->
+                                        <div ng-if="!match.expanded">
+                                            <!-- Monaco-style line gutter and code lines -->
+                                            <div class="cs-code-editor-box" ng-class="{'cs-has-gutter': (match.totalLines ? match.totalLines > 1 : match.lines.length > 1)}" ng-if="match.lines">
+                                                <div class="cs-code-row" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index">
+                                                    <span class="cs-gutter-num" ng-if="!line.separator &amp;&amp; (match.totalLines ? match.totalLines > 1 : match.lines.length > 1)">{{line.num}}</span>
+                                                    <div class="cs-code-line" ng-if="!line.separator"><span ng-bind-html="ctrl.highlightCode(line.text, line.inBlockComment)"></span></div>
+                                                </div>
+                                            </div>
+                                            <pre class="cs-code-box" ng-if="!match.lines" ng-bind-html="ctrl.highlightCode(match.snippet)"></pre>
+                                        </div>
+
+                                        <!-- Inline Monaco Editor state (replaces code snippet) -->
+                                        <div class="cs-inline-monaco-wrap" ng-if="match.expanded">
+                                            <div class="cs-inline-monaco-loading" ng-if="match.loading">
+                                                <svg class="cs-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg>
+                                                <span>Loading field…</span>
+                                            </div>
+                                            <div id="{{ctrl.getMonacoHostId(result, match, $index)}}" class="cs-inline-monaco-host" ng-show="!match.loading"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </article>
+                        </section>
+                    </div>
+
+                    <!-- View 2: Sorted by Date (Oldest to Newest or Newest to Oldest) -->
+                    <div ng-if="ctrl.hasSearched &amp;&amp; ctrl.viewMode !== 'group_table'">
+                        <article class="cs-card cs-card-flat" ng-repeat="result in ctrl.sortedResults track by result.table + result.sysId">
+                            <header class="cs-card-head">
+                                <div class="cs-card-title-wrap">
+                                    <span class="cs-badge">{{result.tableLabel}}</span>
+                                    <a class="cs-record-link" ng-href="{{result.url}}" target="_blank" title="Open record in new tab">{{result.displayValue}}</a>
+                                    <span class="cs-status-pill cs-status-active" ng-if="result.hasActive &amp;&amp; result.isActive">Active</span>
+                                    <span class="cs-status-pill cs-status-inactive" ng-if="result.hasActive &amp;&amp; !result.isActive">Inactive</span>
+                                    <span class="cs-secondary-badge" ng-repeat="sec in result.secondaryValues track by sec.field">
+                                        <span class="cs-sec-label">{{sec.label}}:</span>
+                                        <code>{{sec.value}}</code>
+                                    </span>
+                                </div>
+                                <div class="cs-card-actions">
+                                    <span class="cs-updated" ng-if="result.updatedOn">Updated on {{ctrl.formatDate(result.updatedOn)}}</span>
+                                    <a class="btn btn-primary" ng-if="result.isWidget" ng-href="{{result.widgetEditorUrl}}" target="_blank" title="Open widget in Widget Editor+"> 
+                                        <span>Open widget</span>
+                                    </a>
+                                </div>
+                            </header>
+
+                            <!-- Level 3: Fields (indented again) -->
+                            <div class="cs-match-container">
+                                <div class="cs-match-row" ng-repeat="match in result.visibleMatches">
+                                    <div class="cs-match-meta">
+                                        <div>
+                                            <span class="cs-field-pill">{{match.fieldLabel || match.field}}</span>
+                                        </div>
+                                        <button type="button" class="btn btn-icon" ng-if="!match.allLinesShown" ng-class="{'active': match.expanded}" ng-disabled="ctrl.loading &amp;&amp; !match.expanded" ng-click="ctrl.toggleMatchExpand(result, match, $index)" title="{{match.expanded ? 'Collapse to snippet' : (ctrl.loading ? 'Available when search completes' : 'View entire field')}}" aria-label="{{match.expanded ? 'Collapse to snippet' : (ctrl.loading ? 'View entire field unavailable while searching' : 'View entire field')}}">
+                                            <span ng-class="match.expanded ? 'icon-pop-in' : 'icon-pop-out'" aria-hidden="true"></span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Initial snippet state -->
+                                    <div ng-if="!match.expanded">
+                                        <!-- Monaco-style line gutter and code lines -->
+                                        <div class="cs-code-editor-box" ng-class="{'cs-has-gutter': (match.totalLines ? match.totalLines > 1 : match.lines.length > 1)}" ng-if="match.lines">
+                                            <div class="cs-code-row" ng-class="{'cs-sep': line.separator}" ng-repeat="line in match.lines track by $index">
+                                                <span class="cs-gutter-num" ng-if="!line.separator &amp;&amp; (match.totalLines ? match.totalLines > 1 : match.lines.length > 1)">{{line.num}}</span>
+                                                <div class="cs-code-line" ng-if="!line.separator"><span ng-bind-html="ctrl.highlightCode(line.text, line.inBlockComment)"></span></div>
+                                            </div>
+                                        </div>
+                                        <pre class="cs-code-box" ng-if="!match.lines" ng-bind-html="ctrl.highlightCode(match.snippet)"></pre>
+                                    </div>
+
+                                    <!-- Inline Monaco Editor state (replaces code snippet) -->
+                                    <div class="cs-inline-monaco-wrap" ng-if="match.expanded">
+                                        <div class="cs-inline-monaco-loading" ng-if="match.loading">
+                                            <svg class="cs-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg>
+                                            <span>Loading entire field…</span>
+                                        </div>
+                                        <div id="{{ctrl.getMonacoHostId(result, match, $index)}}" class="cs-inline-monaco-host" ng-show="!match.loading"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Table Configuration Drawer -->
+        <div class="cs-drawer-backdrop" ng-if="ctrl.editing" ng-click="ctrl.closeConfig()">
+            <section class="cs-drawer" ng-click="$event.stopPropagation()">
+                <header class="cs-drawer-head">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.35rem;">
+                            <h2>{{ctrl.editing.label}}</h2>
+                            <span class="cs-session-dot" ng-if="ctrl.hasCustomSessionConfig(ctrl.editing)" title="{{ctrl.getSessionConfigTooltip(ctrl.editing)}}"></span>
+                        </div>
+                        <div class="cs-table-id">{{ctrl.editing.table}}</div>
+                    </div>
+                    <button type="button" class="btn btn-icon" ng-click="ctrl.closeConfig()" aria-label="Close drawer">
+                        <span class="icon-connect-close"></span>
+                    </button>
+                </header>
+
+                <div class="cs-drawer-body">
+                    <div class="cs-form-group">
+                        <label class="cs-form-label" for="fields-select">Search Fields</label>
+                        <div class="cs-select2-wrap">
+                            <input type="hidden" id="fields-select" cs-select2-fields="" ng-model="ctrl.draft.searchFields" placeholder="Select fields to search…" />
+                        </div>
+                        <p class="cs-help" ng-if="ctrl.loadingFields">
+                            <svg class="cs-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg>
+                            <span>Loading available fields for {{ctrl.editing.table}}…</span>
+                        </p>
+                        <p class="cs-help" ng-if="!ctrl.loadingFields">Select valid fields on <code ng-bind="ctrl.editing.table"></code> containing source code.</p>
+                    </div>
+
+                    <div class="cs-form-group">
+                        <label class="cs-form-label" for="filter-input">Additional Filter (Encoded Query)</label>
+                        <textarea id="filter-input" class="cs-textarea" ng-model="ctrl.draft.additionalFilter"></textarea>
+                        <p class="cs-help">Applied to pre-filter records before searching code fields.</p>
+                    </div>
+
+                    <div>
+                        <button type="button" class="btn btn-default" ng-click="ctrl.validateFilter()" ng-disabled="ctrl.validating">
+                            <svg ng-if="ctrl.validating" class="cs-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg>
+                            <span>{{ctrl.validating ? 'Testing…' : 'Test Filter Query'}}</span>
+                        </button>
+                    </div>
+
+                    <div class="alert alert-success" ng-if="ctrl.validation.ok">
+                        <span ng-if="ctrl.validation.matchCount &lt; 0 || !ctrl.validation.listUrl">{{ctrl.validation.message}}</span>
+                        <span ng-if="ctrl.validation.matchCount >= 0 &amp;&amp; ctrl.validation.listUrl">Filter is valid (<a class="cs-filter-match-link" ng-href="{{ctrl.validation.listUrl}}" target="_blank" title="Open the list view for this table with this filter applied">{{ctrl.validation.matchCount}} record{{ctrl.validation.matchCount === 1 ? '' : 's'}} match</a>)</span>
+                    </div>
+
+                    <div class="alert alert-danger" ng-if="ctrl.validation.error">
+                        <span>{{ctrl.validation.error}}</span>
+                    </div>
+                </div>
+
+                <footer class="cs-drawer-foot">
+                    <a class="btn btn-default" style="margin-right: auto;" ng-href="{{ctrl.getTableRecordUrl(ctrl.editing)}}" target="_blank" title="Open Code Search Table record">
+                        <span>Open Config</span>
+                    </a>
+                    <button type="button" class="btn btn-default" ng-if="ctrl.hasCustomSessionConfig(ctrl.editing)" ng-click="ctrl.resetSessionConfig()" title="Reset to saved Code Search Table configuration">
+                        <span>Reset</span>
+                    </button>
+                    <button type="button" class="btn btn-primary" ng-click="ctrl.applyConfig()">Apply for session</button>
+                </footer>
+            </section>
+        </div>
+
+        <!-- Notification Toast -->
+        <div class="cs-toast" ng-if="ctrl.toast">{{ctrl.toast}}</div>
+    </div>
+</j:jelly>
