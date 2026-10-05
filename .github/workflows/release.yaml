@@ -63,6 +63,9 @@ jobs:
         run: |
           set -e
 
+          # Checkout may replace an annotated tag with the event commit ID.
+          git fetch --force --no-tags origin "refs/tags/${TAG_NAME}:refs/tags/${TAG_NAME}"
+
           RELEASE_NOTES_FILE="$(mktemp)"
           export RELEASE_NOTES_FILE
           trap 'rm -f "$RELEASE_NOTES_FILE"' EXIT

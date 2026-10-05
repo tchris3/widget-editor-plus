@@ -33,6 +33,10 @@ function runPublisher(t, platform, existing, options = {}) {
         fs.writeFileSync(path.join(cwd, 'notes'), notes);
         git('tag', '-a', '--cleanup=verbatim', '-F', 'notes', env.TAG_NAME);
     }
+    const remote = path.join(cwd, 'remote.git');
+    git('clone', '--bare', cwd, remote);
+    git('remote', 'add', 'origin', remote);
+    if (options.checkoutReplacedTag) git('update-ref', `refs/tags/${env.TAG_NAME}`, git('rev-parse', 'HEAD').toString().trim());
     fs.mkdirSync(path.join(cwd, 'target'));
     fs.writeFileSync(path.join(cwd, 'target', 'application.zip'), 'zip');
     fs.writeFileSync(path.join(cwd, 'target', 'update-set.xml'), 'xml');
@@ -98,4 +102,10 @@ test('Gitea lookup errors do not create a replacement release', t => {
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Failed to find release: 403/);
     assert.equal(requests.length, 1);
+});
+
+test('Publishing restores an annotated tag replaced with the event commit during checkout', t => {
+    const { result, requests } = runPublisher(t, 'github', false, { checkoutReplacedTag: true });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(requests.find(r => r.args[1] === 'create').notes, notes);
 });
