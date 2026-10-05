@@ -2,19 +2,11 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const ts = require('typescript');
+const { readFluentField } = require('../helpers/fluent-source.cjs');
 const root = 'src/fluent/generated/';
 const diffPath = root + 'other/sys-ui-page/sys_ui_page_51ec3d258363b61070b8b5dfeeaad36b.now.ts';
-function template(path, property) {
-    const source = ts.createSourceFile(path, fs.readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
-    let value;
-    function visit(node) {
-        if (ts.isPropertyAssignment(node) && node.name.getText(source) === property) value = node.initializer.text;
-        ts.forEachChild(node, visit);
-    }
-    visit(source);
-    return value;
-}
+const template = readFluentField;
+
 function resolver({ exists = true, deleted = false, deletionId = '', es12Value = null } = {}) {
     const id = 'a'.repeat(32);
     const queries = [];

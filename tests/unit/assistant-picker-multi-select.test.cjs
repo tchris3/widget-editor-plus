@@ -1,17 +1,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const vm = require('node:vm');
-const ts = require('typescript');
+const { readFluentField } = require('../helpers/fluent-source.cjs');
 
 const path = 'src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts';
-const source = ts.createSourceFile(path, fs.readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
-let script;
-function visit(node) {
-    if (ts.isPropertyAssignment(node) && node.name.getText(source) === 'clientScript') script = node.initializer.text;
-    ts.forEachChild(node, visit);
-}
-visit(source);
+const script = readFluentField(path, 'clientScript');
 
 test('record picker adds several records from one table and toggles selected records off', () => {
     let saves = 0;

@@ -1,8 +1,8 @@
+const { readUiPageSource } = require('../helpers/fluent-source.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 
-const source = fs.readFileSync('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts', 'utf8');
+const source = readUiPageSource('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts');
 
 test('Code Search UI template contains Open Code Search Table link and session dot', () => {
     // Should have Open Config link

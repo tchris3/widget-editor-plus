@@ -1,9 +1,9 @@
+const { readUiPageSource } = require('../helpers/fluent-source.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const { chromium } = require('@playwright/test');
 
-const source = fs.readFileSync('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts', 'utf8');
+const source = readUiPageSource('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts');
 const css = source.match(/<style>([\s\S]*?)<\/style>/)[1];
 const scrollCode = source.slice(source.indexOf('            var tableScrollRequest = 0;'), source.indexOf('\n            };', source.indexOf('            vm.scrollToTable =')) + 15);
 

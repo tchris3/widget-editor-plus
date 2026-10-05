@@ -11,19 +11,44 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    container:
+      image: node:24-bookworm
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Verify Node.js runtime
+        run: |
+          node --version
+          npm --version
+          node -e "if (process.versions.node.split('.')[0] !== '24') throw new Error('Node.js 24 is required')"
+
       - name: Install Dependencies
         run: npm ci
+
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run unit tests
+        run: npm run test:unit
 
       - name: Build and Pack
         run: |
           npm run build
           npm run pack
+
+      - name: Install GitHub CLI
+        if: github.server_url == 'https://github.com'
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends gh
 
       - name: Create or Update Release
         env:

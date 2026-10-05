@@ -93,7 +93,7 @@ Export selected ServiceNow records as XML context for AI tools.
 ## Installation & Deployment
 
 ### Prerequisites
-- Node.js (v18 or higher recommended)
+- Node.js 24 LTS (`.nvmrc` selects the 24.x release line)
 - ServiceNow SDK (`@servicenow/sdk`)
 - A ServiceNow instance to deploy to
 
@@ -102,8 +102,11 @@ Export selected ServiceNow records as XML context for AI tools.
    ```bash
    git clone https://github.com/tchris3/widget-editor-plus.git
    cd widget-editor-plus
-   npm install
+   nvm install
+   nvm use
+   npm ci
    ```
+   If you use another Node version manager, select Node.js 24 LTS before installing dependencies.
 2. Build the Fluent source definitions into update set XML:
    ```bash
    npm run build

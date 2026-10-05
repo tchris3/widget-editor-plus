@@ -1,10 +1,11 @@
+const { readUiPageSource } = require('../helpers/fluent-source.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vmModule = require('node:vm');
 
 const serverSource = fs.readFileSync('src/fluent/generated/server-development/script-include/sys_script_include_widget_editor_code_search.server.js', 'utf8');
-const pageSource = fs.readFileSync('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts', 'utf8');
+const pageSource = readUiPageSource('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts');
 const configId = 'a'.repeat(32);
 const id = n => n.toString(16).padStart(32, '0');
 const rows = count => Array.from({ length: count }, (_, i) => ({ sys_id: id(i + 1), script: 'needle', name: `Record ${count - i}` }));

@@ -1,9 +1,10 @@
+const { readUiPageSource } = require('../helpers/fluent-source.cjs');
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-const page = fs.readFileSync('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts', 'utf8');
+const page = readUiPageSource('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts');
 const server = fs.readFileSync('src/fluent/generated/server-development/script-include/sys_script_include_widget_editor_code_search.server.js', 'utf8');
 const first = 'a'.repeat(32), preferred = 'b'.repeat(32), adminDefault = 'c'.repeat(32);
 const groups = [first, preferred, adminDefault].map(sysId => ({sysId}));

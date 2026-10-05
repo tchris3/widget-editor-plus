@@ -1,12 +1,10 @@
+const { readUiPageSource } = require('../helpers/fluent-source.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vmModule = require('node:vm');
 
-const pageSource = fs.readFileSync(
-    'src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts',
-    'utf8'
-);
+const pageSource = readUiPageSource('src/fluent/generated/other/sys-ui-page/sys_ui_page_widget_editor_code_search.now.ts');
 const serverSource = fs.readFileSync(
     'src/fluent/generated/server-development/script-include/sys_script_include_widget_editor_code_search.server.js',
     'utf8'

@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const ts = require('typescript');
+const { readFluentField } = require('../helpers/fluent-source.cjs');
 const root = 'src/fluent/generated/';
 
 function server({ blocked = false } = {}) {
@@ -105,13 +105,7 @@ test('Access Control searches suggest the table named before the field suffix', 
     assert.deepEqual(queries, [['sys_db_object', 'name', 'IN', 'kb_knowledge']]);
 
     const uiPath = root + 'other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts';
-    const uiSource = ts.createSourceFile(uiPath, fs.readFileSync(uiPath, 'utf8'), ts.ScriptTarget.Latest, true);
-    let clientScript;
-    function visit(node) {
-        if (ts.isPropertyAssignment(node) && node.name.getText(uiSource) === 'clientScript') clientScript = node.initializer.text;
-        ts.forEachChild(node, visit);
-    }
-    visit(uiSource);
+    const clientScript = readFluentField(uiPath, 'clientScript');
     const aclRow = { table: 'sys_security_acl', sys_id: 'acl-id', label: 'kb_knowledge.txt' };
     const picker = {
         ctrl: { primary: {}, related: [aclRow] },
@@ -147,13 +141,7 @@ test('Access Control searches suggest the table named before the field suffix', 
 
 test('Choice suggestions start unchecked, retain user selections, and create graph links', async () => {
     const path = root + 'other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts';
-    const source = ts.createSourceFile(path, fs.readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
-    let script;
-    function visit(node) {
-        if (ts.isPropertyAssignment(node) && node.name.getText(source) === 'clientScript') script = node.initializer.text;
-        ts.forEachChild(node, visit);
-    }
-    visit(source);
+    const script = readFluentField(path, 'clientScript');
     const context = {
         ctrl: { primary: { table: 'sys_db_object', sysId: 'child' }, related: [] },
         _scannedScriptKeys: {}, _suggestScanDepth: 0, recordLinks: {}, graphLinksScanned: {}, dismissedSuggestionKeys: {},
@@ -213,13 +201,7 @@ test('A selected Choice Set exports hundreds of values in one group, filtered by
 
 test('Choice Set XML nests all values under one payload and marks unavailable lookups', async () => {
     const path = root + 'other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts';
-    const source = ts.createSourceFile(path, fs.readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
-    let script;
-    function visit(node) {
-        if (ts.isPropertyAssignment(node) && node.name.getText(source) === 'clientScript') script = node.initializer.text;
-        ts.forEachChild(node, visit);
-    }
-    visit(source);
+    const script = readFluentField(path, 'clientScript');
     function el(tagName) {
         return { tagName, attrs: {}, children: [], setAttribute(k, v) { this.attrs[k] = String(v); }, appendChild(child) { this.children.push(child); } };
     }
@@ -247,13 +229,7 @@ test('Choice Set XML nests all values under one payload and marks unavailable lo
 
 test('Graph groups hundreds of Choice Sets per table and toggles the entire group', () => {
     const path = root + 'other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts';
-    const source = ts.createSourceFile(path, fs.readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
-    let script;
-    function visit(node) {
-        if (ts.isPropertyAssignment(node) && node.name.getText(source) === 'clientScript') script = node.initializer.text;
-        ts.forEachChild(node, visit);
-    }
-    visit(source);
+    const script = readFluentField(path, 'clientScript');
     const parent = { table: 'sys_db_object', sys_id: 'table', primary: true, label: 'Incident', checked: true };
     const choices = Array.from({ length: 200 }, (_, i) => ({ table: 'sys_choice_set', sys_id: 'set' + i,
         choiceTable: 'incident', choiceField: 'field' + i, label: 'incident.field' + i + ' choices', checked: false }));
@@ -324,13 +300,7 @@ test('Graph groups hundreds of Choice Sets per table and toggles the entire grou
 
 test('Deselecting a table automatically deselects the table choices for that table', () => {
     const path = root + 'other/sys-ui-page/sys_ui_page_widget_editor_assistant.now.ts';
-    const source = ts.createSourceFile(path, fs.readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
-    let script;
-    function visit(node) {
-        if (ts.isPropertyAssignment(node) && node.name.getText(source) === 'clientScript') script = node.initializer.text;
-        ts.forEachChild(node, visit);
-    }
-    visit(source);
+    const script = readFluentField(path, 'clientScript');
     const tableRow = { table: 'sys_db_object', sys_id: 'tbl_inc', label: 'Incident', name: 'incident', checked: true };
     const otherTable = { table: 'sys_db_object', sys_id: 'tbl_task', label: 'Task', name: 'task', checked: true };
     const choicesInc = [

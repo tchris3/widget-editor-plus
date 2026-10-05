@@ -1,11 +1,8 @@
+const { readUiPageSource } = require('../helpers/fluent-source.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 
-const source = fs.readFileSync(
-    'src/fluent/generated/other/sys-ui-page/sys_ui_page_8b2e70458373fe1070b8b5dfeeaad35e.now.ts',
-    'utf8'
-);
+const source = readUiPageSource('src/fluent/generated/other/sys-ui-page/sys_ui_page_8b2e70458373fe1070b8b5dfeeaad35e.now.ts');
 
 test('Code search follows Keyboard shortcuts in the Widget Editor+ menu', () => {
     const keyboard = source.indexOf('>Keyboard shortcuts</div>');

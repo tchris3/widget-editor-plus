@@ -1,8 +1,11 @@
 {
   "name": "widget-editor-plus",
-  "version": "1.23.3",
+  "version": "1.23.4",
   "description": "Enhanced Service Portal widget editor with Monaco-powered code editors, real-time user presence, per-field save, version history with diff comparison, and Angular template and provider management.",
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
   "imports": {
     "#now:*": "./@types/servicenow/fluent/*/index.js"
   },
@@ -12,14 +15,15 @@
     "pack": "now-sdk pack && node scripts/generate-update-set-xml.js",
     "transform": "now-sdk transform",
     "types": "now-sdk dependencies",
+    "test:unit": "node --test tests/unit/*.test.cjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@servicenow/glide": "27.0.5",
-    "@servicenow/sdk": "4.13.0",
-    "dotenv": "^18.0.4",
+    "@servicenow/sdk": "4.13.3",
+    "dotenv": "^18.0.5",
     "typescript": "6.0.3"
   }
 }
