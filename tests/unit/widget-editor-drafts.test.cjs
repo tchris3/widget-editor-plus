@@ -135,17 +135,28 @@ test('hidden tabs flush, unchanged drafts do not write, and undo clears the copy
     assert.equal(h.$scope.lastDraftSaveTime, null);
 });
 
+test('recovery label formats stored timestamps using the shared relative times', () => {
+    const h = harness();
+    const draft = recovered(h);
+    assert.equal(h.$scope.getLocalDraftEditedLabel(draft), '1 min ago');
+    h.advance(5 * 60000);
+    assert.equal(h.$scope.getLocalDraftEditedLabel(draft), '6 mins ago');
+    h.advance(60 * 60000);
+    h.$scope.lastSaveTime = h.run('new Date(1000)');
+    assert.equal(h.$scope.getLocalDraftEditedLabel(draft), h.$scope.getLastSaveLabel().slice(6));
+});
+
 test('autosave label reuses relative times and keeps the actual successful write time', () => {
     const h = harness();
     assert.equal(h.$scope.getLastDraftSaveLabel(), '');
     h.$scope.widget.template = 'draft';
     h.run('_writeLocalDraft()');
     const timestamp = h.$scope.lastDraftSaveTime.getTime();
-    assert.equal(h.$scope.getLastDraftSaveLabel(), 'Draft auto-saved just now');
+    assert.equal(h.$scope.getLastDraftSaveLabel(), 'just now');
     h.advance(5 * 60000);
     h.run('_writeLocalDraft()');
     assert.equal(h.$scope.lastDraftSaveTime.getTime(), timestamp);
-    assert.equal(h.$scope.getLastDraftSaveLabel(), 'Draft auto-saved 5 mins ago');
+    assert.equal(h.$scope.getLastDraftSaveLabel(), '5 mins ago');
     h.$scope.userPrefs.autosaveInterval = 0;
     assert.equal(h.$scope.getLastDraftSaveLabel(), '');
     h.$scope.userPrefs.autosaveInterval = 30;
@@ -153,10 +164,10 @@ test('autosave label reuses relative times and keeps the actual successful write
     h.localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
     h.run('_writeLocalDraft()');
     assert.equal(h.$scope.lastDraftSaveTime.getTime(), timestamp);
-    assert.equal(h.$scope.getLastDraftSaveLabel(), 'Draft auto-saved 5 mins ago');
+    assert.equal(h.$scope.getLastDraftSaveLabel(), '5 mins ago');
     h.advance(60 * 60000);
     h.$scope.lastSaveTime = h.$scope.lastDraftSaveTime;
-    assert.equal(h.$scope.getLastDraftSaveLabel(), 'Draft auto-saved ' + h.$scope.getLastSaveLabel().slice(6));
+    assert.equal(h.$scope.getLastDraftSaveLabel(), h.$scope.getLastSaveLabel().slice(6));
 });
 
 test('capture includes hidden core fields, additional fields, related panes and invalid JSON', () => {

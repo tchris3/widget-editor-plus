@@ -5399,9 +5399,13 @@
                         : '';
                 };
 
+                $scope.getLocalDraftEditedLabel = function (draft) {
+                    return _formatRelativeTime(new Date(draft.updatedAt));
+                };
+
                 $scope.getLastDraftSaveLabel = function () {
                     return $scope.userPrefs.autosaveInterval && $scope.lastDraftSaveTime
-                        ? 'Draft auto-saved ' + _formatRelativeTime($scope.lastDraftSaveTime)
+                        ? _formatRelativeTime($scope.lastDraftSaveTime)
                         : '';
                 };
 
@@ -5425,7 +5429,7 @@
                             return item.type === 'pane' && item.savedAt;
                         }
                     );
-                    if ($scope.lastSaveTime || ($scope.userPrefs.autosaveInterval && $scope.lastDraftSaveTime) || hasPaneSaved) {
+                    if ($scope.lastSaveTime || ($scope.localDrafts && $scope.localDrafts.length) || ($scope.userPrefs.autosaveInterval && $scope.lastDraftSaveTime) || hasPaneSaved) {
                         $scope.$applyAsync();
                     }
                 }, 30000);
