@@ -2983,6 +2983,7 @@
                         <div class="we-alert-popover-body">
                             You have unsaved changes in one or more fields. Save your work to avoid losing it.
                         </div>
+                        <div class="we-alert-popover-body" ng-if="userPrefs.autosaveInterval &amp;&amp; lastDraftSaveTime" ng-bind="getLastDraftSaveLabel()"></div>
                         <div class="we-alert-popover-actions" ng-if="!isNewWidget">
                             <button type="button" class="btn btn-primary btn-sm" ng-click="openUnsavedDiff(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-unsaved', true)" title="Compare unsaved changes with current saved version">Compare</button>
                         </div>
@@ -3337,6 +3338,7 @@
                             <div class="we-alert-popover-body">
                                 You have unsaved changes in one or more fields. Save your work to avoid losing it.
                             </div>
+                            <div class="we-alert-popover-body" ng-if="userPrefs.autosaveInterval &amp;&amp; lastDraftSaveTime" ng-bind="getLastDraftSaveLabel()"></div>
                             <div class="we-alert-popover-actions" ng-if="!isNewWidget">
                                 <button type="button" class="btn btn-primary btn-sm" ng-click="openUnsavedDiff(); openDropdown = null" ng-keydown="onAlertActionKeydown($event, 'alert-unsaved', true)" title="Compare unsaved changes with current saved version">Compare</button>
                             </div>

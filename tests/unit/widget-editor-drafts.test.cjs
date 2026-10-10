@@ -43,7 +43,10 @@ function harness(localStorage = storage()) {
         DIFF_PAGE_SYS_ID: '51ec3d258363b61070b8b5dfeeaad36b', WE_UI_SCRIPTS: {},
         $injector: { get: () => ({ trustAsResourceUrl: value => value }) },
         angular: { extend: Object.assign },
-        Date: class extends Date { static now() { return now; } },
+        Date: class extends Date {
+            constructor(...args) { super(...(args.length ? args : [now])); }
+            static now() { return now; }
+        },
         originalHeader: { name: 'Widget', id: 'widget', description: '', controller_as: 'c', is_public: false, roles: '', static: false },
         originalValues: { template: 'saved', css: '' }, lastServerValues: {}, extraPanes: [], monacoEditors: {},
         _normaliseExtraWidgetFieldValue: (def, value) => def.type === 'boolean' ? !!value : value || '',
@@ -61,6 +64,8 @@ function harness(localStorage = storage()) {
     vm.runInContext(source.slice(snapshotStart, source.indexOf('                // Opens the diff page for an external-change alert', snapshotStart)), context);
     const closeStart = source.indexOf('                $scope.closeVersionDiffModal =');
     vm.runInContext(source.slice(closeStart, source.indexOf('                $scope.openVersionDiffInNewTab', closeStart)), context);
+    const relativeStart = source.indexOf('                function _formatRelativeTime(');
+    vm.runInContext(source.slice(relativeStart, source.indexOf('                $scope.formatUpdateSetName =', relativeStart)), context);
     vm.runInContext(draftCode, context);
     vm.runInContext('_draftRetentionLoaded = true', context);
     return { context, $scope, watchers, listeners, timers, destroyed, localStorage,
@@ -127,6 +132,31 @@ test('hidden tabs flush, unchanged drafts do not write, and undo clears the copy
     h.$scope.widget.template = 'saved';
     h.run('_writeLocalDraft()');
     assert.equal(h.localStorage.length, 0);
+    assert.equal(h.$scope.lastDraftSaveTime, null);
+});
+
+test('autosave label reuses relative times and keeps the actual successful write time', () => {
+    const h = harness();
+    assert.equal(h.$scope.getLastDraftSaveLabel(), '');
+    h.$scope.widget.template = 'draft';
+    h.run('_writeLocalDraft()');
+    const timestamp = h.$scope.lastDraftSaveTime.getTime();
+    assert.equal(h.$scope.getLastDraftSaveLabel(), 'Draft auto-saved just now');
+    h.advance(5 * 60000);
+    h.run('_writeLocalDraft()');
+    assert.equal(h.$scope.lastDraftSaveTime.getTime(), timestamp);
+    assert.equal(h.$scope.getLastDraftSaveLabel(), 'Draft auto-saved 5 mins ago');
+    h.$scope.userPrefs.autosaveInterval = 0;
+    assert.equal(h.$scope.getLastDraftSaveLabel(), '');
+    h.$scope.userPrefs.autosaveInterval = 30;
+    h.$scope.widget.template = 'newer';
+    h.localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
+    h.run('_writeLocalDraft()');
+    assert.equal(h.$scope.lastDraftSaveTime.getTime(), timestamp);
+    assert.equal(h.$scope.getLastDraftSaveLabel(), 'Draft auto-saved 5 mins ago');
+    h.advance(60 * 60000);
+    h.$scope.lastSaveTime = h.$scope.lastDraftSaveTime;
+    assert.equal(h.$scope.getLastDraftSaveLabel(), 'Draft auto-saved ' + h.$scope.getLastSaveLabel().slice(6));
 });
 
 test('capture includes hidden core fields, additional fields, related panes and invalid JSON', () => {
@@ -138,6 +168,37 @@ test('capture includes hidden core fields, additional fields, related panes and 
     h.context.extraPanes.push({ key: 'tpl-new-1', recordType: 'template', recordId: 'test', label: 'Template', language: 'html', content: '<div>', lastServerContent: '', hasIdInput: true, _draftOriginalId: '' });
     h.run("_draftJson.option_schema = { base: '{}', value: '{invalid' }; _writeLocalDraft()");
     assert.deepEqual(h.draft().entries.map(e => e.field), ['css', 'custom', 'content', 'recordId', 'option_schema']);
+    for (const entry of h.draft().entries) {
+        assert.deepEqual(Object.keys(entry).sort(), ['base', 'field', 'id', 'key', 'type', 'value']);
+    }
+});
+
+test('compact drafts compare and restore without stored labels or languages', async () => {
+    const h = harness();
+    const entries = [
+        { type: 'widget', id: widgetId, key: 'html', field: 'template', base: 'saved', value: 'draft HTML' },
+        { type: 'provider', id: '', key: 'prv-new-1', field: 'content', base: '', value: 'draft script' },
+        { type: 'provider', id: '', key: 'prv-new-1', field: 'recordId', base: '', value: 'new_factory' },
+        { type: 'provider', id: '', key: 'prv-new-1', field: 'providerType', base: '', value: 'factory' },
+    ];
+    const draft = recovered(h, entries);
+    await h.$scope.compareLocalDraft(draft);
+    const records = h.$scope.draftRecovery.records;
+    assert.equal(records[1].label, 'new_factory');
+    assert.equal(records[1].snapshot.script, 'draft script');
+    assert.equal(records[1].snapshot._newRecord, true);
+    h.context.makeProviderPaneObj = () => ({ key: 'prv-restored-new', recordType: 'provider', hasIdInput: true, recordId: '', content: '' });
+    h.context.openExtraPane = pane => { h.context.extraPanes.push(pane); };
+    h.$scope.onPaneIdChange = () => {};
+    await h.$scope.restoreLocalDraft(draft, true);
+    h.flush();
+    assert.equal(h.$scope.widget.template, 'draft HTML');
+    assert.equal(h.context.extraPanes.length, 1);
+    assert.equal(h.context.extraPanes[0].recordId, 'new_factory');
+    assert.equal(h.context.extraPanes[0].content, 'draft script');
+    assert.equal(h.context.extraPanes[0].providerType, 'factory');
+    assert.equal(h.localStorage.getItem(draft.key), null);
+    assert.ok(h.draft().entries.every(entry => !('label' in entry) && !('language' in entry)));
 });
 
 test('refresh discovers drafts and isolates users, widgets and editing pages', () => {
@@ -384,6 +445,7 @@ test('widget Save removes every draft for this widget and user, even with autosa
     for (const key of [otherWidget, otherUser, 'unrelated']) assert.ok(h.localStorage.getItem(key));
     assert.equal(h.$scope.localDrafts.length, 0);
     assert.equal(h.$scope.versionDiffModal.open, false);
+    assert.equal(h.$scope.lastDraftSaveTime, null);
 });
 
 test('widget Save reports a storage cleanup failure without discarding the remaining copy', () => {
@@ -401,6 +463,7 @@ test('explicit discard is not recreated when navigating away', () => {
     h.run('_writeLocalDraft(); _discardPageDraft()');
     h.listeners.pagehide();
     assert.equal(h.localStorage.length, 0);
+    assert.equal(h.$scope.lastDraftSaveTime, null);
 });
 
 test('preference import accepts zero and custom intervals without disturbing other preferences', () => {

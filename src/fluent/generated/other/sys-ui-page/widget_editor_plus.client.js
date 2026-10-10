@@ -5399,6 +5399,12 @@
                         : '';
                 };
 
+                $scope.getLastDraftSaveLabel = function () {
+                    return $scope.userPrefs.autosaveInterval && $scope.lastDraftSaveTime
+                        ? 'Draft auto-saved ' + _formatRelativeTime($scope.lastDraftSaveTime)
+                        : '';
+                };
+
                 $scope.getPaneSavedLabel = function (pane) {
                     return pane.savedAt
                         ? 'Saved ' + _formatRelativeTime(pane.savedAt)
@@ -5419,7 +5425,7 @@
                             return item.type === 'pane' && item.savedAt;
                         }
                     );
-                    if ($scope.lastSaveTime || hasPaneSaved) {
+                    if ($scope.lastSaveTime || ($scope.userPrefs.autosaveInterval && $scope.lastDraftSaveTime) || hasPaneSaved) {
                         $scope.$applyAsync();
                     }
                 }, 30000);
@@ -8024,6 +8030,7 @@
                 var _draftJson = {};
                 $scope.localDrafts = [];
                 $scope.localDraftError = null;
+                $scope.lastDraftSaveTime = null;
                 $scope.draftRecovery = { entries: [], records: [], busy: false };
 
                 function _validAutosaveInterval(value) {
@@ -8080,12 +8087,12 @@
 
                 function _collectLocalDraft() {
                     var entries = [];
-                    function add(type, id, key, field, label, language, base, value) {
+                    function add(type, id, key, field, base, value) {
                         base = base == null ? '' : base;
                         value = value == null ? '' : value;
                         if (value !== base) {
                             entries.push({ type: type, id: id, key: key, field: field,
-                                label: label, language: language, base: base, value: value });
+                                base: base, value: value });
                         }
                     }
                     _draftWidgetFields().forEach(function (field) {
@@ -8095,27 +8102,23 @@
                         var value = def && monacoEditors[def.key] ? monacoEditors[def.key].getValue() :
                             field === 'roles' ? $scope.rolesList.join(',') : $scope.widget[field];
                         if (extra) { value = _normaliseExtraWidgetFieldValue(extra, value); }
-                        add('widget', SYS_ID, def ? def.key : '', field,
-                            def ? def.label : extra ? extra.label : field, def ? def.language : 'plaintext', base, value);
+                        add('widget', SYS_ID, def ? def.key : '', field, base, value);
                     });
                     extraPanes.forEach(function (pane) {
                         if (pane.readOnly) { return; }
                         var editor = monacoEditors[pane.key];
-                        add(pane.recordType, pane.sys_id || '', pane.key, 'content', pane.label + ' — ' + pane.recordId,
-                            pane.language, pane.lastServerContent, editor ? editor.getValue() : pane.content);
+                        add(pane.recordType, pane.sys_id || '', pane.key, 'content',
+                            pane.lastServerContent, editor ? editor.getValue() : pane.content);
                         if (pane.hasIdInput) {
-                            add(pane.recordType, pane.sys_id || '', pane.key, 'recordId', pane.label + ' ID',
-                                'plaintext', pane._draftOriginalId, pane.recordId);
+                            add(pane.recordType, pane.sys_id || '', pane.key, 'recordId', pane._draftOriginalId, pane.recordId);
                             if (pane.recordType === 'provider') {
-                                add('provider', pane.sys_id || '', pane.key, 'providerType', 'Provider type',
-                                    'plaintext', pane._draftOriginalType, pane.providerType);
+                                add('provider', pane.sys_id || '', pane.key, 'providerType', pane._draftOriginalType, pane.providerType);
                             }
                         }
                     });
                     Object.keys(_draftJson).forEach(function (field) {
                         var json = _draftJson[field];
-                        add('widget', SYS_ID, '', field, field === 'option_schema' ? 'Option Schema' : 'Demo Data',
-                            'json', json.base, json.value);
+                        add('widget', SYS_ID, '', field, json.base, json.value);
                     });
                     return { version: 1, updatedAt: Date.now(), entries: entries };
                 }
@@ -8130,11 +8133,15 @@
                         var draft = _collectLocalDraft();
                         if (!draft.entries.length) {
                             localStorage.removeItem(key);
+                            $scope.lastDraftSaveTime = null;
                         } else {
                             var old = localStorage.getItem(key);
-                            if (!old || JSON.stringify(JSON.parse(old).entries) !== JSON.stringify(draft.entries)) {
+                            var saved = old ? JSON.parse(old) : null;
+                            if (!saved || JSON.stringify(saved.entries) !== JSON.stringify(draft.entries)) {
                                 localStorage.setItem(key, JSON.stringify(draft));
+                                saved = draft;
                             }
+                            $scope.lastDraftSaveTime = new Date(saved.updatedAt);
                         }
                         $scope.localDraftError = null;
                     } catch (e) {
@@ -8144,7 +8151,10 @@
 
                 function _discardPageDraft() {
                     _draftCaptureStopped = true;
-                    try { localStorage.removeItem(_draftPrefix() + _draftPageId); }
+                    try {
+                        localStorage.removeItem(_draftPrefix() + _draftPageId);
+                        $scope.lastDraftSaveTime = null;
+                    }
                     catch (e) { $scope.localDraftError = 'The local draft could not be discarded.'; }
                 }
 
@@ -8156,6 +8166,7 @@
                             if (key.indexOf(_draftPrefix()) === 0) { localStorage.removeItem(key); }
                         }
                         $scope.localDrafts = [];
+                        $scope.lastDraftSaveTime = null;
                         if ($scope.versionDiffModal.localDraft) { $scope.closeVersionDiffModal(); }
                         $scope.draftRecovery = { entries: [], records: [], busy: false };
                         $scope.localDraftError = null;
@@ -8167,7 +8178,6 @@
                         Array.isArray(draft.entries) && draft.entries.length && draft.entries.every(function (entry) {
                             if (!entry || typeof entry.key !== 'string' || !/^[\w-]*$/.test(entry.key) ||
                                 typeof entry.id !== 'string' || (entry.id && !/^[a-f0-9]{32}$/.test(entry.id)) ||
-                                typeof entry.label !== 'string' || typeof entry.language !== 'string' ||
                                 !['string', 'boolean'].includes(typeof entry.value) ||
                                 !['string', 'boolean'].includes(typeof entry.base)) { return false; }
                             if (entry.type === 'widget') {
@@ -8276,7 +8286,8 @@
                         var record = records.find(function (r) { return r.key === key; });
                         if (!record) {
                             var name = entry.type === 'widget' ? $scope.widget.name :
-                                (entry.record && (entry.record.name || entry.record.id)) || entry.label;
+                                (entry.record && (entry.record.name || entry.record.id)) ||
+                                { template: 'Angular template', provider: 'Angular provider', script_include: 'Script Include' }[entry.type];
                             record = {
                                 key: key, id: entry.id,
                                 table: { widget: 'sp_widget', template: 'sp_ng_template',
@@ -8293,6 +8304,7 @@
                                 field === 'recordId' ? (entry.type === 'template' ? 'id' : 'name') : 'type';
                         }
                         record.snapshot[field] = entry.value;
+                        if (!entry.id && entry.field === 'recordId' && entry.value) { record.label = entry.value; }
                         if (field === 'is_public') { record.snapshot.public = entry.value; }
                     });
                     $scope.draftRecovery.records = records;
@@ -8384,6 +8396,7 @@
                                 var copy = _collectLocalDraft();
                                 if (copy.entries.length) {
                                     localStorage.setItem(_draftPrefix() + _draftPageId, JSON.stringify(copy));
+                                    $scope.lastDraftSaveTime = new Date(copy.updatedAt);
                                 }
                                 _removeRecoveredDraft(draft);
                             } catch (e) { $scope.localDraftError = 'The recovered draft could not be copied. Its original recovery copy has been retained.'; }
