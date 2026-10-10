@@ -1448,7 +1448,7 @@
         .we-pg-btn.btn { height: 32px; width: 32px; padding: 0; display: inline-flex !important; align-items: center; justify-content: center; background: transparent !important; border: none !important; color: RGB(var(--now-color--primary-1)) !important; font-size: 1rem; }
         .we-pg-btn.btn:disabled { opacity: 0.25; pointer-events: none; }
         .we-pg-info { font-size: 14px; color: rgb(var(--now-color_text--primary)); white-space: nowrap; display: inline-flex; align-items: center; gap: 0.375rem; }
-        .we-pg-start-input.form-control { width: 4.5rem; height: 32px; padding: 0 4px 0 6px; text-align: center; background: rgb(var(--now-color_background--primary)); border: 0.8px solid rgb(126,133,146); border-radius: var(--now-form-field--border-radius); display: inline-block; -moz-appearance: textfield; }
+        .we-pg-start-input.form-control { width: 4.5rem; height: 32px; padding: 0 4px 0 6px; text-align: center; background: rgb(var(--now-color_background--primary)); border: 0.8px solid rgb(126,133,146); border-radius: var(--now-form-field--border-radius); display: inline-block; -moz-appearance: textfield; appearance: textfield; }
         .we-pg-start-input.form-control::-webkit-inner-spin-button, .we-pg-start-input.form-control::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         .list2_empty-state-list { display: grid; place-items: center; padding: 20px; }
         .we-related-empty { padding: 2rem 1rem; text-align: center; color: rgb(var(--now-color_text--tertiary)); }
@@ -1685,6 +1685,7 @@
             color: RGB(var(--now-form-field--color, var(--now-color_text--primary)));
             font-size: var(--now-font-size--md, 0.875rem);
             -moz-appearance: textfield;
+            appearance: textfield;
         }
         .we-pref-number::-webkit-outer-spin-button,
         .we-pref-number::-webkit-inner-spin-button {
@@ -2904,6 +2905,26 @@
                     </div>
                 </div>
 
+                <!-- Local draft recovery -->
+                <div class="we-alert-pill-wrapper" ng-if="localDrafts.length || localDraftError" we-close-on-outside-click="openDropdown" close-key="'alert-draft'" ng-mouseenter="onAlertPillEnter('alert-draft')" ng-mouseleave="onAlertPillLeave('alert-draft')">
+                    <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-draft'}" ng-focus="onAlertPillFocus('alert-draft')" ng-keydown="onAlertPillKeydown($event, 'alert-draft')" ng-click="toggleDropdown('alert-draft'); $event.stopPropagation()" aria-label="Local draft recovery" aria-expanded="{{openDropdown === 'alert-draft'}}">
+                        <i class="icon-condition" aria-hidden="true"></i>
+                        <span>{{localDrafts.length ? 'Unsaved draft found' : 'Local draft unavailable'}}</span>
+                    </button>
+                    <div class="we-alert-popover" ng-if="openDropdown === 'alert-draft'" ng-mouseenter="onAlertPopoverEnter()" ng-mouseleave="onAlertPopoverLeave('alert-draft')" ng-click="$event.stopPropagation()" role="dialog" aria-label="Local drafts">
+                        <div class="we-alert-popover-title">Unsaved local drafts</div>
+                        <div class="we-alert-popover-body" ng-if="localDraftError" role="alert" ng-bind="localDraftError"></div>
+                        <div ng-repeat="draft in localDrafts track by draft.key">
+                            <div class="we-alert-popover-body">Last edited {{draft.updatedAt | date:'medium'}}. Restore these changes into the editor, then save when ready.</div>
+                            <div class="we-alert-popover-actions">
+                                <button type="button" class="btn btn-primary btn-sm" ng-click="restoreLocalDraft(draft)" ng-disabled="draftRecovery.busy" ng-keydown="onAlertActionKeydown($event, 'alert-draft', false)">Restore</button>
+                                <button type="button" class="btn btn-default btn-sm" ng-click="compareLocalDraft(draft)" ng-disabled="draftRecovery.busy" ng-keydown="onAlertActionKeydown($event, 'alert-draft', false)">Compare</button>
+                                <button type="button" class="btn btn-danger btn-sm" ng-click="discardLocalDraft(draft)" ng-disabled="draftRecovery.busy" ng-keydown="onAlertActionKeydown($event, 'alert-draft', $last)">Discard</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Widget reverted notification pill -->
                 <div class="we-alert-pill-wrapper" ng-if="widgetReverted" we-close-on-outside-click="openDropdown" close-key="'alert-reverted'" ng-mouseenter="onAlertPillEnter('alert-reverted')" ng-mouseleave="onAlertPillLeave('alert-reverted')">
                     <button type="button" class="btn we-alert-pill we-alert-pill--warning" ng-class="{'active': openDropdown === 'alert-reverted'}" ng-focus="onAlertPillFocus('alert-reverted')" ng-keydown="onAlertPillKeydown($event, 'alert-reverted')" ng-click="toggleDropdown('alert-reverted'); $event.stopPropagation()" aria-label="Reverted version details" aria-expanded="{{openDropdown === 'alert-reverted'}}">
@@ -3599,6 +3620,26 @@
                                         <label class="checkbox-label" for="chk-show-open-in-vscode" we-tooltip-title="Displays an 'Open in VS Code' button in the header bar when the SN Utils browser extension is installed.">Show "Open in VS Code" button (SN Utils)</label>
                                     </span>
                                 </div>
+                                <div class="we-modal-option we-modal-option-row">
+                                    <label class="we-modal-option-label" for="pref-autosave-interval" we-tooltip-title="Save drafts in this browser. Default: 30 seconds; 0 turns off.">Auto-save local drafts</label>
+                                    <div class="we-spin-wrap">
+                                        <button type="button" class="we-spin-btn we-spin-dec" ng-click="userPrefsEdit.autosaveInterval = userPrefsEdit.autosaveInterval > 0 ? userPrefsEdit.autosaveInterval - 1 : 0" aria-label="Decrease auto-save interval"><i class="icon-subtract"></i></button>
+                                        <input type="number" class="we-pref-number" id="pref-autosave-interval" ng-model="userPrefsEdit.autosaveInterval" min="0" step="1" />
+                                        <button type="button" class="we-spin-btn we-spin-inc" ng-click="userPrefsEdit.autosaveInterval = userPrefsEdit.autosaveInterval + 1" aria-label="Increase auto-save interval">+</button>
+                                    </div>
+                                    <span style="font-size:var(--now-font-size--md);color:rgb(var(--now-color_text--secondary))">seconds</span>
+                                </div>
+                                <div class="we-modal-option" ng-if="!validAutosaveInterval(userPrefsEdit.autosaveInterval)" role="alert">Enter whole seconds (0 = off).</div>
+                                <div class="we-modal-option we-modal-option-row">
+                                    <label class="we-modal-option-label" for="pref-draft-retention" we-tooltip-title="Delete drafts after this many days without changes. Default: 7 days.">Keep drafts for</label>
+                                    <div class="we-spin-wrap">
+                                        <button type="button" class="we-spin-btn we-spin-dec" ng-click="userPrefsEdit.draftRetentionDays = userPrefsEdit.draftRetentionDays > 1 ? userPrefsEdit.draftRetentionDays - 1 : 1" aria-label="Decrease draft retention"><i class="icon-subtract"></i></button>
+                                        <input type="number" class="we-pref-number" id="pref-draft-retention" ng-model="userPrefsEdit.draftRetentionDays" min="1" step="1" />
+                                        <button type="button" class="we-spin-btn we-spin-inc" ng-click="userPrefsEdit.draftRetentionDays = userPrefsEdit.draftRetentionDays + 1" aria-label="Increase draft retention">+</button>
+                                    </div>
+                                    <span style="font-size:var(--now-font-size--md);color:rgb(var(--now-color_text--secondary))">days</span>
+                                </div>
+                                <div class="we-modal-option" ng-if="!validDraftRetentionDays(userPrefsEdit.draftRetentionDays)" role="alert">Enter whole days (minimum 1).</div>
                             </div>
                             <div class="we-modal-section">
                                 <div class="we-modal-section-title">Collaboration</div>
@@ -3774,7 +3815,7 @@
                         <span ng-if="importPrefsStatus.text" ng-style="{color: importPrefsStatus.type === 'error' ? 'rgb(var(--now-color_alert--critical-2))' : 'rgb(var(--now-color_text--secondary))'}" style="font-size:var(--now-font-size--sm)" ng-bind="importPrefsStatus.text"></span>
                     </div>
                     <button class="btn btn-default" ng-click="cancelUserPrefsModal()">Cancel</button>
-                    <button class="btn btn-primary" ng-click="saveUserPrefsModal()">Save</button>
+                    <button class="btn btn-primary" ng-click="saveUserPrefsModal()" ng-disabled="!validAutosaveInterval(userPrefsEdit.autosaveInterval) || !validDraftRetentionDays(userPrefsEdit.draftRetentionDays)">Save</button>
                 </div>
             </div>
         </dialog>
@@ -4031,10 +4072,18 @@
                 <div class="we-modal-header" we-modal-draggable="we-modal-draggable">
                     <span ng-if="!versionDiffModal.expandedField">Compare versions</span>
                     <span ng-if="versionDiffModal.expandedField" ng-bind-template="Compare versions — {{versionDiffModal.expandedField}}"></span>
+                    <select ng-if="versionDiffModal.localDraft &amp;&amp; draftRecovery.records.length > 1" class="form-control we-pref-select" style="max-width:20rem;margin-left:1rem" ng-model="draftRecovery.selectedRecord" ng-options="record as record.label for record in draftRecovery.records" ng-change="showLocalDraftCompare()" aria-label="Draft record"></select>
                     <button class="btn btn-default" ng-if="!versionDiffModal.isUnsaved" ng-click="openVersionDiffInNewTab()" style="margin-left:auto;margin-right:0.875rem">Open in new tab <i class="icon-open-document-new-tab" style="margin-left: 0.375rem" aria-hidden="true"></i></button>
                     <button type="button" class="we-modal-close-btn" ng-click="closeVersionDiffModal()" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 </div>
                 <iframe class="we-diff-iframe" ng-src="{{versionDiffModal.url}}" style="flex:1;border:none;width:100%"></iframe>
+                <div class="we-modal-footer" ng-if="versionDiffModal.localDraft">
+                    <span ng-if="draftRecovery.conflict">Saved content has changed. Restore replaces the draft fields.</span>
+                    <span ng-if="!draftRecovery.conflict &amp;&amp; hasUnsavedChanges()">Restore replaces current edits in the draft fields.</span>
+                    <span ng-if="localDraftError" role="alert" ng-bind="localDraftError"></span>
+                    <button type="button" class="btn btn-primary" ng-click="restoreLocalDraft(versionDiffModal.localDraft, true)" ng-disabled="draftRecovery.busy" style="margin-left:auto">Restore draft</button>
+                    <button type="button" class="btn btn-default" ng-click="closeVersionDiffModal()">Close</button>
+                </div>
             </div>
         </dialog>
 

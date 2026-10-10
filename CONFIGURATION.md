@@ -96,3 +96,14 @@ The bootstrap script lazy-loads `monaco_plus_core` on demand, so completions/Int
 
 ## User Preferences
 User preferences (including editor themes, Assistant visibility, and Debug Menu settings) persist in `localStorage` and synchronise to the ServiceNow instance as `sys_user_preference` records under `monaco_plus.user_prefs`.
+
+
+### Local draft autosave
+
+In **User Preferences → Editor**, set **Auto-save local drafts** to an interval in whole seconds. The default is **30**; **0** turns automatic capture off, including capture when leaving the tab. **Keep drafts for** below it sets retention in whole days (minimum **1**, default **7**). Both preferences synchronise through `monaco_plus.user_prefs` and are included in preference exports and imports.
+
+For widgets already saved to ServiceNow, drafts capture changed widget fields, open Angular templates, providers and Script Includes, and unfinished Option Schema and Demo Data edits. Capture also runs when the tab becomes hidden or the page is left. Brand-new widgets and read-only version views are excluded. Capture is silent unless browser storage fails.
+
+After reopening a widget, the **Unsaved draft found** warning pill offers **Restore**, **Compare** and **Discard**. Restoring loads changes into the editor without saving to ServiceNow. Compare opens the existing Compare+ modal, with a record selector when a draft includes related records. Conflicting saved content or current edits require review before restoration. Normal access checks still apply. A successful widget Save removes all local drafts for that widget and user, including earlier sessions. Per-field saves remove only the saved content from the current page’s draft; failed saves preserve drafts. Subsequent unsaved edits can create a fresh draft. Setting the interval to 0 retains existing recovery copies.
+
+Drafts are separated by instance, user, widget and open page. Expired drafts are removed across this user’s widgets when the editor opens and before draft writes, based on the last content change. The current tab’s working copy is retained while it is open. Drafts are also removed when saved or discarded; clearing site data removes them. Local storage is not an encrypted store for sensitive content. Explicitly cancelling an Option Schema or Demo Data dialog discards its edits.
